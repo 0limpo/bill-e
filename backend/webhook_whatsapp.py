@@ -4,11 +4,14 @@ import uuid
 import json
 import os
 import httpx
+import redis
 
 # Variables de entorno (las configuraremos después)
 WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+# Conexión Redis
+redis_client = redis.from_url(os.getenv("REDIS_URL"))
 
 # Función para verificar el webhook (GET)
 async def verify_webhook(
@@ -132,7 +135,7 @@ async def create_new_session(phone_number: str) -> str:
     }
     
     # Aquí deberías guardar en Redis (adapta a tu implementación actual)
-    # await redis_client.setex(f"session:{session_id}", 3600, json.dumps(session_data))
+    redis_client.setex(f"session:{session_id}", 3600, json.dumps(session_data))
     
     print(f"✅ Sesión creada: {session_id} para {phone_number}")
     return session_id
