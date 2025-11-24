@@ -18,13 +18,21 @@ async def verify_webhook(
 ):
     """Verificación inicial del webhook de WhatsApp"""
     
-    print(f"🔍 Verificando webhook: mode={hub_mode}, token={hub_verify_token}")
+    # Debug logs mejorados
+    print(f"🔍 DEBUG - Verificando webhook:")
+    print(f"  - hub_mode recibido: '{hub_mode}'")
+    print(f"  - hub_challenge recibido: '{hub_challenge}'")
+    print(f"  - hub_verify_token recibido: '{hub_verify_token}'")
+    print(f"  - WHATSAPP_VERIFY_TOKEN esperado: '{WHATSAPP_VERIFY_TOKEN}'")
+    print(f"  - Tokens son iguales: {hub_verify_token == WHATSAPP_VERIFY_TOKEN}")
     
     if hub_mode == "subscribe" and hub_verify_token == WHATSAPP_VERIFY_TOKEN:
         print("✅ Webhook verificado correctamente")
         return Response(content=hub_challenge, media_type="text/plain")
     else:
-        print("❌ Token de verificación incorrecto")
+        print("❌ Verificación fallida")
+        print(f"  - hub_mode == 'subscribe': {hub_mode == 'subscribe'}")
+        print(f"  - tokens iguales: {hub_verify_token == WHATSAPP_VERIFY_TOKEN}")
         raise HTTPException(status_code=403, detail="Forbidden")
 
 # Función para manejar mensajes entrantes (POST)
