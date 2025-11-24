@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from database import Database
 from models import SessionData
+from webhook_whatsapp import verify_webhook, handle_webhook
 import os
 from dotenv import load_dotenv
 
@@ -50,6 +51,19 @@ async def calculate_bill(session_id: str, request: Request):
     # Por ahora solo guardamos
     
     return {"status": "ok", "message": "Resultado guardado"}
+
+    # Endpoints de WhatsApp Webhook
+    @app.get("/webhook/whatsapp")
+    async def whatsapp_webhook_verify(
+        hub_mode: str = Query(None, alias="hub.mode"),
+        hub_challenge: str = Query(None, alias="hub.challenge"), 
+        hub_verify_token: str = Query(None, alias="hub.verify_token")
+    ):
+        return await verify_webhook(hub_mode, hub_challenge, hub_verify_token)
+
+    @app.post("/webhook/whatsapp")
+    async def whatsapp_webhook_handle(request: Request):
+        return await handle_webhook(request)
 
 if __name__ == "__main__":
     import uvicorn
