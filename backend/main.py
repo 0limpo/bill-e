@@ -27,12 +27,15 @@ async def health():
 @app.get("/api/session/{session_id}")
 async def get_session(session_id: str):
     """Frontend obtiene datos de la sesión"""
-    session = Database.get_session(session_id)
+    from webhook_whatsapp import redis_client
+    import json
     
-    if not session:
+    session_data = redis_client.get(f"session:{session_id}")
+    
+    if not session_data:
         raise HTTPException(status_code=404, detail="Sesión no encontrada o expirada")
     
-    return session
+    return json.loads(session_data)
 
 @app.post("/api/session/{session_id}/calculate")
 async def calculate_bill(session_id: str, request: Request):
@@ -68,13 +71,3 @@ async def whatsapp_webhook_handle(request: Request):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-@app.get("/api/session/{session_id}")
-async def get_session(session_id: str):
-    """Frontend obtiene datos de la sesión"""
-    session_data = redis_client.get(f"session:{session_id}")
-    
-    if not session_data:
-        raise HTTPException(status_code=404, detail="Sesión no encontrada o expirada")
-    
-    return json.loads(session_data)
