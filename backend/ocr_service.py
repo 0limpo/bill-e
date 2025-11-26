@@ -1,41 +1,19 @@
 """
 Servicio OCR para procesar imágenes de boletas y extraer texto
-Versión mejorada con soporte para formato chileno y credenciales directas
+Versión mejorada con soporte para formato chileno
 """
 import os
 import io
 import re
-import json
 from typing import List, Dict, Any
 from google.cloud import vision
-from google.oauth2 import service_account
 from PIL import Image
 import base64
 
 class OCRService:
     def __init__(self):
         """Inicializar el cliente de Google Vision"""
-        # Cargar credenciales desde environment variable si está disponible
-        creds_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON')
-        if creds_json:
-            try:
-                # Parsear JSON de credenciales
-                credentials_info = json.loads(creds_json)
-                # Crear credenciales directamente desde el diccionario
-                credentials = service_account.Credentials.from_service_account_info(credentials_info)
-                self.client = vision.ImageAnnotatorClient(credentials=credentials)
-                print("✅ Google Vision client creado con credenciales de environment")
-            except Exception as e:
-                print(f"❌ Error cargando credenciales: {e}")
-                self.client = None
-        else:
-            try:
-                # Fallback a archivo local (para desarrollo)
-                self.client = vision.ImageAnnotatorClient()
-                print("✅ Google Vision client creado con archivo local")
-            except Exception as e:
-                print(f"❌ Error creando cliente de Vision: {e}")
-                self.client = None
+        self.client = vision.ImageAnnotatorClient()
     
     def process_image(self, image_data: bytes) -> str:
         """
@@ -47,10 +25,6 @@ class OCRService:
         Returns:
             str: Texto extraído de la imagen
         """
-        if not self.client:
-            print("❌ Cliente de Google Vision no disponible")
-            return ""
-            
         try:
             # Crear objeto Image para Google Vision
             image = vision.Image(content=image_data)
@@ -58,22 +32,16 @@ class OCRService:
             # Detectar texto en la imagen
             response = self.client.text_detection(image=image)
             
-            # Verificar errores en la respuesta
-            if response.error.message:
-                print(f"❌ Error en Google Vision API: {response.error.message}")
-                return ""
-            
             # Extraer el texto
             texts = response.text_annotations
             if texts:
-                print(f"✅ Texto extraído exitosamente: {len(texts[0].description)} caracteres")
+                # El primer elemento contiene todo el texto detectado
                 return texts[0].description
             
-            print("⚠️ No se detectó texto en la imagen")
             return ""
             
         except Exception as e:
-            print(f"❌ Error en OCR: {e}")
+            print(f"Error en OCR: {e}")
             return ""
     
     def process_base64_image(self, base64_image: str) -> str:
@@ -154,8 +122,6 @@ class OCRService:
             Dict con información de la boleta
         """
         try:
-            print(f"🔍 Parseando texto de boleta: {len(text)} caracteres")
-            
             # Normalizar texto y dividir en líneas
             lines = text.strip().split('\n')
             
@@ -184,14 +150,17 @@ class OCRService:
             subtotal = 0
             tip = 0
             
-            # Buscar total explícito
+            # Buscar total explícito (mejorado para detectar mayúsculas)
             total_patterns = [
-                r'total\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
-                r'total\s+(\d{1,3}(?:\.\d{3})*)',
+                r'total\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',  # "total: $111.793"
+                r'total\s+(\d{1,3}(?:\.\d{3})*)',                          # "total 111.793"
+                r'Total\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',   # "Total: $111.793" (mayúscula)
+                r'Total\s+(\d{1,3}(?:\.\d{3})*)',                          # "Total 111.793"
+                r'TOTAL\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',   # "TOTAL: $111.793"
             ]
             
             for pattern in total_patterns:
-                match = re.search(pattern, text.lower())
+                match = re.search(pattern, text)  # Sin .lower() para detectar mayúsculas
                 if match:
                     total = self.parse_chilean_number(match.group(1))
                     print(f"💰 Total encontrado: ${total}")
@@ -200,7 +169,6 @@ class OCRService:
             # Si no encontró total explícito, usar el número más grande
             if total == 0 and all_numbers:
                 total = max(all_numbers)
-                print(f"💰 Total inferido: ${total}")
             
             # Buscar subtotal
             subtotal_patterns = [
@@ -212,13 +180,11 @@ class OCRService:
                 match = re.search(pattern, text.lower())
                 if match:
                     subtotal = self.parse_chilean_number(match.group(1))
-                    print(f"🧾 Subtotal encontrado: ${subtotal}")
                     break
             
             # Buscar propina
             tip_patterns = [
                 r'propina\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
-                r'propina\s+sugerida\s+\d+\s*(\d{1,3}(?:\.\d{3})*)',
                 r'tip\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
                 r'servicio\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
             ]
@@ -227,18 +193,48 @@ class OCRService:
                 match = re.search(pattern, text.lower())
                 if match:
                     tip = self.parse_chilean_number(match.group(1))
-                    print(f"💸 Propina encontrada: ${tip}")
                     break
             
-            # Calcular valores faltantes
-            if subtotal == 0 and total > 0:
-                subtotal = total - tip
-            elif tip == 0 and total > 0 and subtotal > 0:
+            # Calcular valores faltantes con lógica corregida
+            if subtotal > 0 and tip > 0 and total == 0:
+                # Si tenemos subtotal y propina, calcular total
+                total = subtotal + tip
+                print(f"💡 Total calculado: ${total} (${subtotal} + ${tip})")
+            elif total > 0 and subtotal == 0 and tip == 0:
+                # Si solo tenemos total, estimar subtotal (90%) y propina (10%)
+                subtotal = total * 0.9
+                tip = total * 0.1
+                print(f"💡 Subtotal y propina estimados desde total")
+            elif total > 0 and subtotal > 0 and tip == 0:
+                # Si tenemos total y subtotal, calcular propina
                 tip = total - subtotal
+                print(f"💡 Propina calculada: ${tip}")
+            elif subtotal == 0 and total > 0 and tip > 0:
+                # Si tenemos total y propina, calcular subtotal
+                subtotal = total - tip
+                print(f"💡 Subtotal calculado: ${subtotal}")
+            elif subtotal > 0 and tip == 0 and total == 0:
+                # Si solo tenemos subtotal, estimar propina 10%
+                tip = subtotal * 0.1
+                total = subtotal + tip
+                print(f"💡 Propina estimada 10% y total calculado")
+            
+            # Validación final: asegurar consistencia
+            if subtotal > 0 and tip > 0:
+                calculated_total = subtotal + tip
+                if total == 0 or abs(total - calculated_total) > 100:
+                    total = calculated_total
+                    print(f"🔧 Total corregido a: ${total}")
+            
+            # Si aún no tenemos valores válidos, usar el número más grande como total
+            if total == 0 and subtotal == 0 and all_numbers:
+                total = max(all_numbers)
+                subtotal = total * 0.9
+                tip = total * 0.1
+                print(f"⚠️ Usando número más grande como total: ${total}")
             
             # Extraer items individuales
             items = self.extract_items_from_text(lines)
-            print(f"📝 Items encontrados: {len(items)}")
             
             # Validar totales contra suma de items
             if items:
@@ -253,7 +249,7 @@ class OCRService:
                         tip = subtotal * 0.1
                         total = subtotal + tip
             
-            result = {
+            return {
                 'success': True,
                 'total': total,
                 'subtotal': subtotal,
@@ -264,11 +260,8 @@ class OCRService:
                 'detected_numbers': all_numbers[:10]  # Para debug
             }
             
-            print(f"✅ Parsing exitoso: Total=${total}, Items={len(items)}")
-            return result
-            
         except Exception as e:
-            print(f"❌ Error parseando boleta: {e}")
+            print(f"Error parseando boleta: {e}")
             return {
                 'success': False,
                 'error': str(e),
@@ -315,7 +308,6 @@ class OCRService:
                                 'price': price,
                                 'quantity': 1
                             })
-                            print(f"  📄 Item: {item_name} = ${price}")
             
             # Método original como backup
             item_pattern = r'^(\d+\s+)?(.+?)\s+(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)$'
@@ -339,7 +331,6 @@ class OCRService:
                                 'price': price,
                                 'quantity': int(quantity_str.strip()) if quantity_str else 1
                             })
-                            print(f"  📄 Item (backup): {item_name} = ${price}")
         
         return items
     
