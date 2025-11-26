@@ -1,19 +1,44 @@
 """
 Servicio OCR para procesar imágenes de boletas y extraer texto
-Versión mejorada con soporte para formato chileno
+Versión mejorada con soporte para formato chileno y credenciales directas
 """
 import os
 import io
 import re
+import json
 from typing import List, Dict, Any
 from google.cloud import vision
+from google.oauth2 import service_account
 from PIL import Image
 import base64
 
 class OCRService:
     def __init__(self):
         """Inicializar el cliente de Google Vision"""
-        self.client = vision.ImageAnnotatorClient()
+        self.client = None
+        
+        # Cargar credenciales desde environment variable si está disponible
+        creds_json = os.getenv('GOOGLE_APPLICATION_CREDENTIALS_JSON')
+        if creds_json:
+            try:
+                # Parsear JSON de credenciales
+                credentials_info = json.loads(creds_json)
+                # Crear credenciales directamente desde el diccionario
+                credentials = service_account.Credentials.from_service_account_info(credentials_info)
+                self.client = vision.ImageAnnotatorClient(credentials=credentials)
+                print("✅ Google Vision client creado con credenciales de environment")
+                return
+            except Exception as e:
+                print(f"❌ Error cargando credenciales: {e}")
+        
+        # Fallback a archivo local (para desarrollo) - pero con manejo de errores
+        try:
+            self.client = vision.ImageAnnotatorClient()
+            print("✅ Google Vision client creado con archivo local")
+        except Exception as e:
+            print(f"❌ Error creando cliente de Vision: {e}")
+            print("⚠️ OCR no disponible - credenciales no encontradas")
+            self.client = None
     
     def process_image(self, image_data: bytes) -> str:
         """
@@ -25,6 +50,10 @@ class OCRService:
         Returns:
             str: Texto extraído de la imagen
         """
+        if not self.client:
+            print("❌ Cliente de Google Vision no disponible")
+            return ""
+            
         try:
             # Crear objeto Image para Google Vision
             image = vision.Image(content=image_data)
@@ -32,16 +61,22 @@ class OCRService:
             # Detectar texto en la imagen
             response = self.client.text_detection(image=image)
             
+            # Verificar errores en la respuesta
+            if response.error.message:
+                print(f"❌ Error en Google Vision API: {response.error.message}")
+                return ""
+            
             # Extraer el texto
             texts = response.text_annotations
             if texts:
-                # El primer elemento contiene todo el texto detectado
+                print(f"✅ Texto extraído exitosamente: {len(texts[0].description)} caracteres")
                 return texts[0].description
             
+            print("⚠️ No se detectó texto en la imagen")
             return ""
             
         except Exception as e:
-            print(f"Error en OCR: {e}")
+            print(f"❌ Error en OCR: {e}")
             return ""
     
     def process_base64_image(self, base64_image: str) -> str:
@@ -122,6 +157,8 @@ class OCRService:
             Dict con información de la boleta
         """
         try:
+            print(f"🔍 Parseando texto de boleta: {len(text)} caracteres")
+            
             # Normalizar texto y dividir en líneas
             lines = text.strip().split('\n')
             
@@ -169,6 +206,7 @@ class OCRService:
             # Si no encontró total explícito, usar el número más grande
             if total == 0 and all_numbers:
                 total = max(all_numbers)
+                print(f"💰 Total inferido: ${total}")
             
             # Buscar subtotal
             subtotal_patterns = [
@@ -180,11 +218,13 @@ class OCRService:
                 match = re.search(pattern, text.lower())
                 if match:
                     subtotal = self.parse_chilean_number(match.group(1))
+                    print(f"🧾 Subtotal encontrado: ${subtotal}")
                     break
             
             # Buscar propina
             tip_patterns = [
                 r'propina\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
+                r'propina\s+sugerida\s+\d+\s*(\d{1,3}(?:\.\d{3})*)',
                 r'tip\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
                 r'servicio\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
             ]
@@ -193,6 +233,7 @@ class OCRService:
                 match = re.search(pattern, text.lower())
                 if match:
                     tip = self.parse_chilean_number(match.group(1))
+                    print(f"💸 Propina encontrada: ${tip}")
                     break
             
             # Calcular valores faltantes con lógica corregida
@@ -235,6 +276,7 @@ class OCRService:
             
             # Extraer items individuales
             items = self.extract_items_from_text(lines)
+            print(f"📝 Items encontrados: {len(items)}")
             
             # Validar totales contra suma de items
             if items:
@@ -249,7 +291,7 @@ class OCRService:
                         tip = subtotal * 0.1
                         total = subtotal + tip
             
-            return {
+            result = {
                 'success': True,
                 'total': total,
                 'subtotal': subtotal,
@@ -260,8 +302,11 @@ class OCRService:
                 'detected_numbers': all_numbers[:10]  # Para debug
             }
             
+            print(f"✅ Parsing exitoso: Total=${total}, Items={len(items)}")
+            return result
+            
         except Exception as e:
-            print(f"Error parseando boleta: {e}")
+            print(f"❌ Error parseando boleta: {e}")
             return {
                 'success': False,
                 'error': str(e),
@@ -308,6 +353,7 @@ class OCRService:
                                 'price': price,
                                 'quantity': 1
                             })
+                            print(f"  📄 Item: {item_name} = ${price}")
             
             # Método original como backup
             item_pattern = r'^(\d+\s+)?(.+?)\s+(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)$'
@@ -331,6 +377,7 @@ class OCRService:
                                 'price': price,
                                 'quantity': int(quantity_str.strip()) if quantity_str else 1
                             })
+                            print(f"  📄 Item (backup): {item_name} = ${price}")
         
         return items
     
