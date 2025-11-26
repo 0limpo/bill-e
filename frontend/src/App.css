@@ -343,6 +343,53 @@ body {
   color: #718096;
 }
 
+/* Tip input styling */
+.tip-input {
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid #cbd5e0;
+  border-radius: 4px;
+  text-align: center;
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+/* Edit controls */
+.edit-controls {
+  text-align: center;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.edit-btn {
+  background: #ed8936;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.edit-btn:hover {
+  background: #dd6b20;
+}
+
+.edit-btn.active {
+  background: #c53030;
+}
+
+.edit-input {
+  width: 120px;
+  padding: 4px 8px;
+  border: 1px solid #3182ce;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 600;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .summary-row {

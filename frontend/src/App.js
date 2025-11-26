@@ -10,7 +10,10 @@ function SessionPage() {
   const [people, setPeople] = useState([]);
   const [newPersonName, setNewPersonName] = useState('');
   const [assignments, setAssignments] = useState({});
-  const [tipPercentage, setTipPercentage] = useState(15);
+  const [tipPercentage, setTipPercentage] = useState(10); // Cambiado a 10%
+  const [customTip, setCustomTip] = useState('');
+  const [isEditingValues, setIsEditingValues] = useState(false);
+  const [editedSubtotal, setEditedSubtotal] = useState('');
   const [timeLeft, setTimeLeft] = useState(null);
 
   // Timer para mostrar tiempo restante
@@ -37,7 +40,7 @@ function SessionPage() {
   }, [sessionData]);
 
   useEffect(() => {
-    const sessionId = id; // Usar ID completo en lugar de split
+    const sessionId = id;
     
     if (sessionId) {
       loadSessionData(sessionId);
@@ -55,10 +58,11 @@ function SessionPage() {
       
       const data = await response.json();
       setSessionData(data);
+      setEditedSubtotal(data.subtotal?.toString() || '');
       
       // Inicializar personas vacío por defecto
       if (data.items && data.items.length > 0) {
-        setPeople([]); // Empezar sin personas
+        setPeople([]);
         
         // Inicializar assignments vacío
         const initialAssignments = {};
@@ -107,6 +111,9 @@ function SessionPage() {
   };
 
   const calculatePersonAmounts = (currentAssignments) => {
+    const subtotal = parseFloat(editedSubtotal) || sessionData?.subtotal || 0;
+    const tipAmount = customTip ? parseFloat(customTip) : (subtotal * tipPercentage) / 100;
+    
     const updatedPeople = people.map(person => {
       let totalAmount = 0;
       
@@ -120,11 +127,11 @@ function SessionPage() {
       });
       
       // Agregar propina proporcional
-      const tipAmount = (totalAmount * tipPercentage) / 100;
+      const personTip = people.length > 0 ? tipAmount / people.length : 0;
       
       return {
         ...person,
-        amount: totalAmount + tipAmount
+        amount: totalAmount + personTip
       };
     });
     
@@ -133,7 +140,9 @@ function SessionPage() {
 
   const splitEqually = () => {
     if (sessionData && people.length > 0) {
-      const totalWithTip = sessionData.total * (1 + tipPercentage / 100);
+      const subtotal = parseFloat(editedSubtotal) || sessionData.subtotal;
+      const tipAmount = customTip ? parseFloat(customTip) : (subtotal * tipPercentage) / 100;
+      const totalWithTip = subtotal + tipAmount;
       const amountPerPerson = totalWithTip / people.length;
       
       setPeople(people.map(person => ({
@@ -141,6 +150,30 @@ function SessionPage() {
         amount: amountPerPerson
       })));
     }
+  };
+
+  const getCurrentSubtotal = () => {
+    return parseFloat(editedSubtotal) || sessionData?.subtotal || 0;
+  };
+
+  const getCurrentTip = () => {
+    return customTip ? parseFloat(customTip) : (getCurrentSubtotal() * tipPercentage) / 100;
+  };
+
+  const getCurrentTotal = () => {
+    return getCurrentSubtotal() + getCurrentTip();
+  };
+
+  const handleTipChange = (e) => {
+    const value = e.target.value;
+    setCustomTip(value);
+    calculatePersonAmounts(assignments);
+  };
+
+  const handleSubtotalChange = (e) => {
+    const value = e.target.value;
+    setEditedSubtotal(value);
+    calculatePersonAmounts(assignments);
   };
 
   if (loading) {
@@ -180,61 +213,72 @@ function SessionPage() {
           <div className="summary-row">
             <div className="summary-item">
               <span className="label">Subtotal</span>
-              <span className="amount">{formatCurrency(sessionData.subtotal)}</span>
+              {isEditingValues ? (
+                <input
+                  type="number"
+                  value={editedSubtotal}
+                  onChange={handleSubtotalChange}
+                  className="edit-input"
+                />
+              ) : (
+                <span className="amount">{formatCurrency(getCurrentSubtotal())}</span>
+              )}
             </div>
             <div className="summary-item">
-              <span className="label">Propina ({tipPercentage}%)</span>
-              <span className="amount tip">{formatCurrency(sessionData.subtotal * tipPercentage / 100)}</span>
+              <span className="label">Propina (10%)</span>
+              <input
+                type="number"
+                value={customTip}
+                onChange={handleTipChange}
+                placeholder={Math.round(getCurrentSubtotal() * 0.1).toString()}
+                className="tip-input"
+              />
+              <span className="amount tip">{formatCurrency(getCurrentTip())}</span>
             </div>
             <div className="summary-item">
               <span className="label">Total</span>
-              <span className="amount total">{formatCurrency(sessionData.subtotal * (1 + tipPercentage / 100))}</span>
+              <span className="amount total">{formatCurrency(getCurrentTotal())}</span>
             </div>
           </div>
 
-          <div className="tip-controls">
-            <span>Ajustar propina:</span>
-            <div className="tip-buttons">
-              {[10, 15, 20, 25].map(percentage => (
-                <button
-                  key={percentage}
-                  className={`tip-btn ${tipPercentage === percentage ? 'active' : ''}`}
-                  onClick={() => {
-                    setTipPercentage(percentage);
-                    calculatePersonAmounts(assignments);
-                  }}
-                >
-                  {percentage}%
-                </button>
-              ))}
-            </div>
+          <div className="edit-controls">
+            <button
+              className={`edit-btn ${isEditingValues ? 'active' : ''}`}
+              onClick={() => setIsEditingValues(!isEditingValues)}
+            >
+              {isEditingValues ? 'Guardar' : 'Editar Valores'}
+            </button>
           </div>
         </div>
 
         <div className="people-section">
           <div className="section-header">
             <h3>Personas ({people.length})</h3>
-            <button className="divide-equal-btn" onClick={splitEqually}>
-              Dividir Todo Igual
-            </button>
+            {people.length > 0 && (
+              <button className="divide-equal-btn" onClick={splitEqually}>
+                Dividir Todo Igual
+              </button>
+            )}
           </div>
           
-          <div className="people-grid">
-            {people.map(person => (
-              <div key={person.name} className="person-card">
-                <div className="person-header">
-                  <span className="person-name">{person.name}</span>
-                  <button 
-                    className="remove-btn"
-                    onClick={() => removePerson(person.name)}
-                  >
-                    ×
-                  </button>
+          {people.length > 0 && (
+            <div className="people-grid">
+              {people.map(person => (
+                <div key={person.name} className="person-card">
+                  <div className="person-header">
+                    <span className="person-name">{person.name}</span>
+                    <button 
+                      className="remove-btn"
+                      onClick={() => removePerson(person.name)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="person-amount">{formatCurrency(person.amount)}</div>
                 </div>
-                <div className="person-amount">{formatCurrency(person.amount)}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="add-person">
             <input
@@ -255,22 +299,26 @@ function SessionPage() {
               {sessionData.items.map(item => (
                 <div key={item.name} className="item-card">
                   <div className="item-info">
-                    <span className="item-name">{item.name}</span>
+                    <span className="item-name">
+                      {item.quantity && item.quantity > 1 ? `${item.quantity}x ` : ''}{item.name}
+                    </span>
                     <span className="item-price">{formatCurrency(item.price)}</span>
                   </div>
-                  <div className="item-assignments">
-                    {people.map(person => (
-                      <button
-                        key={person.name}
-                        className={`assignment-btn ${
-                          assignments[item.name]?.includes(person.name) ? 'assigned' : ''
-                        }`}
-                        onClick={() => toggleItemAssignment(item.name, person.name)}
-                      >
-                        {person.name}
-                      </button>
-                    ))}
-                  </div>
+                  {people.length > 0 && (
+                    <div className="item-assignments">
+                      {people.map(person => (
+                        <button
+                          key={person.name}
+                          className={`assignment-btn ${
+                            assignments[item.name]?.includes(person.name) ? 'assigned' : ''
+                          }`}
+                          onClick={() => toggleItemAssignment(item.name, person.name)}
+                        >
+                          {person.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -293,4 +341,3 @@ function App() {
 }
 
 export default App;
-// Updated
