@@ -10,10 +10,9 @@ function SessionPage() {
   const [people, setPeople] = useState([]);
   const [newPersonName, setNewPersonName] = useState('');
   const [assignments, setAssignments] = useState({});
-  const [tipPercentage, setTipPercentage] = useState(10); // Cambiado a 10%
-  const [customTip, setCustomTip] = useState('');
-  const [isEditingValues, setIsEditingValues] = useState(false);
-  const [editedSubtotal, setEditedSubtotal] = useState('');
+  const [tipPercentage, setTipPercentage] = useState(10);
+  const [customTipAmount, setCustomTipAmount] = useState('');
+  const [editingItems, setEditingItems] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
 
   // Timer para mostrar tiempo restante
@@ -21,13 +20,21 @@ function SessionPage() {
     if (sessionData?.expires_at) {
       const updateTimer = () => {
         const now = new Date();
-        const expiresAt = new Date(sessionData.expires_at * 1000);
+        const expiresAt = new Date(sessionData.expires_at);
         const diff = expiresAt - now;
         
         if (diff > 0) {
-          const minutes = Math.floor(diff / 60000);
+          const hours = Math.floor(diff / 3600000);
+          const minutes = Math.floor((diff % 3600000) / 60000);
           const seconds = Math.floor((diff % 60000) / 1000);
-          setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+          
+          if (hours > 0) {
+            setTimeLeft(`${hours}h ${minutes}m`);
+          } else if (minutes > 0) {
+            setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+          } else {
+            setTimeLeft(`${seconds}s`);
+          }
         } else {
           setTimeLeft('Expirado');
         }
@@ -58,16 +65,41 @@ function SessionPage() {
       
       const data = await response.json();
       setSessionData(data);
-      setEditedSubtotal(data.subtotal?.toString() || '');
+      
+      // Calcular propina inicial (10% del subtotal)
+      const initialTip = data.subtotal * 0.1;
+      setCustomTipAmount(Math.round(initialTip).toString());
       
       // Inicializar personas vacío por defecto
       if (data.items && data.items.length > 0) {
         setPeople([]);
         
+        // Consolidar items por nombre (para manejar duplicados)
+        const consolidatedItems = {};
+        data.items.forEach(item => {
+          if (consolidatedItems[item.name]) {
+            consolidatedItems[item.name].quantity += 1;
+            consolidatedItems[item.name].price += item.price;
+          } else {
+            consolidatedItems[item.name] = {
+              name: item.name,
+              quantity: 1,
+              price: item.price,
+              unitPrice: item.price
+            };
+          }
+        });
+        
+        // Actualizar sessionData con items consolidados
+        setSessionData(prev => ({
+          ...prev,
+          items: Object.values(consolidatedItems)
+        }));
+        
         // Inicializar assignments vacío
         const initialAssignments = {};
-        data.items.forEach(item => {
-          initialAssignments[item.name] = [];
+        Object.keys(consolidatedItems).forEach(itemName => {
+          initialAssignments[itemName] = [];
         });
         setAssignments(initialAssignments);
       }
@@ -82,6 +114,7 @@ function SessionPage() {
     if (newPersonName.trim() && !people.find(p => p.name === newPersonName.trim())) {
       setPeople([...people, { name: newPersonName.trim(), amount: 0 }]);
       setNewPersonName('');
+      calculatePersonAmounts(assignments);
     }
   };
 
@@ -93,6 +126,7 @@ function SessionPage() {
       updatedAssignments[item] = updatedAssignments[item].filter(name => name !== nameToRemove);
     });
     setAssignments(updatedAssignments);
+    calculatePersonAmounts(updatedAssignments);
   };
 
   const toggleItemAssignment = (itemName, personName) => {
@@ -111,27 +145,30 @@ function SessionPage() {
   };
 
   const calculatePersonAmounts = (currentAssignments) => {
-    const subtotal = parseFloat(editedSubtotal) || sessionData?.subtotal || 0;
-    const tipAmount = customTip ? parseFloat(customTip) : (subtotal * tipPercentage) / 100;
+    if (!sessionData || people.length === 0) return;
+    
+    const totalTip = parseFloat(customTipAmount) || 0;
     
     const updatedPeople = people.map(person => {
-      let totalAmount = 0;
+      let subtotalAmount = 0;
       
       Object.entries(currentAssignments).forEach(([itemName, assignedPeople]) => {
         if (assignedPeople.includes(person.name)) {
           const item = sessionData.items.find(i => i.name === itemName);
           if (item && assignedPeople.length > 0) {
-            totalAmount += item.price / assignedPeople.length;
+            subtotalAmount += item.price / assignedPeople.length;
           }
         }
       });
       
-      // Agregar propina proporcional
-      const personTip = people.length > 0 ? tipAmount / people.length : 0;
+      // Calcular propina proporcional basada en lo que consumió
+      const totalSubtotal = sessionData.subtotal;
+      const personTipRatio = totalSubtotal > 0 ? subtotalAmount / totalSubtotal : 1 / people.length;
+      const personTip = totalTip * personTipRatio;
       
       return {
         ...person,
-        amount: totalAmount + personTip
+        amount: subtotalAmount + personTip
       };
     });
     
@@ -140,10 +177,8 @@ function SessionPage() {
 
   const splitEqually = () => {
     if (sessionData && people.length > 0) {
-      const subtotal = parseFloat(editedSubtotal) || sessionData.subtotal;
-      const tipAmount = customTip ? parseFloat(customTip) : (subtotal * tipPercentage) / 100;
-      const totalWithTip = subtotal + tipAmount;
-      const amountPerPerson = totalWithTip / people.length;
+      const totalAmount = getCurrentTotal();
+      const amountPerPerson = totalAmount / people.length;
       
       setPeople(people.map(person => ({
         ...person,
@@ -153,27 +188,61 @@ function SessionPage() {
   };
 
   const getCurrentSubtotal = () => {
-    return parseFloat(editedSubtotal) || sessionData?.subtotal || 0;
+    if (!sessionData) return 0;
+    return sessionData.items.reduce((sum, item) => sum + item.price, 0);
   };
 
   const getCurrentTip = () => {
-    return customTip ? parseFloat(customTip) : (getCurrentSubtotal() * tipPercentage) / 100;
+    if (customTipAmount) {
+      return parseFloat(customTipAmount) || 0;
+    }
+    return getCurrentSubtotal() * tipPercentage / 100;
   };
 
   const getCurrentTotal = () => {
     return getCurrentSubtotal() + getCurrentTip();
   };
 
-  const handleTipChange = (e) => {
-    const value = e.target.value;
-    setCustomTip(value);
+  const handleTipPercentageChange = (e) => {
+    const percentage = parseFloat(e.target.value) || 0;
+    setTipPercentage(percentage);
+    setCustomTipAmount(''); // Clear custom amount when using percentage
     calculatePersonAmounts(assignments);
   };
 
-  const handleSubtotalChange = (e) => {
-    const value = e.target.value;
-    setEditedSubtotal(value);
+  const handleTipAmountChange = (e) => {
+    const amount = e.target.value;
+    setCustomTipAmount(amount);
     calculatePersonAmounts(assignments);
+  };
+
+  const handleItemEdit = (itemName, field, value) => {
+    setSessionData(prev => ({
+      ...prev,
+      items: prev.items.map(item => {
+        if (item.name === itemName) {
+          const updatedItem = { ...item };
+          if (field === 'price') {
+            updatedItem.price = parseFloat(value) || 0;
+          } else if (field === 'quantity') {
+            updatedItem.quantity = parseInt(value) || 1;
+            updatedItem.price = updatedItem.unitPrice * updatedItem.quantity;
+          } else if (field === 'name') {
+            updatedItem.name = value;
+          }
+          return updatedItem;
+        }
+        return item;
+      })
+    }));
+    calculatePersonAmounts(assignments);
+  };
+
+  const toggleItemEdit = (itemName) => {
+    setEditingItems(prev => ({
+      ...prev,
+      [itemName]: !prev[itemName]
+    }));
   };
 
   if (loading) {
@@ -186,7 +255,7 @@ function SessionPage() {
         <div className="error-icon">⚠️</div>
         <h2>Error</h2>
         <p>{error}</p>
-        <small>La sesión puede haber expirado (1 hora de validez)</small>
+        <small>La sesión puede haber expirado (2 horas de validez)</small>
       </div>
     );
   }
@@ -213,41 +282,37 @@ function SessionPage() {
           <div className="summary-row">
             <div className="summary-item">
               <span className="label">Subtotal</span>
-              {isEditingValues ? (
-                <input
-                  type="number"
-                  value={editedSubtotal}
-                  onChange={handleSubtotalChange}
-                  className="edit-input"
-                />
-              ) : (
-                <span className="amount">{formatCurrency(getCurrentSubtotal())}</span>
-              )}
+              <span className="amount">{formatCurrency(getCurrentSubtotal())}</span>
             </div>
             <div className="summary-item">
-              <span className="label">Propina (10%)</span>
-              <input
-                type="number"
-                value={customTip}
-                onChange={handleTipChange}
-                placeholder={Math.round(getCurrentSubtotal() * 0.1).toString()}
-                className="tip-input"
-              />
+              <span className="label">Propina</span>
+              <div className="tip-controls">
+                <div className="tip-input-group">
+                  <input
+                    type="number"
+                    value={tipPercentage}
+                    onChange={handleTipPercentageChange}
+                    className="tip-percentage-input"
+                    min="0"
+                    max="30"
+                  />
+                  <span className="tip-percentage-label">%</span>
+                </div>
+                <span className="tip-or">o</span>
+                <input
+                  type="number"
+                  value={customTipAmount}
+                  onChange={handleTipAmountChange}
+                  placeholder="Monto"
+                  className="tip-amount-input"
+                />
+              </div>
               <span className="amount tip">{formatCurrency(getCurrentTip())}</span>
             </div>
             <div className="summary-item">
               <span className="label">Total</span>
               <span className="amount total">{formatCurrency(getCurrentTotal())}</span>
             </div>
-          </div>
-
-          <div className="edit-controls">
-            <button
-              className={`edit-btn ${isEditingValues ? 'active' : ''}`}
-              onClick={() => setIsEditingValues(!isEditingValues)}
-            >
-              {isEditingValues ? 'Guardar' : 'Editar Valores'}
-            </button>
           </div>
         </div>
 
@@ -296,13 +361,53 @@ function SessionPage() {
           <div className="items-section">
             <h3>Items de la cuenta</h3>
             <div className="items-list">
-              {sessionData.items.map(item => (
-                <div key={item.name} className="item-card">
+              {sessionData.items.map((item, index) => (
+                <div key={index} className="item-card">
                   <div className="item-info">
-                    <span className="item-name">
-                      {item.quantity && item.quantity > 1 ? `${item.quantity}x ` : ''}{item.name}
-                    </span>
-                    <span className="item-price">{formatCurrency(item.price)}</span>
+                    <div className="item-name-section">
+                      {editingItems[item.name] ? (
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) => handleItemEdit(item.name, 'name', e.target.value)}
+                          className="edit-item-input"
+                        />
+                      ) : (
+                        <span className="item-name">
+                          {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.name}
+                        </span>
+                      )}
+                      <button 
+                        className="edit-item-btn"
+                        onClick={() => toggleItemEdit(item.name)}
+                      >
+                        {editingItems[item.name] ? '💾' : '✏️'}
+                      </button>
+                    </div>
+                    <div className="item-price-section">
+                      {editingItems[item.name] ? (
+                        <div className="edit-price-controls">
+                          <input
+                            type="number"
+                            value={item.quantity}
+                            onChange={(e) => handleItemEdit(item.name, 'quantity', e.target.value)}
+                            className="edit-quantity-input"
+                            min="1"
+                          />
+                          <span>×</span>
+                          <input
+                            type="number"
+                            value={Math.round(item.price / item.quantity)}
+                            onChange={(e) => {
+                              const unitPrice = parseFloat(e.target.value) || 0;
+                              handleItemEdit(item.name, 'price', unitPrice * item.quantity);
+                            }}
+                            className="edit-unit-price-input"
+                          />
+                        </div>
+                      ) : null}
+                      <span className="item-price">{formatCurrency(item.price)}</span>
+                    </div>
                   </div>
                   {people.length > 0 && (
                     <div className="item-assignments">
