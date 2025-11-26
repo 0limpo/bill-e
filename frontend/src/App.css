@@ -1,38 +1,367 @@
-.App {
+/* Estilos principales */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Header */
+.header {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header h1 {
+  font-size: 28px;
+  color: #2d3748;
+  margin-bottom: 8px;
+}
+
+.timer {
+  color: #718096;
+  font-size: 14px;
+}
+
+/* Summary Card */
+.summary-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.summary-item {
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.label {
+  display: block;
+  font-size: 14px;
+  color: #718096;
+  margin-bottom: 8px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.amount {
+  display: block;
+  font-size: 24px;
+  font-weight: 600;
+  color: #2d3748;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.amount.tip {
+  color: #3182ce;
+}
+
+.amount.total {
+  color: #38a169;
+}
+
+.tip-controls {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tip-controls span {
+  display: block;
+  margin-bottom: 12px;
+  color: #4a5568;
+}
+
+.tip-buttons {
   display: flex;
-  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tip-btn {
+  padding: 8px 16px;
+  border: 1px solid #cbd5e0;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.tip-btn:hover {
+  border-color: #3182ce;
+  color: #3182ce;
+}
+
+.tip-btn.active {
+  background: #3182ce;
+  color: white;
+  border-color: #3182ce;
+}
+
+/* People Section */
+.people-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.section-header h3 {
+  color: #2d3748;
+  font-size: 18px;
+}
+
+.divide-equal-btn {
+  background: #9f7aea;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.divide-equal-btn:hover {
+  background: #8b5cf6;
+}
+
+.people-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.person-card {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+}
+
+.person-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.person-name {
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.remove-btn {
+  background: #e53e3e;
+  color: white;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
+}
+
+.person-amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: #3182ce;
+}
+
+.add-person {
+  display: flex;
+  gap: 12px;
+}
+
+.add-person input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.add-person button {
+  background: #38a169;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* Items Section */
+.items-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.items-section h3 {
+  color: #2d3748;
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #f7fafc;
+}
+
+.item-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.item-name {
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.item-price {
+  font-weight: 600;
+  color: #38a169;
+}
+
+.item-assignments {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.assignment-btn {
+  padding: 6px 12px;
+  border: 1px solid #cbd5e0;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.assignment-btn:hover {
+  border-color: #3182ce;
+  color: #3182ce;
+}
+
+.assignment-btn.assigned {
+  background: #3182ce;
+  color: white;
+  border-color: #3182ce;
+}
+
+/* Loading and Error states */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 18px;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.error-container {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  margin: 40px auto;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.error-container h2 {
+  color: #2d3748;
+  margin-bottom: 12px;
+}
+
+.error-container p {
+  color: #4a5568;
+  margin-bottom: 8px;
+}
+
+.error-container small {
+  color: #718096;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .summary-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
-  to {
-    transform: rotate(360deg);
+  
+  .people-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .item-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    gap: 12px;
   }
 }
