@@ -56,10 +56,9 @@ function SessionPage() {
       const data = await response.json();
       setSessionData(data);
       
-      // Inicializar personas con los datos de la boleta
+      // Inicializar personas vacío por defecto
       if (data.items && data.items.length > 0) {
-        const defaultPeople = ['Ana', 'Carlos', 'María'];
-        setPeople(defaultPeople.map(name => ({ name, amount: 0 })));
+        setPeople([]); // Empezar sin personas
         
         // Inicializar assignments vacío
         const initialAssignments = {};
