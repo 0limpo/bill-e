@@ -6,11 +6,20 @@ import os
 import io
 import re
 import json
+import time
 from typing import List, Dict, Any
 from google.cloud import vision
 from google.oauth2 import service_account
 from PIL import Image
 import base64
+
+# Import analytics
+try:
+    from analytics import analytics
+    analytics_available = True
+except ImportError:
+    print("Warning: Analytics not available")
+    analytics_available = False
 
 class OCRService:
     def __init__(self):
@@ -43,41 +52,87 @@ class OCRService:
     def process_image(self, image_data: bytes) -> str:
         """
         Procesar imagen y extraer texto usando Google Vision
-        
+
         Args:
             image_data: Datos de la imagen en bytes
-            
+
         Returns:
             str: Texto extraído de la imagen
         """
+        start_time = time.time()
+        success = False
+        error_msg = None
+
         if not self.client:
             print("❌ Cliente de Google Vision no disponible")
+            error_msg = "Google Vision client not available"
+
+            # Track OCR failure
+            if analytics_available:
+                analytics.track_ocr_usage(
+                    session_id=None,
+                    success=False,
+                    processing_time_ms=0,
+                    item_count=0,
+                    confidence='failed',
+                    image_size_bytes=len(image_data),
+                    error=error_msg
+                )
             return ""
-            
+
         try:
             # Crear objeto Image para Google Vision
             image = vision.Image(content=image_data)
-            
+
             # Detectar texto en la imagen
             response = self.client.text_detection(image=image)
-            
+
             # Verificar errores en la respuesta
             if response.error.message:
                 print(f"❌ Error en Google Vision API: {response.error.message}")
+                error_msg = response.error.message
                 return ""
-            
+
             # Extraer el texto
             texts = response.text_annotations
             if texts:
+                success = True
                 print(f"✅ Texto extraído exitosamente: {len(texts[0].description)} caracteres")
+
+                # Track OCR cost
+                if analytics_available:
+                    analytics.track_cost(
+                        service='google_vision',
+                        operation='text_detection',
+                        cost_usd=0.0015,  # $1.50 per 1000 images
+                        units=1
+                    )
+
                 return texts[0].description
-            
+
             print("⚠️ No se detectó texto en la imagen")
+            error_msg = "No text detected"
             return ""
-            
+
         except Exception as e:
             print(f"❌ Error en OCR: {e}")
+            error_msg = str(e)
             return ""
+
+        finally:
+            # Track OCR usage
+            processing_time_ms = (time.time() - start_time) * 1000
+
+            if analytics_available:
+                analytics.track_ocr_usage(
+                    session_id=None,  # Will be set by caller if available
+                    success=success,
+                    processing_time_ms=processing_time_ms,
+                    item_count=0,  # Will be updated after parsing
+                    confidence='unknown',
+                    image_size_bytes=len(image_data),
+                    error=error_msg
+                )
     
     def process_base64_image(self, base64_image: str) -> str:
         """

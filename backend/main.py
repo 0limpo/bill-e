@@ -25,9 +25,23 @@ except ImportError as e:
     print(f"Warning: OCR service not available: {e}")
     ocr_service = None
 
+# Importar Analytics
+try:
+    from analytics_routes import router as analytics_router
+    from analytics_middleware import AnalyticsMiddleware
+    from alerting import init_alerting
+    analytics_available = True
+except ImportError as e:
+    print(f"Warning: Analytics not available: {e}")
+    analytics_available = False
+
 load_dotenv()
 
 app = FastAPI(title="Bill-e API", version="1.0.0")
+
+# Add Analytics Middleware FIRST (before CORS)
+if analytics_available:
+    app.add_middleware(AnalyticsMiddleware)
 
 # CORS para el frontend
 app.add_middleware(
@@ -302,6 +316,21 @@ async def update_session(session_id: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error actualizando sesión: {str(e)}")
+
+# ================ ANALYTICS ROUTER ================
+
+if analytics_available:
+    app.include_router(analytics_router)
+    print("✅ Analytics router included")
+
+# ================ STARTUP EVENT ================
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup"""
+    if analytics_available:
+        init_alerting()
+        print("✅ Analytics and alerting initialized")
 
 # ================ ENDPOINTS WHATSAPP ORIGINALES ================
 

@@ -14,6 +14,14 @@ except ImportError:
     print("Warning: OCR service not available")
     ocr_service = None
 
+# Importar Analytics
+try:
+    from analytics import analytics
+    analytics_available = True
+except ImportError:
+    print("Warning: Analytics not available")
+    analytics_available = False
+
 # Variables de entorno
 WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
@@ -46,48 +54,69 @@ async def verify_webhook(
 # Función para manejar mensajes entrantes (POST)
 async def handle_webhook(request: Request):
     """Manejar mensajes entrantes de WhatsApp"""
-    
+
     try:
         body = await request.json()
         print(f"📨 Mensaje recibido: {json.dumps(body, indent=2)}")
-        
+
         # Verificar si hay mensajes
         entry = body.get("entry", [])
         if not entry:
             return {"status": "no_entry"}
-            
+
         changes = entry[0].get("changes", [])
         if not changes:
             return {"status": "no_changes"}
-            
+
         value = changes[0].get("value", {})
         messages = value.get("messages", [])
-        
+
         if messages:
             message_data = messages[0]
             from_number = message_data["from"]
-            
+            message_type = message_data.get("type", "unknown")
+
+            # Track inbound WhatsApp message
+            if analytics_available:
+                analytics.track_whatsapp_message(
+                    phone_number=from_number,
+                    direction='inbound',
+                    message_type=message_type,
+                    success=True
+                )
+
             # Procesar diferentes tipos de mensajes
-            if message_data.get("type") == "text":
+            if message_type == "text":
                 # Mensaje de texto
                 message_text = message_data["text"]["body"]
                 print(f"💬 Mensaje de texto de {from_number}: {message_text}")
                 await process_text_message(from_number, message_text)
-                
-            elif message_data.get("type") == "image":
+
+            elif message_type == "image":
                 # Mensaje con imagen (¡BOLETA!)
                 print(f"📸 Imagen recibida de {from_number}")
                 await process_image_message(from_number, message_data["image"])
-                
+
             elif "document" in message_data:
                 # Documento (podría ser PDF de boleta)
                 print(f"📄 Documento recibido de {from_number}")
                 await process_document_message(from_number, message_data["document"])
-        
+
         return {"status": "ok"}
-        
+
     except Exception as e:
         print(f"❌ Error procesando webhook: {e}")
+
+        # Track error
+        if analytics_available:
+            analytics.track_whatsapp_message(
+                phone_number='unknown',
+                direction='inbound',
+                message_type='unknown',
+                success=False,
+                error=str(e)
+            )
+
         return {"status": "error", "message": str(e)}
 
 # Nueva función para procesar imágenes con OCR
@@ -335,37 +364,77 @@ async def process_document_message(phone_number: str, document_data: dict):
 # Función para enviar mensajes por WhatsApp (sin cambios)
 async def send_whatsapp_message(phone_number: str, message: str):
     """Enviar mensaje por WhatsApp"""
-    
+
     if not WHATSAPP_ACCESS_TOKEN or not WHATSAPP_PHONE_NUMBER_ID:
         print("⚠️ Tokens de WhatsApp no configurados")
+
+        if analytics_available:
+            analytics.track_whatsapp_message(
+                phone_number=phone_number,
+                direction='outbound',
+                message_type='text',
+                success=False,
+                error='WhatsApp tokens not configured'
+            )
         return
-    
+
     url = f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
-    
+
     headers = {
         "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
         "Content-Type": "application/json"
     }
-    
+
     data = {
         "messaging_product": "whatsapp",
         "to": phone_number,
         "text": {"body": message}
     }
-    
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, headers=headers, json=data)
-            
-            if response.status_code == 200:
+
+            success = response.status_code == 200
+
+            if success:
                 print(f"✅ Mensaje enviado a {phone_number}")
+
+                # Track cost (WhatsApp pricing: ~$0.005 per message for user-initiated)
+                if analytics_available:
+                    analytics.track_cost(
+                        service='whatsapp',
+                        operation='send_message',
+                        cost_usd=0.005,
+                        units=1
+                    )
             else:
                 print(f"❌ Error enviando mensaje: {response.text}")
-                
+
+            # Track outbound message
+            if analytics_available:
+                analytics.track_whatsapp_message(
+                    phone_number=phone_number,
+                    direction='outbound',
+                    message_type='text',
+                    success=success,
+                    error=None if success else response.text
+                )
+
             return response.json()
-            
+
     except Exception as e:
         print(f"❌ Error en send_whatsapp_message: {e}")
+
+        # Track error
+        if analytics_available:
+            analytics.track_whatsapp_message(
+                phone_number=phone_number,
+                direction='outbound',
+                message_type='text',
+                success=False,
+                error=str(e)
+            )
 
 # Función legacy para mantener compatibilidad
 async def create_new_session(phone_number: str) -> str:

@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom';
 import './App.css';
+import {
+  trackPageView,
+  trackSessionLoad,
+  trackPersonAdded,
+  trackItemAssignment,
+  trackCalculationComplete,
+  trackTipChange,
+  trackItemEdit,
+  trackError,
+  trackFunnelStep,
+  trackEngagement
+} from './analytics';
 
 function SessionPage() {
   const { id } = useParams();
@@ -46,34 +58,63 @@ function SessionPage() {
     }
   }, [sessionData]);
 
+  // Track page view and engagement time
+  useEffect(() => {
+    if (id) {
+      // Track page view
+      trackPageView(`/s/${id}`, `Session ${id}`);
+      trackFunnelStep('session_loaded', id);
+
+      // Track engagement time on unmount
+      const startTime = Date.now();
+      return () => {
+        const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+        if (timeSpent > 5) {
+          trackEngagement(id, timeSpent);
+        }
+      };
+    }
+  }, [id]);
+
   useEffect(() => {
     const sessionId = id;
-    
+
     if (sessionId) {
       loadSessionData(sessionId);
     }
-  }, []);
+  }, [id]);
 
   const loadSessionData = async (sessionId) => {
+    const startTime = performance.now();
+
     try {
       setLoading(true);
       const response = await fetch(`https://bill-e-backend-lfwp.onrender.com/api/session/${sessionId}`);
-      
+
       if (!response.ok) {
         throw new Error('Sesión no encontrada o expirada');
       }
-      
+
       const data = await response.json();
       setSessionData(data);
-      
+
+      // Track session load
+      const loadTime = performance.now() - startTime;
+      trackSessionLoad(
+        sessionId,
+        data.items?.length || 0,
+        data.total || 0,
+        data.phone_number ? 'whatsapp' : 'web'
+      );
+
       // Calcular propina inicial (10% del subtotal)
       const initialTip = data.subtotal * 0.1;
       setCustomTipAmount(Math.round(initialTip).toString());
-      
+
       // Inicializar personas vacío por defecto
       if (data.items && data.items.length > 0) {
         setPeople([]);
-        
+
         // Consolidar items por nombre (para manejar duplicados)
         const consolidatedItems = {};
         data.items.forEach(item => {
@@ -89,13 +130,13 @@ function SessionPage() {
             };
           }
         });
-        
+
         // Actualizar sessionData con items consolidados
         setSessionData(prev => ({
           ...prev,
           items: Object.values(consolidatedItems)
         }));
-        
+
         // Inicializar assignments vacío
         const initialAssignments = {};
         Object.keys(consolidatedItems).forEach(itemName => {
@@ -104,6 +145,8 @@ function SessionPage() {
         setAssignments(initialAssignments);
       }
     } catch (error) {
+      // Track error
+      trackError('session_load_failed', error.message, sessionId);
       setError(error.message);
     } finally {
       setLoading(false);
@@ -112,8 +155,14 @@ function SessionPage() {
 
   const addPerson = () => {
     if (newPersonName.trim() && !people.find(p => p.name === newPersonName.trim())) {
-      setPeople([...people, { name: newPersonName.trim(), amount: 0 }]);
+      const newPeople = [...people, { name: newPersonName.trim(), amount: 0 }];
+      setPeople(newPeople);
       setNewPersonName('');
+
+      // Track person added
+      trackPersonAdded(id, newPeople.length);
+      trackFunnelStep('person_added', id, { person_count: newPeople.length });
+
       calculatePersonAmounts(assignments);
     }
   };
@@ -132,15 +181,29 @@ function SessionPage() {
   const toggleItemAssignment = (itemName, personName) => {
     const currentAssignments = assignments[itemName] || [];
     const isAssigned = currentAssignments.includes(personName);
-    
+
     const updatedAssignments = {
       ...assignments,
-      [itemName]: isAssigned 
+      [itemName]: isAssigned
         ? currentAssignments.filter(name => name !== personName)
         : [...currentAssignments, personName]
     };
-    
+
     setAssignments(updatedAssignments);
+
+    // Track item assignment (only when assigning, not unassigning)
+    if (!isAssigned) {
+      trackItemAssignment(id, itemName, personName);
+
+      // Check if this is first assignment (funnel step)
+      const totalAssignments = Object.values(updatedAssignments)
+        .reduce((sum, arr) => sum + arr.length, 0);
+
+      if (totalAssignments === 1) {
+        trackFunnelStep('items_assigned', id, { first_assignment: itemName });
+      }
+    }
+
     calculatePersonAmounts(updatedAssignments);
   };
 
@@ -211,12 +274,22 @@ function SessionPage() {
   };
 
   const handleTipAmountChange = (e) => {
+    const oldTip = customTipAmount;
     const amount = e.target.value;
     setCustomTipAmount(amount);
+
+    // Track tip change
+    if (oldTip && amount && oldTip !== amount) {
+      trackTipChange(id, parseFloat(oldTip) || 0, parseFloat(amount) || 0, false);
+    }
+
     calculatePersonAmounts(assignments);
   };
 
   const handleItemEdit = (itemName, field, value) => {
+    const oldItem = sessionData.items.find(i => i.name === itemName);
+    const oldValue = oldItem ? oldItem[field] : null;
+
     setSessionData(prev => ({
       ...prev,
       items: prev.items.map(item => {
@@ -235,6 +308,12 @@ function SessionPage() {
         return item;
       })
     }));
+
+    // Track item edit
+    if (oldValue !== value) {
+      trackItemEdit(id, itemName, field, oldValue, value);
+    }
+
     calculatePersonAmounts(assignments);
   };
 
