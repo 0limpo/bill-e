@@ -35,6 +35,14 @@ except ImportError as e:
     print(f"Warning: Analytics not available: {e}")
     analytics_available = False
 
+# Importar WhatsApp Analytics Dashboard
+try:
+    from whatsapp_dashboard_routes import router as whatsapp_dashboard_router
+    whatsapp_dashboard_available = True
+except ImportError as e:
+    print(f"Warning: WhatsApp Dashboard not available: {e}")
+    whatsapp_dashboard_available = False
+
 load_dotenv()
 
 app = FastAPI(title="Bill-e API", version="1.0.0")
@@ -322,6 +330,12 @@ async def update_session(session_id: str, request: Request):
 if analytics_available:
     app.include_router(analytics_router)
     print("✅ Analytics router included")
+
+# ================ WHATSAPP ANALYTICS DASHBOARD ================
+
+if whatsapp_dashboard_available:
+    app.include_router(whatsapp_dashboard_router)
+    print("✅ WhatsApp Analytics Dashboard router included")
 
 # ================ STARTUP EVENT ================
 

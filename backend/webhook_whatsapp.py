@@ -22,6 +22,14 @@ except ImportError:
     print("Warning: Analytics not available")
     analytics_available = False
 
+# Importar WhatsApp Analytics
+try:
+    from whatsapp_analytics import whatsapp_analytics
+    whatsapp_analytics_available = True
+except ImportError:
+    print("Warning: WhatsApp Analytics not available")
+    whatsapp_analytics_available = False
+
 # Variables de entorno
 WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN")
 WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
@@ -121,62 +129,126 @@ async def handle_webhook(request: Request):
 
 # Nueva función para procesar imágenes con OCR
 async def process_image_message(phone_number: str, image_data: dict):
-    """Procesar imagen de boleta con OCR"""
-    
+    """Procesar imagen de boleta con OCR + Complete Journey Tracking"""
+
+    import time
+    start_time = time.time()
+
     try:
+        # ===== STEP 1: START USER JOURNEY TRACKING =====
+        if whatsapp_analytics_available:
+            journey_id = whatsapp_analytics.start_journey(phone_number)
+            print(f"📊 Journey started: {journey_id}")
+
         # Enviar mensaje de procesamiento
         await send_whatsapp_message(
-            phone_number, 
+            phone_number,
             "🤖 ¡Perfecto! Estoy procesando tu boleta...\n⏳ Esto tomará unos segundos."
         )
-        
+
         # Descargar la imagen
         image_url = await get_whatsapp_media_url(image_data["id"])
         image_bytes = await download_whatsapp_media(image_url)
-        
+
         if not image_bytes:
+            # Track OCR failure
+            if whatsapp_analytics_available:
+                whatsapp_analytics.track_ocr_attempt(
+                    phone_number,
+                    success=False,
+                    processing_time_ms=0,
+                    error="Image download failed"
+                )
+
             await send_whatsapp_message(
                 phone_number,
                 "❌ No pude descargar la imagen. Intenta enviarla nuevamente."
             )
             return
-        
+
         # Procesar con OCR
         if not ocr_service:
+            # Track OCR unavailable
+            if whatsapp_analytics_available:
+                whatsapp_analytics.track_ocr_attempt(
+                    phone_number,
+                    success=False,
+                    processing_time_ms=0,
+                    error="OCR service unavailable"
+                )
+
             await send_whatsapp_message(
                 phone_number,
                 "❌ Servicio de OCR no disponible. Intenta más tarde."
             )
             return
-            
+
+        # ===== STEP 2: OCR PROCESSING =====
         print("🔍 Procesando imagen con OCR...")
+        ocr_start = time.time()
         ocr_result = ocr_service.process_image(image_bytes)
-        
+        ocr_time_ms = (time.time() - ocr_start) * 1000
+
         if not ocr_result:
+            # Track OCR failure
+            if whatsapp_analytics_available:
+                whatsapp_analytics.track_ocr_attempt(
+                    phone_number,
+                    success=False,
+                    processing_time_ms=ocr_time_ms,
+                    error="No text detected"
+                )
+
             await send_whatsapp_message(
                 phone_number,
                 "❌ No pude leer el texto de la imagen.\n💡 Asegúrate de que la boleta se vea clara y completa."
             )
             return
-        
+
         # Parsear datos de la boleta
         parsed_data = ocr_service.parse_receipt_text(ocr_result)
-        
+
         if not parsed_data['success']:
+            # Track parsing failure
+            if whatsapp_analytics_available:
+                whatsapp_analytics.track_ocr_attempt(
+                    phone_number,
+                    success=False,
+                    processing_time_ms=ocr_time_ms,
+                    error=parsed_data.get('error', 'Parsing failed')
+                )
+
             await send_whatsapp_message(
                 phone_number,
                 f"❌ No pude procesar la boleta.\n{parsed_data.get('error', 'Error desconocido')}\n\n💡 Intenta con una imagen más clara."
             )
             return
-        
+
+        # ===== STEP 3: TRACK SUCCESSFUL OCR =====
+        items_found = len(parsed_data.get('items', []))
+        if whatsapp_analytics_available:
+            whatsapp_analytics.track_ocr_attempt(
+                phone_number,
+                success=True,
+                processing_time_ms=ocr_time_ms,
+                items_found=items_found
+            )
+
         # Crear sesión con datos de la boleta
         session_id = await create_session_with_bill_data(phone_number, parsed_data)
-        
+
+        # ===== STEP 4: TRACK LINK SENT =====
+        if whatsapp_analytics_available:
+            whatsapp_analytics.track_link_sent(phone_number, session_id)
+
         # Preparar mensaje de éxito
         success_message = format_success_message(parsed_data, session_id)
-        
+
         # Enviar resultado
         await send_whatsapp_message(phone_number, success_message)
+
+        total_time = (time.time() - start_time) * 1000
+        print(f"✅ Complete journey step: Photo → Link sent in {total_time:.0f}ms")
         
     except Exception as e:
         print(f"❌ Error procesando imagen: {e}")
