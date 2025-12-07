@@ -26,6 +26,7 @@ function SessionPage() {
   const [customTipAmount, setCustomTipAmount] = useState('');
   const [editingItems, setEditingItems] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
+  const [appliedCorrections, setAppliedCorrections] = useState(new Set());
 
   // Timer para mostrar tiempo restante
   useEffect(() => {
@@ -324,7 +325,7 @@ function SessionPage() {
     }));
   };
 
-  const applyCorrection = (correction) => {
+  const applyCorrection = (correction, correctionIndex) => {
     const newItems = [...sessionData.items];
     const item = newItems[correction.item_index];
 
@@ -336,10 +337,11 @@ function SessionPage() {
         items: newItems
       });
 
+      // Marcar como aplicada
+      setAppliedCorrections(prev => new Set([...prev, correctionIndex]));
+
       // Recalcular montos
       calculatePersonAmounts(assignments);
-
-      alert(`✅ Corrección aplicada: ${item.name} ahora cuesta $${correction.suggested_price.toLocaleString('es-CL')}`);
     }
   };
 
@@ -434,51 +436,77 @@ function SessionPage() {
     );
   };
 
-  const CorrectionButtons = ({ corrections, onApplyCorrection }) => {
+  const CorrectionButtons = ({ corrections, onApplyCorrection, appliedCorrections }) => {
     if (!corrections || corrections.length === 0) return null;
+
+    // Filtrar correcciones ya aplicadas
+    const pendingCorrections = corrections.filter((_, i) => !appliedCorrections.has(i));
+
+    if (pendingCorrections.length === 0) return null;
 
     return (
       <div style={{
         padding: '16px',
-        backgroundColor: '#fff3cd',
+        backgroundColor: '#d4edda',
         borderRadius: '8px',
         marginBottom: '20px',
-        border: '1px solid #ffc107'
+        border: '1px solid #28a745'
       }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '12px' }}>
-          💡 Correcciones automáticas disponibles:
+        <div style={{ fontWeight: 'bold', marginBottom: '12px', color: '#155724' }}>
+          💡 {pendingCorrections.length} corrección{pendingCorrections.length > 1 ? 'es' : ''} disponible{pendingCorrections.length > 1 ? 's' : ''}
         </div>
-        {corrections.map((corr, i) => (
-          <div key={i} style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '8px',
-            backgroundColor: 'white',
-            borderRadius: '4px',
-            marginBottom: '8px'
-          }}>
-            <div>
-              <strong>{corr.item_name}</strong>
-              <div style={{ fontSize: '14px', color: '#666' }}>
-                ${corr.original_price.toLocaleString('es-CL')} → ${corr.suggested_price.toLocaleString('es-CL')}
+        {corrections.map((corr, i) => {
+          if (appliedCorrections.has(i)) return null;
+
+          return (
+            <div key={i} style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '8px',
+              backgroundColor: 'white',
+              borderRadius: '4px',
+              marginBottom: '8px'
+            }}>
+              <div>
+                <strong>{corr.item_name}</strong>
+                <div style={{ fontSize: '14px', color: '#666' }}>
+                  ${corr.original_price.toLocaleString('es-CL')} → ${corr.suggested_price.toLocaleString('es-CL')}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => onApplyCorrection(corr, i)}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✓ Aplicar
+                </button>
+                <button
+                  onClick={() => {
+                    setAppliedCorrections(prev => new Set([...prev, i]));
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✗ Ignorar
+                </button>
               </div>
             </div>
-            <button
-              onClick={() => onApplyCorrection(corr)}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Aplicar
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -501,6 +529,7 @@ function SessionPage() {
           <CorrectionButtons
             corrections={sessionData.validation.corrections}
             onApplyCorrection={applyCorrection}
+            appliedCorrections={appliedCorrections}
           />
         )}
 
@@ -594,52 +623,55 @@ function SessionPage() {
           <div className="items-section">
             <h3>Items de la cuenta</h3>
             <div className="items-list">
-              {sessionData.items.map((item, index) => (
-                <div key={index} className="item-card">
-                  <div className="item-info">
-                    <div className="item-name-section">
-                      {editingItems[item.name] ? (
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => handleItemEdit(item.name, 'name', e.target.value)}
-                          className="edit-item-input"
-                        />
-                      ) : (
-                        <>
-                          <span className="item-name">
-                            {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.name}
-                          </span>
-                          {item.duplicates_found > 0 && (
-                            <span style={{
-                              fontSize: '12px',
-                              color: '#3182ce',
-                              marginLeft: '8px',
-                              backgroundColor: '#bee3f8',
-                              padding: '2px 6px',
-                              borderRadius: '4px'
-                            }}>
-                              🔗 {item.duplicates_found + 1} agrupados
-                            </span>
-                          )}
-                        </>
-                      )}
-                      <button 
-                        className="edit-item-btn"
-                        onClick={() => toggleItemEdit(item.name)}
-                      >
-                        {editingItems[item.name] ? '💾' : '✏️'}
-                      </button>
-                    </div>
-                    <div className="item-price-section">
-                      {editingItems[item.name] ? (
-                        <div className="edit-price-controls">
+              {sessionData.items.map((item, index) => {
+                // Buscar si hay corrección sugerida para este item
+                const correction = sessionData?.validation?.corrections?.find(
+                  c => c.item_index === index && !appliedCorrections.has(sessionData.validation.corrections.indexOf(c))
+                );
+
+                const isEditing = editingItems[item.name];
+
+                return (
+                  <div key={item.id || index} className="item-card" style={{
+                    backgroundColor: correction ? '#fff3cd' : 'white'
+                  }}>
+                    <div className="item-info">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => handleItemEdit(item.name, 'name', e.target.value)}
+                            style={{ flex: 1, padding: '4px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
+                          />
+                        ) : (
+                          <>
+                            <strong>
+                              {item.quantity > 1 && `${item.quantity}x `}
+                              {item.name}
+                            </strong>
+                            {item.duplicates_found > 0 && (
+                              <span style={{
+                                fontSize: '12px',
+                                color: '#3182ce',
+                                backgroundColor: '#bee3f8',
+                                padding: '2px 6px',
+                                borderRadius: '4px'
+                              }}>
+                                🔗 {item.duplicates_found + 1} agrupados
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {isEditing ? (
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                           <input
                             type="number"
                             value={item.quantity}
-                            onChange={(e) => handleItemEdit(item.name, 'quantity', e.target.value)}
-                            className="edit-quantity-input"
-                            min="1"
+                            onChange={(e) => handleItemEdit(item.name, 'quantity', parseInt(e.target.value))}
+                            style={{ width: '60px', padding: '4px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
                           />
                           <span>×</span>
                           <input
@@ -649,30 +681,84 @@ function SessionPage() {
                               const unitPrice = parseFloat(e.target.value) || 0;
                               handleItemEdit(item.name, 'price', unitPrice * item.quantity);
                             }}
-                            className="edit-unit-price-input"
+                            style={{ width: '100px', padding: '4px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
                           />
+                          <span>=</span>
+                          <span style={{ fontWeight: 'bold' }}>{formatCurrency(item.price)}</span>
                         </div>
-                      ) : null}
-                      <span className="item-price">{formatCurrency(item.price)}</span>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span className="item-price">{formatCurrency(item.price)}</span>
+
+                          {correction && (
+                            <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
+                              <span style={{ fontSize: '12px', color: '#856404' }}>
+                                Sugerido: {formatCurrency(correction.suggested_price)}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  applyCorrection(correction, sessionData.validation.corrections.indexOf(correction));
+                                }}
+                                style={{
+                                  padding: '2px 8px',
+                                  fontSize: '11px',
+                                  backgroundColor: '#28a745',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setAppliedCorrections(prev => new Set([...prev, sessionData.validation.corrections.indexOf(correction)]));
+                                }}
+                                style={{
+                                  padding: '2px 8px',
+                                  fontSize: '11px',
+                                  backgroundColor: '#6c757d',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '3px',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                ✗
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
+
+                    <button
+                      className="edit-button"
+                      onClick={() => toggleItemEdit(item.name)}
+                      style={{ alignSelf: 'flex-start', marginTop: '8px' }}
+                    >
+                      {isEditing ? '💾' : '✏️'}
+                    </button>
+
+                    {people.length > 0 && (
+                      <div className="item-assignments">
+                        {people.map(person => (
+                          <button
+                            key={person.name}
+                            className={`assignment-btn ${
+                              assignments[item.name]?.includes(person.name) ? 'assigned' : ''
+                            }`}
+                            onClick={() => toggleItemAssignment(item.name, person.name)}
+                          >
+                            {person.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {people.length > 0 && (
-                    <div className="item-assignments">
-                      {people.map(person => (
-                        <button
-                          key={person.name}
-                          className={`assignment-btn ${
-                            assignments[item.name]?.includes(person.name) ? 'assigned' : ''
-                          }`}
-                          onClick={() => toggleItemAssignment(item.name, person.name)}
-                        >
-                          {person.name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
