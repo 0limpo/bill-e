@@ -390,7 +390,8 @@ Formato de respuesta (JSON):
             total = 0
             subtotal = 0
             tip = 0
-            
+            items = []  # Inicializar items vacío
+
             # Buscar total explícito (mejorado para detectar mayúsculas)
             total_patterns = [
                 r'total\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',  # "total: $111.793"
@@ -490,6 +491,10 @@ Formato de respuesta (JSON):
                     print(f"🎁 Propina calculada: ${tip} (Total - Subtotal)")
                 else:
                     print(f"   ❌ Propina calculada fuera de rango válido (debe ser > 0 y < 30% del subtotal)")
+
+            # Extraer items individuales (ANTES de calcular confianza)
+            items = self.extract_items_from_text(lines)
+            print(f"📝 Items encontrados: {len(items)}")
 
             # CASO ESPECIAL 2: Si total == subtotal Y hay items detectados
             # Esto sugiere que el OCR no detectó el subtotal real
@@ -661,11 +666,7 @@ Formato de respuesta (JSON):
                 subtotal = total * 0.9
                 tip = total * 0.1
                 print(f"⚠️ Usando número más grande como total: ${total}")
-            
-            # Extraer items individuales
-            items = self.extract_items_from_text(lines)
-            print(f"📝 Items encontrados: {len(items)}")
-            
+
             # Validar totales contra suma de items
             if items:
                 items_sum = sum(item['price'] for item in items)
