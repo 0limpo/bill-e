@@ -29,6 +29,9 @@ function SessionPage() {
   const [appliedCorrections, setAppliedCorrections] = useState(new Set());
   const [totalConfirmed, setTotalConfirmed] = useState(false);
   const [confirmedSubtotal, setConfirmedSubtotal] = useState(null);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemPrice, setNewItemPrice] = useState('');
+  const [newItemQuantity, setNewItemQuantity] = useState(1);
 
   // Timer para mostrar tiempo restante
   useEffect(() => {
@@ -366,63 +369,6 @@ function SessionPage() {
     return `$${Math.round(amount).toLocaleString('es-CL')}`;
   };
 
-  // Componente de indicador de calidad
-  const QualityIndicator = ({ validation }) => {
-    if (!validation) return null;
-
-    const { quality_score, quality_level, warnings } = validation;
-
-    const getColor = () => {
-      if (quality_level === 'high') return '#38a169'; // verde
-      if (quality_level === 'medium') return '#ed8936'; // naranja
-      return '#e53e3e'; // rojo
-    };
-
-    return (
-      <div style={{
-        padding: '16px',
-        backgroundColor: '#f7fafc',
-        borderRadius: '8px',
-        marginBottom: '20px',
-        border: `2px solid ${getColor()}`
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <div style={{
-            fontSize: '24px',
-            fontWeight: 'bold',
-            color: getColor()
-          }}>
-            {quality_score}/100
-          </div>
-          <div>
-            <div style={{ fontWeight: 'bold' }}>Calidad del escaneo</div>
-            <div style={{ fontSize: '14px', color: '#718096' }}>
-              {quality_level === 'high' && '✅ Excelente'}
-              {quality_level === 'medium' && '⚠️ Aceptable - Revisa los datos'}
-              {quality_level === 'low' && '❌ Baja - Verifica manualmente'}
-            </div>
-          </div>
-        </div>
-
-        {warnings && warnings.length > 0 && (
-          <div style={{ marginTop: '12px' }}>
-            {warnings.map((warning, i) => (
-              <div key={i} style={{
-                padding: '8px',
-                backgroundColor: warning.severity === 'high' ? '#fed7d7' : '#feebc8',
-                borderRadius: '4px',
-                fontSize: '14px',
-                marginTop: '4px'
-              }}>
-                {warning.severity === 'high' ? '🔴' : '🟡'} {warning.message}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="app">
       <div className="container">
@@ -432,10 +378,6 @@ function SessionPage() {
             <p className="timer">Sesión expira en: {timeLeft}</p>
           )}
         </div>
-
-        {sessionData?.validation && (
-          <QualityIndicator validation={sessionData.validation} />
-        )}
 
         {sessionData && !totalConfirmed && (
           <div style={{
@@ -732,6 +674,29 @@ function SessionPage() {
                       {isEditing ? '💾' : '✏️'}
                     </button>
 
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`¿Eliminar "${item.name}"?`)) {
+                          const newItems = sessionData.items.filter(i => i !== item);
+                          setSessionData({ ...sessionData, items: newItems });
+                        }
+                      }}
+                      style={{
+                        padding: '6px 10px',
+                        backgroundColor: '#e53e3e',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        alignSelf: 'flex-start',
+                        marginTop: '8px'
+                      }}
+                      title="Eliminar item"
+                    >
+                      🗑️
+                    </button>
+
                     {people.length > 0 && (
                       <div className="item-assignments">
                         {people.map(person => (
@@ -750,6 +715,73 @@ function SessionPage() {
                   </div>
                 );
               })}
+            </div>
+
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#f0fff4',
+              borderRadius: '8px',
+              marginTop: '16px',
+              border: '1px dashed #38a169'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '12px', color: '#276749' }}>
+                ➕ Agregar item manualmente
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <input
+                  type="number"
+                  placeholder="Cant."
+                  value={newItemQuantity}
+                  onChange={(e) => setNewItemQuantity(parseInt(e.target.value) || 1)}
+                  style={{ width: '60px', padding: '8px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
+                  min="1"
+                />
+                <input
+                  type="text"
+                  placeholder="Nombre del item"
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  style={{ flex: 1, minWidth: '150px', padding: '8px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
+                />
+                <input
+                  type="number"
+                  placeholder="Precio unitario"
+                  value={newItemPrice}
+                  onChange={(e) => setNewItemPrice(e.target.value)}
+                  style={{ width: '120px', padding: '8px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
+                />
+                <button
+                  onClick={() => {
+                    if (newItemName && newItemPrice) {
+                      const unitPrice = parseFloat(newItemPrice) || 0;
+                      const newItem = {
+                        id: `item-manual-${Date.now()}`,
+                        name: newItemName,
+                        price: unitPrice * newItemQuantity,
+                        quantity: newItemQuantity,
+                        assigned_to: []
+                      };
+                      setSessionData({
+                        ...sessionData,
+                        items: [...sessionData.items, newItem]
+                      });
+                      setNewItemName('');
+                      setNewItemPrice('');
+                      setNewItemQuantity(1);
+                    }
+                  }}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#38a169',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Agregar
+                </button>
+              </div>
             </div>
           </div>
         )}
