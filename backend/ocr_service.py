@@ -186,7 +186,9 @@ class OCRService:
         """
         try:
             print(f"🔍 Parseando texto de boleta: {len(text)} caracteres")
-            
+            print(f"📄 Texto completo:\n{text}")
+            print(f"=" * 80)
+
             # Normalizar texto y dividir en líneas
             lines = text.strip().split('\n')
             
@@ -237,51 +239,120 @@ class OCRService:
                 print(f"💰 Total inferido: ${total}")
             
             # Buscar subtotal
+            print(f"🔍 Buscando subtotal...")
             subtotal_patterns = [
                 r'subtotal\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
                 r'sub\s*total\s+(\d{1,3}(?:\.\d{3})*)',
             ]
-            
-            for pattern in subtotal_patterns:
+
+            for i, pattern in enumerate(subtotal_patterns):
                 match = re.search(pattern, text.lower())
                 if match:
                     subtotal = self.parse_chilean_number(match.group(1))
-                    print(f"🧾 Subtotal encontrado: ${subtotal}")
+                    print(f"🧾 Subtotal encontrado con patrón #{i}: ${subtotal} (texto: '{match.group(0)}')")
                     break
+                else:
+                    print(f"   ❌ Patrón #{i} no encontró match")
             
-            # Detectar propina/tip/servicio (MEJORADO)
+            # Detectar propina/tip/servicio (MEJORADO PARA BOLETAS CHILENAS)
+            print(f"🔍 Buscando propina...")
+            print(f"   Subtotal para validación: ${subtotal}")
+
+            # PATRONES MEJORADOS para boletas chilenas
             tip_patterns = [
-                r'(?:propina|tip|servicio|service)[:\s]*\$?\s*([\d.,]+)',
-                r'(?:propina|tip)[:\s]*\$?\s*([\d.,]+)',
+                r'(?:propina sugerida|propina)[:\s]*\$?\s*([\d.,]+)',  # "PROPINA SUGERIDA: $16,335"
+                r'(?:tip\s*incluido|tip)[:\s]*\$?\s*([\d.,]+)',         # "TIP INCLUIDO: $16,335"
+                r'(?:servicio)[:\s]*\$?\s*([\d.,]+)',                    # "SERVICIO: $16,335"
+                r'(?:propina|tip|servicio|service)[:\s]*\$?\s*([\d.,]+)', # Patrón original
+                r'10%[:\s]*\$?\s*([\d.,]+)',                             # "10%: $16,335"
+                r'(\d{1,2})%[:\s]*\$?\s*([\d.,]+)',                      # "15%: $16,335"
             ]
 
             tip = None
-            for pattern in tip_patterns:
+            tip_percent_detected = None
+
+            for i, pattern in enumerate(tip_patterns):
+                print(f"   Probando patrón #{i}: {pattern}")
                 match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
                 if match:
-                    tip_value = self.parse_chilean_number(match.group(1))
+                    # Si el patrón incluye porcentaje (último grupo)
+                    if match.lastindex == 2:  # Patrón con porcentaje capturado
+                        tip_percent_detected = int(match.group(1))
+                        tip_value = self.parse_chilean_number(match.group(2))
+                    else:
+                        tip_value = self.parse_chilean_number(match.group(1))
+
+                    print(f"   ✅ Match encontrado: '{match.group(0)}' -> ${tip_value}")
+
                     # VALIDACIÓN: La propina normalmente es 10-20% del subtotal
-                    # Si es > 30% del subtotal, probablemente es un error
-                    if subtotal and tip_value > 0:
+                    if subtotal and subtotal > 0 and tip_value > 0:
                         tip_percent = (tip_value / subtotal) * 100
+                        print(f"   Validando: ${tip_value} es {tip_percent:.1f}% del subtotal ${subtotal}")
                         if tip_percent <= 30:  # Propina razonable
                             tip = tip_value
-                            logger.info(f"Propina detectada: ${tip} ({tip_percent:.1f}% del subtotal)")
+                            print(f"🎁 Propina detectada: ${tip} ({tip_percent:.1f}% del subtotal)")
                             break
                         else:
-                            logger.warning(f"Propina sospechosa: ${tip_value} ({tip_percent:.1f}% del subtotal) - ignorando")
+                            print(f"   ⚠️ Propina sospechosa: ${tip_value} ({tip_percent:.1f}% del subtotal) - ignorando")
+                    elif tip_value > 0:
+                        # Si no hay subtotal para validar, aceptar la propina de todas formas
+                        tip = tip_value
+                        print(f"🎁 Propina detectada sin validación (no hay subtotal): ${tip}")
+                        break
+                    else:
+                        print(f"   ⚠️ No se puede validar (subtotal={subtotal}, tip_value={tip_value})")
+                else:
+                    print(f"   ❌ Patrón #{i} no encontró match")
 
-            # CASO ESPECIAL: Si NO hay propina detectada pero HAY subtotal y total
+            # CASO ESPECIAL 1: Si NO hay propina detectada pero HAY subtotal y total
             # Entonces: propina = total - subtotal
+            print(f"🔍 Intentando calcular propina por diferencia...")
+            print(f"   tip={tip}, subtotal={subtotal}, total={total}")
             if tip is None and subtotal and total:
                 calculated_tip = total - subtotal
+                print(f"   Calculado: {total} - {subtotal} = {calculated_tip}")
                 if calculated_tip > 0 and calculated_tip < subtotal * 0.3:
                     tip = calculated_tip
-                    logger.info(f"Propina calculada: ${tip} (Total - Subtotal)")
+                    print(f"🎁 Propina calculada: ${tip} (Total - Subtotal)")
+                else:
+                    print(f"   ❌ Propina calculada fuera de rango válido (debe ser > 0 y < 30% del subtotal)")
+
+            # CASO ESPECIAL 2: Si total == subtotal Y hay items detectados
+            # Esto sugiere que el OCR no detectó el subtotal real
+            # Calcular subtotal sumando items, y diferencia sería propina
+            if tip is None or tip == 0:
+                print(f"🔍 Verificando si total == subtotal...")
+                print(f"   total={total}, subtotal={subtotal}, items={len(items)}")
+
+                # Si total y subtotal son iguales (o muy cercanos) Y hay items
+                if abs(total - subtotal) < 100 and len(items) > 0:
+                    print(f"   ⚠️ Total y subtotal son iguales, recalculando desde items...")
+                    # Calcular subtotal real sumando items
+                    items_sum = sum(item['price'] for item in items)
+                    print(f"   Suma de items: ${items_sum}")
+
+                    if items_sum > 0 and items_sum < total:
+                        # La diferencia entre total y suma de items sería la propina
+                        calculated_tip = total - items_sum
+                        print(f"   Calculado: {total} - {items_sum} = {calculated_tip}")
+
+                        # Validar que sea razonable (entre 5% y 30% de los items)
+                        if items_sum > 0:
+                            tip_percent_of_items = (calculated_tip / items_sum) * 100
+                            print(f"   Validando: ${calculated_tip} es {tip_percent_of_items:.1f}% de los items")
+
+                            if 5 <= tip_percent_of_items <= 30:
+                                tip = calculated_tip
+                                subtotal = items_sum  # Actualizar subtotal al real
+                                print(f"🎁 Propina calculada desde items: ${tip} ({tip_percent_of_items:.1f}%)")
+                                print(f"🧾 Subtotal actualizado a suma de items: ${subtotal}")
+                            else:
+                                print(f"   ⚠️ Propina calculada desde items fuera de rango (5-30%)")
 
             # Si aún no hay tip, usar 0
             if tip is None:
                 tip = 0
+                print(f"⚠️ No se detectó propina, usando 0")
             
             # Calcular valores faltantes con lógica corregida
             if subtotal > 0 and tip > 0 and total == 0:
@@ -338,6 +409,19 @@ class OCRService:
                         tip = subtotal * 0.1
                         total = subtotal + tip
             
+            # Log final con resumen
+            print(f"\n{'='*80}")
+            print(f"📊 RESUMEN DE DETECCIÓN:")
+            print(f"   💰 Total: ${total}")
+            print(f"   🧾 Subtotal: ${subtotal}")
+            print(f"   🎁 Propina: ${tip}")
+            if subtotal > 0 and tip > 0:
+                tip_percent = (tip / subtotal) * 100
+                print(f"   📈 Propina como % del subtotal: {tip_percent:.1f}%")
+            print(f"   📝 Items encontrados: {len(items)}")
+            print(f"   🔢 Números detectados: {all_numbers[:10]}")
+            print(f"{'='*80}\n")
+
             result = {
                 'success': True,
                 'total': total,
@@ -348,7 +432,7 @@ class OCRService:
                 'confidence': 'high' if len(items) > 0 else 'medium',
                 'detected_numbers': all_numbers[:10]  # Para debug
             }
-            
+
             print(f"✅ Parsing exitoso: Total=${total}, Items={len(items)}")
             return result
             
