@@ -125,6 +125,174 @@ class OCRService:
             print(f"❌ Error procesando base64: {str(e)}")
             raise Exception(f"No se pudo procesar la imagen: {str(e)}")
     
+    def calculate_parsing_confidence(self, total: float, subtotal: float, tip: float, items: List[Dict[str, Any]]) -> tuple:
+        """
+        Calcula el score de confianza del parsing y detecta problemas.
+
+        Args:
+            total: Total detectado
+            subtotal: Subtotal detectado
+            tip: Propina detectada
+            items: Items detectados
+
+        Returns:
+            Tuple de (score 0-100, lista de problemas)
+        """
+        score = 100
+        problems = []
+
+        print(f"\n🔍 Calculando confianza del parsing...")
+
+        # PROBLEMA 1: Propina = 0 (posible propina no detectada)
+        if tip == 0 and total > 0:
+            score -= 20
+            problems.append("Propina no detectada (podría estar incluida)")
+            print(f"   ⚠️ Propina = 0 (-20 puntos)")
+
+        # PROBLEMA 2: Total == Subtotal (subtotal mal detectado)
+        if abs(total - subtotal) < 100 and total > 0:
+            score -= 25
+            problems.append(f"Total == Subtotal (${total} == ${subtotal})")
+            print(f"   ⚠️ Total == Subtotal (-25 puntos)")
+
+        # PROBLEMA 3: Suma de items != subtotal (items faltantes o mal leídos)
+        if items and subtotal > 0:
+            items_sum = sum(item['price'] for item in items)
+            diff_percent = abs(items_sum - subtotal) / subtotal * 100 if subtotal > 0 else 0
+
+            if diff_percent > 10:  # Más de 10% de diferencia
+                penalty = min(25, int(diff_percent))
+                score -= penalty
+                problems.append(f"Suma items (${items_sum}) != Subtotal (${subtotal}) - diferencia {diff_percent:.1f}%")
+                print(f"   ⚠️ Suma items != subtotal: {diff_percent:.1f}% diferencia (-{penalty} puntos)")
+
+        # PROBLEMA 4: Items duplicados con precios diferentes
+        item_names = {}
+        for item in items:
+            name = item['name'].lower().strip()
+            price = item['price']
+
+            if name in item_names:
+                # Item duplicado
+                if abs(item_names[name] - price) > 100:  # Precios diferentes
+                    score -= 10
+                    problems.append(f"Item duplicado '{item['name']}' con precios diferentes: ${item_names[name]} vs ${price}")
+                    print(f"   ⚠️ Item duplicado con precio diferente: {item['name']} (-10 puntos)")
+            else:
+                item_names[name] = price
+
+        # PROBLEMA 5: Menos de 3 items cuando total > $30,000 (posibles items faltantes)
+        if len(items) < 3 and total > 30000:
+            score -= 15
+            problems.append(f"Solo {len(items)} items detectados pero total es alto (${total})")
+            print(f"   ⚠️ Pocos items ({len(items)}) para total alto ${total} (-15 puntos)")
+
+        # PROBLEMA 6: Nombres de items muy cortos (< 3 caracteres)
+        short_names = [item for item in items if len(item['name']) < 3]
+        if short_names:
+            penalty = min(10, len(short_names) * 5)
+            score -= penalty
+            problems.append(f"{len(short_names)} items con nombres muy cortos (posible OCR malo)")
+            print(f"   ⚠️ {len(short_names)} items con nombres cortos (-{penalty} puntos)")
+
+        # Asegurar que el score esté en rango 0-100
+        score = max(0, min(100, score))
+
+        print(f"📊 Score de confianza: {score}/100")
+        if problems:
+            print(f"   Problemas detectados: {len(problems)}")
+            for problem in problems:
+                print(f"      - {problem}")
+
+        return score, problems
+
+    def verify_receipt_with_gemini(self, text: str) -> Dict[str, Any]:
+        """
+        Usa Gemini para verificar y extraer datos de la boleta.
+
+        Args:
+            text: Texto extraído por OCR
+
+        Returns:
+            Dict con total, subtotal, propina e items
+        """
+        try:
+            if not gemini_service.is_available():
+                print("⚠️ Gemini no disponible para verificación")
+                return None
+
+            print("🤖 Verificando boleta con Gemini...")
+
+            # Prompt estructurado para Gemini
+            prompt = f"""Analiza este texto de una boleta chilena y extrae la siguiente información:
+
+1. total: El monto total a pagar (número)
+2. subtotal: El subtotal SIN propina (número)
+3. propina: El monto de propina/servicio/tip (número, puede ser 0 si no hay)
+4. items: Lista de items con nombre y precio
+
+IMPORTANTE:
+- Los números en Chile usan punto como separador de miles: $111.793 = 111793
+- Si ves "PROPINA", "TIP", "SERVICIO", extrae ese monto
+- Si el total es mayor que la suma de items, la diferencia probablemente es propina
+- Responde SOLO en formato JSON válido, sin texto adicional
+
+Texto de la boleta:
+{text}
+
+Formato de respuesta (JSON):
+{{
+    "total": 179684,
+    "subtotal": 163349,
+    "propina": 16335,
+    "items": [
+        {{"nombre": "Summer Ale 568cc", "precio": 5800}},
+        {{"nombre": "Corona 355cc", "precio": 4900}}
+    ]
+}}"""
+
+            # Llamar a Gemini
+            import google.generativeai as genai
+
+            # Configurar Gemini
+            api_key = os.getenv('GOOGLE_GEMINI_API_KEY')
+            if not api_key:
+                print("⚠️ GOOGLE_GEMINI_API_KEY no configurada")
+                return None
+
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-flash')
+
+            response = model.generate_content(prompt)
+            response_text = response.text.strip()
+
+            print(f"📄 Respuesta de Gemini:\n{response_text}")
+
+            # Limpiar respuesta (remover markdown si existe)
+            if response_text.startswith('```'):
+                # Remover bloques de código markdown
+                lines = response_text.split('\n')
+                response_text = '\n'.join(lines[1:-1])  # Quitar primera y última línea
+
+            # Parsear JSON
+            data = json.loads(response_text)
+
+            # Validar estructura
+            if 'total' in data and 'items' in data:
+                print(f"✅ Gemini verificación exitosa:")
+                print(f"   Total: ${data.get('total', 0)}")
+                print(f"   Subtotal: ${data.get('subtotal', 0)}")
+                print(f"   Propina: ${data.get('propina', 0)}")
+                print(f"   Items: {len(data.get('items', []))}")
+                return data
+            else:
+                print("⚠️ Respuesta de Gemini no tiene estructura esperada")
+                return None
+
+        except Exception as e:
+            print(f"❌ Error en verificación con Gemini: {str(e)}")
+            return None
+
     def parse_chilean_number(self, num_str: str) -> float:
         """
         Parsear números en formato chileno
@@ -353,7 +521,92 @@ class OCRService:
             if tip is None:
                 tip = 0
                 print(f"⚠️ No se detectó propina, usando 0")
-            
+
+            # Calcular confianza del parsing
+            confidence_score, problems_detected = self.calculate_parsing_confidence(total, subtotal, tip, items)
+
+            # Verificar con Gemini si la confianza es baja
+            gemini_verification_used = False
+            if confidence_score < 80:
+                print(f"\n⚠️ Confianza baja ({confidence_score}/100), verificando con Gemini...")
+                gemini_data = self.verify_receipt_with_gemini(text)
+
+                if gemini_data:
+                    gemini_total = gemini_data.get('total', 0)
+                    gemini_subtotal = gemini_data.get('subtotal', 0)
+                    gemini_tip = gemini_data.get('propina', 0)
+                    gemini_items = gemini_data.get('items', [])
+
+                    print(f"\n📊 Comparando resultados:")
+                    print(f"   Regex - Total: ${total}, Subtotal: ${subtotal}, Propina: ${tip}, Items: {len(items)}")
+                    print(f"   Gemini - Total: ${gemini_total}, Subtotal: ${gemini_subtotal}, Propina: ${gemini_tip}, Items: {len(gemini_items)}")
+
+                    # Decidir qué datos usar
+                    use_gemini_totals = False
+                    use_gemini_items = False
+
+                    # CRITERIO 1: Si Gemini encontró propina y regex no
+                    if gemini_tip > 0 and tip == 0:
+                        print(f"   ✅ Gemini encontró propina y regex no")
+                        use_gemini_totals = True
+
+                    # CRITERIO 2: Si total/subtotal de Gemini son más coherentes
+                    if gemini_total > 0 and gemini_subtotal > 0:
+                        gemini_calculated_tip = gemini_total - gemini_subtotal
+                        # Verificar coherencia
+                        if 0 < gemini_calculated_tip < gemini_subtotal * 0.3:
+                            # Gemini es coherente
+                            regex_coherent = (total > 0 and subtotal > 0 and 0 < total - subtotal < subtotal * 0.3)
+
+                            if not regex_coherent:
+                                print(f"   ✅ Datos de Gemini son más coherentes")
+                                use_gemini_totals = True
+
+                    # CRITERIO 3: Si Gemini tiene más items
+                    if len(gemini_items) > len(items):
+                        print(f"   ✅ Gemini encontró más items ({len(gemini_items)} vs {len(items)})")
+                        use_gemini_items = True
+
+                    # CRITERIO 4: Si suma de items de Gemini es más cercana al subtotal
+                    if gemini_items:
+                        gemini_items_sum = sum(item.get('precio', 0) for item in gemini_items)
+                        regex_items_sum = sum(item['price'] for item in items) if items else 0
+
+                        if subtotal > 0:
+                            gemini_diff = abs(gemini_items_sum - subtotal)
+                            regex_diff = abs(regex_items_sum - subtotal)
+
+                            if gemini_diff < regex_diff:
+                                print(f"   ✅ Items de Gemini suman más cercano al subtotal")
+                                use_gemini_items = True
+
+                    # Aplicar decisiones
+                    if use_gemini_totals:
+                        print(f"\n🤖 Usando totales de Gemini")
+                        total = gemini_total
+                        subtotal = gemini_subtotal
+                        tip = gemini_tip
+                        gemini_verification_used = True
+
+                    if use_gemini_items:
+                        print(f"\n🤖 Usando items de Gemini")
+                        # Convertir items de Gemini al formato esperado
+                        items = []
+                        for i, gemini_item in enumerate(gemini_items):
+                            items.append({
+                                'name': gemini_item.get('nombre', f'Item {i+1}'),
+                                'price': gemini_item.get('precio', 0),
+                                'quantity': 1
+                            })
+                        gemini_verification_used = True
+
+                    # Recalcular confianza después de usar Gemini
+                    if gemini_verification_used:
+                        confidence_score, problems_detected = self.calculate_parsing_confidence(total, subtotal, tip, items)
+                        print(f"\n📊 Nueva confianza después de Gemini: {confidence_score}/100")
+            else:
+                print(f"\n✅ Confianza alta ({confidence_score}/100), no se necesita verificación con Gemini")
+
             # Calcular valores faltantes con lógica corregida
             if subtotal > 0 and tip > 0 and total == 0:
                 # Si tenemos subtotal y propina, calcular total
@@ -420,6 +673,13 @@ class OCRService:
                 print(f"   📈 Propina como % del subtotal: {tip_percent:.1f}%")
             print(f"   📝 Items encontrados: {len(items)}")
             print(f"   🔢 Números detectados: {all_numbers[:10]}")
+            print(f"   🎯 Confianza: {confidence_score}/100")
+            if problems_detected:
+                print(f"   ⚠️ Problemas detectados: {len(problems_detected)}")
+                for problem in problems_detected:
+                    print(f"      - {problem}")
+            if gemini_verification_used:
+                print(f"   🤖 Verificado con Gemini: SÍ")
             print(f"{'='*80}\n")
 
             result = {
@@ -430,7 +690,10 @@ class OCRService:
                 'items': items,
                 'raw_text': text,
                 'confidence': 'high' if len(items) > 0 else 'medium',
-                'detected_numbers': all_numbers[:10]  # Para debug
+                'detected_numbers': all_numbers[:10],  # Para debug
+                'confidence_score': confidence_score,
+                'problems_detected': problems_detected,
+                'gemini_verification_used': gemini_verification_used
             }
 
             print(f"✅ Parsing exitoso: Total=${total}, Items={len(items)}")
