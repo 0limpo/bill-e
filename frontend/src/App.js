@@ -90,6 +90,21 @@ function SessionPage() {
     }
   }, [id]);
 
+  // Pre-llenar confirmedSubtotal con suma de items
+  useEffect(() => {
+    if (sessionData && confirmedSubtotal === null) {
+      // Prioridad 1: Suma de items (si hay items)
+      if (sessionData.items && sessionData.items.length > 0) {
+        const itemsSum = sessionData.items.reduce((sum, item) => sum + item.price, 0);
+        setConfirmedSubtotal(itemsSum);
+      }
+      // Prioridad 2: Subtotal del backend (si no hay items)
+      else if (sessionData.subtotal) {
+        setConfirmedSubtotal(sessionData.subtotal);
+      }
+    }
+  }, [sessionData, confirmedSubtotal]);
+
   const loadSessionData = async (sessionId) => {
     const startTime = performance.now();
 
@@ -391,7 +406,10 @@ function SessionPage() {
               📋 Confirma el subtotal de la boleta
             </h3>
             <p style={{ color: '#4a5568', marginBottom: '16px' }}>
-              Ingresa el subtotal SIN propina que aparece en tu boleta:
+              {sessionData.items && sessionData.items.length > 0
+                ? `Hemos calculado ${formatCurrency(getCalculatedSubtotal())} desde los items. Confirma o modifica:`
+                : 'Ingresa el subtotal SIN propina que aparece en tu boleta:'
+              }
             </p>
 
             <div style={{ marginBottom: '16px' }}>
@@ -400,7 +418,7 @@ function SessionPage() {
               </label>
               <input
                 type="number"
-                value={confirmedSubtotal || sessionData.subtotal || ''}
+                value={confirmedSubtotal !== null ? confirmedSubtotal : ''}
                 onChange={(e) => setConfirmedSubtotal(parseFloat(e.target.value) || 0)}
                 style={{
                   padding: '12px',
@@ -410,7 +428,7 @@ function SessionPage() {
                   borderRadius: '6px',
                   width: '200px'
                 }}
-                placeholder="Ej: 179684"
+                placeholder={`Suma items: ${getCalculatedSubtotal().toLocaleString('es-CL')}`}
               />
             </div>
 
