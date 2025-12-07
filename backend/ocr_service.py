@@ -359,6 +359,11 @@ Formato de respuesta (JSON):
             Dict con información de la boleta
         """
         try:
+            # Validar que el texto no sea None o vacío
+            if text is None:
+                print("⚠️ Texto vacío recibido en parse_receipt_text")
+                return {'success': False, 'error': 'Texto vacío'}
+
             print(f"🔍 Parseando texto de boleta: {len(text)} caracteres")
             print(f"📄 Texto completo:\n{text}")
             print(f"=" * 80)
