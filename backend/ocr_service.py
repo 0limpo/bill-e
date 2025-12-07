@@ -790,41 +790,64 @@ Formato de respuesta (JSON):
                 next_line = lines[i+1].strip()
                 # Verificar si la siguiente línea es un precio chileno
                 if re.match(r'^\d{1,2}\.\d{3}$', next_line) or re.match(r'^\d{1,5}$', next_line):
-                    price = self.parse_chilean_number(next_line)
-                    if 1000 <= price <= 50000:  # Rango razonable para comida chilena
-                        # Limpiar nombre del item
-                        item_name = re.sub(r'^\d+\s*', '', line).strip()
+                    total_price = self.parse_chilean_number(next_line)
+                    if 1000 <= total_price <= 200000:  # Rango ampliado para múltiples unidades
+                        # Detectar cantidad al inicio de la línea: "3  Coca Cola"
+                        quantity = 1
+                        item_name = line
+
+                        quantity_match = re.match(r'^(\d+)\s+(.+)$', line)
+                        if quantity_match:
+                            quantity = int(quantity_match.group(1))
+                            item_name = quantity_match.group(2).strip()
+                        else:
+                            # Limpiar número al inicio si no es cantidad
+                            item_name = re.sub(r'^\d+\s*', '', line).strip()
+
+                        # Calcular precio unitario
+                        unit_price = total_price / quantity if quantity > 0 else total_price
+
                         if len(item_name) >= 3 and 'vaso de agua' not in item_name.lower():
                             items.append({
                                 'name': item_name,
-                                'price': price,
-                                'quantity': 1
+                                'price': unit_price,  # Precio unitario
+                                'quantity': quantity
                             })
-                            print(f"  📄 Item: {item_name} = ${price}")
+                            if quantity > 1:
+                                print(f"  📄 Item: {quantity} × {item_name} = ${total_price:,.0f} (${unit_price:,.0f} c/u)")
+                            else:
+                                print(f"  📄 Item: {item_name} = ${unit_price:,.0f}")
             
-            # Método original como backup
+            # Método original como backup: "3  Coca Cola  6.000" en una sola línea
             item_pattern = r'^(\d+\s+)?(.+?)\s+(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)$'
             match = re.match(item_pattern, line)
-            
+
             if match:
                 quantity_str = match.group(1)
                 item_name = match.group(2).strip()
                 price_str = match.group(3)
-                
-                price = self.parse_chilean_number(price_str)
-                
-                if 1000 <= price <= 50000 and len(item_name) >= 3:
+
+                total_price = self.parse_chilean_number(price_str)
+                quantity = int(quantity_str.strip()) if quantity_str else 1
+
+                # Calcular precio unitario (el precio en la boleta es TOTAL)
+                unit_price = total_price / quantity if quantity > 0 else total_price
+
+                if 1000 <= total_price <= 200000 and len(item_name) >= 3:
                     item_name = re.sub(r'^\d+\s*', '', item_name).strip()
-                    
+
                     # Evitar duplicados
                     if item_name and not any(existing['name'].lower() == item_name.lower() for existing in items):
                         if 'vaso de agua' not in item_name.lower():
                             items.append({
                                 'name': item_name,
-                                'price': price,
-                                'quantity': int(quantity_str.strip()) if quantity_str else 1
+                                'price': unit_price,  # Precio unitario
+                                'quantity': quantity
                             })
-                            print(f"  📄 Item (backup): {item_name} = ${price}")
+                            if quantity > 1:
+                                print(f"  📄 Item (backup): {quantity} × {item_name} = ${total_price:,.0f} (${unit_price:,.0f} c/u)")
+                            else:
+                                print(f"  📄 Item (backup): {item_name} = ${unit_price:,.0f}")
         
         return items
     
