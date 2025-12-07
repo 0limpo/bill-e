@@ -259,6 +259,13 @@ function SessionPage() {
 
   const getCurrentSubtotal = () => {
     if (!sessionData) return 0;
+
+    // PRIORIZAR subtotal del OCR si está disponible
+    if (sessionData.subtotal && sessionData.subtotal > 0) {
+      return sessionData.subtotal;  // ✅ Usar subtotal del OCR
+    }
+
+    // Fallback: calcular desde items solo si no hay subtotal del OCR
     return sessionData.items.reduce((sum, item) => sum + item.price, 0);
   };
 
@@ -275,6 +282,13 @@ function SessionPage() {
 
   const getCalculatedSubtotal = () => {
     if (!sessionData?.items) return 0;
+
+    // Usar subtotal del OCR si está disponible
+    if (sessionData.subtotal && sessionData.subtotal > 0) {
+      return sessionData.subtotal;
+    }
+
+    // Fallback: suma de items
     return sessionData.items.reduce((sum, item) => sum + item.price, 0);
   };
 
@@ -454,6 +468,24 @@ function SessionPage() {
             <div className="summary-item">
               <span className="label">Subtotal</span>
               <span className="amount">{formatCurrency(getCurrentSubtotal())}</span>
+              {sessionData.subtotal && sessionData.subtotal > 0 && (() => {
+                const itemsSum = sessionData.items.reduce((sum, item) => sum + item.price, 0);
+                const diff = Math.abs(sessionData.subtotal - itemsSum);
+                const diffPercent = (diff / sessionData.subtotal * 100).toFixed(1);
+
+                if (diff > sessionData.subtotal * 0.05) {  // Si diferencia > 5%
+                  return (
+                    <div style={{
+                      fontSize: '12px',
+                      color: '#d69e2e',
+                      marginTop: '4px'
+                    }}>
+                      ⚠️ OCR: {formatCurrency(sessionData.subtotal)} | Items: {formatCurrency(itemsSum)} | Dif: {diffPercent}%
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
             <div className="summary-item">
               <span className="label">Propina</span>
