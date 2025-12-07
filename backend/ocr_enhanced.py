@@ -325,9 +325,9 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
     def process_with_gemini():
         try:
             if gemini_service.is_available():
-                text = gemini_service.process_image(image_bytes)
-                parsed = vision_service.parse_receipt_text(text)
-                results['gemini'] = parsed
+                # Usar extracción estructurada JSON (no texto plano)
+                structured_result = gemini_service.process_image_structured(image_bytes)
+                results['gemini'] = structured_result
                 logger.info("✅ Gemini completado")
         except Exception as e:
             logger.error(f"❌ Gemini falló: {str(e)}")
@@ -366,8 +366,17 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
         logger.info(f"   Vision: {vision_items_count} items, confianza: {vision_confidence}")
         logger.info(f"   Gemini: {gemini_items_count} items, confianza: {gemini_confidence}")
 
+        # CRITERIO CRÍTICO: NUNCA elegir resultado con 0 items si el otro tiene items
+        if vision_items_count == 0 and gemini_items_count > 0:
+            logger.info("📊 Eligiendo Gemini (Vision tiene 0 items)")
+            chosen_result = gemini_result
+            chosen_source = 'gemini'
+        elif gemini_items_count == 0 and vision_items_count > 0:
+            logger.info("📊 Eligiendo Vision (Gemini tiene 0 items)")
+            chosen_result = vision_result
+            chosen_source = 'vision'
         # Criterio: el que tenga mayor confianza, si empate, el que tenga más items
-        if gemini_confidence > vision_confidence:
+        elif gemini_confidence > vision_confidence:
             logger.info("📊 Eligiendo Gemini (mayor confianza)")
             chosen_result = gemini_result
             chosen_source = 'gemini'

@@ -5,6 +5,7 @@ Gemini es gratis hasta 1,500 requests/día y tiene mejor comprensión contextual
 
 import os
 import base64
+import json
 import logging
 from typing import Dict, Any, Optional
 import google.generativeai as genai
@@ -111,6 +112,115 @@ class GeminiOCRService:
 
         except Exception as e:
             logger.error(f"❌ Error decodificando base64 en Gemini: {str(e)}")
+            return None
+
+    def process_image_structured(self, image_bytes: bytes) -> Optional[Dict[str, Any]]:
+        """
+        Procesa una imagen de boleta usando Gemini y retorna JSON estructurado.
+
+        Args:
+            image_bytes: Bytes de la imagen
+
+        Returns:
+            Dict con total, subtotal, propina e items o None si falla
+        """
+        if not self.model:
+            logger.error("Gemini model no disponible")
+            return None
+
+        try:
+            # Convertir bytes a formato que Gemini entiende
+            import PIL.Image
+            import io
+            image = PIL.Image.open(io.BytesIO(image_bytes))
+
+            # Prompt estructurado para obtener JSON directamente
+            prompt = """Analiza esta imagen de una boleta chilena y extrae la siguiente información:
+
+1. total: El monto total a pagar (número)
+2. subtotal: El subtotal SIN propina (número)
+3. propina: El monto de propina/servicio/tip (número, puede ser 0 si no hay)
+4. items: Lista de items con nombre, cantidad, precio unitario y precio total
+
+IMPORTANTE:
+- Los números en Chile usan punto como separador de miles: $111.793 = 111793
+- Si ves "PROPINA", "TIP", "SERVICIO", extrae ese monto
+- Si el total es mayor que la suma de items, la diferencia probablemente es propina
+- Las boletas chilenas muestran: CANTIDAD  NOMBRE_PRODUCTO  PRECIO_TOTAL
+- Ejemplo: "3  Pan Mechada  35.970" significa 3 unidades a $11.990 cada una = $35.970 total
+- Extrae la CANTIDAD (el número al inicio de cada línea de item)
+- Calcula el PRECIO_UNITARIO (precio_total / cantidad)
+- Si no hay cantidad visible, usa cantidad: 1
+- Responde SOLO en formato JSON válido, sin texto adicional
+
+Formato de respuesta (JSON):
+{
+    "total": 111793,
+    "subtotal": 101630,
+    "propina": 10163,
+    "items": [
+        {"nombre": "Pan Mechada", "cantidad": 3, "precio_unitario": 11990, "precio_total": 35970},
+        {"nombre": "Coca Cola Zero", "cantidad": 2, "precio_unitario": 2000, "precio_total": 4000},
+        {"nombre": "Ensalada", "cantidad": 1, "precio_unitario": 6500, "precio_total": 6500}
+    ]
+}"""
+
+            logger.info("🤖 Enviando imagen a Gemini para análisis estructurado...")
+            response = self.model.generate_content([prompt, image])
+
+            if response and response.text:
+                response_text = response.text.strip()
+                logger.info(f"✅ Gemini retornó {len(response_text)} caracteres")
+
+                # Limpiar respuesta (remover markdown si existe)
+                if response_text.startswith('```'):
+                    lines = response_text.split('\n')
+                    # Remover primera línea (```json) y última (```)
+                    response_text = '\n'.join(lines[1:-1])
+
+                # Parsear JSON
+                data = json.loads(response_text)
+
+                # Validar estructura
+                if 'total' in data and 'items' in data:
+                    # Convertir items de Gemini al formato interno
+                    items = []
+                    for item in data.get('items', []):
+                        unit_price = item.get('precio_unitario', item.get('precio', 0))
+                        quantity = item.get('cantidad', 1)
+
+                        items.append({
+                            'name': item.get('nombre', ''),
+                            'price': unit_price,
+                            'quantity': quantity
+                        })
+
+                    result = {
+                        'success': True,
+                        'total': data.get('total', 0),
+                        'subtotal': data.get('subtotal', 0),
+                        'tip': data.get('propina', 0),
+                        'items': items,
+                        'confidence_score': 95  # Gemini JSON tiene alta confianza
+                    }
+
+                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}")
+                    for i, item in enumerate(items[:3]):  # Mostrar primeros 3
+                        logger.info(f"   Item {i+1}: {item['quantity']}x {item['name']} = ${item['price']}")
+
+                    return result
+                else:
+                    logger.warning("⚠️ Respuesta de Gemini no tiene estructura esperada")
+                    return None
+            else:
+                logger.warning("⚠️ Gemini no retornó texto")
+                return None
+
+        except json.JSONDecodeError as e:
+            logger.error(f"❌ Error parseando JSON de Gemini: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Error en Gemini OCR estructurado: {str(e)}")
             return None
 
     def is_available(self) -> bool:
