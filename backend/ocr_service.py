@@ -435,6 +435,7 @@ Formato de respuesta (JSON):
 
             # PATRONES MEJORADOS para boletas chilenas
             tip_patterns = [
+                r'(?:propina\s+sugerida|propina sugerida)[:\s]*(\d{1,2})\s*%',  # "PROPINA SUGERIDA 10%" (porcentaje)
                 r'(?:propina sugerida|propina)[:\s]*\$?\s*([\d.,]+)',  # "PROPINA SUGERIDA: $16,335"
                 r'(?:tip\s*incluido|tip)[:\s]*\$?\s*([\d.,]+)',         # "TIP INCLUIDO: $16,335"
                 r'(?:servicio)[:\s]*\$?\s*([\d.,]+)',                    # "SERVICIO: $16,335"
@@ -457,7 +458,35 @@ Formato de respuesta (JSON):
                     else:
                         tip_value = self.parse_chilean_number(match.group(1))
 
-                    print(f"   ✅ Match encontrado: '{match.group(0)}' -> ${tip_value}")
+                    print(f"   ✅ Match encontrado: '{match.group(0)}' -> valor extraído: {tip_value}")
+
+                    # DETECTAR SI ES UN PORCENTAJE
+                    # Patrón #0 es "PROPINA SUGERIDA X%" - es porcentaje explícito
+                    if i == 0:
+                        # Es porcentaje explícito
+                        if subtotal > 0:
+                            tip_percentage = tip_value
+                            tip_value = subtotal * tip_percentage / 100
+                            print(f"   🧮 Porcentaje explícito detectado: {tip_percentage}% de ${subtotal} = ${tip_value}")
+                        else:
+                            print(f"   ⚠️ Porcentaje detectado pero no hay subtotal para calcular")
+                            continue
+
+                    # Si el valor es muy pequeño (< 100), probablemente es un PORCENTAJE
+                    elif tip_value > 0 and tip_value < 100 and subtotal > 0:
+                        # Verificar si es un porcentaje típico o si hay "%" cerca en el texto
+                        propina_percentages = [5, 10, 15, 18, 20, 25]
+                        match_text = match.group(0)
+
+                        if tip_value in propina_percentages or '%' in match_text:
+                            # Es un porcentaje, calcular el monto real
+                            tip_percentage = tip_value
+                            tip_value = subtotal * tip_percentage / 100
+                            print(f"   🧮 Propina detectada como porcentaje: {tip_percentage}% de ${subtotal} = ${tip_value}")
+                        else:
+                            print(f"   ⚠️ Valor pequeño ({tip_value}) pero no parece porcentaje típico")
+
+                    print(f"   💰 Propina calculada: ${tip_value}")
 
                     # VALIDACIÓN: La propina normalmente es 10-20% del subtotal
                     if subtotal and subtotal > 0 and tip_value > 0:
