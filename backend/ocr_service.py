@@ -266,7 +266,7 @@ Formato de respuesta (JSON):
                 return None
 
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
             response = model.generate_content(prompt)
             response_text = response.text.strip()
