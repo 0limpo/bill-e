@@ -28,6 +28,7 @@ function SessionPage() {
   const [timeLeft, setTimeLeft] = useState(null);
   const [appliedCorrections, setAppliedCorrections] = useState(new Set());
   const [totalConfirmed, setTotalConfirmed] = useState(false);
+  const [confirmedSubtotal, setConfirmedSubtotal] = useState(null);
 
   // Timer para mostrar tiempo restante
   useEffect(() => {
@@ -254,6 +255,16 @@ function SessionPage() {
     return getCurrentSubtotal() + getCurrentTip();
   };
 
+  const getCalculatedSubtotal = () => {
+    if (!sessionData?.items) return 0;
+    return sessionData.items.reduce((sum, item) => sum + item.price, 0);
+  };
+
+  const calculateSubtotalDifference = () => {
+    if (!confirmedSubtotal) return 0;
+    return confirmedSubtotal - getCalculatedSubtotal();
+  };
+
   const handleTipPercentageChange = (e) => {
     const percentage = parseFloat(e.target.value) || 0;
     setTipPercentage(percentage);
@@ -429,52 +440,43 @@ function SessionPage() {
         {sessionData && !totalConfirmed && (
           <div style={{
             padding: '20px',
-            backgroundColor: '#fff3cd',
+            backgroundColor: '#e6f3ff',
             borderRadius: '12px',
             marginBottom: '20px',
-            border: '2px solid #ffc107'
+            border: '2px solid #3182ce'
           }}>
-            <h3 style={{ marginTop: 0, color: '#856404' }}>
-              ⚠️ Confirma el total de la boleta
+            <h3 style={{ marginTop: 0, color: '#2c5282' }}>
+              📋 Confirma el subtotal de la boleta
             </h3>
-            <p style={{ color: '#856404', marginBottom: '16px' }}>
-              El OCR detectó este total. ¿Es correcto?
+            <p style={{ color: '#4a5568', marginBottom: '16px' }}>
+              Ingresa el subtotal SIN propina que aparece en tu boleta:
             </p>
 
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', color: '#666' }}>
-                  Total CON propina:
-                </label>
-                <input
-                  type="number"
-                  value={sessionData.total}
-                  onChange={(e) => setSessionData({
-                    ...sessionData,
-                    total: parseFloat(e.target.value) || 0
-                  })}
-                  style={{
-                    padding: '12px',
-                    fontSize: '20px',
-                    fontWeight: 'bold',
-                    border: '2px solid #cbd5e0',
-                    borderRadius: '6px',
-                    width: '150px'
-                  }}
-                />
-              </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '14px', color: '#4a5568', marginBottom: '4px' }}>
+                Subtotal SIN propina:
+              </label>
+              <input
+                type="number"
+                value={confirmedSubtotal || sessionData.subtotal || ''}
+                onChange={(e) => setConfirmedSubtotal(parseFloat(e.target.value) || 0)}
+                style={{
+                  padding: '12px',
+                  fontSize: '24px',
+                  fontWeight: 'bold',
+                  border: '2px solid #3182ce',
+                  borderRadius: '6px',
+                  width: '200px'
+                }}
+                placeholder="Ej: 179684"
+              />
             </div>
 
             <button
-              onClick={() => {
-                // Recalcular propina basada en el total editado
-                const newTip = sessionData.total - sessionData.subtotal;
-                setCustomTipAmount(Math.round(newTip).toString());
-                setTotalConfirmed(true);
-              }}
+              onClick={() => setTotalConfirmed(true)}
               style={{
                 padding: '12px 24px',
-                backgroundColor: '#38a169',
+                backgroundColor: '#3182ce',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
@@ -482,7 +484,7 @@ function SessionPage() {
                 cursor: 'pointer'
               }}
             >
-              ✓ Confirmar total
+              ✓ Confirmar subtotal
             </button>
           </div>
         )}
@@ -520,17 +522,43 @@ function SessionPage() {
             </div>
             <div className="summary-item">
               <span className="label">Total</span>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <span className="amount total">{formatCurrency(getCurrentTotal())}</span>
-                {sessionData?.validation && !sessionData.validation.is_valid && (
-                  <div style={{ fontSize: '12px', color: '#e53e3e', marginTop: '4px' }}>
-                    Diferencia: ${sessionData.validation.total_difference?.toLocaleString('es-CL')} ({sessionData.validation.difference_percent}%)
-                  </div>
-                )}
-              </div>
+              <span className="amount total">{formatCurrency(getCurrentTotal())}</span>
             </div>
           </div>
         </div>
+
+        {totalConfirmed && confirmedSubtotal && (
+          <div style={{
+            padding: '16px',
+            backgroundColor: calculateSubtotalDifference() === 0 ? '#d4edda' : '#fff3cd',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            border: `1px solid ${calculateSubtotalDifference() === 0 ? '#28a745' : '#ffc107'}`
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Subtotal confirmado:</span>
+              <strong>${confirmedSubtotal.toLocaleString('es-CL')}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Subtotal calculado (suma items):</span>
+              <strong>${getCalculatedSubtotal().toLocaleString('es-CL')}</strong>
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              color: calculateSubtotalDifference() === 0 ? '#155724' : '#856404',
+              fontWeight: 'bold'
+            }}>
+              <span>Diferencia:</span>
+              <span>
+                {calculateSubtotalDifference() === 0
+                  ? '✅ ¡Coincide!'
+                  : `$${Math.abs(calculateSubtotalDifference()).toLocaleString('es-CL')}`
+                }
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="people-section">
           <div className="section-header">
@@ -599,9 +627,32 @@ function SessionPage() {
                             style={{ flex: 1, padding: '4px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
                           />
                         ) : (
-                          <strong>
-                            {item.quantity > 1 && `${item.quantity}x `}{item.name}
-                          </strong>
+                          <>
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => {
+                                const newQuantity = parseInt(e.target.value) || 1;
+                                const unitPrice = item.price / item.quantity;
+                                const newItems = sessionData.items.map(i =>
+                                  i === item
+                                    ? { ...i, quantity: newQuantity, price: unitPrice * newQuantity }
+                                    : i
+                                );
+                                setSessionData({ ...sessionData, items: newItems });
+                              }}
+                              style={{
+                                width: '40px',
+                                padding: '4px',
+                                textAlign: 'center',
+                                border: '1px solid #cbd5e0',
+                                borderRadius: '4px'
+                              }}
+                              min="1"
+                            />
+                            <span>×</span>
+                            <strong>{item.name}</strong>
+                          </>
                         )}
                       </div>
 
