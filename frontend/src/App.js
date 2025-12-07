@@ -355,151 +355,6 @@ function SessionPage() {
     return `$${Math.round(amount).toLocaleString('es-CL')}`;
   };
 
-  // Componente de confirmación de total
-  const ConfirmTotalModal = ({ sessionData, onConfirm, onEdit }) => {
-    const [editedTotal, setEditedTotal] = useState(sessionData.total);
-    const [isEditing, setIsEditing] = useState(false);
-
-    const handleConfirm = () => {
-      if (isEditing && editedTotal !== sessionData.total) {
-        // Actualizar total
-        onEdit(editedTotal);
-      } else {
-        onConfirm();
-      }
-    };
-
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          maxWidth: '400px',
-          width: '90%'
-        }}>
-          <h3 style={{ marginTop: 0 }}>Confirma el total de la boleta</h3>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-              Total detectado:
-            </label>
-            {isEditing ? (
-              <input
-                type="number"
-                value={editedTotal}
-                onChange={(e) => setEditedTotal(parseFloat(e.target.value))}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '18px',
-                  border: '2px solid #3182ce',
-                  borderRadius: '6px'
-                }}
-                autoFocus
-              />
-            ) : (
-              <div style={{
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: '#2d3748',
-                padding: '12px',
-                backgroundColor: '#f7fafc',
-                borderRadius: '6px'
-              }}>
-                ${sessionData.total.toLocaleString('es-CL')}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {!isEditing ? (
-              <>
-                <button
-                  onClick={handleConfirm}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: '#38a169',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ✓ Correcto
-                </button>
-                <button
-                  onClick={() => setIsEditing(true)}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: '#ed8936',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ✏️ Editar
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleConfirm}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: '#3182ce',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Guardar
-                </button>
-                <button
-                  onClick={() => {
-                    setIsEditing(false);
-                    setEditedTotal(sessionData.total);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: '#718096',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancelar
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   // Componente de indicador de calidad
   const QualityIndicator = ({ validation }) => {
     if (!validation) return null;
@@ -559,33 +414,78 @@ function SessionPage() {
 
   return (
     <div className="app">
-      {sessionData && !totalConfirmed && (
-        <ConfirmTotalModal
-          sessionData={sessionData}
-          onConfirm={() => setTotalConfirmed(true)}
-          onEdit={(newTotal) => {
-            setSessionData({
-              ...sessionData,
-              total: newTotal,
-              tip: newTotal - sessionData.subtotal
-            });
-            setTotalConfirmed(true);
-          }}
-        />
-      )}
-
-      {totalConfirmed && (
-        <div className="container">
-          <div className="header">
-            <h1>Dividir Cuenta</h1>
-            {timeLeft && (
-              <p className="timer">Sesión expira en: {timeLeft}</p>
-            )}
-          </div>
-
-          {sessionData?.validation && (
-            <QualityIndicator validation={sessionData.validation} />
+      <div className="container">
+        <div className="header">
+          <h1>Dividir Cuenta</h1>
+          {timeLeft && (
+            <p className="timer">Sesión expira en: {timeLeft}</p>
           )}
+        </div>
+
+        {sessionData?.validation && (
+          <QualityIndicator validation={sessionData.validation} />
+        )}
+
+        {sessionData && !totalConfirmed && (
+          <div style={{
+            padding: '20px',
+            backgroundColor: '#fff3cd',
+            borderRadius: '12px',
+            marginBottom: '20px',
+            border: '2px solid #ffc107'
+          }}>
+            <h3 style={{ marginTop: 0, color: '#856404' }}>
+              ⚠️ Confirma el total de la boleta
+            </h3>
+            <p style={{ color: '#856404', marginBottom: '16px' }}>
+              El OCR detectó este total. ¿Es correcto?
+            </p>
+
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', color: '#666' }}>
+                  Total CON propina:
+                </label>
+                <input
+                  type="number"
+                  value={sessionData.total}
+                  onChange={(e) => setSessionData({
+                    ...sessionData,
+                    total: parseFloat(e.target.value) || 0
+                  })}
+                  style={{
+                    padding: '12px',
+                    fontSize: '20px',
+                    fontWeight: 'bold',
+                    border: '2px solid #cbd5e0',
+                    borderRadius: '6px',
+                    width: '150px'
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                // Recalcular propina basada en el total editado
+                const newTip = sessionData.total - sessionData.subtotal;
+                setCustomTipAmount(Math.round(newTip).toString());
+                setTotalConfirmed(true);
+              }}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#38a169',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '16px',
+                cursor: 'pointer'
+              }}
+            >
+              ✓ Confirmar total
+            </button>
+          </div>
+        )}
 
         <div className="summary-card">
           <div className="summary-row">
@@ -699,23 +599,9 @@ function SessionPage() {
                             style={{ flex: 1, padding: '4px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
                           />
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <strong>
-                              {item.name}
-                            </strong>
-                            {item.quantity > 1 && (
-                              <span style={{
-                                fontSize: '11px',
-                                color: '#666',
-                                backgroundColor: '#e2e8f0',
-                                padding: '1px 4px',
-                                borderRadius: '3px',
-                                marginLeft: '4px'
-                              }}>
-                                ({item.quantity})
-                              </span>
-                            )}
-                          </div>
+                          <strong>
+                            {item.quantity > 1 && `${item.quantity}x `}{item.name}
+                          </strong>
                         )}
                       </div>
 
@@ -816,8 +702,7 @@ function SessionPage() {
             </div>
           </div>
         )}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
