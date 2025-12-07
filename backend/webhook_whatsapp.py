@@ -79,6 +79,12 @@ async def handle_webhook(request: Request):
             return {"status": "no_changes"}
 
         value = changes[0].get("value", {})
+
+        # Ignorar webhooks de status (delivered, sent, read)
+        if "statuses" in value and "messages" not in value:
+            print("📋 Webhook de status ignorado (delivered/sent/read)")
+            return {"status": "status_ignored"}
+
         messages = value.get("messages", [])
 
         if messages:

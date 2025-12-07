@@ -60,13 +60,17 @@ class GeminiOCRService:
             1. TOTAL (el monto total a pagar)
             2. SUBTOTAL (si está visible)
             3. PROPINA o TIP o SERVICIO (si está visible)
-            4. ITEMS: Lista de todos los productos/platos con sus precios
+            4. ITEMS: Lista de todos los productos/platos con sus cantidades y precios
 
             IMPORTANTE:
             - Los precios en Chile usan PUNTO como separador de miles (ejemplo: $12.500)
             - Mantén los números exactamente como aparecen
+            - Las boletas chilenas muestran: CANTIDAD  NOMBRE_PRODUCTO  PRECIO
+            - PRESERVA las cantidades que aparecen antes de cada producto
             - Lista cada item en una línea nueva
-            - Formato: nombre_item - $precio
+            - Formato: cantidad nombre_item - $precio
+            - Ejemplo: "3 Coca Cola - $6.000" (3 unidades)
+            - Si no hay cantidad visible, no agregues número al inicio
 
             Responde SOLO con el texto extraído, sin explicaciones adicionales.
             """
