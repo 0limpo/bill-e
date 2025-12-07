@@ -1,0 +1,349 @@
+"""
+Sistema mejorado de OCR con procesamiento paralelo Vision + Gemini,
+validación de totales y deduplicación inteligente de items.
+"""
+
+import logging
+import asyncio
+from typing import Dict, Any, List, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor
+from difflib import SequenceMatcher
+from ocr_service import ocr_service as vision_service
+from gemini_service import gemini_service
+
+logger = logging.getLogger(__name__)
+
+def similar(a: str, b: str) -> float:
+    """
+    Calcula similitud entre dos strings usando SequenceMatcher.
+    Retorna un valor entre 0 (diferentes) y 1 (idénticos).
+    """
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+def normalize_item_name(name: str) -> str:
+    """
+    Normaliza nombre de item para comparación.
+    Remueve puntos, comas, guiones y espacios extra.
+    """
+    import re
+    # Convertir a minúsculas
+    normalized = name.lower()
+    # Remover puntos, comas, guiones al final
+    normalized = re.sub(r'[.,\-)\s]+$', '', normalized)
+    # Remover múltiples espacios
+    normalized = re.sub(r'\s+', ' ', normalized)
+    # Remover espacios al inicio/fin
+    normalized = normalized.strip()
+    return normalized
+
+def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float = 0.85) -> List[Dict[str, Any]]:
+    """
+    Detecta y consolida items duplicados con normalización agresiva.
+
+    Args:
+        items: Lista de items extraídos
+        similarity_threshold: Umbral de similitud (0.85 = 85% similar)
+
+    Returns:
+        Lista de items deduplicados con metadata de confianza
+    """
+    if not items:
+        return []
+
+    # Normalizar nombres primero
+    for item in items:
+        item['normalized_name'] = normalize_item_name(item['name'])
+
+    deduplicated = []
+    processed_indices = set()
+
+    for i, item in enumerate(items):
+        if i in processed_indices:
+            continue
+
+        # Iniciar grupo con este item
+        group = [item]
+        processed_indices.add(i)
+
+        # Buscar items similares
+        for j, other_item in enumerate(items[i+1:], start=i+1):
+            if j in processed_indices:
+                continue
+
+            # CRITERIO 1: Nombres normalizados idénticos
+            exact_match = item['normalized_name'] == other_item['normalized_name']
+
+            # CRITERIO 2: Similitud alta de nombres normalizados
+            name_similarity = similar(item['normalized_name'], other_item['normalized_name'])
+
+            # CRITERIO 3: Precios similares (tolerancia 5%)
+            price_diff_percent = abs(item['price'] - other_item['price']) / max(item['price'], other_item['price'])
+            similar_price = price_diff_percent < 0.05
+
+            # Si nombres exactos O (muy similares Y precio similar)
+            if exact_match or (name_similarity >= similarity_threshold and similar_price):
+                group.append(other_item)
+                processed_indices.add(j)
+                logger.info(f"🔗 Agrupando: '{item['name']}' + '{other_item['name']}' (sim: {name_similarity:.2f})")
+
+        # Consolidar el grupo
+        if len(group) == 1:
+            result_item = {
+                **item,
+                'quantity': item.get('quantity', 1),
+                'duplicates_found': 0,
+                'confidence': 'high'
+            }
+            deduplicated.append(result_item)
+        else:
+            # Tomar el nombre más limpio (el más corto sin caracteres raros)
+            names_by_length = sorted([g['name'] for g in group], key=lambda x: (len(x), x.count('.')))
+            cleanest_name = names_by_length[0]
+
+            # Sumar cantidades
+            total_quantity = sum(g.get('quantity', 1) for g in group)
+
+            # Precio: usar el más común o promedio
+            prices = [g['price'] for g in group]
+            most_common_price = max(set(prices), key=prices.count)
+
+            # Total del grupo
+            group_total = sum(g['price'] * g.get('quantity', 1) for g in group)
+
+            consolidated = {
+                'name': cleanest_name,
+                'price': most_common_price,
+                'quantity': total_quantity,
+                'group_total': group_total,
+                'confidence': 'medium',
+                'duplicates_found': len(group) - 1,
+                'original_names': [g['name'] for g in group],
+                'normalized_name': item['normalized_name']
+            }
+
+            deduplicated.append(consolidated)
+            logger.info(f"✅ Consolidados {len(group)} items → '{cleanest_name}' x{total_quantity} (${group_total})")
+
+    return deduplicated
+
+def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared_subtotal: Optional[float] = None, declared_tip: Optional[float] = None) -> Dict[str, Any]:
+    """
+    Valida totales con más detalle y calcula indicadores de calidad.
+    """
+    # Calcular subtotal de items
+    calculated_subtotal = sum(
+        item.get('group_total', item['price'] * item.get('quantity', 1))
+        for item in items
+    )
+
+    # Calcular propina si está declarada
+    calculated_tip = declared_tip or 0
+    calculated_total = calculated_subtotal + calculated_tip
+
+    # Diferencias
+    subtotal_diff = abs(calculated_subtotal - (declared_subtotal or calculated_subtotal))
+    total_diff = abs(calculated_total - declared_total)
+
+    # Tolerancias
+    tolerance_percent = 0.02  # 2%
+    tolerance_amount = max(declared_total * tolerance_percent, 500)
+
+    # Calcular score de calidad (0-100)
+    quality_score = 100
+
+    # Penalizar por diferencia en totales
+    if total_diff > tolerance_amount:
+        penalty = min(50, (total_diff / declared_total) * 100)
+        quality_score -= penalty
+
+    # Penalizar por items con baja confianza
+    low_confidence_items = [i for i in items if i.get('confidence') == 'low']
+    quality_score -= len(low_confidence_items) * 5
+
+    # Bonificar por items consolidados exitosamente
+    consolidated_items = [i for i in items if i.get('duplicates_found', 0) > 0]
+    quality_score += len(consolidated_items) * 2
+
+    quality_score = max(0, min(100, quality_score))
+
+    validation = {
+        'calculated_subtotal': round(calculated_subtotal),
+        'declared_subtotal': declared_subtotal or calculated_subtotal,
+        'calculated_total': round(calculated_total),
+        'declared_total': declared_total,
+        'subtotal_difference': round(subtotal_diff),
+        'total_difference': round(total_diff),
+        'difference_percent': round((total_diff / declared_total) * 100, 2),
+        'is_valid': total_diff <= tolerance_amount,
+        'quality_score': round(quality_score),
+        'quality_level': 'high' if quality_score >= 80 else 'medium' if quality_score >= 50 else 'low',
+        'items_count': len(items),
+        'consolidated_items': len(consolidated_items),
+        'low_confidence_items': len(low_confidence_items),
+        'suspicious_items': [],
+        'corrections': [],
+        'warnings': []
+    }
+
+    # Agregar warnings
+    if not validation['is_valid']:
+        validation['warnings'].append({
+            'type': 'total_mismatch',
+            'message': f"Los totales no calzan. Diferencia: ${total_diff:,.0f} ({validation['difference_percent']}%)",
+            'severity': 'high' if total_diff > declared_total * 0.1 else 'medium'
+        })
+
+    if validation['low_confidence_items'] > 0:
+        validation['warnings'].append({
+            'type': 'low_confidence',
+            'message': f"{validation['low_confidence_items']} items con baja confianza",
+            'severity': 'medium'
+        })
+
+    # Intentar correcciones de OCR (0 ↔ 8)
+    if not validation['is_valid']:
+        logger.info(f"🔧 Intentando correcciones automáticas...")
+
+        for i, item in enumerate(items):
+            original_price = item['price']
+            price_str = str(int(original_price))
+
+            # Correcciones posibles
+            corrections = []
+
+            if '0' in price_str:
+                corrections.append(int(price_str.replace('0', '8', 1)))
+            if '8' in price_str:
+                corrections.append(int(price_str.replace('8', '0', 1)))
+
+            for corrected_price in corrections:
+                # Test con precio corregido
+                test_subtotal = calculated_subtotal - (original_price * item.get('quantity', 1)) + (corrected_price * item.get('quantity', 1))
+                test_total = test_subtotal + calculated_tip
+                test_diff = abs(test_total - declared_total)
+
+                if test_diff < total_diff:  # Mejora
+                    validation['corrections'].append({
+                        'item_index': i,
+                        'item_name': item['name'],
+                        'original_price': original_price,
+                        'suggested_price': corrected_price,
+                        'improvement': round(total_diff - test_diff),
+                        'confidence': 'medium'
+                    })
+                    logger.info(f"🔧 Corrección: '{item['name']}' ${original_price} → ${corrected_price} (mejora: ${total_diff - test_diff})")
+
+    logger.info(f"📊 Score de calidad: {quality_score}/100 ({validation['quality_level']})")
+
+    return validation
+
+def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
+    """
+    Procesa imagen con Vision y Gemini EN PARALELO.
+    Compara resultados y elige el mejor.
+
+    Args:
+        image_bytes: Bytes de la imagen
+
+    Returns:
+        Mejor resultado con validación
+    """
+    logger.info("🚀 Iniciando procesamiento paralelo Vision + Gemini...")
+
+    results = {'vision': None, 'gemini': None}
+
+    def process_with_vision():
+        try:
+            text = vision_service.process_image(image_bytes)
+            parsed = vision_service.parse_receipt_text(text)
+            results['vision'] = parsed
+            logger.info("✅ Vision completado")
+        except Exception as e:
+            logger.error(f"❌ Vision falló: {str(e)}")
+
+    def process_with_gemini():
+        try:
+            if gemini_service.is_available():
+                text = gemini_service.process_image(image_bytes)
+                parsed = vision_service.parse_receipt_text(text)
+                results['gemini'] = parsed
+                logger.info("✅ Gemini completado")
+        except Exception as e:
+            logger.error(f"❌ Gemini falló: {str(e)}")
+
+    # Ejecutar ambos en paralelo
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_vision = executor.submit(process_with_vision)
+        future_gemini = executor.submit(process_with_gemini)
+
+        # Esperar ambos
+        future_vision.result()
+        future_gemini.result()
+
+    # Evaluar resultados
+    vision_result = results.get('vision')
+    gemini_result = results.get('gemini')
+
+    # Si solo uno funcionó, usar ese
+    if vision_result and not gemini_result:
+        logger.info("📊 Usando resultado de Vision (Gemini no disponible)")
+        chosen_result = vision_result
+        chosen_source = 'vision'
+    elif gemini_result and not vision_result:
+        logger.info("📊 Usando resultado de Gemini (Vision falló)")
+        chosen_result = gemini_result
+        chosen_source = 'gemini'
+    elif not vision_result and not gemini_result:
+        raise Exception("Ambos OCR fallaron")
+    else:
+        # Ambos funcionaron - elegir el mejor
+        vision_items_count = len(vision_result.get('items', []))
+        gemini_items_count = len(gemini_result.get('items', []))
+
+        # Criterio: el que encontró más items
+        if vision_items_count >= gemini_items_count:
+            logger.info(f"📊 Eligiendo Vision ({vision_items_count} items vs Gemini {gemini_items_count} items)")
+            chosen_result = vision_result
+            chosen_source = 'vision'
+        else:
+            logger.info(f"📊 Eligiendo Gemini ({gemini_items_count} items vs Vision {vision_items_count} items)")
+            chosen_result = gemini_result
+            chosen_source = 'gemini'
+
+    # PASO 1: Deduplicar items similares
+    original_items = chosen_result.get('items', [])
+    deduplicated_items = deduplicate_items(original_items)
+
+    logger.info(f"🔗 Deduplicación: {len(original_items)} → {len(deduplicated_items)} items")
+
+    # PASO 2: Validar totales
+    validation = validate_totals(
+        items=deduplicated_items,
+        declared_total=chosen_result.get('total', 0),
+        declared_subtotal=chosen_result.get('subtotal')
+    )
+
+    # Resultado final mejorado
+    enhanced_result = {
+        **chosen_result,
+        'items': deduplicated_items,
+        'validation': validation,
+        'ocr_source': chosen_source,
+        'both_results_available': vision_result is not None and gemini_result is not None
+    }
+
+    return enhanced_result
+
+
+# Instancia global (para compatibilidad)
+class EnhancedOCRService:
+    def process_image(self, image_bytes: bytes) -> str:
+        """Wrapper para compatibilidad - retorna texto raw."""
+        result = process_image_parallel(image_bytes)
+        return result.get('raw_text', '')
+
+    def process_image_enhanced(self, image_bytes: bytes) -> Dict[str, Any]:
+        """Versión mejorada que retorna resultado completo."""
+        return process_image_parallel(image_bytes)
+
+enhanced_ocr_service = EnhancedOCRService()

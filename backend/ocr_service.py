@@ -12,6 +12,7 @@ from google.cloud import vision
 from google.oauth2 import service_account
 from PIL import Image
 import base64
+from gemini_service import gemini_service
 
 # Import analytics
 try:
@@ -51,106 +52,75 @@ class OCRService:
     
     def process_image(self, image_data: bytes) -> str:
         """
-        Procesar imagen y extraer texto usando Google Vision
+        Procesa una imagen usando Google Vision API con fallback a Gemini.
 
         Args:
-            image_data: Datos de la imagen en bytes
+            image_data: Bytes de la imagen
 
         Returns:
-            str: Texto extraído de la imagen
+            Texto extraído de la imagen
         """
-        start_time = time.time()
-        success = False
-        error_msg = None
-
-        if not self.client:
-            print("❌ Cliente de Google Vision no disponible")
-            error_msg = "Google Vision client not available"
-
-            # Track OCR failure
-            if analytics_available:
-                analytics.track_ocr_usage(
-                    session_id=None,
-                    success=False,
-                    processing_time_ms=0,
-                    item_count=0,
-                    confidence='failed',
-                    image_size_bytes=len(image_data),
-                    error=error_msg
-                )
-            return ""
-
         try:
-            # Crear objeto Image para Google Vision
+            # INTENTO 1: Google Vision (método actual)
             image = vision.Image(content=image_data)
-
-            # Detectar texto en la imagen
             response = self.client.text_detection(image=image)
-
-            # Verificar errores en la respuesta
-            if response.error.message:
-                print(f"❌ Error en Google Vision API: {response.error.message}")
-                error_msg = response.error.message
-                return ""
-
-            # Extraer el texto
             texts = response.text_annotations
+
             if texts:
-                success = True
-                print(f"✅ Texto extraído exitosamente: {len(texts[0].description)} caracteres")
+                extracted_text = texts[0].description
+                print(f"✅ Google Vision extrajo {len(extracted_text)} caracteres")
+                return extracted_text
+            else:
+                print("⚠️ Google Vision no encontró texto, intentando con Gemini...")
 
-                # Track OCR cost
-                if analytics_available:
-                    analytics.track_cost(
-                        service='google_vision',
-                        operation='text_detection',
-                        cost_usd=0.0015,  # $1.50 per 1000 images
-                        units=1
-                    )
+                # INTENTO 2: Gemini como fallback
+                if gemini_service.is_available():
+                    gemini_text = gemini_service.process_image(image_data)
+                    if gemini_text:
+                        print(f"✅ Gemini (fallback) extrajo {len(gemini_text)} caracteres")
+                        return gemini_text
 
-                return texts[0].description
-
-            print("⚠️ No se detectó texto en la imagen")
-            error_msg = "No text detected"
-            return ""
+                # Si ambos fallan
+                print("❌ Tanto Google Vision como Gemini fallaron")
+                raise Exception("No se pudo extraer texto de la imagen")
 
         except Exception as e:
-            print(f"❌ Error en OCR: {e}")
-            error_msg = str(e)
-            return ""
+            print(f"❌ Error en OCR: {str(e)}")
 
-        finally:
-            # Track OCR usage
-            processing_time_ms = (time.time() - start_time) * 1000
+            # ÚLTIMO INTENTO: Gemini si Vision falló completamente
+            if gemini_service.is_available():
+                print("🔄 Intentando Gemini como último recurso...")
+                gemini_text = gemini_service.process_image(image_data)
+                if gemini_text:
+                    print(f"✅ Gemini (último recurso) extrajo {len(gemini_text)} caracteres")
+                    return gemini_text
 
-            if analytics_available:
-                analytics.track_ocr_usage(
-                    session_id=None,  # Will be set by caller if available
-                    success=success,
-                    processing_time_ms=processing_time_ms,
-                    item_count=0,  # Will be updated after parsing
-                    confidence='unknown',
-                    image_size_bytes=len(image_data),
-                    error=error_msg
-                )
+            raise Exception(f"OCR falló completamente: {str(e)}")
     
     def process_base64_image(self, base64_image: str) -> str:
         """
-        Procesar imagen en formato base64
-        
+        Procesa una imagen en base64 con fallback a Gemini.
+
         Args:
-            base64_image: Imagen codificada en base64
-            
+            base64_image: Imagen en formato base64
+
         Returns:
-            str: Texto extraído
+            Texto extraído
         """
         try:
-            # Decodificar base64
-            image_data = base64.b64decode(base64_image)
-            return self.process_image(image_data)
+            # Limpiar prefijo data:image si existe
+            if ',' in base64_image:
+                base64_image = base64_image.split(',')[1]
+
+            # Decodificar a bytes
+            image_bytes = base64.b64decode(base64_image)
+
+            # Usar función process_image que ya tiene el fallback
+            return self.process_image(image_bytes)
+
         except Exception as e:
-            print(f"Error procesando base64: {e}")
-            return ""
+            print(f"❌ Error procesando base64: {str(e)}")
+            raise Exception(f"No se pudo procesar la imagen: {str(e)}")
     
     def parse_chilean_number(self, num_str: str) -> float:
         """

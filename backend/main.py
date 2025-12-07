@@ -21,9 +21,11 @@ except ImportError as e:
 # Importar OCR service
 try:
     from ocr_service import ocr_service
+    from ocr_enhanced import process_image_parallel
 except ImportError as e:
     print(f"Warning: OCR service not available: {e}")
     ocr_service = None
+    process_image_parallel = None
 
 # Importar Analytics
 try:
@@ -164,140 +166,137 @@ async def create_session():
 
 @app.post("/api/session/{session_id}/ocr")
 async def process_receipt_ocr(session_id: str, request: OCRRequest):
-    """Procesar imagen de boleta con OCR"""
-    if not ocr_service:
-        raise HTTPException(status_code=500, detail="OCR service not available")
-    
+    """Procesar imagen de boleta con OCR mejorado (Vision + Gemini paralelo)"""
     try:
         # Verificar que la sesión existe
         if redis_client:
             session_data = redis_client.get(f"session:{session_id}")
             if not session_data:
                 raise HTTPException(status_code=404, detail="Sesión no encontrada")
-        
-        # Procesar imagen con OCR
-        ocr_result = ocr_service.process_base64_image(request.image)
-        
-        if not ocr_result:
-            raise HTTPException(status_code=400, detail="No se pudo extraer texto de la imagen")
-        
-        # Parsear información de la boleta
-        parsed_data = ocr_service.parse_receipt_text(ocr_result)
-        
-        if not parsed_data['success']:
+
+        # Decodificar imagen base64
+        import base64
+        if ',' in request.image:
+            image_b64 = request.image.split(',')[1]
+        else:
+            image_b64 = request.image
+
+        image_bytes = base64.b64decode(image_b64)
+
+        # NUEVO: Procesamiento paralelo mejorado
+        try:
+            enhanced_result = process_image_parallel(image_bytes)
+
+            # Actualizar sesión con resultado mejorado
+            if redis_client and session_data:
+                session = json.loads(session_data.decode('utf-8'))
+                session['total'] = enhanced_result.get('total', 0)
+                session['subtotal'] = enhanced_result.get('subtotal', 0)
+                session['tip'] = enhanced_result.get('tip', 0)
+
+                # Convertir items con información mejorada
+                session['items'] = [
+                    {
+                        'id': f"item-{i}",
+                        'name': item['name'],
+                        'price': item['price'],
+                        'quantity': item.get('quantity', 1),
+                        'assigned_to': [],
+                        'confidence': item.get('confidence', 'medium')
+                    }
+                    for i, item in enumerate(enhanced_result.get('items', []))
+                ]
+
+                # Guardar sesión actualizada
+                redis_client.setex(
+                    f"session:{session_id}",
+                    3600,  # Renovar por 1 hora más
+                    json.dumps(session)
+                )
+
             return {
-                "success": False,
-                "error": parsed_data.get('error', 'Error procesando boleta'),
-                "raw_text": parsed_data.get('raw_text', '')
+                "success": True,
+                "data": enhanced_result,
+                "session": session if redis_client else None,
+                "validation": enhanced_result.get('validation'),
+                "ocr_source": enhanced_result.get('ocr_source')
             }
-        
-        # Actualizar sesión con datos de la boleta
-        if redis_client and session_data:
-            session = json.loads(session_data.decode('utf-8'))
-            session['total'] = parsed_data['total']
-            session['subtotal'] = parsed_data['subtotal']
-            session['tip'] = parsed_data['tip']
-            
-            # Convertir items a formato de la sesión
-            session['items'] = [
-                {
-                    'id': str(uuid.uuid4()),
-                    'name': item['name'],
-                    'price': item['price'],
-                    'assigned_to': []
-                }
-                for item in parsed_data['items']
-            ]
-            
-            # Guardar sesión actualizada
-            redis_client.setex(
-                f"session:{session_id}",
-                3600,  # Renovar por 1 hora más
-                json.dumps(session)
-            )
-        
-        return {
-            "success": True,
-            "data": parsed_data,
-            "session": session if redis_client else None
-        }
-        
+
+        except Exception as ocr_error:
+            print(f"OCR Error: {str(ocr_error)}")
+            raise HTTPException(status_code=400, detail=f"Error en OCR: {str(ocr_error)}")
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error procesando OCR: {str(e)}")
+        print(f"OCR processing error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/session/{session_id}/upload")
 async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
-    """Subir imagen de boleta y procesarla con OCR"""
-    if not ocr_service:
-        raise HTTPException(status_code=500, detail="OCR service not available")
-    
+    """Upload y procesa imagen con OCR mejorado (Vision + Gemini paralelo)."""
     try:
         # Verificar que la sesión existe
         if redis_client:
             session_data = redis_client.get(f"session:{session_id}")
             if not session_data:
                 raise HTTPException(status_code=404, detail="Sesión no encontrada")
-        
+
         # Verificar tipo de archivo
         if not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="El archivo debe ser una imagen")
-        
-        # Leer contenido del archivo
-        image_content = await file.read()
-        
-        # Procesar con OCR
-        ocr_result = ocr_service.process_image(image_content)
-        
-        if not ocr_result:
-            raise HTTPException(status_code=400, detail="No se pudo extraer texto de la imagen")
-        
-        # Parsear información de la boleta
-        parsed_data = ocr_service.parse_receipt_text(ocr_result)
-        
-        if not parsed_data['success']:
+
+        # Leer imagen
+        image_bytes = await file.read()
+
+        # NUEVO: Procesamiento paralelo mejorado
+        try:
+            enhanced_result = process_image_parallel(image_bytes)
+
+            # Actualizar sesión con resultado mejorado
+            if redis_client and session_data:
+                session = json.loads(session_data.decode('utf-8'))
+                session['total'] = enhanced_result.get('total', 0)
+                session['subtotal'] = enhanced_result.get('subtotal', 0)
+                session['tip'] = enhanced_result.get('tip', 0)
+
+                # Convertir items con información mejorada
+                session['items'] = [
+                    {
+                        'id': f"item-{i}",
+                        'name': item['name'],
+                        'price': item['price'],
+                        'quantity': item.get('quantity', 1),
+                        'assigned_to': [],
+                        'confidence': item.get('confidence', 'medium')
+                    }
+                    for i, item in enumerate(enhanced_result.get('items', []))
+                ]
+
+                # Guardar sesión actualizada
+                redis_client.setex(
+                    f"session:{session_id}",
+                    3600,  # Renovar por 1 hora más
+                    json.dumps(session)
+                )
+
             return {
-                "success": False,
-                "error": parsed_data.get('error', 'Error procesando boleta'),
-                "raw_text": parsed_data.get('raw_text', '')
+                "success": True,
+                "data": enhanced_result,
+                "session": session if redis_client else None,
+                "validation": enhanced_result.get('validation'),
+                "ocr_source": enhanced_result.get('ocr_source')
             }
-        
-        # Actualizar sesión con datos de la boleta
-        if redis_client and session_data:
-            session = json.loads(session_data.decode('utf-8'))
-            session['total'] = parsed_data['total']
-            session['subtotal'] = parsed_data['subtotal']
-            session['tip'] = parsed_data['tip']
-            
-            # Convertir items a formato de la sesión
-            session['items'] = [
-                {
-                    'id': str(uuid.uuid4()),
-                    'name': item['name'],
-                    'price': item['price'],
-                    'assigned_to': []
-                }
-                for item in parsed_data['items']
-            ]
-            
-            # Guardar sesión actualizada
-            redis_client.setex(
-                f"session:{session_id}",
-                3600,  # Renovar por 1 hora más
-                json.dumps(session)
-            )
-        
-        return {
-            "success": True,
-            "data": parsed_data,
-            "session": session if redis_client else None
-        }
-        
+
+        except Exception as ocr_error:
+            print(f"OCR Error: {str(ocr_error)}")
+            raise HTTPException(status_code=400, detail=f"Error en OCR: {str(ocr_error)}")
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error procesando imagen: {str(e)}")
+        print(f"Upload error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/session/{session_id}/update")
 async def update_session(session_id: str, request: Request):

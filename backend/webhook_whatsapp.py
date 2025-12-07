@@ -10,9 +10,11 @@ import base64
 # Importar OCR service
 try:
     from ocr_service import ocr_service
+    from ocr_enhanced import process_image_parallel
 except ImportError:
     print("Warning: OCR service not available")
     ocr_service = None
+    process_image_parallel = None
 
 # Importar Analytics
 try:
@@ -127,134 +129,75 @@ async def handle_webhook(request: Request):
 
         return {"status": "error", "message": str(e)}
 
-# Nueva función para procesar imágenes con OCR
 async def process_image_message(phone_number: str, image_data: dict):
-    """Procesar imagen de boleta con OCR + Complete Journey Tracking"""
-
-    import time
-    start_time = time.time()
-
+    """Procesa mensaje con imagen (boleta) usando OCR mejorado."""
     try:
-        # ===== STEP 1: START USER JOURNEY TRACKING =====
-        if whatsapp_analytics_available:
-            journey_id = whatsapp_analytics.start_journey(phone_number)
-            print(f"📊 Journey started: {journey_id}")
-
         # Enviar mensaje de procesamiento
         await send_whatsapp_message(
             phone_number,
-            "🤖 ¡Perfecto! Estoy procesando tu boleta...\n⏳ Esto tomará unos segundos."
+            "⏳ Estoy procesando tu boleta con tecnología mejorada (Vision + Gemini)..."
         )
 
-        # Descargar la imagen
-        image_url = await get_whatsapp_media_url(image_data["id"])
-        image_bytes = await download_whatsapp_media(image_url)
+        # Obtener ID de la imagen
+        media_id = image_data.get('id')
+        if not media_id:
+            await send_whatsapp_message(phone_number, "❌ No pude obtener la imagen. Intenta de nuevo.")
+            return
 
+        # Descargar imagen
+        media_url = await get_whatsapp_media_url(media_id)
+        if not media_url:
+            await send_whatsapp_message(phone_number, "❌ No pude descargar la imagen.")
+            return
+
+        image_bytes = await download_whatsapp_media(media_url)
         if not image_bytes:
-            # Track OCR failure
-            if whatsapp_analytics_available:
-                whatsapp_analytics.track_ocr_attempt(
-                    phone_number,
-                    success=False,
-                    processing_time_ms=0,
-                    error="Image download failed"
-                )
-
-            await send_whatsapp_message(
-                phone_number,
-                "❌ No pude descargar la imagen. Intenta enviarla nuevamente."
-            )
+            await send_whatsapp_message(phone_number, "❌ Error al descargar la imagen.")
             return
 
-        # Procesar con OCR
-        if not ocr_service:
-            # Track OCR unavailable
-            if whatsapp_analytics_available:
-                whatsapp_analytics.track_ocr_attempt(
-                    phone_number,
-                    success=False,
-                    processing_time_ms=0,
-                    error="OCR service unavailable"
-                )
+        print(f"📥 Imagen descargada: {len(image_bytes)} bytes")
 
+        # NUEVO: Procesar con OCR mejorado (Vision + Gemini paralelo)
+        try:
+            enhanced_result = process_image_parallel(image_bytes)
+
+            # Extraer datos
+            total = enhanced_result.get('total', 0)
+            subtotal = enhanced_result.get('subtotal', 0)
+            tip = enhanced_result.get('tip', 0)
+            items = enhanced_result.get('items', [])
+            validation = enhanced_result.get('validation', {})
+            ocr_source = enhanced_result.get('ocr_source', 'unknown')
+
+            print(f"✅ OCR completado con {ocr_source}: {len(items)} items, score: {validation.get('quality_score', 0)}")
+
+            # Crear sesión con datos mejorados
+            session_id = create_session_with_bill_data(
+                phone_number=phone_number,
+                bill_data=enhanced_result
+            )
+
+            # Formatear mensaje de respuesta mejorado
+            message = format_success_message_enhanced(
+                enhanced_result=enhanced_result,
+                session_id=session_id
+            )
+
+            await send_whatsapp_message(phone_number, message)
+            print(f"✅ Boleta procesada exitosamente para {phone_number}")
+
+        except Exception as ocr_error:
+            print(f"❌ Error en OCR mejorado: {str(ocr_error)}")
             await send_whatsapp_message(
                 phone_number,
-                "❌ Servicio de OCR no disponible. Intenta más tarde."
-            )
-            return
-
-        # ===== STEP 2: OCR PROCESSING =====
-        print("🔍 Procesando imagen con OCR...")
-        ocr_start = time.time()
-        ocr_result = ocr_service.process_image(image_bytes)
-        ocr_time_ms = (time.time() - ocr_start) * 1000
-
-        if not ocr_result:
-            # Track OCR failure
-            if whatsapp_analytics_available:
-                whatsapp_analytics.track_ocr_attempt(
-                    phone_number,
-                    success=False,
-                    processing_time_ms=ocr_time_ms,
-                    error="No text detected"
-                )
-
-            await send_whatsapp_message(
-                phone_number,
-                "❌ No pude leer el texto de la imagen.\n💡 Asegúrate de que la boleta se vea clara y completa."
-            )
-            return
-
-        # Parsear datos de la boleta
-        parsed_data = ocr_service.parse_receipt_text(ocr_result)
-
-        if not parsed_data['success']:
-            # Track parsing failure
-            if whatsapp_analytics_available:
-                whatsapp_analytics.track_ocr_attempt(
-                    phone_number,
-                    success=False,
-                    processing_time_ms=ocr_time_ms,
-                    error=parsed_data.get('error', 'Parsing failed')
-                )
-
-            await send_whatsapp_message(
-                phone_number,
-                f"❌ No pude procesar la boleta.\n{parsed_data.get('error', 'Error desconocido')}\n\n💡 Intenta con una imagen más clara."
-            )
-            return
-
-        # ===== STEP 3: TRACK SUCCESSFUL OCR =====
-        items_found = len(parsed_data.get('items', []))
-        if whatsapp_analytics_available:
-            whatsapp_analytics.track_ocr_attempt(
-                phone_number,
-                success=True,
-                processing_time_ms=ocr_time_ms,
-                items_found=items_found
+                f"❌ Error al procesar la boleta: {str(ocr_error)}\n\nPor favor intenta con una foto más clara."
             )
 
-        # Crear sesión con datos de la boleta
-        session_id = await create_session_with_bill_data(phone_number, parsed_data)
-
-        # ===== STEP 4: TRACK LINK SENT =====
-        if whatsapp_analytics_available:
-            whatsapp_analytics.track_link_sent(phone_number, session_id)
-
-        # Preparar mensaje de éxito
-        success_message = format_success_message(parsed_data, session_id)
-
-        # Enviar resultado
-        await send_whatsapp_message(phone_number, success_message)
-
-        total_time = (time.time() - start_time) * 1000
-        print(f"✅ Complete journey step: Photo → Link sent in {total_time:.0f}ms")
-        
     except Exception as e:
-        print(f"❌ Error procesando imagen: {e}")
+        print(f"❌ Error procesando imagen: {str(e)}")
         await send_whatsapp_message(
             phone_number,
-            "❌ Hubo un error procesando tu boleta. Intenta nuevamente."
+            "❌ Ocurrió un error. Por favor intenta de nuevo."
         )
 
 async def get_whatsapp_media_url(media_id: str) -> str:
@@ -300,40 +243,67 @@ async def download_whatsapp_media(media_url: str) -> bytes:
         print(f"❌ Error en download_whatsapp_media: {e}")
         return None
 
-async def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
-    """Crear sesión con datos de boleta ya procesados"""
-    
+def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
+    """
+    Crea sesión con datos de boleta procesada (versión mejorada).
+    """
     session_id = str(uuid.uuid4())
-    
-    # Convertir items a formato de sesión
-    items = [
-        {
-            'id': str(uuid.uuid4()),
+
+    # Extraer datos
+    items = bill_data.get('items', [])
+    total = bill_data.get('total', 0)
+    subtotal = bill_data.get('subtotal', 0)
+    tip = bill_data.get('tip', 0)
+    validation = bill_data.get('validation', {})
+    ocr_source = bill_data.get('ocr_source', 'unknown')
+
+    # Convertir items al formato de sesión
+    session_items = []
+    for i, item in enumerate(items):
+        session_items.append({
+            'id': f"item-{i}",
             'name': item['name'],
             'price': item['price'],
-            'assigned_to': []
-        }
-        for item in bill_data['items']
-    ]
-    
+            'quantity': item.get('quantity', 1),
+            'assigned_to': [],
+            'confidence': item.get('confidence', 'medium'),
+            'duplicates_found': item.get('duplicates_found', 0),
+            'normalized_name': item.get('normalized_name', ''),
+            'group_total': item.get('group_total', item['price'] * item.get('quantity', 1))
+        })
+
+    # Crear sesión
     session_data = {
-        "id": session_id,
-        "total": bill_data['total'],
-        "subtotal": bill_data['subtotal'],
-        "tip": bill_data['tip'],
-        "people": [],
-        "items": items,
-        "created_at": datetime.utcnow().isoformat(),
-        "expires_at": (datetime.utcnow() + timedelta(hours=2)).isoformat(),
-        "phone_number": phone_number,
-        "ocr_confidence": bill_data.get('confidence', 'unknown'),
-        "raw_text": bill_data.get('raw_text', '')
+        'session_id': session_id,
+        'phone': phone_number,
+        'created_at': datetime.now().isoformat(),
+        'expires_at': (datetime.now() + timedelta(hours=2)).isoformat(),
+        'items': session_items,
+        'people': [],
+        'total': total,
+        'subtotal': subtotal,
+        'tip': tip,
+        'tip_percentage': 0.1,
+        'state': 'SHOWING_RESULT',
+        'result': None,
+        'ocr_source': ocr_source,
+        'validation': validation,
+        'raw_text': bill_data.get('raw_text', ''),
+        'confidence': bill_data.get('confidence', 'medium')
     }
-    
-    # Guardar en Redis por 2 horas
-    redis_client.setex(f"session:{session_id}", 7200, json.dumps(session_data))
-    
-    print(f"✅ Sesión con boleta creada: {session_id}")
+
+    # Guardar en Redis con TTL de 2 horas
+    try:
+        redis_client.setex(
+            f"session:{session_id}",
+            7200,  # 2 horas
+            json.dumps(session_data)
+        )
+        print(f"✅ Sesión creada: {session_id} (2 horas TTL)")
+    except Exception as e:
+        print(f"❌ Error guardando sesión: {str(e)}")
+        raise
+
     return session_id
 
 def format_success_message(bill_data: dict, session_id: str) -> str:
@@ -376,6 +346,81 @@ def format_success_message(bill_data: dict, session_id: str) -> str:
 
 💡 Comparte este link con tus amigos para que vean cuánto debe pagar cada uno."""
     
+    return message
+
+def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> str:
+    """
+    Formatea mensaje de WhatsApp con información de calidad.
+    """
+    total = enhanced_result.get('total', 0)
+    subtotal = enhanced_result.get('subtotal', 0)
+    tip = enhanced_result.get('tip', 0)
+    items = enhanced_result.get('items', [])
+    validation = enhanced_result.get('validation', {})
+    ocr_source = enhanced_result.get('ocr_source', 'vision')
+
+    # Indicador de calidad
+    quality_score = validation.get('quality_score', 0)
+    quality_level = validation.get('quality_level', 'low')
+
+    quality_emoji = "✅" if quality_level == "high" else "⚠️" if quality_level == "medium" else "❌"
+
+    # Header con calidad
+    message = f"🎉 ¡Boleta procesada exitosamente!\n\n"
+    message += f"{quality_emoji} **Calidad del escaneo: {quality_score}/100** ({quality_level})\n"
+    message += f"🤖 Procesado con: {ocr_source.upper()}\n\n"
+
+    # Resumen financiero
+    message += f"📊 *Resumen:*\n"
+    message += f"💰 Total: ${total:,.0f}\n"
+    message += f"💵 Subtotal: ${subtotal:,.0f}\n"
+    message += f"🎁 Propina: ${tip:,.0f}\n"
+    message += f"📝 Items: {len(items)}\n\n"
+
+    # Warnings si existen
+    warnings = validation.get('warnings', [])
+    if warnings:
+        message += "⚠️ *Avisos:*\n"
+        for warning in warnings[:2]:  # Máximo 2 warnings
+            message += f"• {warning.get('message', '')}\n"
+        message += "\n"
+
+    # Items consolidados
+    consolidated_count = validation.get('consolidated_items', 0)
+    if consolidated_count > 0:
+        message += f"🔗 Se consolidaron {consolidated_count} items duplicados\n\n"
+
+    # Primeros 3 items
+    if items:
+        message += f"📦 *Items encontrados* (primeros 3):\n"
+        for item in items[:3]:
+            quantity = item.get('quantity', 1)
+            name = item['name']
+            price = item['price']
+            duplicates = item.get('duplicates_found', 0)
+
+            item_line = f"• {name}"
+            if quantity > 1:
+                item_line += f" x{quantity}"
+            if duplicates > 0:
+                item_line += f" 🔗({duplicates + 1} agrupados)"
+            item_line += f" - ${price:,.0f}\n"
+
+            message += item_line
+
+        if len(items) > 3:
+            message += f"... y {len(items) - 3} items más\n"
+
+    message += "\n"
+
+    # Link
+    frontend_url = os.getenv('FRONTEND_URL', 'https://bill-e.vercel.app')
+    message += f"🔗 *Divide tu cuenta aquí:*\n"
+    message += f"{frontend_url}/s/{session_id}\n\n"
+
+    # Footer
+    message += f"⏰ Link expira en 2 horas"
+
     return message
 
 # Función mejorada para procesar mensajes de texto
