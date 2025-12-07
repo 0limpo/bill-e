@@ -116,32 +116,18 @@ function SessionPage() {
       if (data.items && data.items.length > 0) {
         setPeople([]);
 
-        // Consolidar items por nombre (para manejar duplicados)
-        const consolidatedItems = {};
-        data.items.forEach(item => {
-          if (consolidatedItems[item.name]) {
-            consolidatedItems[item.name].quantity += 1;
-            consolidatedItems[item.name].price += item.price;
-          } else {
-            consolidatedItems[item.name] = {
-              name: item.name,
-              quantity: 1,
-              price: item.price,
-              unitPrice: item.price
-            };
-          }
-        });
+        console.log('Items después de cargar:', data.items.map(i => ({
+          name: i.name,
+          quantity: i.quantity,
+          duplicates_found: i.duplicates_found,
+          price: i.price,
+          group_total: i.group_total
+        })));
 
-        // Actualizar sessionData con items consolidados
-        setSessionData(prev => ({
-          ...prev,
-          items: Object.values(consolidatedItems)
-        }));
-
-        // Inicializar assignments vacío
+        // Inicializar assignments vacío (usar items directamente del backend)
         const initialAssignments = {};
-        Object.keys(consolidatedItems).forEach(itemName => {
-          initialAssignments[itemName] = [];
+        data.items.forEach(item => {
+          initialAssignments[item.name] = [];
         });
         setAssignments(initialAssignments);
       }
@@ -551,7 +537,7 @@ function SessionPage() {
                             style={{ flex: 1, padding: '4px', border: '1px solid #cbd5e0', borderRadius: '4px' }}
                           />
                         ) : (
-                          <>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <strong>
                               {item.quantity > 1 && `${item.quantity}x `}
                               {item.name}
@@ -567,7 +553,7 @@ function SessionPage() {
                                 🔗 {item.duplicates_found + 1} agrupados
                               </span>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
 
