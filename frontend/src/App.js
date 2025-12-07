@@ -347,6 +347,74 @@ function SessionPage() {
     return `$${Math.round(amount).toLocaleString('es-CL')}`;
   };
 
+  // Componente de indicador de calidad
+  const QualityIndicator = ({ validation }) => {
+    if (!validation) return null;
+
+    const { quality_score, quality_level, warnings } = validation;
+
+    const getColor = () => {
+      if (quality_level === 'high') return '#38a169'; // verde
+      if (quality_level === 'medium') return '#ed8936'; // naranja
+      return '#e53e3e'; // rojo
+    };
+
+    return (
+      <div style={{
+        padding: '16px',
+        backgroundColor: '#f7fafc',
+        borderRadius: '8px',
+        marginBottom: '20px',
+        border: `2px solid ${getColor()}`
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <div style={{
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: getColor()
+          }}>
+            {quality_score}/100
+          </div>
+          <div>
+            <div style={{ fontWeight: 'bold' }}>Calidad del escaneo</div>
+            <div style={{ fontSize: '14px', color: '#718096' }}>
+              {quality_level === 'high' && '✅ Excelente'}
+              {quality_level === 'medium' && '⚠️ Aceptable - Revisa los datos'}
+              {quality_level === 'low' && '❌ Baja - Verifica manualmente'}
+            </div>
+          </div>
+        </div>
+
+        {warnings && warnings.length > 0 && (
+          <div style={{ marginTop: '12px' }}>
+            {warnings.map((warning, i) => (
+              <div key={i} style={{
+                padding: '8px',
+                backgroundColor: warning.severity === 'high' ? '#fed7d7' : '#feebc8',
+                borderRadius: '4px',
+                fontSize: '14px',
+                marginTop: '4px'
+              }}>
+                {warning.severity === 'high' ? '🔴' : '🟡'} {warning.message}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {validation.corrections && validation.corrections.length > 0 && (
+          <div style={{ marginTop: '12px', fontSize: '14px' }}>
+            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>💡 Correcciones sugeridas:</div>
+            {validation.corrections.map((corr, i) => (
+              <div key={i} style={{ color: '#2d3748' }}>
+                • {corr.item_name}: ${corr.original_price.toLocaleString('es-CL')} → ${corr.suggested_price.toLocaleString('es-CL')}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="app">
       <div className="container">
@@ -356,6 +424,10 @@ function SessionPage() {
             <p className="timer">Sesión expira en: {timeLeft}</p>
           )}
         </div>
+
+        {sessionData?.validation && (
+          <QualityIndicator validation={sessionData.validation} />
+        )}
 
         <div className="summary-card">
           <div className="summary-row">
@@ -390,7 +462,14 @@ function SessionPage() {
             </div>
             <div className="summary-item">
               <span className="label">Total</span>
-              <span className="amount total">{formatCurrency(getCurrentTotal())}</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                <span className="amount total">{formatCurrency(getCurrentTotal())}</span>
+                {sessionData?.validation && !sessionData.validation.is_valid && (
+                  <div style={{ fontSize: '12px', color: '#e53e3e', marginTop: '4px' }}>
+                    Diferencia: ${sessionData.validation.total_difference?.toLocaleString('es-CL')} ({sessionData.validation.difference_percent}%)
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -452,9 +531,23 @@ function SessionPage() {
                           className="edit-item-input"
                         />
                       ) : (
-                        <span className="item-name">
-                          {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.name}
-                        </span>
+                        <>
+                          <span className="item-name">
+                            {item.quantity > 1 ? `${item.quantity}x ` : ''}{item.name}
+                          </span>
+                          {item.duplicates_found > 0 && (
+                            <span style={{
+                              fontSize: '12px',
+                              color: '#3182ce',
+                              marginLeft: '8px',
+                              backgroundColor: '#bee3f8',
+                              padding: '2px 6px',
+                              borderRadius: '4px'
+                            }}>
+                              🔗 {item.duplicates_found + 1} agrupados
+                            </span>
+                          )}
+                        </>
                       )}
                       <button 
                         className="edit-item-btn"
