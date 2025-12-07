@@ -366,7 +366,31 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
         logger.info(f"   Vision: {vision_items_count} items, confianza: {vision_confidence}")
         logger.info(f"   Gemini: {gemini_items_count} items, confianza: {gemini_confidence}")
 
-        # CRITERIO CRÍTICO: NUNCA elegir resultado con 0 items si el otro tiene items
+        # NUEVO: Calcular coherencia de totales (diferencia porcentual)
+        def calcular_coherencia(result):
+            """
+            Calcula qué tan coherente es el resultado (total vs subtotal+tip).
+            Retorna diferencia porcentual: 0% = perfecto, 100% = totalmente incoherente.
+            """
+            if not result or 'total' not in result:
+                return 100  # Máxima diferencia si no hay datos
+            total = result.get('total', 0)
+            subtotal = result.get('subtotal', 0)
+            tip = result.get('tip', 0)
+            if total == 0:
+                return 100
+            # Diferencia entre total declarado y (subtotal + tip)
+            expected = subtotal + tip
+            diff_percent = abs(total - expected) / total * 100
+            return diff_percent
+
+        vision_coherencia = calcular_coherencia(vision_result)
+        gemini_coherencia = calcular_coherencia(gemini_result)
+
+        logger.info(f"   Vision coherencia: {vision_coherencia:.1f}% diferencia")
+        logger.info(f"   Gemini coherencia: {gemini_coherencia:.1f}% diferencia")
+
+        # CRITERIO CRÍTICO 1: NUNCA elegir resultado con 0 items si el otro tiene items
         if vision_items_count == 0 and gemini_items_count > 0:
             logger.info("📊 Eligiendo Gemini (Vision tiene 0 items)")
             chosen_result = gemini_result
@@ -375,13 +399,35 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
             logger.info("📊 Eligiendo Vision (Gemini tiene 0 items)")
             chosen_result = vision_result
             chosen_source = 'vision'
-        # Criterio: el que tenga mayor confianza, si empate, el que tenga más items
+
+        # CRITERIO CRÍTICO 2: Priorizar coherencia de totales
+        # Si uno tiene diferencia MUY alta (>50%) y el otro baja (<30%), elegir el coherente
+        elif vision_coherencia > 50 and gemini_coherencia < 30:
+            logger.info(f"📊 Eligiendo Gemini (Vision incoherente: {vision_coherencia:.1f}% vs {gemini_coherencia:.1f}%)")
+            chosen_result = gemini_result
+            chosen_source = 'gemini'
+        elif gemini_coherencia > 50 and vision_coherencia < 30:
+            logger.info(f"📊 Eligiendo Vision (Gemini incoherente: {gemini_coherencia:.1f}% vs {vision_coherencia:.1f}%)")
+            chosen_result = vision_result
+            chosen_source = 'vision'
+
+        # CRITERIO 3: Si hay diferencia significativa en coherencia (>20%), elegir el más coherente
+        elif vision_coherencia < gemini_coherencia - 20:
+            logger.info(f"📊 Eligiendo Vision (más coherente: {vision_coherencia:.1f}% vs {gemini_coherencia:.1f}%)")
+            chosen_result = vision_result
+            chosen_source = 'vision'
+        elif gemini_coherencia < vision_coherencia - 20:
+            logger.info(f"📊 Eligiendo Gemini (más coherente: {gemini_coherencia:.1f}% vs {vision_coherencia:.1f}%)")
+            chosen_result = gemini_result
+            chosen_source = 'gemini'
+
+        # CRITERIO 4: Si coherencia similar, usar confianza e items (criterio original)
         elif gemini_confidence > vision_confidence:
-            logger.info("📊 Eligiendo Gemini (mayor confianza)")
+            logger.info(f"📊 Eligiendo Gemini (mayor confianza: {gemini_confidence} vs {vision_confidence})")
             chosen_result = gemini_result
             chosen_source = 'gemini'
         elif vision_confidence > gemini_confidence:
-            logger.info("📊 Eligiendo Vision (mayor confianza)")
+            logger.info(f"📊 Eligiendo Vision (mayor confianza: {vision_confidence} vs {gemini_confidence})")
             chosen_result = vision_result
             chosen_source = 'vision'
         elif gemini_items_count > vision_items_count:
