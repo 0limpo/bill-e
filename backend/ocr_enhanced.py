@@ -160,6 +160,20 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
     calculated_tip = declared_tip or 0
     calculated_total = calculated_subtotal + calculated_tip
 
+    # VERIFICAR SI LOS TOTALES DECLARADOS CUADRAN (subtotal + propina ≈ total)
+    declared_subtotal_value = declared_subtotal or 0
+    declared_tip_value = declared_tip or 0
+    totals_are_consistent = False
+
+    if declared_subtotal_value > 0 and declared_tip_value > 0 and declared_total > 0:
+        declared_calculated_total = declared_subtotal_value + declared_tip_value
+        consistency_diff = abs(declared_calculated_total - declared_total)
+        consistency_percent = (consistency_diff / declared_total) * 100 if declared_total > 0 else 100
+
+        if consistency_percent < 1:  # Diferencia < 1%
+            totals_are_consistent = True
+            logger.info(f"✅ Totales declarados cuadran: ${declared_subtotal_value} + ${declared_tip_value} ≈ ${declared_total}")
+
     # Diferencias
     subtotal_diff = abs(calculated_subtotal - (declared_subtotal or calculated_subtotal))
     total_diff = abs(calculated_total - declared_total)
@@ -171,10 +185,21 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
     # Calcular score de calidad (0-100)
     quality_score = 100
 
-    # Penalizar por diferencia en totales
-    if total_diff > tolerance_amount and declared_total > 0:
-        penalty = min(50, (total_diff / declared_total) * 100)
-        quality_score -= penalty
+    # Si los totales declarados cuadran, score alto (95-100)
+    if totals_are_consistent:
+        quality_score = 98  # Score muy alto si subtotal + propina = total
+
+        # Solo penalizar si items difieren mucho del subtotal
+        if declared_subtotal_value > 0:
+            items_diff_percent = abs(calculated_subtotal - declared_subtotal_value) / declared_subtotal_value * 100
+            if items_diff_percent > 5:  # Más de 5% de diferencia
+                penalty = min(10, items_diff_percent / 2)  # Penalización suave
+                quality_score -= penalty
+    else:
+        # Los totales NO cuadran - penalizar
+        if total_diff > tolerance_amount and declared_total > 0:
+            penalty = min(50, (total_diff / declared_total) * 100)
+            quality_score -= penalty
 
     # Penalizar por items con baja confianza
     low_confidence_items = [i for i in items if i.get('confidence') == 'low']
@@ -205,8 +230,9 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
         'warnings': []
     }
 
-    # Agregar warnings
-    if not validation['is_valid']:
+    # Agregar warnings SOLO si hay inconsistencia REAL
+    # Si los totales declarados cuadran (subtotal + propina ≈ total), NO mostrar aviso
+    if not validation['is_valid'] and not totals_are_consistent:
         validation['warnings'].append({
             'type': 'total_mismatch',
             'message': f"Los totales no calzan. Diferencia: ${total_diff:,.0f} ({validation['difference_percent']}%)",
