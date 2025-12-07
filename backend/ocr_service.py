@@ -8,6 +8,7 @@ import re
 import json
 import time
 import logging
+import traceback
 from typing import List, Dict, Any
 from google.cloud import vision
 from google.oauth2 import service_account
@@ -42,14 +43,16 @@ class OCRService:
                 print("✅ Google Vision client creado con credenciales de environment")
                 return
             except Exception as e:
-                print(f"❌ Error cargando credenciales: {e}")
+                print(f"❌ Error cargando credenciales: {str(e)}")
+                print(traceback.format_exc())
         
         # Fallback a archivo local (para desarrollo) - pero con manejo de errores
         try:
             self.client = vision.ImageAnnotatorClient()
             print("✅ Google Vision client creado con archivo local")
         except Exception as e:
-            print(f"❌ Error creando cliente de Vision: {e}")
+            print(f"❌ Error creando cliente de Vision: {str(e)}")
+            print(traceback.format_exc())
             print("⚠️ OCR no disponible - credenciales no encontradas")
             self.client = None
     
@@ -89,6 +92,7 @@ class OCRService:
 
         except Exception as e:
             print(f"❌ Error en OCR: {str(e)}")
+            print(traceback.format_exc())
 
             # ÚLTIMO INTENTO: Gemini si Vision falló completamente
             if gemini_service.is_available():
@@ -123,6 +127,7 @@ class OCRService:
 
         except Exception as e:
             print(f"❌ Error procesando base64: {str(e)}")
+            print(traceback.format_exc())
             raise Exception(f"No se pudo procesar la imagen: {str(e)}")
     
     def calculate_parsing_confidence(self, total: float, subtotal: float, tip: float, items: List[Dict[str, Any]]) -> tuple:
@@ -291,6 +296,7 @@ Formato de respuesta (JSON):
 
         except Exception as e:
             print(f"❌ Error en verificación con Gemini: {str(e)}")
+            print(traceback.format_exc())
             return None
 
     def parse_chilean_number(self, num_str: str) -> float:
@@ -529,7 +535,12 @@ Formato de respuesta (JSON):
             gemini_verification_used = False
             if confidence_score < 80:
                 print(f"\n⚠️ Confianza baja ({confidence_score}/100), verificando con Gemini...")
-                gemini_data = self.verify_receipt_with_gemini(text)
+                try:
+                    gemini_data = self.verify_receipt_with_gemini(text)
+                except Exception as gemini_error:
+                    print(f"❌ Gemini falló completamente: {str(gemini_error)}")
+                    print(traceback.format_exc())
+                    gemini_data = None
 
                 if gemini_data:
                     gemini_total = gemini_data.get('total', 0)
@@ -604,6 +615,12 @@ Formato de respuesta (JSON):
                     if gemini_verification_used:
                         confidence_score, problems_detected = self.calculate_parsing_confidence(total, subtotal, tip, items)
                         print(f"\n📊 Nueva confianza después de Gemini: {confidence_score}/100")
+                    else:
+                        print(f"\n✅ Gemini no mejoró los datos, usando resultados de regex")
+                else:
+                    # Gemini no disponible o falló - continuar con datos de regex
+                    print(f"\n⚠️ Gemini no disponible, usando datos de regex:")
+                    print(f"   Total: ${total}, Subtotal: ${subtotal}, Propina: ${tip}, Items: {len(items)}")
             else:
                 print(f"\n✅ Confianza alta ({confidence_score}/100), no se necesita verificación con Gemini")
 
@@ -700,7 +717,8 @@ Formato de respuesta (JSON):
             return result
             
         except Exception as e:
-            print(f"❌ Error parseando boleta: {e}")
+            print(f"❌ Error parseando boleta: {str(e)}")
+            print(traceback.format_exc())
             return {
                 'success': False,
                 'error': str(e),
