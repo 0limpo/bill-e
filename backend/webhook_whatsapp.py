@@ -92,6 +92,18 @@ async def handle_webhook(request: Request):
             from_number = message_data["from"]
             message_type = message_data.get("type", "unknown")
 
+            # 🔒 DEDUPLICACIÓN: Evitar procesar el mismo mensaje múltiples veces
+            message_id = message_data.get("id")
+            if message_id:
+                cache_key = f"processed_msg:{message_id}"
+                # Verificar si ya se procesó
+                if redis_client.exists(cache_key):
+                    print(f"⚠️ Mensaje {message_id} ya procesado, ignorando duplicado")
+                    return {"status": "already_processed"}
+                # Marcar como procesado con TTL de 1 hora
+                redis_client.setex(cache_key, 3600, "1")
+                print(f"✅ Mensaje {message_id} marcado como procesado")
+
             # Track inbound WhatsApp message
             if analytics_available:
                 analytics.track_whatsapp_message(
@@ -269,7 +281,7 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
         session_items.append({
             'id': f"item-{i}",
             'name': item['name'],
-            'price': item.get('group_total', item['price'] * item.get('quantity', 1)),
+            'price': item['price'],  # ✅ Precio UNITARIO (no sobrescribir)
             'quantity': item.get('quantity', 1),  # CRÍTICO: Preservar cantidad
             'assigned_to': [],
             'confidence': item.get('confidence', 'medium'),
@@ -425,7 +437,8 @@ def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> s
         for item in items[:3]:
             quantity = item.get('quantity', 1)
             name = item['name']
-            price = item['price']
+            price = item['price']  # Precio unitario
+            group_total = item.get('group_total', price * quantity)
             duplicates = item.get('duplicates_found', 0)
 
             item_line = f"• {name}"
@@ -433,7 +446,8 @@ def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> s
                 item_line += f" x{quantity}"
             if duplicates > 0:
                 item_line += f" 🔗({duplicates + 1} agrupados)"
-            item_line += f" - ${price:,.0f}\n"
+            # Mostrar precio total del grupo (no unitario)
+            item_line += f" - ${group_total:,.0f}\n"
 
             message += item_line
 
