@@ -234,12 +234,17 @@ class OCRService:
 1. total: El monto total a pagar (número)
 2. subtotal: El subtotal SIN propina (número)
 3. propina: El monto de propina/servicio/tip (número, puede ser 0 si no hay)
-4. items: Lista de items con nombre y precio
+4. items: Lista de items con nombre, cantidad, precio unitario y precio total
 
 IMPORTANTE:
 - Los números en Chile usan punto como separador de miles: $111.793 = 111793
 - Si ves "PROPINA", "TIP", "SERVICIO", extrae ese monto
 - Si el total es mayor que la suma de items, la diferencia probablemente es propina
+- Las boletas chilenas muestran: CANTIDAD  NOMBRE_PRODUCTO  PRECIO_TOTAL
+- Ejemplo: "3  Pan Mechada  35.970" significa 3 unidades a $11.990 cada una = $35.970 total
+- Extrae la CANTIDAD (el número al inicio de cada línea de item)
+- Calcula el PRECIO_UNITARIO (precio_total / cantidad)
+- Si no hay cantidad visible, usa cantidad: 1
 - Responde SOLO en formato JSON válido, sin texto adicional
 
 Texto de la boleta:
@@ -247,12 +252,13 @@ Texto de la boleta:
 
 Formato de respuesta (JSON):
 {{
-    "total": 179684,
-    "subtotal": 163349,
-    "propina": 16335,
+    "total": 111793,
+    "subtotal": 101630,
+    "propina": 10163,
     "items": [
-        {{"nombre": "Summer Ale 568cc", "precio": 5800}},
-        {{"nombre": "Corona 355cc", "precio": 4900}}
+        {{"nombre": "Pan Mechada", "cantidad": 3, "precio_unitario": 11990, "precio_total": 35970}},
+        {{"nombre": "Coca Cola Zero", "cantidad": 2, "precio_unitario": 2000, "precio_total": 4000}},
+        {{"nombre": "Ensalada", "cantidad": 1, "precio_unitario": 6500, "precio_total": 6500}}
     ]
 }}"""
 
@@ -619,7 +625,7 @@ Formato de respuesta (JSON):
 
                     # CRITERIO 4: Si suma de items de Gemini es más cercana al subtotal
                     if gemini_items:
-                        gemini_items_sum = sum(item.get('precio', 0) for item in gemini_items)
+                        gemini_items_sum = sum(item.get('precio_total', item.get('precio', 0)) for item in gemini_items)
                         regex_items_sum = sum(item['price'] for item in items) if items else 0
 
                         if subtotal > 0:
@@ -643,11 +649,21 @@ Formato de respuesta (JSON):
                         # Convertir items de Gemini al formato esperado
                         items = []
                         for i, gemini_item in enumerate(gemini_items):
+                            # Usar precio_unitario si está disponible, si no usar precio (backward compatibility)
+                            unit_price = gemini_item.get('precio_unitario', gemini_item.get('precio', 0))
+                            quantity = gemini_item.get('cantidad', 1)
+
                             items.append({
                                 'name': gemini_item.get('nombre', f'Item {i+1}'),
-                                'price': gemini_item.get('precio', 0),
-                                'quantity': 1
+                                'price': unit_price,
+                                'quantity': quantity
                             })
+
+                            if quantity > 1:
+                                total_price = gemini_item.get('precio_total', unit_price * quantity)
+                                print(f"  📄 Gemini item: {quantity} × {gemini_item.get('nombre')} = ${total_price:,.0f} (${unit_price:,.0f} c/u)")
+                            else:
+                                print(f"  📄 Gemini item: {gemini_item.get('nombre')} = ${unit_price:,.0f}")
                         gemini_verification_used = True
 
                     # Recalcular confianza después de usar Gemini
