@@ -13,6 +13,16 @@ from gemini_service import gemini_service
 
 logger = logging.getLogger(__name__)
 
+def is_valid_result(result):
+    """Verifica si un resultado de OCR es válido y usable"""
+    if not result:
+        return False
+    if result.get('success') is False:
+        return False
+    if not result.get('total') and not result.get('items'):
+        return False
+    return True
+
 def similar(a: str, b: str) -> float:
     """
     Calcula similitud entre dos strings usando SequenceMatcher.
@@ -309,31 +319,48 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
     vision_result = results.get('vision')
     gemini_result = results.get('gemini')
 
-    # Si solo uno funcionó, usar ese
-    if vision_result and not gemini_result:
-        logger.info("📊 Usando resultado de Vision (Gemini no disponible)")
+    # Validar resultados y elegir el mejor
+    if is_valid_result(vision_result) and not is_valid_result(gemini_result):
+        logger.info("📊 Usando resultado de Vision (Gemini no válido o no disponible)")
         chosen_result = vision_result
         chosen_source = 'vision'
-    elif gemini_result and not vision_result:
-        logger.info("📊 Usando resultado de Gemini (Vision falló)")
+    elif is_valid_result(gemini_result) and not is_valid_result(vision_result):
+        logger.info("📊 Usando resultado de Gemini (Vision no válido)")
         chosen_result = gemini_result
         chosen_source = 'gemini'
-    elif not vision_result and not gemini_result:
-        raise Exception("Ambos OCR fallaron")
-    else:
-        # Ambos funcionaron - elegir el mejor
+    elif is_valid_result(vision_result) and is_valid_result(gemini_result):
+        # Ambos válidos - elegir el mejor
+        logger.info("📊 Ambos resultados válidos, comparando calidad...")
+
         vision_items_count = len(vision_result.get('items', []))
         gemini_items_count = len(gemini_result.get('items', []))
+        vision_confidence = vision_result.get('confidence_score', 0)
+        gemini_confidence = gemini_result.get('confidence_score', 0)
 
-        # Criterio: el que encontró más items
-        if vision_items_count >= gemini_items_count:
-            logger.info(f"📊 Eligiendo Vision ({vision_items_count} items vs Gemini {gemini_items_count} items)")
-            chosen_result = vision_result
-            chosen_source = 'vision'
-        else:
-            logger.info(f"📊 Eligiendo Gemini ({gemini_items_count} items vs Vision {vision_items_count} items)")
+        logger.info(f"   Vision: {vision_items_count} items, confianza: {vision_confidence}")
+        logger.info(f"   Gemini: {gemini_items_count} items, confianza: {gemini_confidence}")
+
+        # Criterio: el que tenga mayor confianza, si empate, el que tenga más items
+        if gemini_confidence > vision_confidence:
+            logger.info("📊 Eligiendo Gemini (mayor confianza)")
             chosen_result = gemini_result
             chosen_source = 'gemini'
+        elif vision_confidence > gemini_confidence:
+            logger.info("📊 Eligiendo Vision (mayor confianza)")
+            chosen_result = vision_result
+            chosen_source = 'vision'
+        elif gemini_items_count > vision_items_count:
+            logger.info(f"📊 Eligiendo Gemini (más items: {gemini_items_count} vs {vision_items_count})")
+            chosen_result = gemini_result
+            chosen_source = 'gemini'
+        else:
+            logger.info(f"📊 Eligiendo Vision (más items o empate: {vision_items_count} vs {gemini_items_count})")
+            chosen_result = vision_result
+            chosen_source = 'vision'
+    else:
+        # Ninguno válido
+        logger.error("❌ Ningún resultado válido de OCR")
+        raise Exception("Ambos OCR fallaron - no se pudo procesar la imagen")
 
     # PASO 1: Deduplicar items similares
     original_items = chosen_result.get('items', [])
