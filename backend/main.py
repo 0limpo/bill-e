@@ -194,18 +194,23 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
                 session['subtotal'] = enhanced_result.get('subtotal', 0)
                 session['tip'] = enhanced_result.get('tip', 0)
 
-                # Convertir items con información mejorada
-                session['items'] = [
-                    {
+                # Convertir items al formato de sesión (PRESERVANDO CANTIDADES Y CONSOLIDACIÓN)
+                session_items = []
+                for i, item in enumerate(enhanced_result.get('items', [])):
+                    session_item = {
                         'id': f"item-{i}",
                         'name': item['name'],
-                        'price': item['price'],
+                        'price': item.get('group_total', item['price'] * item.get('quantity', 1)),
                         'quantity': item.get('quantity', 1),
                         'assigned_to': [],
-                        'confidence': item.get('confidence', 'medium')
+                        'confidence': item.get('confidence', 'medium'),
+                        'duplicates_found': item.get('duplicates_found', 0),
+                        'normalized_name': item.get('normalized_name', ''),
+                        'original_names': item.get('original_names', [item['name']])
                     }
-                    for i, item in enumerate(enhanced_result.get('items', []))
-                ]
+                    session_items.append(session_item)
+
+                session['items'] = session_items
 
                 # Guardar sesión actualizada
                 redis_client.setex(
@@ -260,18 +265,23 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
                 session['subtotal'] = enhanced_result.get('subtotal', 0)
                 session['tip'] = enhanced_result.get('tip', 0)
 
-                # Convertir items con información mejorada
-                session['items'] = [
-                    {
+                # Convertir items al formato de sesión (PRESERVANDO CANTIDADES Y CONSOLIDACIÓN)
+                session_items = []
+                for i, item in enumerate(enhanced_result.get('items', [])):
+                    session_item = {
                         'id': f"item-{i}",
                         'name': item['name'],
-                        'price': item['price'],
+                        'price': item.get('group_total', item['price'] * item.get('quantity', 1)),
                         'quantity': item.get('quantity', 1),
                         'assigned_to': [],
-                        'confidence': item.get('confidence', 'medium')
+                        'confidence': item.get('confidence', 'medium'),
+                        'duplicates_found': item.get('duplicates_found', 0),
+                        'normalized_name': item.get('normalized_name', ''),
+                        'original_names': item.get('original_names', [item['name']])
                     }
-                    for i, item in enumerate(enhanced_result.get('items', []))
-                ]
+                    session_items.append(session_item)
+
+                session['items'] = session_items
 
                 # Guardar sesión actualizada
                 redis_client.setex(

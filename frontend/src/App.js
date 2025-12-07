@@ -436,81 +436,6 @@ function SessionPage() {
     );
   };
 
-  const CorrectionButtons = ({ corrections, onApplyCorrection, appliedCorrections }) => {
-    if (!corrections || corrections.length === 0) return null;
-
-    // Filtrar correcciones ya aplicadas
-    const pendingCorrections = corrections.filter((_, i) => !appliedCorrections.has(i));
-
-    if (pendingCorrections.length === 0) return null;
-
-    return (
-      <div style={{
-        padding: '16px',
-        backgroundColor: '#d4edda',
-        borderRadius: '8px',
-        marginBottom: '20px',
-        border: '1px solid #28a745'
-      }}>
-        <div style={{ fontWeight: 'bold', marginBottom: '12px', color: '#155724' }}>
-          💡 {pendingCorrections.length} corrección{pendingCorrections.length > 1 ? 'es' : ''} disponible{pendingCorrections.length > 1 ? 's' : ''}
-        </div>
-        {corrections.map((corr, i) => {
-          if (appliedCorrections.has(i)) return null;
-
-          return (
-            <div key={i} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '8px',
-              backgroundColor: 'white',
-              borderRadius: '4px',
-              marginBottom: '8px'
-            }}>
-              <div>
-                <strong>{corr.item_name}</strong>
-                <div style={{ fontSize: '14px', color: '#666' }}>
-                  ${corr.original_price.toLocaleString('es-CL')} → ${corr.suggested_price.toLocaleString('es-CL')}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => onApplyCorrection(corr, i)}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ✓ Aplicar
-                </button>
-                <button
-                  onClick={() => {
-                    setAppliedCorrections(prev => new Set([...prev, i]));
-                  }}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ✗ Ignorar
-                </button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
     <div className="app">
       <div className="container">
@@ -523,14 +448,6 @@ function SessionPage() {
 
         {sessionData?.validation && (
           <QualityIndicator validation={sessionData.validation} />
-        )}
-
-        {sessionData?.validation?.corrections && (
-          <CorrectionButtons
-            corrections={sessionData.validation.corrections}
-            onApplyCorrection={applyCorrection}
-            appliedCorrections={appliedCorrections}
-          />
         )}
 
         <div className="summary-card">
