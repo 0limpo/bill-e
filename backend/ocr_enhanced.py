@@ -54,6 +54,10 @@ def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float =
     for item in items:
         item['normalized_name'] = normalize_item_name(item['name'])
 
+    logger.info(f"🔍 Deduplicando {len(items)} items...")
+    for i, item in enumerate(items):
+        logger.info(f"  Item {i}: '{item['name']}' → normalized: '{item['normalized_name']}' (${item['price']})")
+
     deduplicated = []
     processed_indices = set()
 
@@ -123,6 +127,11 @@ def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float =
 
             deduplicated.append(consolidated)
             logger.info(f"✅ Consolidados {len(group)} items → '{cleanest_name}' x{total_quantity} (${group_total})")
+
+    logger.info(f"✅ Deduplicación completada: {len(items)} → {len(deduplicated)} items")
+    for item in deduplicated:
+        if item.get('duplicates_found', 0) > 0:
+            logger.info(f"  🔗 '{item['name']}' consolidó {item['duplicates_found'] + 1} items")
 
     return deduplicated
 

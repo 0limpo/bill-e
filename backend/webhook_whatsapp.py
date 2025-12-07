@@ -370,12 +370,35 @@ def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> s
     message += f"{quality_emoji} **Calidad del escaneo: {quality_score}/100** ({quality_level})\n"
     message += f"🤖 Procesado con: {ocr_source.upper()}\n\n"
 
-    # Resumen financiero
+    # Resumen financiero CON FUENTE DE DATOS
     message += f"📊 *Resumen:*\n"
     message += f"💰 Total: ${total:,.0f}\n"
-    message += f"💵 Subtotal: ${subtotal:,.0f}\n"
-    message += f"🎁 Propina: ${tip:,.0f}\n"
-    message += f"📝 Items: {len(items)}\n\n"
+
+    if subtotal > 0:
+        message += f"💵 Subtotal: ${subtotal:,.0f}\n"
+
+    if tip > 0:
+        tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
+        message += f"🎁 Propina: ${tip:,.0f} ({tip_percent:.0f}%)\n"
+    else:
+        message += f"🎁 Propina: No detectada\n"
+
+    message += f"📝 Items: {len(items)}\n"
+
+    # AGREGAR DEBUG INFO (temporal)
+    message += f"\n🔍 _Debug:_\n"
+    message += f"OCR Source: {ocr_source}\n"
+    message += f"Quality: {quality_score}/100\n"
+
+    # Mostrar si totales calzan
+    if validation.get('is_valid'):
+        message += f"✅ Totales verificados\n"
+    else:
+        diff = validation.get('total_difference', 0)
+        message += f"⚠️ Diferencia: ${diff:,.0f}\n"
+
+    message += "\n"
+
 
     # Warnings si existen
     warnings = validation.get('warnings', [])

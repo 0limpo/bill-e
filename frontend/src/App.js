@@ -324,6 +324,25 @@ function SessionPage() {
     }));
   };
 
+  const applyCorrection = (correction) => {
+    const newItems = [...sessionData.items];
+    const item = newItems[correction.item_index];
+
+    if (item) {
+      item.price = correction.suggested_price;
+
+      setSessionData({
+        ...sessionData,
+        items: newItems
+      });
+
+      // Recalcular montos
+      calculatePersonAmounts(assignments);
+
+      alert(`✅ Corrección aplicada: ${item.name} ahora cuesta $${correction.suggested_price.toLocaleString('es-CL')}`);
+    }
+  };
+
   if (loading) {
     return <div className="loading">Cargando sesión...</div>;
   }
@@ -415,6 +434,55 @@ function SessionPage() {
     );
   };
 
+  const CorrectionButtons = ({ corrections, onApplyCorrection }) => {
+    if (!corrections || corrections.length === 0) return null;
+
+    return (
+      <div style={{
+        padding: '16px',
+        backgroundColor: '#fff3cd',
+        borderRadius: '8px',
+        marginBottom: '20px',
+        border: '1px solid #ffc107'
+      }}>
+        <div style={{ fontWeight: 'bold', marginBottom: '12px' }}>
+          💡 Correcciones automáticas disponibles:
+        </div>
+        {corrections.map((corr, i) => (
+          <div key={i} style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '8px',
+            backgroundColor: 'white',
+            borderRadius: '4px',
+            marginBottom: '8px'
+          }}>
+            <div>
+              <strong>{corr.item_name}</strong>
+              <div style={{ fontSize: '14px', color: '#666' }}>
+                ${corr.original_price.toLocaleString('es-CL')} → ${corr.suggested_price.toLocaleString('es-CL')}
+              </div>
+            </div>
+            <button
+              onClick={() => onApplyCorrection(corr)}
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Aplicar
+            </button>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="app">
       <div className="container">
@@ -427,6 +495,13 @@ function SessionPage() {
 
         {sessionData?.validation && (
           <QualityIndicator validation={sessionData.validation} />
+        )}
+
+        {sessionData?.validation?.corrections && (
+          <CorrectionButtons
+            corrections={sessionData.validation.corrections}
+            onApplyCorrection={applyCorrection}
+          />
         )}
 
         <div className="summary-card">

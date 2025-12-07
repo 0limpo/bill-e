@@ -7,12 +7,15 @@ import io
 import re
 import json
 import time
+import logging
 from typing import List, Dict, Any
 from google.cloud import vision
 from google.oauth2 import service_account
 from PIL import Image
 import base64
 from gemini_service import gemini_service
+
+logger = logging.getLogger(__name__)
 
 # Import analytics
 try:
@@ -246,20 +249,39 @@ class OCRService:
                     print(f"🧾 Subtotal encontrado: ${subtotal}")
                     break
             
-            # Buscar propina
+            # Detectar propina/tip/servicio (MEJORADO)
             tip_patterns = [
-                r'propina\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
-                r'propina\s+sugerida\s+\d+\s*(\d{1,3}(?:\.\d{3})*)',
-                r'tip\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
-                r'servicio\s*:?\s*\$?\s*(\d{1,3}(?:\.\d{3})*(?:\.\d{2})?)',
+                r'(?:propina|tip|servicio|service)[:\s]*\$?\s*([\d.,]+)',
+                r'(?:propina|tip)[:\s]*\$?\s*([\d.,]+)',
             ]
-            
+
+            tip = None
             for pattern in tip_patterns:
-                match = re.search(pattern, text.lower())
+                match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
                 if match:
-                    tip = self.parse_chilean_number(match.group(1))
-                    print(f"💸 Propina encontrada: ${tip}")
-                    break
+                    tip_value = self.parse_chilean_number(match.group(1))
+                    # VALIDACIÓN: La propina normalmente es 10-20% del subtotal
+                    # Si es > 30% del subtotal, probablemente es un error
+                    if subtotal and tip_value > 0:
+                        tip_percent = (tip_value / subtotal) * 100
+                        if tip_percent <= 30:  # Propina razonable
+                            tip = tip_value
+                            logger.info(f"Propina detectada: ${tip} ({tip_percent:.1f}% del subtotal)")
+                            break
+                        else:
+                            logger.warning(f"Propina sospechosa: ${tip_value} ({tip_percent:.1f}% del subtotal) - ignorando")
+
+            # CASO ESPECIAL: Si NO hay propina detectada pero HAY subtotal y total
+            # Entonces: propina = total - subtotal
+            if tip is None and subtotal and total:
+                calculated_tip = total - subtotal
+                if calculated_tip > 0 and calculated_tip < subtotal * 0.3:
+                    tip = calculated_tip
+                    logger.info(f"Propina calculada: ${tip} (Total - Subtotal)")
+
+            # Si aún no hay tip, usar 0
+            if tip is None:
+                tip = 0
             
             # Calcular valores faltantes con lógica corregida
             if subtotal > 0 and tip > 0 and total == 0:
