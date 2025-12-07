@@ -27,6 +27,7 @@ function SessionPage() {
   const [editingItems, setEditingItems] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
   const [appliedCorrections, setAppliedCorrections] = useState(new Set());
+  const [totalConfirmed, setTotalConfirmed] = useState(false);
 
   // Timer para mostrar tiempo restante
   useEffect(() => {
@@ -354,6 +355,151 @@ function SessionPage() {
     return `$${Math.round(amount).toLocaleString('es-CL')}`;
   };
 
+  // Componente de confirmación de total
+  const ConfirmTotalModal = ({ sessionData, onConfirm, onEdit }) => {
+    const [editedTotal, setEditedTotal] = useState(sessionData.total);
+    const [isEditing, setIsEditing] = useState(false);
+
+    const handleConfirm = () => {
+      if (isEditing && editedTotal !== sessionData.total) {
+        // Actualizar total
+        onEdit(editedTotal);
+      } else {
+        onConfirm();
+      }
+    };
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          padding: '24px',
+          borderRadius: '12px',
+          maxWidth: '400px',
+          width: '90%'
+        }}>
+          <h3 style={{ marginTop: 0 }}>Confirma el total de la boleta</h3>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+              Total detectado:
+            </label>
+            {isEditing ? (
+              <input
+                type="number"
+                value={editedTotal}
+                onChange={(e) => setEditedTotal(parseFloat(e.target.value))}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '18px',
+                  border: '2px solid #3182ce',
+                  borderRadius: '6px'
+                }}
+                autoFocus
+              />
+            ) : (
+              <div style={{
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: '#2d3748',
+                padding: '12px',
+                backgroundColor: '#f7fafc',
+                borderRadius: '6px'
+              }}>
+                ${sessionData.total.toLocaleString('es-CL')}
+              </div>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {!isEditing ? (
+              <>
+                <button
+                  onClick={handleConfirm}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: '#38a169',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✓ Correcto
+                </button>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: '#ed8936',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ✏️ Editar
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleConfirm}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: '#3182ce',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Guardar
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditedTotal(sessionData.total);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: '#718096',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cancelar
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Componente de indicador de calidad
   const QualityIndicator = ({ validation }) => {
     if (!validation) return null;
@@ -413,17 +559,33 @@ function SessionPage() {
 
   return (
     <div className="app">
-      <div className="container">
-        <div className="header">
-          <h1>Dividir Cuenta</h1>
-          {timeLeft && (
-            <p className="timer">Sesión expira en: {timeLeft}</p>
-          )}
-        </div>
+      {sessionData && !totalConfirmed && (
+        <ConfirmTotalModal
+          sessionData={sessionData}
+          onConfirm={() => setTotalConfirmed(true)}
+          onEdit={(newTotal) => {
+            setSessionData({
+              ...sessionData,
+              total: newTotal,
+              tip: newTotal - sessionData.subtotal
+            });
+            setTotalConfirmed(true);
+          }}
+        />
+      )}
 
-        {sessionData?.validation && (
-          <QualityIndicator validation={sessionData.validation} />
-        )}
+      {totalConfirmed && (
+        <div className="container">
+          <div className="header">
+            <h1>Dividir Cuenta</h1>
+            {timeLeft && (
+              <p className="timer">Sesión expira en: {timeLeft}</p>
+            )}
+          </div>
+
+          {sessionData?.validation && (
+            <QualityIndicator validation={sessionData.validation} />
+          )}
 
         <div className="summary-card">
           <div className="summary-row">
@@ -539,18 +701,18 @@ function SessionPage() {
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <strong>
-                              {item.quantity > 1 && `${item.quantity}x `}
                               {item.name}
                             </strong>
-                            {item.duplicates_found > 0 && (
+                            {item.quantity > 1 && (
                               <span style={{
-                                fontSize: '12px',
-                                color: '#3182ce',
-                                backgroundColor: '#bee3f8',
-                                padding: '2px 6px',
-                                borderRadius: '4px'
+                                fontSize: '11px',
+                                color: '#666',
+                                backgroundColor: '#e2e8f0',
+                                padding: '1px 4px',
+                                borderRadius: '3px',
+                                marginLeft: '4px'
                               }}>
-                                🔗 {item.duplicates_found + 1} agrupados
+                                ({item.quantity})
                               </span>
                             )}
                           </div>
@@ -654,7 +816,8 @@ function SessionPage() {
             </div>
           </div>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

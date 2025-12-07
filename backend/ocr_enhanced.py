@@ -209,38 +209,53 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
             'severity': 'medium'
         })
 
-    # Intentar correcciones de OCR (0 ↔ 8)
-    if not validation['is_valid']:
-        logger.info(f"🔧 Intentando correcciones automáticas...")
+    # Intentar correcciones solo si hay diferencia significativa
+    if not validation['is_valid'] and validation['difference_percent'] > 5:
+        logger.info(f"🔍 Intentando correcciones automáticas...")
 
         for i, item in enumerate(items):
-            original_price = item['price']
-            price_str = str(int(original_price))
+            # Usar precio UNITARIO para correcciones
+            quantity = item.get('quantity', 1)
+            unit_price = item['price'] / quantity if quantity > 0 else item['price']
 
-            # Correcciones posibles
-            corrections = []
+            # Solo intentar corregir si el precio unitario es razonable (< $50.000)
+            if unit_price > 50000:
+                continue
 
-            if '0' in price_str:
-                corrections.append(int(price_str.replace('0', '8', 1)))
-            if '8' in price_str:
-                corrections.append(int(price_str.replace('8', '0', 1)))
+            unit_price_str = str(int(unit_price))
+            corrections_to_try = []
 
-            for corrected_price in corrections:
-                # Test con precio corregido
-                test_subtotal = calculated_subtotal - (original_price * item.get('quantity', 1)) + (corrected_price * item.get('quantity', 1))
+            # Probar correcciones comunes
+            if '0' in unit_price_str:
+                corrected = int(unit_price_str.replace('0', '8', 1))
+                corrections_to_try.append(corrected)
+
+            if '8' in unit_price_str:
+                corrected = int(unit_price_str.replace('8', '0', 1))
+                corrections_to_try.append(corrected)
+
+            # Probar cada corrección
+            for corrected_unit_price in corrections_to_try:
+                corrected_total_price = corrected_unit_price * quantity
+
+                # Calcular diferencia si aplicamos esta corrección
+                test_subtotal = calculated_subtotal - item['price'] + corrected_total_price
                 test_total = test_subtotal + calculated_tip
                 test_diff = abs(test_total - declared_total)
 
-                if test_diff < total_diff:  # Mejora
+                # Solo sugerir si MEJORA significativamente (reduce diferencia en >20%)
+                improvement = total_diff - test_diff
+                if improvement > total_diff * 0.2:  # Mejora de al menos 20%
                     validation['corrections'].append({
                         'item_index': i,
                         'item_name': item['name'],
-                        'original_price': original_price,
-                        'suggested_price': corrected_price,
-                        'improvement': round(total_diff - test_diff),
-                        'confidence': 'medium'
+                        'original_price': unit_price,
+                        'suggested_price': corrected_unit_price,
+                        'quantity': quantity,
+                        'improvement': round(improvement),
+                        'confidence': 'high' if improvement > total_diff * 0.5 else 'medium'
                     })
-                    logger.info(f"🔧 Corrección: '{item['name']}' ${original_price} → ${corrected_price} (mejora: ${total_diff - test_diff})")
+                    logger.info(f"🔧 Corrección: '{item['name']}' ${unit_price} → ${corrected_unit_price} x{quantity} (mejora: ${improvement})")
 
     logger.info(f"📊 Score de calidad: {quality_score}/100 ({validation['quality_level']})")
 
