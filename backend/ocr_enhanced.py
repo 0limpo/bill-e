@@ -81,7 +81,8 @@ def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float =
             name_similarity = similar(item['normalized_name'], other_item['normalized_name'])
 
             # CRITERIO 3: Precios similares (tolerancia 5%)
-            price_diff_percent = abs(item['price'] - other_item['price']) / max(item['price'], other_item['price'])
+            max_price = max(item['price'], other_item['price'])
+            price_diff_percent = abs(item['price'] - other_item['price']) / max_price if max_price > 0 else 0
             similar_price = price_diff_percent < 0.05
 
             # Si nombres exactos O (muy similares Y precio similar)
@@ -161,7 +162,7 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
     quality_score = 100
 
     # Penalizar por diferencia en totales
-    if total_diff > tolerance_amount:
+    if total_diff > tolerance_amount and declared_total > 0:
         penalty = min(50, (total_diff / declared_total) * 100)
         quality_score -= penalty
 
@@ -182,7 +183,7 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
         'declared_total': declared_total,
         'subtotal_difference': round(subtotal_diff),
         'total_difference': round(total_diff),
-        'difference_percent': round((total_diff / declared_total) * 100, 2),
+        'difference_percent': round((total_diff / declared_total) * 100, 2) if declared_total > 0 else 0,
         'is_valid': total_diff <= tolerance_amount,
         'quality_score': round(quality_score),
         'quality_level': 'high' if quality_score >= 80 else 'medium' if quality_score >= 50 else 'low',
