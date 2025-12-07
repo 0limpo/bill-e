@@ -321,9 +321,17 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
 
     # PASO 1: Deduplicar items similares
     original_items = chosen_result.get('items', [])
+
+    logger.info(f"📊 Items ANTES de deduplicar: {len(original_items)}")
+    for i, item in enumerate(original_items[:5]):  # Primeros 5
+        logger.info(f"  {i}: '{item.get('name')}' x{item.get('quantity', 1)} = ${item.get('price')}")
+
     deduplicated_items = deduplicate_items(original_items)
 
-    logger.info(f"🔗 Deduplicación: {len(original_items)} → {len(deduplicated_items)} items")
+    logger.info(f"📊 Items DESPUÉS de deduplicar: {len(deduplicated_items)}")
+    for i, item in enumerate(deduplicated_items[:5]):  # Primeros 5
+        dups = item.get('duplicates_found', 0)
+        logger.info(f"  {i}: '{item.get('name')}' x{item.get('quantity', 1)} = ${item.get('price')} (dups: {dups})")
 
     # PASO 2: Validar totales
     validation = validate_totals(

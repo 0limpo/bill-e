@@ -257,14 +257,14 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
     validation = bill_data.get('validation', {})
     ocr_source = bill_data.get('ocr_source', 'unknown')
 
-    # Convertir items al formato de sesión
+    # Convertir items al formato de sesión PRESERVANDO consolidación
     session_items = []
     for i, item in enumerate(items):
         session_items.append({
             'id': f"item-{i}",
             'name': item['name'],
-            'price': item['price'],
-            'quantity': item.get('quantity', 1),
+            'price': item.get('group_total', item['price'] * item.get('quantity', 1)),
+            'quantity': item.get('quantity', 1),  # CRÍTICO: Preservar cantidad
             'assigned_to': [],
             'confidence': item.get('confidence', 'medium'),
             'duplicates_found': item.get('duplicates_found', 0),

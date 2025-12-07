@@ -194,21 +194,20 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
                 session['subtotal'] = enhanced_result.get('subtotal', 0)
                 session['tip'] = enhanced_result.get('tip', 0)
 
-                # Convertir items al formato de sesión (PRESERVANDO CANTIDADES Y CONSOLIDACIÓN)
+                # Convertir items al formato de sesión PRESERVANDO consolidación
                 session_items = []
                 for i, item in enumerate(enhanced_result.get('items', [])):
-                    session_item = {
+                    session_items.append({
                         'id': f"item-{i}",
                         'name': item['name'],
                         'price': item.get('group_total', item['price'] * item.get('quantity', 1)),
-                        'quantity': item.get('quantity', 1),
+                        'quantity': item.get('quantity', 1),  # CRÍTICO: Preservar cantidad
                         'assigned_to': [],
                         'confidence': item.get('confidence', 'medium'),
                         'duplicates_found': item.get('duplicates_found', 0),
                         'normalized_name': item.get('normalized_name', ''),
-                        'original_names': item.get('original_names', [item['name']])
-                    }
-                    session_items.append(session_item)
+                        'group_total': item.get('group_total', item['price'] * item.get('quantity', 1))
+                    })
 
                 session['items'] = session_items
 
@@ -265,21 +264,20 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
                 session['subtotal'] = enhanced_result.get('subtotal', 0)
                 session['tip'] = enhanced_result.get('tip', 0)
 
-                # Convertir items al formato de sesión (PRESERVANDO CANTIDADES Y CONSOLIDACIÓN)
+                # Convertir items al formato de sesión PRESERVANDO consolidación
                 session_items = []
                 for i, item in enumerate(enhanced_result.get('items', [])):
-                    session_item = {
+                    session_items.append({
                         'id': f"item-{i}",
                         'name': item['name'],
                         'price': item.get('group_total', item['price'] * item.get('quantity', 1)),
-                        'quantity': item.get('quantity', 1),
+                        'quantity': item.get('quantity', 1),  # CRÍTICO: Preservar cantidad
                         'assigned_to': [],
                         'confidence': item.get('confidence', 'medium'),
                         'duplicates_found': item.get('duplicates_found', 0),
                         'normalized_name': item.get('normalized_name', ''),
-                        'original_names': item.get('original_names', [item['name']])
-                    }
-                    session_items.append(session_item)
+                        'group_total': item.get('group_total', item['price'] * item.get('quantity', 1))
+                    })
 
                 session['items'] = session_items
 

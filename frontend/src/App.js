@@ -421,17 +421,6 @@ function SessionPage() {
             ))}
           </div>
         )}
-
-        {validation.corrections && validation.corrections.length > 0 && (
-          <div style={{ marginTop: '12px', fontSize: '14px' }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>💡 Correcciones sugeridas:</div>
-            {validation.corrections.map((corr, i) => (
-              <div key={i} style={{ color: '#2d3748' }}>
-                • {corr.item_name}: ${corr.original_price.toLocaleString('es-CL')} → ${corr.suggested_price.toLocaleString('es-CL')}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     );
   };
