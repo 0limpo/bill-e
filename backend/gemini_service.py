@@ -26,7 +26,7 @@ class GeminiOCRService:
 
         try:
             genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
+            self.model = genai.GenerativeModel('gemini-2.0-flash')
             logger.info("✅ Gemini OCR Service inicializado correctamente")
         except Exception as e:
             logger.error(f"❌ Error inicializando Gemini: {str(e)}")
