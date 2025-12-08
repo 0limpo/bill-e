@@ -547,15 +547,25 @@ function SessionPage() {
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
-              color: calculateSubtotalDifference() === 0 ? '#155724' : '#856404',
+              color: (() => {
+                const diff = Math.abs(calculateSubtotalDifference());
+                const diffPercent = confirmedSubtotal > 0 ? (diff / confirmedSubtotal) * 100 : 0;
+                return diffPercent < 5 ? '#155724' : '#856404';
+              })(),
               fontWeight: 'bold'
             }}>
               <span>Diferencia:</span>
               <span>
-                {calculateSubtotalDifference() === 0
-                  ? '✅ ¡Coincide!'
-                  : `$${Math.abs(calculateSubtotalDifference()).toLocaleString('es-CL')}`
-                }
+                {(() => {
+                  const diff = Math.abs(calculateSubtotalDifference());
+                  const diffPercent = confirmedSubtotal > 0 ? (diff / confirmedSubtotal) * 100 : 0;
+
+                  if (diffPercent < 5) {
+                    return '✅ ¡Coincide!';
+                  } else {
+                    return `⚠️ $${diff.toLocaleString('es-CL')} (${diffPercent.toFixed(1)}%)`;
+                  }
+                })()}
               </span>
             </div>
           </div>
@@ -634,10 +644,10 @@ function SessionPage() {
                               value={item.quantity}
                               onChange={(e) => {
                                 const newQuantity = parseInt(e.target.value) || 1;
-                                const unitPrice = item.price / item.quantity;
+                                // ✅ Solo actualizar quantity, NO modificar price (que es unitario)
                                 const newItems = sessionData.items.map(i =>
                                   i === item
-                                    ? { ...i, quantity: newQuantity, price: unitPrice * newQuantity }
+                                    ? { ...i, quantity: newQuantity }
                                     : i
                                 );
                                 setSessionData({ ...sessionData, items: newItems });
