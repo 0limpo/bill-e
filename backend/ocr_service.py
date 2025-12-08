@@ -597,59 +597,52 @@ Formato de respuesta (JSON):
                     print(f"   Regex - Total: ${total}, Subtotal: ${subtotal}, Propina: ${tip}, Items: {len(items)}")
                     print(f"   Gemini - Total: ${gemini_total}, Subtotal: ${gemini_subtotal}, Propina: ${gemini_tip}, Items: {len(gemini_items)}")
 
-                    # Decidir qué datos usar
-                    use_gemini_totals = False
-                    use_gemini_items = False
+                    # FIX Bug 1: Decidir qué FUENTE usar (Gemini o Regex) - NO MEZCLAR
+                    # Si usamos Gemini, usamos TODOS sus datos (totales + items)
+                    # Si usamos Regex, usamos TODOS sus datos (totales + items)
+                    use_gemini = False
+                    gemini_score = 0
+                    regex_score = 0
 
-                    # CRITERIO 1: Si Gemini encontró propina y regex no
-                    if gemini_tip > 0 and tip == 0:
-                        print(f"   ✅ Gemini encontró propina y regex no")
-                        use_gemini_totals = True
-
-                    # CRITERIO 2: Si total/subtotal de Gemini son más coherentes
+                    # Calcular score de Gemini
                     if gemini_total > 0 and gemini_subtotal > 0:
                         gemini_calculated_tip = gemini_total - gemini_subtotal
-                        # Verificar coherencia
+                        # Coherencia: subtotal + tip ≈ total
                         if 0 < gemini_calculated_tip < gemini_subtotal * 0.3:
-                            # Gemini es coherente
-                            regex_coherent = (total > 0 and subtotal > 0 and 0 < total - subtotal < subtotal * 0.3)
+                            gemini_score += 30  # Totales coherentes
+                        if gemini_tip > 0:
+                            gemini_score += 20  # Propina detectada
+                        if len(gemini_items) > 0:
+                            gemini_score += len(gemini_items) * 5  # Más items = mejor
 
-                            if not regex_coherent:
-                                print(f"   ✅ Datos de Gemini son más coherentes")
-                                use_gemini_totals = True
+                    # Calcular score de Regex
+                    if total > 0 and subtotal > 0:
+                        regex_calculated_tip = total - subtotal
+                        if 0 < regex_calculated_tip < subtotal * 0.3:
+                            regex_score += 30  # Totales coherentes
+                        if tip > 0:
+                            regex_score += 20  # Propina detectada
+                        if len(items) > 0:
+                            regex_score += len(items) * 5  # Más items = mejor
 
-                    # CRITERIO 3: Si Gemini tiene más items
-                    if len(gemini_items) > len(items):
-                        print(f"   ✅ Gemini encontró más items ({len(gemini_items)} vs {len(items)})")
-                        use_gemini_items = True
+                    print(f"   Score Gemini: {gemini_score}, Score Regex: {regex_score}")
 
-                    # CRITERIO 4: Si suma de items de Gemini es más cercana al subtotal
-                    if gemini_items:
-                        gemini_items_sum = sum(item.get('precio_total', item.get('precio', 0)) for item in gemini_items)
-                        regex_items_sum = sum(item['price'] for item in items) if items else 0
+                    # Elegir la MEJOR fuente completa
+                    if gemini_score > regex_score:
+                        use_gemini = True
+                        print(f"   ✅ Eligiendo Gemini como fuente única (score: {gemini_score} vs {regex_score})")
+                    else:
+                        print(f"   ✅ Manteniendo Regex como fuente única (score: {regex_score} vs {gemini_score})")
 
-                        if subtotal > 0:
-                            gemini_diff = abs(gemini_items_sum - subtotal)
-                            regex_diff = abs(regex_items_sum - subtotal)
-
-                            if gemini_diff < regex_diff:
-                                print(f"   ✅ Items de Gemini suman más cercano al subtotal")
-                                use_gemini_items = True
-
-                    # Aplicar decisiones
-                    if use_gemini_totals:
-                        print(f"\n🤖 Usando totales de Gemini")
+                    # Aplicar decisión: usar TODOS los datos de UNA sola fuente
+                    if use_gemini:
+                        print(f"\n🤖 Usando TODOS los datos de Gemini (sin mezclar)")
                         total = gemini_total
                         subtotal = gemini_subtotal
                         tip = gemini_tip
-                        gemini_verification_used = True
-
-                    if use_gemini_items:
-                        print(f"\n🤖 Usando items de Gemini")
                         # Convertir items de Gemini al formato esperado
                         items = []
                         for i, gemini_item in enumerate(gemini_items):
-                            # Usar precio_unitario si está disponible, si no usar precio (backward compatibility)
                             unit_price = gemini_item.get('precio_unitario', gemini_item.get('precio', 0))
                             quantity = gemini_item.get('cantidad', 1)
 

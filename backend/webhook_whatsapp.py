@@ -100,8 +100,8 @@ async def handle_webhook(request: Request):
                 if redis_client.exists(cache_key):
                     print(f"⚠️ Mensaje {message_id} ya procesado, ignorando duplicado")
                     return {"status": "already_processed"}
-                # Marcar como procesado con TTL de 1 hora
-                redis_client.setex(cache_key, 3600, "1")
+                # Marcar como procesado con TTL de 24 horas (evita duplicados si servidor reinicia)
+                redis_client.setex(cache_key, 86400, "1")
                 print(f"✅ Mensaje {message_id} marcado como procesado")
 
             # Track inbound WhatsApp message
