@@ -461,7 +461,8 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
     validation = validate_totals(
         items=deduplicated_items,
         declared_total=chosen_result.get('total', 0),
-        declared_subtotal=chosen_result.get('subtotal')
+        declared_subtotal=chosen_result.get('subtotal'),
+        declared_tip=chosen_result.get('tip')
     )
 
     # Resultado final mejorado
