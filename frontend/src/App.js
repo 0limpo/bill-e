@@ -303,7 +303,7 @@ function SessionPage() {
 
   const calculateSubtotalDifference = () => {
     if (!confirmedSubtotal) return 0;
-    return confirmedSubtotal - getCalculatedSubtotal();
+    return confirmedSubtotal - getItemsSum();
   };
 
   const handleTipPercentageChange = (e) => {
