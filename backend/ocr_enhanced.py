@@ -152,7 +152,7 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
     """
     # Calcular subtotal de items
     calculated_subtotal = sum(
-        item.get('group_total', item['price'] * item.get('quantity', 1))
+        item.get('total_price', item.get('group_total', item['price'] * item.get('quantity', 1)))
         for item in items
     )
 
