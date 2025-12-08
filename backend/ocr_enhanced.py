@@ -190,34 +190,16 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
     tolerance_percent = 0.02  # 2%
     tolerance_amount = max(declared_total * tolerance_percent, 500)
 
-    # Calcular score de calidad (0-100)
-    quality_score = 100
+    # SIMPLIFICADO: Score = 100 - diferencia porcentual (mínimo 0)
+    diff_percent = round((total_diff / declared_total) * 100, 2) if declared_total > 0 else 0
+    quality_score = max(0, int(100 - diff_percent))
 
-    # Si los totales declarados cuadran, score alto (95-100)
-    if totals_are_consistent:
-        quality_score = 98  # Score muy alto si subtotal + propina = total
+    # Solo dos niveles: verified (100) o review (<100)
+    quality_level = 'verified' if quality_score == 100 else 'review'
 
-        # Solo penalizar si items difieren mucho del subtotal
-        if declared_subtotal_value > 0:
-            items_diff_percent = abs(calculated_subtotal - declared_subtotal_value) / declared_subtotal_value * 100
-            if items_diff_percent > 5:  # Más de 5% de diferencia
-                penalty = min(10, items_diff_percent / 2)  # Penalización suave
-                quality_score -= penalty
-    else:
-        # Los totales NO cuadran - penalizar
-        if total_diff > tolerance_amount and declared_total > 0:
-            penalty = min(50, (total_diff / declared_total) * 100)
-            quality_score -= penalty
-
-    # Penalizar por items con baja confianza
+    # Contadores para metadata (no afectan score)
     low_confidence_items = [i for i in items if i.get('confidence') == 'low']
-    quality_score -= len(low_confidence_items) * 5
-
-    # Bonificar por items consolidados exitosamente
     consolidated_items = [i for i in items if i.get('duplicates_found', 0) > 0]
-    quality_score += len(consolidated_items) * 2
-
-    quality_score = max(0, min(100, quality_score))
 
     validation = {
         'calculated_subtotal': round(calculated_subtotal),
@@ -226,10 +208,10 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
         'declared_total': declared_total,
         'subtotal_difference': round(subtotal_diff),
         'total_difference': round(total_diff),
-        'difference_percent': round((total_diff / declared_total) * 100, 2) if declared_total > 0 else 0,
+        'difference_percent': diff_percent,
         'is_valid': totals_are_consistent or (total_diff <= tolerance_amount),
-        'quality_score': round(quality_score),
-        'quality_level': 'high' if quality_score >= 80 else 'medium' if quality_score >= 50 else 'low',
+        'quality_score': quality_score,
+        'quality_level': quality_level,
         'items_count': len(items),
         'consolidated_items': len(consolidated_items),
         'low_confidence_items': len(low_confidence_items),

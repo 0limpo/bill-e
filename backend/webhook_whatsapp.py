@@ -428,104 +428,48 @@ def format_success_message_simple(ocr_result: dict, session_id: str) -> str:
 
 def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> str:
     """
-    Formatea mensaje de WhatsApp con información de calidad.
+    Formatea mensaje de WhatsApp - versión simplificada sin debug.
     """
     total = enhanced_result.get('total', 0)
     subtotal = enhanced_result.get('subtotal', 0)
     tip = enhanced_result.get('tip', 0)
     items = enhanced_result.get('items', [])
     validation = enhanced_result.get('validation', {})
-    ocr_source = enhanced_result.get('ocr_source', 'vision')
 
-    # Indicador de calidad
+    # Score simplificado: 100 = verified, <100 = review
     quality_score = validation.get('quality_score', 0)
-    quality_level = validation.get('quality_level', 'low')
 
-    quality_emoji = "✅" if quality_level == "high" else "⚠️" if quality_level == "medium" else "❌"
+    # Calcular porcentaje de propina
+    tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
 
-    # Header con calidad
-    message = f"🎉 ¡Boleta procesada exitosamente!\n\n"
-    message += f"{quality_emoji} **Calidad del escaneo: {quality_score}/100** ({quality_level})\n"
-    message += f"🤖 Procesado con: {ocr_source.upper()}\n\n"
-
-    # Resumen financiero CON FUENTE DE DATOS
-    message += f"📊 *Resumen:*\n"
-    message += f"💰 Total: ${total:,.0f}\n"
-
-    if subtotal > 0:
-        message += f"💵 Subtotal: ${subtotal:,.0f}\n"
-
-    if tip > 0:
-        tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
-        message += f"🎁 Propina: ${tip:,.0f} ({tip_percent:.0f}%)\n"
-    else:
-        message += f"🎁 Propina: No detectada\n"
-
-    message += f"📝 Items: {len(items)}\n"
-
-    # AGREGAR DEBUG INFO (temporal)
-    message += f"\n🔍 _Debug:_\n"
-    message += f"OCR Source: {ocr_source}\n"
-    message += f"Quality: {quality_score}/100\n"
-    message += f"is_valid: {validation.get('is_valid')}\n"
-    message += f"total_difference: ${validation.get('total_difference', 0):,.0f}\n"
-    message += f"difference_percent: {validation.get('difference_percent', 0)}%\n"
-
-    # Mostrar si totales calzan
-    if validation.get('is_valid'):
-        message += f"✅ Totales verificados\n"
-    else:
-        diff = validation.get('total_difference', 0)
-        message += f"⚠️ Diferencia: ${diff:,.0f}\n"
-
-    message += "\n"
-
-
-    # Warnings si existen
-    warnings = validation.get('warnings', [])
-    if warnings:
-        message += "⚠️ *Avisos:*\n"
-        for warning in warnings[:2]:  # Máximo 2 warnings
-            message += f"• {warning.get('message', '')}\n"
-        message += "\n"
-
-    # Items consolidados
-    consolidated_count = validation.get('consolidated_items', 0)
-    if consolidated_count > 0:
-        message += f"🔗 Se consolidaron {consolidated_count} items duplicados\n\n"
-
-    # Primeros 3 items
-    if items:
-        message += f"📦 *Items encontrados* (primeros 3):\n"
-        for item in items[:3]:
-            quantity = item.get('quantity', 1)
-            name = item['name']
-            price = item['price']  # Precio unitario
-            group_total = item.get('group_total', price * quantity)
-            duplicates = item.get('duplicates_found', 0)
-
-            item_line = f"• {name}"
-            if quantity > 1:
-                item_line += f" x{quantity}"
-            if duplicates > 0:
-                item_line += f" 🔗({duplicates + 1} agrupados)"
-            # Mostrar precio total del grupo (no unitario)
-            item_line += f" - ${group_total:,.0f}\n"
-
-            message += item_line
-
-        if len(items) > 3:
-            message += f"... y {len(items) - 3} items más\n"
-
-    message += "\n"
-
-    # Link
+    # URL del frontend
     frontend_url = os.getenv('FRONTEND_URL', 'https://bill-e.vercel.app')
-    message += f"🔗 *Divide tu cuenta aquí:*\n"
-    message += f"{frontend_url}/s/{session_id}\n\n"
+    url = f"{frontend_url}/s/{session_id}"
 
-    # Footer
-    message += f"⏰ Link expira en 2 horas"
+    if quality_score == 100:
+        # Mensaje para totales verificados
+        message = f"🧾 ¡Boleta procesada satisfactoriamente!\n\n"
+        message += f"✅ *Totales verificados*\n\n"
+        message += f"📋 Resumen:\n"
+        message += f"💰 Total: ${total:,.0f}\n"
+        message += f"📊 Subtotal: ${subtotal:,.0f}\n"
+        message += f"🎁 Propina: ${tip:,.0f} ({tip_percent:.0f}%)\n"
+        message += f"📝 Items: {len(items)}\n\n"
+        message += f"🔗 Divide tu cuenta aquí:\n"
+        message += f"{url}\n\n"
+        message += f"⏰ Link válido por 24 horas"
+    else:
+        # Mensaje para revisar
+        message = f"🧾 ¡Boleta procesada!\n\n"
+        message += f"⚠️ *Verificar totales e items*\n\n"
+        message += f"📋 Resumen:\n"
+        message += f"💰 Total: ${total:,.0f}\n"
+        message += f"📊 Subtotal: ${subtotal:,.0f}\n"
+        message += f"🎁 Propina: ${tip:,.0f} ({tip_percent:.0f}%)\n"
+        message += f"📝 Items: {len(items)}\n\n"
+        message += f"🔗 Edita los datos aquí:\n"
+        message += f"{url}\n\n"
+        message += f"⏰ Link válido por 24 horas"
 
     return message
 
