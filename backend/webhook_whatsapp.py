@@ -7,12 +7,12 @@ import httpx
 import redis
 import base64
 
-# Importar OCR service (nuevo: solo Gemini)
+# Importar OCR service (Vision + Gemini paralelo)
 try:
-    from ocr_gemini import ocr_service
+    from ocr_enhanced import process_image_parallel
 except ImportError:
     print("Warning: OCR service not available")
-    ocr_service = None
+    process_image_parallel = None
 
 # Importar Analytics
 try:
@@ -146,7 +146,7 @@ async def handle_webhook(request: Request):
         return {"status": "error", "message": str(e)}
 
 async def process_image_message(phone_number: str, image_data: dict):
-    """Procesa mensaje con imagen (boleta) usando Gemini OCR simplificado."""
+    """Procesa mensaje con imagen (boleta) usando Vision + Gemini en paralelo."""
     try:
         # Enviar mensaje de procesamiento
         await send_whatsapp_message(
@@ -173,38 +173,29 @@ async def process_image_message(phone_number: str, image_data: dict):
 
         print(f"📥 Imagen descargada: {len(image_bytes)} bytes")
 
-        # Procesar con Gemini OCR (una sola llamada, sin mezcla de datos)
+        # Procesar con Vision + Gemini en paralelo
         try:
-            ocr_result = ocr_service.process_receipt(image_bytes)
-
-            if not ocr_result.get('success'):
-                error_msg = ocr_result.get('error', 'Error desconocido')
-                print(f"❌ OCR falló: {error_msg}")
-                await send_whatsapp_message(
-                    phone_number,
-                    f"❌ No pude leer la boleta: {error_msg}\n\nPor favor intenta con una foto más clara."
-                )
-                return
+            result = process_image_parallel(image_bytes)
 
             # Extraer datos
-            total = ocr_result.get('total', 0)
-            subtotal = ocr_result.get('subtotal', 0)
-            tip = ocr_result.get('tip', 0)
-            items = ocr_result.get('items', [])
-            ocr_source = ocr_result.get('ocr_source', 'gemini')
-            confidence_score = ocr_result.get('confidence_score', 0)
+            total = result.get('total', 0)
+            subtotal = result.get('subtotal', 0)
+            tip = result.get('tip', 0)
+            items = result.get('items', [])
+            validation = result.get('validation', {})
+            ocr_source = result.get('ocr_source', 'unknown')
 
-            print(f"✅ OCR completado con {ocr_source}: {len(items)} items, score: {confidence_score}")
+            print(f"✅ OCR completado con {ocr_source}: {len(items)} items, score: {validation.get('quality_score', 0)}")
 
             # Crear sesión con datos
             session_id = create_session_with_bill_data(
                 phone_number=phone_number,
-                bill_data=ocr_result
+                bill_data=result
             )
 
             # Formatear mensaje de respuesta
-            message = format_success_message_simple(
-                ocr_result=ocr_result,
+            message = format_success_message_enhanced(
+                enhanced_result=result,
                 session_id=session_id
             )
 
@@ -279,22 +270,22 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
     total = bill_data.get('total', 0)
     subtotal = bill_data.get('subtotal', 0)
     tip = bill_data.get('tip', 0)
-    ocr_source = bill_data.get('ocr_source', 'gemini')
-    confidence = bill_data.get('confidence', 'medium')
-    confidence_score = bill_data.get('confidence_score', 0)
+    validation = bill_data.get('validation', {})
+    ocr_source = bill_data.get('ocr_source', 'unknown')
 
-    # Convertir items al formato de sesión
+    # Convertir items al formato de sesión PRESERVANDO consolidación
     session_items = []
     for i, item in enumerate(items):
-        quantity = item.get('quantity', 1)
-        price = item['price']
         session_items.append({
             'id': f"item-{i}",
             'name': item['name'],
-            'price': price,
-            'quantity': quantity,
+            'price': item['price'],
+            'quantity': item.get('quantity', 1),
             'assigned_to': [],
-            'group_total': price * quantity
+            'confidence': item.get('confidence', 'medium'),
+            'duplicates_found': item.get('duplicates_found', 0),
+            'normalized_name': item.get('normalized_name', ''),
+            'group_total': item.get('group_total', item['price'] * item.get('quantity', 1))
         })
 
     # Crear sesión
@@ -312,8 +303,9 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
         'state': 'SHOWING_RESULT',
         'result': None,
         'ocr_source': ocr_source,
-        'confidence': confidence,
-        'confidence_score': confidence_score
+        'validation': validation,
+        'raw_text': bill_data.get('raw_text', ''),
+        'confidence': bill_data.get('confidence', 'medium')
     }
 
     # Guardar en Redis con TTL de 2 horas
