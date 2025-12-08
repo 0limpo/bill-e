@@ -90,17 +90,17 @@ function SessionPage() {
     }
   }, [id]);
 
-  // Pre-llenar confirmedSubtotal con suma de items
+  // Pre-llenar confirmedSubtotal con subtotal del OCR
   useEffect(() => {
     if (sessionData && confirmedSubtotal === null) {
-      // Prioridad 1: Suma de items (si hay items)
-      if (sessionData.items && sessionData.items.length > 0) {
+      // Prioridad 1: Subtotal del OCR (si está disponible)
+      if (sessionData.subtotal && sessionData.subtotal > 0) {
+        setConfirmedSubtotal(sessionData.subtotal);
+      }
+      // Prioridad 2: Suma de items (solo si no hay subtotal del OCR)
+      else if (sessionData.items && sessionData.items.length > 0) {
         const itemsSum = sessionData.items.reduce((sum, item) => sum + item.price, 0);
         setConfirmedSubtotal(itemsSum);
-      }
-      // Prioridad 2: Subtotal del backend (si no hay items)
-      else if (sessionData.subtotal) {
-        setConfirmedSubtotal(sessionData.subtotal);
       }
     }
   }, [sessionData, confirmedSubtotal]);

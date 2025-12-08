@@ -219,7 +219,7 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
         'subtotal_difference': round(subtotal_diff),
         'total_difference': round(total_diff),
         'difference_percent': round((total_diff / declared_total) * 100, 2) if declared_total > 0 else 0,
-        'is_valid': total_diff <= tolerance_amount,
+        'is_valid': totals_are_consistent or (total_diff <= tolerance_amount),
         'quality_score': round(quality_score),
         'quality_level': 'high' if quality_score >= 80 else 'medium' if quality_score >= 50 else 'low',
         'items_count': len(items),
