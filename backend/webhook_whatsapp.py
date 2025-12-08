@@ -407,6 +407,9 @@ def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> s
     message += f"\n🔍 _Debug:_\n"
     message += f"OCR Source: {ocr_source}\n"
     message += f"Quality: {quality_score}/100\n"
+    message += f"is_valid: {validation.get('is_valid')}\n"
+    message += f"total_difference: ${validation.get('total_difference', 0):,.0f}\n"
+    message += f"difference_percent: {validation.get('difference_percent', 0)}%\n"
 
     # Mostrar si totales calzan
     if validation.get('is_valid'):
