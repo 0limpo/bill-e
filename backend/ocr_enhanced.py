@@ -342,11 +342,11 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
 
     # Ejecutar ambos en paralelo
     with ThreadPoolExecutor(max_workers=2) as executor:
-        future_vision = executor.submit(process_with_vision)
+        # future_vision = executor.submit(process_with_vision)  # DISABLED: Testing Gemini-only
         future_gemini = executor.submit(process_with_gemini)
 
         # Esperar ambos
-        future_vision.result()
+        # future_vision.result()  # DISABLED: Testing Gemini-only
         future_gemini.result()
 
     # Evaluar resultados
