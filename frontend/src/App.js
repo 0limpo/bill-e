@@ -257,6 +257,15 @@ function SessionPage() {
     }
   };
 
+  const getItemsSum = () => {
+    if (!sessionData?.items) return 0;
+    return sessionData.items.reduce((sum, item) => {
+      const price = item.price || 0;
+      const quantity = item.quantity || 1;
+      return sum + (price * quantity);
+    }, 0);
+  };
+
   const getCurrentSubtotal = () => {
     if (!sessionData) return 0;
 
@@ -266,7 +275,7 @@ function SessionPage() {
     }
 
     // Fallback: calcular desde items solo si no hay subtotal del OCR
-    return sessionData.items.reduce((sum, item) => sum + item.price, 0);
+    return getItemsSum();
   };
 
   const getCurrentTip = () => {
@@ -289,7 +298,7 @@ function SessionPage() {
     }
 
     // Fallback: suma de items
-    return sessionData.items.reduce((sum, item) => sum + item.price, 0);
+    return getItemsSum();
   };
 
   const calculateSubtotalDifference = () => {
@@ -469,7 +478,7 @@ function SessionPage() {
               <span className="label">Subtotal</span>
               <span className="amount">{formatCurrency(getCurrentSubtotal())}</span>
               {sessionData.subtotal && sessionData.subtotal > 0 && (() => {
-                const itemsSum = sessionData.items.reduce((sum, item) => sum + item.price, 0);
+                const itemsSum = getItemsSum();
                 const diff = Math.abs(sessionData.subtotal - itemsSum);
                 const diffPercent = (diff / sessionData.subtotal * 100).toFixed(1);
 
@@ -533,7 +542,7 @@ function SessionPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span>Subtotal calculado (suma items):</span>
-              <strong>${getCalculatedSubtotal().toLocaleString('es-CL')}</strong>
+              <strong>${getItemsSum().toLocaleString('es-CL')}</strong>
             </div>
             <div style={{
               display: 'flex',
