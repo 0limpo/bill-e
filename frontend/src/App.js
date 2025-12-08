@@ -550,7 +550,7 @@ function SessionPage() {
               color: (() => {
                 const diff = Math.abs(calculateSubtotalDifference());
                 const diffPercent = confirmedSubtotal > 0 ? (diff / confirmedSubtotal) * 100 : 0;
-                return diffPercent < 5 ? '#155724' : '#856404';
+                return diff === 0 ? '#155724' : '#856404';
               })(),
               fontWeight: 'bold'
             }}>
@@ -560,7 +560,7 @@ function SessionPage() {
                   const diff = Math.abs(calculateSubtotalDifference());
                   const diffPercent = confirmedSubtotal > 0 ? (diff / confirmedSubtotal) * 100 : 0;
 
-                  if (diffPercent < 5) {
+                  if (diff === 0) {
                     return '✅ ¡Coincide!';
                   } else {
                     return `⚠️ $${diff.toLocaleString('es-CL')} (${diffPercent.toFixed(1)}%)`;
