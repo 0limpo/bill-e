@@ -18,14 +18,12 @@ except ImportError as e:
     print(f"Warning: Could not import some modules: {e}")
     redis_client = None
 
-# Importar OCR service
+# Importar OCR service (nuevo: solo Gemini)
 try:
-    from ocr_service import ocr_service
-    from ocr_enhanced import process_image_parallel
+    from ocr_gemini import ocr_service
 except ImportError as e:
     print(f"Warning: OCR service not available: {e}")
     ocr_service = None
-    process_image_parallel = None
 
 # Importar Analytics
 try:
@@ -166,7 +164,7 @@ async def create_session():
 
 @app.post("/api/session/{session_id}/ocr")
 async def process_receipt_ocr(session_id: str, request: OCRRequest):
-    """Procesar imagen de boleta con OCR mejorado (Vision + Gemini paralelo)"""
+    """Procesar imagen de boleta con Gemini OCR"""
     try:
         # Verificar que la sesión existe
         if redis_client:
@@ -183,30 +181,32 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
 
         image_bytes = base64.b64decode(image_b64)
 
-        # NUEVO: Procesamiento paralelo mejorado
+        # Procesar con Gemini OCR
         try:
-            enhanced_result = process_image_parallel(image_bytes)
+            ocr_result = ocr_service.process_receipt(image_bytes)
 
-            # Actualizar sesión con resultado mejorado
+            if not ocr_result.get('success'):
+                raise HTTPException(status_code=400, detail=ocr_result.get('error', 'Error en OCR'))
+
+            # Actualizar sesión con resultado
             if redis_client and session_data:
                 session = json.loads(session_data.decode('utf-8'))
-                session['total'] = enhanced_result.get('total', 0)
-                session['subtotal'] = enhanced_result.get('subtotal', 0)
-                session['tip'] = enhanced_result.get('tip', 0)
+                session['total'] = ocr_result.get('total', 0)
+                session['subtotal'] = ocr_result.get('subtotal', 0)
+                session['tip'] = ocr_result.get('tip', 0)
 
-                # Convertir items al formato de sesión PRESERVANDO consolidación
+                # Convertir items al formato de sesión
                 session_items = []
-                for i, item in enumerate(enhanced_result.get('items', [])):
+                for i, item in enumerate(ocr_result.get('items', [])):
+                    quantity = item.get('quantity', 1)
+                    price = item['price']
                     session_items.append({
                         'id': f"item-{i}",
                         'name': item['name'],
-                        'price': item.get('group_total', item['price'] * item.get('quantity', 1)),
-                        'quantity': item.get('quantity', 1),  # CRÍTICO: Preservar cantidad
+                        'price': price,
+                        'quantity': quantity,
                         'assigned_to': [],
-                        'confidence': item.get('confidence', 'medium'),
-                        'duplicates_found': item.get('duplicates_found', 0),
-                        'normalized_name': item.get('normalized_name', ''),
-                        'group_total': item.get('group_total', item['price'] * item.get('quantity', 1))
+                        'group_total': price * quantity
                     })
 
                 session['items'] = session_items
@@ -214,18 +214,19 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
                 # Guardar sesión actualizada
                 redis_client.setex(
                     f"session:{session_id}",
-                    3600,  # Renovar por 1 hora más
+                    3600,
                     json.dumps(session)
                 )
 
             return {
                 "success": True,
-                "data": enhanced_result,
+                "data": ocr_result,
                 "session": session if redis_client else None,
-                "validation": enhanced_result.get('validation'),
-                "ocr_source": enhanced_result.get('ocr_source')
+                "ocr_source": ocr_result.get('ocr_source')
             }
 
+        except HTTPException:
+            raise
         except Exception as ocr_error:
             print(f"OCR Error: {str(ocr_error)}")
             raise HTTPException(status_code=400, detail=f"Error en OCR: {str(ocr_error)}")
@@ -238,7 +239,7 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
 
 @app.post("/api/session/{session_id}/upload")
 async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
-    """Upload y procesa imagen con OCR mejorado (Vision + Gemini paralelo)."""
+    """Upload y procesa imagen con Gemini OCR."""
     try:
         # Verificar que la sesión existe
         if redis_client:
@@ -253,30 +254,32 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
         # Leer imagen
         image_bytes = await file.read()
 
-        # NUEVO: Procesamiento paralelo mejorado
+        # Procesar con Gemini OCR
         try:
-            enhanced_result = process_image_parallel(image_bytes)
+            ocr_result = ocr_service.process_receipt(image_bytes)
 
-            # Actualizar sesión con resultado mejorado
+            if not ocr_result.get('success'):
+                raise HTTPException(status_code=400, detail=ocr_result.get('error', 'Error en OCR'))
+
+            # Actualizar sesión con resultado
             if redis_client and session_data:
                 session = json.loads(session_data.decode('utf-8'))
-                session['total'] = enhanced_result.get('total', 0)
-                session['subtotal'] = enhanced_result.get('subtotal', 0)
-                session['tip'] = enhanced_result.get('tip', 0)
+                session['total'] = ocr_result.get('total', 0)
+                session['subtotal'] = ocr_result.get('subtotal', 0)
+                session['tip'] = ocr_result.get('tip', 0)
 
-                # Convertir items al formato de sesión PRESERVANDO consolidación
+                # Convertir items al formato de sesión
                 session_items = []
-                for i, item in enumerate(enhanced_result.get('items', [])):
+                for i, item in enumerate(ocr_result.get('items', [])):
+                    quantity = item.get('quantity', 1)
+                    price = item['price']
                     session_items.append({
                         'id': f"item-{i}",
                         'name': item['name'],
-                        'price': item.get('group_total', item['price'] * item.get('quantity', 1)),
-                        'quantity': item.get('quantity', 1),  # CRÍTICO: Preservar cantidad
+                        'price': price,
+                        'quantity': quantity,
                         'assigned_to': [],
-                        'confidence': item.get('confidence', 'medium'),
-                        'duplicates_found': item.get('duplicates_found', 0),
-                        'normalized_name': item.get('normalized_name', ''),
-                        'group_total': item.get('group_total', item['price'] * item.get('quantity', 1))
+                        'group_total': price * quantity
                     })
 
                 session['items'] = session_items
@@ -284,18 +287,19 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
                 # Guardar sesión actualizada
                 redis_client.setex(
                     f"session:{session_id}",
-                    3600,  # Renovar por 1 hora más
+                    3600,
                     json.dumps(session)
                 )
 
             return {
                 "success": True,
-                "data": enhanced_result,
+                "data": ocr_result,
                 "session": session if redis_client else None,
-                "validation": enhanced_result.get('validation'),
-                "ocr_source": enhanced_result.get('ocr_source')
+                "ocr_source": ocr_result.get('ocr_source')
             }
 
+        except HTTPException:
+            raise
         except Exception as ocr_error:
             print(f"OCR Error: {str(ocr_error)}")
             raise HTTPException(status_code=400, detail=f"Error en OCR: {str(ocr_error)}")

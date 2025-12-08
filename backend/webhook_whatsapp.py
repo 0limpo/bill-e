@@ -7,14 +7,12 @@ import httpx
 import redis
 import base64
 
-# Importar OCR service
+# Importar OCR service (nuevo: solo Gemini)
 try:
-    from ocr_service import ocr_service
-    from ocr_enhanced import process_image_parallel
+    from ocr_gemini import ocr_service
 except ImportError:
     print("Warning: OCR service not available")
     ocr_service = None
-    process_image_parallel = None
 
 # Importar Analytics
 try:
@@ -148,12 +146,12 @@ async def handle_webhook(request: Request):
         return {"status": "error", "message": str(e)}
 
 async def process_image_message(phone_number: str, image_data: dict):
-    """Procesa mensaje con imagen (boleta) usando OCR mejorado."""
+    """Procesa mensaje con imagen (boleta) usando Gemini OCR simplificado."""
     try:
         # Enviar mensaje de procesamiento
         await send_whatsapp_message(
             phone_number,
-            "⏳ Estoy procesando tu boleta con tecnología mejorada (Vision + Gemini)..."
+            "⏳ Estoy procesando tu boleta..."
         )
 
         # Obtener ID de la imagen
@@ -175,29 +173,38 @@ async def process_image_message(phone_number: str, image_data: dict):
 
         print(f"📥 Imagen descargada: {len(image_bytes)} bytes")
 
-        # NUEVO: Procesar con OCR mejorado (Vision + Gemini paralelo)
+        # Procesar con Gemini OCR (una sola llamada, sin mezcla de datos)
         try:
-            enhanced_result = process_image_parallel(image_bytes)
+            ocr_result = ocr_service.process_receipt(image_bytes)
+
+            if not ocr_result.get('success'):
+                error_msg = ocr_result.get('error', 'Error desconocido')
+                print(f"❌ OCR falló: {error_msg}")
+                await send_whatsapp_message(
+                    phone_number,
+                    f"❌ No pude leer la boleta: {error_msg}\n\nPor favor intenta con una foto más clara."
+                )
+                return
 
             # Extraer datos
-            total = enhanced_result.get('total', 0)
-            subtotal = enhanced_result.get('subtotal', 0)
-            tip = enhanced_result.get('tip', 0)
-            items = enhanced_result.get('items', [])
-            validation = enhanced_result.get('validation', {})
-            ocr_source = enhanced_result.get('ocr_source', 'unknown')
+            total = ocr_result.get('total', 0)
+            subtotal = ocr_result.get('subtotal', 0)
+            tip = ocr_result.get('tip', 0)
+            items = ocr_result.get('items', [])
+            ocr_source = ocr_result.get('ocr_source', 'gemini')
+            confidence_score = ocr_result.get('confidence_score', 0)
 
-            print(f"✅ OCR completado con {ocr_source}: {len(items)} items, score: {validation.get('quality_score', 0)}")
+            print(f"✅ OCR completado con {ocr_source}: {len(items)} items, score: {confidence_score}")
 
-            # Crear sesión con datos mejorados
+            # Crear sesión con datos
             session_id = create_session_with_bill_data(
                 phone_number=phone_number,
-                bill_data=enhanced_result
+                bill_data=ocr_result
             )
 
-            # Formatear mensaje de respuesta mejorado
-            message = format_success_message_enhanced(
-                enhanced_result=enhanced_result,
+            # Formatear mensaje de respuesta
+            message = format_success_message_simple(
+                ocr_result=ocr_result,
                 session_id=session_id
             )
 
@@ -205,7 +212,7 @@ async def process_image_message(phone_number: str, image_data: dict):
             print(f"✅ Boleta procesada exitosamente para {phone_number}")
 
         except Exception as ocr_error:
-            print(f"❌ Error en OCR mejorado: {str(ocr_error)}")
+            print(f"❌ Error en OCR: {str(ocr_error)}")
             await send_whatsapp_message(
                 phone_number,
                 f"❌ Error al procesar la boleta: {str(ocr_error)}\n\nPor favor intenta con una foto más clara."
@@ -263,7 +270,7 @@ async def download_whatsapp_media(media_url: str) -> bytes:
 
 def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
     """
-    Crea sesión con datos de boleta procesada (versión mejorada).
+    Crea sesión con datos de boleta procesada.
     """
     session_id = str(uuid.uuid4())
 
@@ -272,22 +279,22 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
     total = bill_data.get('total', 0)
     subtotal = bill_data.get('subtotal', 0)
     tip = bill_data.get('tip', 0)
-    validation = bill_data.get('validation', {})
-    ocr_source = bill_data.get('ocr_source', 'unknown')
+    ocr_source = bill_data.get('ocr_source', 'gemini')
+    confidence = bill_data.get('confidence', 'medium')
+    confidence_score = bill_data.get('confidence_score', 0)
 
-    # Convertir items al formato de sesión PRESERVANDO consolidación
+    # Convertir items al formato de sesión
     session_items = []
     for i, item in enumerate(items):
+        quantity = item.get('quantity', 1)
+        price = item['price']
         session_items.append({
             'id': f"item-{i}",
             'name': item['name'],
-            'price': item['price'],  # ✅ Precio UNITARIO (no sobrescribir)
-            'quantity': item.get('quantity', 1),  # CRÍTICO: Preservar cantidad
+            'price': price,
+            'quantity': quantity,
             'assigned_to': [],
-            'confidence': item.get('confidence', 'medium'),
-            'duplicates_found': item.get('duplicates_found', 0),
-            'normalized_name': item.get('normalized_name', ''),
-            'group_total': item.get('group_total', item['price'] * item.get('quantity', 1))
+            'group_total': price * quantity
         })
 
     # Crear sesión
@@ -305,9 +312,8 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
         'state': 'SHOWING_RESULT',
         'result': None,
         'ocr_source': ocr_source,
-        'validation': validation,
-        'raw_text': bill_data.get('raw_text', ''),
-        'confidence': bill_data.get('confidence', 'medium')
+        'confidence': confidence,
+        'confidence_score': confidence_score
     }
 
     # Guardar en Redis con TTL de 2 horas
@@ -365,6 +371,68 @@ def format_success_message(bill_data: dict, session_id: str) -> str:
 💡 Comparte este link con tus amigos para que vean cuánto debe pagar cada uno."""
     
     return message
+
+def format_success_message_simple(ocr_result: dict, session_id: str) -> str:
+    """
+    Formatea mensaje de WhatsApp con el resultado del OCR simplificado.
+    """
+    total = ocr_result.get('total', 0)
+    subtotal = ocr_result.get('subtotal', 0)
+    tip = ocr_result.get('tip', 0)
+    items = ocr_result.get('items', [])
+    confidence_score = ocr_result.get('confidence_score', 0)
+    confidence = ocr_result.get('confidence', 'medium')
+    currency = ocr_result.get('currency', 'CLP')
+
+    # Emoji de calidad
+    quality_emoji = "✅" if confidence == "high" else "⚠️" if confidence == "medium" else "❌"
+
+    # Header
+    message = f"🎉 ¡Boleta procesada!\n\n"
+    message += f"{quality_emoji} Confianza: {confidence_score}/100\n\n"
+
+    # Resumen financiero
+    message += f"📊 *Resumen:*\n"
+    message += f"💰 Total: ${total:,}\n"
+
+    if subtotal > 0:
+        message += f"💵 Subtotal: ${subtotal:,}\n"
+
+    if tip > 0:
+        tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
+        message += f"🎁 Propina: ${tip:,} ({tip_percent:.0f}%)\n"
+
+    message += f"📝 Items: {len(items)}\n\n"
+
+    # Primeros 3 items
+    if items:
+        message += f"📦 *Items:*\n"
+        for item in items[:3]:
+            quantity = item.get('quantity', 1)
+            name = item['name']
+            price = item['price']
+            total_item = price * quantity
+
+            if quantity > 1:
+                message += f"• {quantity}x {name} - ${total_item:,}\n"
+            else:
+                message += f"• {name} - ${price:,}\n"
+
+        if len(items) > 3:
+            message += f"... y {len(items) - 3} más\n"
+
+    message += "\n"
+
+    # Link
+    frontend_url = os.getenv('FRONTEND_URL', 'https://bill-e.vercel.app')
+    message += f"🔗 *Divide tu cuenta aquí:*\n"
+    message += f"{frontend_url}/s/{session_id}\n\n"
+
+    # Footer
+    message += f"⏰ Link válido por 2 horas"
+
+    return message
+
 
 def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> str:
     """
