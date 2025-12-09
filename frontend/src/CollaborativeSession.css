@@ -699,6 +699,137 @@
   color: #e53e3e;
 }
 
+/* Subtotal editable */
+.editable-value {
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.editable-value:hover {
+  background: #f0f0f0;
+}
+
+.edit-hint {
+  opacity: 0.5;
+  font-size: 12px;
+}
+
+.edit-subtotal-input {
+  width: 120px;
+  padding: 4px 8px;
+  font-size: 16px;
+  border: 2px solid #667eea;
+  border-radius: 4px;
+}
+
+/* Suma calculada y diferencia */
+.summary-row .warning {
+  color: #e53e3e;
+  font-weight: bold;
+}
+
+.difference-text {
+  color: #e53e3e;
+  font-size: 12px;
+}
+
+/* Precio unitario */
+.unit-price {
+  font-size: 12px;
+  color: #718096;
+  margin-left: 4px;
+}
+
+/* Botón agregar participante */
+.add-participant-btn {
+  background: #38a169;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-participant-btn:hover {
+  background: #2f855a;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal-content h3 {
+  margin: 0 0 16px;
+  color: #2d3748;
+}
+
+.modal-content input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.modal-content input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.modal-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.modal-actions button:first-child {
+  background: #e2e8f0;
+  color: #4a5568;
+}
+
+.modal-actions button:last-child {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.modal-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 480px) {
   .collaborative-session {
     padding: 12px;

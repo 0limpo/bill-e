@@ -662,6 +662,87 @@ async def update_participant(session_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/session/{session_id}/update-totals")
+async def update_totals(session_id: str, request: Request):
+    """Actualizar subtotal, propina y total (solo owner)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Actualizar totales
+        if "subtotal" in data:
+            session_data["subtotal"] = data["subtotal"]
+        if "tip" in data:
+            session_data["tip"] = data["tip"]
+        if "total" in data:
+            session_data["total"] = data["total"]
+
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Guardar
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/add-participant-manual")
+async def add_participant_manual(session_id: str, request: Request):
+    """Agregar participante manualmente (solo owner)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Crear nuevo participante
+        new_participant = {
+            "id": str(uuid.uuid4())[:8],
+            "name": data.get("name", "Invitado"),
+            "phone": data.get("phone"),
+            "role": "editor",
+            "added_by_owner": True,
+            "joined_at": datetime.now().isoformat()
+        }
+
+        session_data["participants"].append(new_participant)
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Guardar
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "participant": new_participant}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

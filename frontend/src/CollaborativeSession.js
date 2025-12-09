@@ -162,7 +162,16 @@ const BillItem = ({
               {item.name}
             </span>
             <div className="item-right">
-              {isOwner && <span className="item-price">{formatCurrency(item.price)}</span>}
+              {isOwner && (
+                <span className="item-price">
+                  {formatCurrency(item.price)}
+                  {hasQuantity && (
+                    <span className="unit-price">
+                      ({formatCurrency(Math.round(item.price / item.quantity))} c/u)
+                    </span>
+                  )}
+                </span>
+              )}
               {isOwner && !isFinalized && (
                 <button onClick={handleStartEdit} className="btn-edit-item">✏️</button>
               )}
@@ -374,6 +383,15 @@ const CollaborativeSession = () => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [ownerName, setOwnerName] = useState('');
 
+  // Estados para edición de subtotal
+  const [editingSubtotal, setEditingSubtotal] = useState(false);
+  const [tempSubtotal, setTempSubtotal] = useState(0);
+
+  // Estados para agregar participantes manualmente
+  const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [newParticipantName, setNewParticipantName] = useState('');
+  const [newParticipantPhone, setNewParticipantPhone] = useState('');
+
   // Calcular suma de items
   const calculateItemsTotal = useCallback(() => {
     if (!session?.items) return 0;
@@ -435,29 +453,49 @@ const CollaborativeSession = () => {
   };
 
   const handleAssign = async (itemId, participantId, quantity, isAssigned) => {
-    try {
-      const response = await fetch(`${API_URL}/api/session/${sessionId}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          item_id: itemId,
-          participant_id: participantId,
-          quantity,
-          is_assigned: isAssigned,
-          updated_by: currentParticipant?.name || 'unknown'
-        })
-      });
+    // 1. ACTUALIZACIÓN OPTIMISTA - cambiar UI inmediatamente
+    setSession(prev => {
+      const currentAssignments = prev.assignments[itemId] || [];
 
-      if (response.ok) {
-        const data = await response.json();
-        setSession(prev => ({
-          ...prev,
-          assignments: data.assignments
-        }));
+      let newAssignments;
+      if (!isAssigned) {
+        // Quitar asignación
+        newAssignments = currentAssignments.filter(a => a.participant_id !== participantId);
+      } else {
+        // Agregar o actualizar asignación
+        const existingIdx = currentAssignments.findIndex(a => a.participant_id === participantId);
+        if (existingIdx >= 0) {
+          newAssignments = currentAssignments.map((a, i) =>
+            i === existingIdx ? { ...a, quantity } : a
+          );
+        } else {
+          newAssignments = [...currentAssignments, { participant_id: participantId, quantity }];
+        }
       }
-    } catch (err) {
-      console.error('Error asignando:', err);
-    }
+
+      return {
+        ...prev,
+        assignments: {
+          ...prev.assignments,
+          [itemId]: newAssignments
+        }
+      };
+    });
+
+    // 2. SINCRONIZAR CON SERVIDOR en background (sin await)
+    fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        item_id: itemId,
+        participant_id: participantId,
+        quantity,
+        is_assigned: isAssigned,
+        updated_by: currentParticipant?.name || 'unknown'
+      })
+    }).catch(err => {
+      console.error('Error sincronizando asignación:', err);
+    });
   };
 
   const handleFinalize = async () => {
@@ -543,6 +581,75 @@ const CollaborativeSession = () => {
       setIsEditingName(false);
     } catch (err) {
       console.error('Error actualizando nombre:', err);
+    }
+  };
+
+  // Guardar subtotal editado
+  const handleSaveSubtotal = async () => {
+    if (!tempSubtotal || tempSubtotal === session.subtotal) {
+      setEditingSubtotal(false);
+      return;
+    }
+
+    try {
+      const newSubtotal = tempSubtotal;
+      const tipPercentage = session.tip_percentage || 10;
+      const newTip = Math.round(newSubtotal * tipPercentage / 100);
+      const newTotal = newSubtotal + newTip;
+
+      const response = await fetch(`${API_URL}/api/session/${sessionId}/update-totals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subtotal: newSubtotal,
+          tip: newTip,
+          total: newTotal,
+          owner_token: ownerToken
+        })
+      });
+
+      if (response.ok) {
+        setSession(prev => ({
+          ...prev,
+          subtotal: newSubtotal,
+          tip: newTip,
+          total: newTotal
+        }));
+      }
+    } catch (error) {
+      console.error('Error actualizando subtotal:', error);
+    }
+
+    setEditingSubtotal(false);
+  };
+
+  // Agregar participante manualmente (owner)
+  const handleAddParticipant = async () => {
+    if (!newParticipantName.trim()) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/session/${sessionId}/add-participant-manual`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newParticipantName.trim(),
+          phone: newParticipantPhone.trim() || null,
+          owner_token: ownerToken
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSession(prev => ({
+          ...prev,
+          participants: [...prev.participants, data.participant]
+        }));
+        setNewParticipantName('');
+        setNewParticipantPhone('');
+        setShowAddParticipant(false);
+      }
+    } catch (error) {
+      console.error('Error agregando participante:', error);
     }
   };
 
@@ -728,6 +835,14 @@ const CollaborativeSession = () => {
               )}
             </span>
           ))}
+          {isOwner && (
+            <button
+              onClick={() => setShowAddParticipant(true)}
+              className="add-participant-btn"
+            >
+              + Agregar
+            </button>
+          )}
         </div>
       </div>
 
@@ -735,22 +850,45 @@ const CollaborativeSession = () => {
         <div className="section summary-section">
           <div className="summary-row">
             <span>Subtotal confirmado:</span>
-            <span>{formatCurrency(session.subtotal)}</span>
+            {editingSubtotal ? (
+              <input
+                type="number"
+                value={tempSubtotal}
+                onChange={(e) => setTempSubtotal(parseInt(e.target.value) || 0)}
+                onBlur={() => handleSaveSubtotal()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveSubtotal();
+                  if (e.key === 'Escape') setEditingSubtotal(false);
+                }}
+                autoFocus
+                className="edit-subtotal-input"
+              />
+            ) : (
+              <span
+                className="editable-value"
+                onClick={() => {
+                  setTempSubtotal(session.subtotal || 0);
+                  setEditingSubtotal(true);
+                }}
+              >
+                {formatCurrency(session.subtotal)}
+                <span className="edit-hint"> ✏️</span>
+              </span>
+            )}
           </div>
           <div className="summary-row calculated">
-            <span>Subtotal calculado (suma items):</span>
-            <span>{formatCurrency(calculateItemsTotal())}</span>
+            <span>Suma de items:</span>
+            <span className={Math.abs((session.subtotal || 0) - calculateItemsTotal()) > 100 ? 'warning' : ''}>
+              {formatCurrency(calculateItemsTotal())}
+              {Math.abs((session.subtotal || 0) - calculateItemsTotal()) > 100 && (
+                <span className="difference-text">
+                  {' '}(dif: {formatCurrency(Math.abs((session.subtotal || 0) - calculateItemsTotal()))})
+                </span>
+              )}
+            </span>
           </div>
-          {Math.abs(session.subtotal - calculateItemsTotal()) > 0 && (
-            <div className="summary-row difference">
-              <span>Diferencia:</span>
-              <span className={session.subtotal - calculateItemsTotal() > 0 ? 'positive' : 'negative'}>
-                {formatCurrency(Math.abs(session.subtotal - calculateItemsTotal()))}
-              </span>
-            </div>
-          )}
           <div className="summary-row">
-            <span>Propina ({session.tip_percentage}%):</span>
+            <span>Propina ({session.tip_percentage || 10}%):</span>
             <span>{formatCurrency(session.tip)}</span>
           </div>
           <div className="summary-row total">
@@ -795,6 +933,34 @@ const CollaborativeSession = () => {
             🔒 Finalizar y Ver Totales
           </button>
           <p className="finalize-hint">Los editores ya no podrán hacer cambios</p>
+        </div>
+      )}
+
+      {/* Modal para agregar participante */}
+      {showAddParticipant && (
+        <div className="modal-overlay" onClick={() => setShowAddParticipant(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Agregar participante</h3>
+            <input
+              type="text"
+              value={newParticipantName}
+              onChange={(e) => setNewParticipantName(e.target.value)}
+              placeholder="Nombre *"
+              autoFocus
+            />
+            <input
+              type="tel"
+              value={newParticipantPhone}
+              onChange={(e) => setNewParticipantPhone(e.target.value)}
+              placeholder="Teléfono (opcional)"
+            />
+            <div className="modal-actions">
+              <button onClick={() => setShowAddParticipant(false)}>Cancelar</button>
+              <button onClick={handleAddParticipant} disabled={!newParticipantName.trim()}>
+                Agregar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
