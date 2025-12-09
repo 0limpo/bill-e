@@ -235,10 +235,10 @@ const BillItem = ({
                   className={`item-price ${!isFinalized ? 'editable-price' : ''}`}
                   onClick={() => startEdit('price', item.price)}
                 >
-                  {formatCurrency(item.price)}
+                  {formatCurrency(item.price * (item.quantity || 1))}
                   {hasQuantity && (
                     <span className="unit-price">
-                      ({formatCurrency(Math.round(item.price / item.quantity))} c/u)
+                      ({formatCurrency(item.price)} c/u)
                     </span>
                   )}
                   {!isFinalized && <span className="edit-hint"> ✏️</span>}
@@ -249,8 +249,8 @@ const BillItem = ({
         </div>
       </div>
 
-      {/* Switch Individual/Grupal (solo owner y quantity > 1) */}
-      {isOwner && hasQuantity && !isFinalized && (
+      {/* Switch Individual/Grupal - disponible para todos (una pizza puede ser compartida aunque sea 1 sola) */}
+      {!isFinalized && (
         <div className="item-mode-switch">
           <span className={itemMode !== 'grupal' ? 'active' : ''}>Individual</span>
           <label className="switch">
@@ -272,7 +272,7 @@ const BillItem = ({
             <div key={idx} className="sub-item">
               <div className="sub-item-header">
                 <span className="sub-item-name">{item.name} #{idx + 1}</span>
-                <span className="sub-item-price">{formatCurrency(Math.round(item.price / item.quantity))}</span>
+                <span className="sub-item-price">{formatCurrency(item.price)}</span>
               </div>
               <div className="sub-item-participants">
                 {participants.map(p => {
@@ -520,10 +520,12 @@ const CollaborativeSession = () => {
   // Estados para modos de items (individual/grupal)
   const [itemModes, setItemModes] = useState({});
 
-  // Calcular suma de items
+  // Calcular suma de items (price es unitario, multiplicar por quantity)
   const calculateItemsTotal = useCallback(() => {
     if (!session?.items) return 0;
-    return session.items.reduce((sum, item) => sum + (item.price || 0), 0);
+    return session.items.reduce((sum, item) => {
+      return sum + ((item.price || 0) * (item.quantity || 1));
+    }, 0);
   }, [session?.items]);
 
   // Calcular subtotal asignado (solo items que tienen asignaciones)
@@ -533,7 +535,8 @@ const CollaborativeSession = () => {
     Object.entries(session.assignments).forEach(([itemId, itemAssignments]) => {
       const item = session.items.find(i => (i.id || i.name) === itemId);
       if (item && itemAssignments.length > 0) {
-        total += item.price || 0;
+        // price es unitario, multiplicar por quantity para el total del item
+        total += (item.price || 0) * (item.quantity || 1);
       }
     });
     return total;
