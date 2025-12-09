@@ -569,6 +569,99 @@ async def get_my_summary(session_id: str, participant_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/session/{session_id}/update-item")
+async def update_item(session_id: str, request: Request):
+    """Owner actualiza un item (nombre, precio, cantidad)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+        item_id = data.get("item_id")
+        updates = data.get("updates", {})
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Actualizar el item
+        for item in session_data["items"]:
+            if (item.get("id") or item.get("name")) == item_id:
+                if "name" in updates:
+                    item["name"] = updates["name"]
+                if "price" in updates:
+                    item["price"] = updates["price"]
+                if "quantity" in updates:
+                    item["quantity"] = updates["quantity"]
+                break
+
+        # Recalcular subtotal
+        new_subtotal = sum(item.get("price", 0) for item in session_data["items"])
+        tip_percentage = session_data.get("tip_percentage", 10)
+        new_tip = new_subtotal * (tip_percentage / 100)
+        new_total = new_subtotal + new_tip
+
+        session_data["subtotal"] = new_subtotal
+        session_data["tip"] = new_tip
+        session_data["total"] = new_total
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Guardar
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "items": session_data["items"]}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/update-participant")
+async def update_participant(session_id: str, request: Request):
+    """Actualiza datos de un participante (ej: nombre del owner)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+        participant_id = data.get("participant_id")
+        new_name = data.get("name")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Actualizar el participante
+        for participant in session_data["participants"]:
+            if participant["id"] == participant_id:
+                if new_name:
+                    participant["name"] = new_name
+                break
+
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Guardar
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "participants": session_data["participants"]}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
