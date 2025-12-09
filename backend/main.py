@@ -43,6 +43,24 @@ except ImportError as e:
     print(f"Warning: WhatsApp Dashboard not available: {e}")
     whatsapp_dashboard_available = False
 
+# Importar Collaborative Sessions
+try:
+    from collaborative_session import (
+        create_collaborative_session,
+        get_session as get_collab_session,
+        verify_owner,
+        add_participant,
+        update_assignment,
+        finalize_session,
+        calculate_totals,
+        get_participant_summary,
+        SessionStatus
+    )
+    collaborative_available = True
+except ImportError as e:
+    print(f"Warning: Collaborative sessions not available: {e}")
+    collaborative_available = False
+
 load_dotenv()
 
 app = FastAPI(title="Bill-e API", version="1.0.0")
@@ -376,6 +394,180 @@ async def whatsapp_webhook_handle(request: Request):
         return await handle_webhook(request)
     else:
         raise HTTPException(status_code=500, detail="WhatsApp webhook not available")
+
+# ============================================
+# ENDPOINTS COLABORATIVOS
+# ============================================
+
+@app.post("/api/session/collaborative")
+async def create_collaborative_session_endpoint(request: Request):
+    try:
+        data = await request.json()
+        result = create_collaborative_session(
+            redis_client=redis_client,
+            owner_phone=data.get("owner_phone", ""),
+            items=data.get("items", []),
+            total=data.get("total", 0),
+            subtotal=data.get("subtotal", 0),
+            tip=data.get("tip", 0),
+            raw_text=data.get("raw_text", "")
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/session/{session_id}/collaborative")
+async def get_collaborative_session(session_id: str, owner: str = None):
+    try:
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada o expirada")
+
+        is_owner = owner and verify_owner(session_data, owner)
+
+        response = {
+            "session_id": session_id,
+            "status": session_data["status"],
+            "items": session_data["items"],
+            "participants": session_data["participants"],
+            "assignments": session_data["assignments"],
+            "tip_percentage": session_data.get("tip_percentage", 10),
+            "expires_at": session_data["expires_at"],
+            "last_updated": session_data.get("last_updated"),
+            "last_updated_by": session_data.get("last_updated_by"),
+            "is_owner": is_owner
+        }
+
+        if is_owner:
+            response["total"] = session_data["total"]
+            response["subtotal"] = session_data["subtotal"]
+            response["tip"] = session_data["tip"]
+            response["owner_phone"] = session_data.get("owner_phone")
+
+            if session_data["status"] == SessionStatus.FINALIZED.value:
+                response["totals"] = session_data.get("totals", [])
+
+        return response
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/join")
+async def join_session(session_id: str, request: Request):
+    try:
+        data = await request.json()
+        name = data.get("name", "").strip()
+        phone = data.get("phone", "").strip()
+
+        if not name:
+            raise HTTPException(status_code=400, detail="El nombre es requerido")
+        if not phone:
+            raise HTTPException(status_code=400, detail="El telefono es requerido")
+
+        result = add_participant(redis_client, session_id, name, phone)
+
+        if "error" in result:
+            raise HTTPException(status_code=result.get("code", 400), detail=result["error"])
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/assign")
+async def assign_item(session_id: str, request: Request):
+    try:
+        data = await request.json()
+
+        result = update_assignment(
+            redis_client=redis_client,
+            session_id=session_id,
+            participant_id=data.get("participant_id"),
+            item_id=data.get("item_id"),
+            quantity=data.get("quantity", 1),
+            is_assigned=data.get("is_assigned", True),
+            updated_by=data.get("updated_by", "unknown")
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=result.get("code", 400), detail=result["error"])
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/finalize")
+async def finalize_session_endpoint(session_id: str, request: Request):
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+
+        if not owner_token:
+            raise HTTPException(status_code=400, detail="Token de owner requerido")
+
+        result = finalize_session(redis_client, session_id, owner_token)
+
+        if "error" in result:
+            raise HTTPException(status_code=result.get("code", 400), detail=result["error"])
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/session/{session_id}/poll")
+async def poll_session(session_id: str, last_update: str = None):
+    try:
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        current_update = session_data.get("last_updated", "")
+
+        if last_update and current_update == last_update:
+            return {"has_changes": False}
+
+        return {
+            "has_changes": True,
+            "participants": session_data["participants"],
+            "assignments": session_data["assignments"],
+            "status": session_data["status"],
+            "last_updated": current_update,
+            "last_updated_by": session_data.get("last_updated_by", "")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/session/{session_id}/my-summary/{participant_id}")
+async def get_my_summary(session_id: str, participant_id: str):
+    try:
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        summary = get_participant_summary(session_data, participant_id)
+        return summary
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     import uvicorn

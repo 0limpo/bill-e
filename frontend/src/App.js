@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useParams } from 'react-router-dom';
 import './App.css';
+import CollaborativeSession from './CollaborativeSession';
 import {
   trackPageView,
   trackSessionLoad,
@@ -863,7 +864,8 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/s/:id" element={<SessionPage />} />
+        <Route path="/s/:id" element={<CollaborativeSession />} />
+        <Route path="/session/:id" element={<SessionPage />} />
         <Route path="/" element={<div>Bill-e - Dividir cuentas fácilmente</div>} />
       </Routes>
     </Router>
