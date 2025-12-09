@@ -14,6 +14,13 @@ except ImportError:
     print("Warning: OCR service not available")
     process_image_parallel = None
 
+# Importar sesiones colaborativas
+try:
+    from collaborative_session import create_collaborative_session
+except ImportError:
+    print("Warning: Collaborative session not available")
+    create_collaborative_session = None
+
 # Importar Analytics
 try:
     from analytics import analytics
@@ -187,17 +194,50 @@ async def process_image_message(phone_number: str, image_data: dict):
 
             print(f"✅ OCR completado con {ocr_source}: {len(items)} items, score: {validation.get('quality_score', 0)}")
 
-            # Crear sesión con datos
-            session_id = create_session_with_bill_data(
-                phone_number=phone_number,
-                bill_data=result
-            )
+            # Formatear items para sesión colaborativa
+            formatted_items = []
+            for i, item in enumerate(items):
+                formatted_items.append({
+                    "id": f"item_{i}",
+                    "name": item.get("name", f"Item {i+1}"),
+                    "price": item.get("price", 0),
+                    "quantity": item.get("quantity", 1)
+                })
 
-            # Formatear mensaje de respuesta
-            message = format_success_message_enhanced(
-                enhanced_result=result,
-                session_id=session_id
-            )
+            # Crear sesión colaborativa (con 2 links: owner y editor)
+            if create_collaborative_session:
+                session_result = create_collaborative_session(
+                    redis_client=redis_client,
+                    owner_phone=phone_number,
+                    items=formatted_items,
+                    total=total,
+                    subtotal=subtotal,
+                    tip=tip,
+                    raw_text=result.get('raw_text', '')
+                )
+
+                # Formatear mensaje con ambos links
+                message = format_collaborative_message(
+                    total=total,
+                    subtotal=subtotal,
+                    tip=tip,
+                    items_count=len(items),
+                    owner_url=session_result['owner_url'],
+                    editor_url=session_result['editor_url'],
+                    validation=validation
+                )
+
+                print(f"✅ Sesión colaborativa creada: {session_result['session_id']}")
+            else:
+                # Fallback a sesión simple si no está disponible
+                session_id = create_session_with_bill_data(
+                    phone_number=phone_number,
+                    bill_data=result
+                )
+                message = format_success_message_enhanced(
+                    enhanced_result=result,
+                    session_id=session_id
+                )
 
             await send_whatsapp_message(phone_number, message)
             print(f"✅ Boleta procesada exitosamente para {phone_number}")
@@ -472,6 +512,60 @@ def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> s
         message += f"⏰ Link válido por 24 horas"
 
     return message
+
+
+def format_collaborative_message(
+    total: float,
+    subtotal: float,
+    tip: float,
+    items_count: int,
+    owner_url: str,
+    editor_url: str,
+    validation: dict = None
+) -> str:
+    """
+    Formatea mensaje de WhatsApp para sesiones colaborativas.
+    Incluye 2 links: owner (para el anfitrión) y editor (para compartir).
+    """
+    # Calcular porcentaje de propina
+    tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
+
+    # Quality score para verificación
+    quality_score = validation.get('quality_score', 0) if validation else 0
+
+    # Emoji de estado
+    status_emoji = "✅" if quality_score == 100 else "⚠️"
+    status_text = "Totales verificados" if quality_score == 100 else "Revisar totales"
+
+    message = f"""🧾 ¡Boleta procesada!
+
+{status_emoji} *{status_text}*
+
+💰 Total: ${total:,.0f}
+📊 Subtotal: ${subtotal:,.0f}
+🎁 Propina: ${tip:,.0f} ({tip_percent:.0f}%)
+📝 Items: {items_count}
+
+━━━━━━━━━━━━━━━━━━
+
+📌 *Tu link de anfitrión* (guárdalo):
+{owner_url}
+
+👆 Usa este link para ver los totales y finalizar
+
+━━━━━━━━━━━━━━━━━━
+
+🔗 *Link para compartir* con tus amigos:
+{editor_url}
+
+👆 Copia y envía este link al grupo
+
+━━━━━━━━━━━━━━━━━━
+
+⏰ La sesión expira en 2 horas"""
+
+    return message
+
 
 # Función mejorada para procesar mensajes de texto
 async def process_text_message(phone_number: str, message: str):
