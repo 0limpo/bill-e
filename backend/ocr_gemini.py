@@ -78,7 +78,7 @@ EXTRAE la siguiente información en formato JSON:
 1. "total": El monto TOTAL a pagar (número entero, sin decimales)
 2. "subtotal": El subtotal SIN propina (número entero)
 3. "tip": La propina/servicio/tip si está visible (número entero, 0 si no hay)
-4. "items": Lista de productos con nombre, cantidad y precio unitario
+4. "items": Lista de productos con nombre, cantidad y PRECIO TOTAL DE LA LÍNEA
 5. "currency": La moneda detectada (CLP, USD, EUR, etc.)
 6. "confidence": Tu nivel de confianza 0-100
 
@@ -88,7 +88,9 @@ REGLAS IMPORTANTES:
 - En USA/Europa, el punto es decimal: $12.50 = 1250 centavos
 - Detecta el país/moneda por el formato y símbolos
 - Si hay "PROPINA SUGERIDA 10%", calcula el monto
-- Si ves cantidades como "3 Coca Cola $6.000", el precio unitario es $2.000
+- "price" es el PRECIO TOTAL DE LA LÍNEA tal como aparece en la boleta (NO dividir por quantity)
+- Ejemplo: "3 Coca Cola $6.000" → {"name": "Coca Cola", "quantity": 3, "price": 6000}
+- Ejemplo: "2 Pan Mechada $23.980" → {"name": "Pan Mechada", "quantity": 2, "price": 23980}
 - Si no puedes leer algo, usa 0 o string vacío
 
 RESPONDE SOLO con JSON válido, sin explicaciones:
@@ -100,7 +102,7 @@ RESPONDE SOLO con JSON válido, sin explicaciones:
     "confidence": 95,
     "items": [
         {"name": "Hamburguesa", "quantity": 1, "price": 12500},
-        {"name": "Coca Cola", "quantity": 2, "price": 2500},
+        {"name": "Coca Cola", "quantity": 2, "price": 5000},
         {"name": "Papas Fritas", "quantity": 1, "price": 4910}
     ]
 }"""
@@ -202,8 +204,8 @@ RESPONDE SOLO con JSON válido, sin explicaciones:
             if normalized_item['name'] and normalized_item['price'] > 0:
                 items.append(normalized_item)
         
-        # Calcular suma de items
-        items_sum = sum(item['price'] * item['quantity'] for item in items)
+        # Calcular suma de items (price ya es el total de la línea, NO multiplicar por quantity)
+        items_sum = sum(item['price'] for item in items)
         
         # Auto-corregir si hay inconsistencias
         if subtotal == 0 and items_sum > 0:
