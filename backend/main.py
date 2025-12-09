@@ -743,6 +743,46 @@ async def add_participant_manual(session_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/session/{session_id}/add-item")
+async def add_item_to_session(session_id: str, request: Request):
+    """Agregar item manualmente (solo owner)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Crear nuevo item
+        new_item = {
+            "id": f"manual_{uuid.uuid4().hex[:8]}",
+            "name": data.get("name", "Item"),
+            "quantity": data.get("quantity", 1),
+            "price": data.get("price", 0)
+        }
+
+        session_data["items"].append(new_item)
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Guardar
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "item": new_item}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -72,7 +72,11 @@ const BillItem = ({
   isOwner,
   onAssign,
   onEditItem,
-  isFinalized
+  isFinalized,
+  itemMode,
+  onToggleMode,
+  onSubItemAssign,
+  isSubItemAssigned
 }) => {
   // Estados para edición inline
   const [editingField, setEditingField] = useState(null); // 'name', 'price', 'quantity'
@@ -157,8 +161,8 @@ const BillItem = ({
     <div className={`bill-item ${isFinalized ? 'finalized' : ''}`}>
       <div className="item-header">
         <div className="item-info">
-          {/* Cantidad del item - editable inline (solo owner) */}
-          {hasQuantity && isOwner && !isFinalized && (
+          {/* Cantidad del item - SIEMPRE mostrar, editable inline (solo owner) */}
+          {isOwner && !isFinalized ? (
             editingField === 'quantity' ? (
               <input
                 type="number"
@@ -176,15 +180,14 @@ const BillItem = ({
             ) : (
               <span
                 className="item-qty editable-qty"
-                onClick={() => startEdit('quantity', item.quantity)}
+                onClick={() => startEdit('quantity', item.quantity || 1)}
               >
-                {item.quantity}x
+                {item.quantity || 1}x
                 <span className="edit-hint"> ✏️</span>
               </span>
             )
-          )}
-          {hasQuantity && (!isOwner || isFinalized) && (
-            <span className="item-qty">{item.quantity}x </span>
+          ) : (
+            <span className="item-qty">{item.quantity || 1}x </span>
           )}
 
           {/* Nombre del item - editable inline */}
@@ -246,7 +249,54 @@ const BillItem = ({
         </div>
       </div>
 
-      {hasQuantity ? (
+      {/* Switch Individual/Grupal (solo owner y quantity > 1) */}
+      {isOwner && hasQuantity && !isFinalized && (
+        <div className="item-mode-switch">
+          <span className={itemMode !== 'grupal' ? 'active' : ''}>Individual</span>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={itemMode === 'grupal'}
+              onChange={() => onToggleMode(itemId)}
+            />
+            <span className="slider"></span>
+          </label>
+          <span className={itemMode === 'grupal' ? 'active' : ''}>Grupal</span>
+        </div>
+      )}
+
+      {/* Modo Grupal: mostrar cada unidad por separado */}
+      {itemMode === 'grupal' && hasQuantity ? (
+        <div className="sub-items-list">
+          {Array.from({ length: item.quantity }, (_, idx) => (
+            <div key={idx} className="sub-item">
+              <div className="sub-item-header">
+                <span className="sub-item-name">{item.name} #{idx + 1}</span>
+                <span className="sub-item-price">{formatCurrency(Math.round(item.price / item.quantity))}</span>
+              </div>
+              <div className="sub-item-participants">
+                {participants.map(p => {
+                  const assigned = isSubItemAssigned(itemId, idx, p.id);
+                  const canToggle = isOwner || p.id === currentParticipant?.id;
+                  return (
+                    <button
+                      key={p.id}
+                      className={`assign-btn ${assigned ? 'assigned' : ''} ${!canToggle ? 'disabled' : ''}`}
+                      onClick={() => canToggle && onSubItemAssign(itemId, idx, p.id)}
+                      disabled={isFinalized || !canToggle}
+                    >
+                      {p.name}
+                      {assigned && ' ✓'}
+                      {p.id === currentParticipant?.id && !assigned && ' (yo)'}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : hasQuantity ? (
+        /* Modo Individual con quantity > 1: contadores por participante */
         <div className="quantity-assignments">
           {participants.map(participant => {
             const assignment = getParticipantAssignment(participant.id);
@@ -287,6 +337,7 @@ const BillItem = ({
           )}
         </div>
       ) : (
+        /* Items con quantity = 1: botones toggle */
         <div className="simple-assignment">
           {participants.map(p => {
             const isAssigned = itemAssignments.some(a => a.participant_id === p.id);
@@ -461,6 +512,13 @@ const CollaborativeSession = () => {
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [newParticipantName, setNewParticipantName] = useState('');
   const [newParticipantPhone, setNewParticipantPhone] = useState('');
+
+  // Estados para agregar items manualmente
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [newItemForm, setNewItemForm] = useState({ name: '', quantity: 1, price: 0 });
+
+  // Estados para modos de items (individual/grupal)
+  const [itemModes, setItemModes] = useState({});
 
   // Calcular suma de items
   const calculateItemsTotal = useCallback(() => {
@@ -733,6 +791,87 @@ const CollaborativeSession = () => {
       }
     } catch (error) {
       console.error('Error agregando participante:', error);
+    }
+  };
+
+  // Agregar item manualmente (owner)
+  const handleAddItem = async () => {
+    if (!newItemForm.name || !newItemForm.price) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/session/${sessionId}/add-item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newItemForm.name,
+          quantity: newItemForm.quantity,
+          price: newItemForm.price,
+          owner_token: ownerToken
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSession(prev => ({
+          ...prev,
+          items: [...prev.items, data.item]
+        }));
+        setShowAddItemModal(false);
+        setNewItemForm({ name: '', quantity: 1, price: 0 });
+      }
+    } catch (error) {
+      console.error('Error agregando item:', error);
+    }
+  };
+
+  // Toggle modo individual/grupal para un item
+  const toggleItemMode = (itemId) => {
+    setItemModes(prev => ({
+      ...prev,
+      [itemId]: prev[itemId] === 'grupal' ? 'individual' : 'grupal'
+    }));
+  };
+
+  // Verificar si un sub-item está asignado a un participante
+  const isSubItemAssigned = (itemId, subIndex, participantId) => {
+    const key = `${itemId}_${subIndex}`;
+    const assignments = session.assignments?.[key] || [];
+    return assignments.some(a => a.participant_id === participantId);
+  };
+
+  // Manejar asignación de sub-item en modo grupal
+  const handleSubItemAssignment = async (itemId, subIndex, participantId) => {
+    const key = `${itemId}_${subIndex}`;
+    const isAssigned = isSubItemAssigned(itemId, subIndex, participantId);
+
+    // Actualizar localmente primero (UI optimista)
+    setSession(prev => {
+      const newAssignments = { ...prev.assignments };
+      if (!newAssignments[key]) newAssignments[key] = [];
+
+      if (isAssigned) {
+        newAssignments[key] = newAssignments[key].filter(a => a.participant_id !== participantId);
+      } else {
+        newAssignments[key].push({ participant_id: participantId, quantity: 1 });
+      }
+
+      return { ...prev, assignments: newAssignments };
+    });
+
+    // Luego sincronizar con backend
+    try {
+      await fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: key,
+          participant_id: participantId,
+          quantity: 1,
+          is_assigned: !isAssigned
+        })
+      });
+    } catch (error) {
+      console.error('Error en asignación:', error);
     }
   };
 
@@ -1031,8 +1170,24 @@ const CollaborativeSession = () => {
             onAssign={handleAssign}
             onEditItem={handleEditItem}
             isFinalized={session.status === 'finalized'}
+            itemMode={itemModes[item.id || item.name]}
+            onToggleMode={toggleItemMode}
+            onSubItemAssign={handleSubItemAssignment}
+            isSubItemAssigned={isSubItemAssigned}
           />
         ))}
+
+        {/* Botón para agregar item manualmente (solo owner) */}
+        {isOwner && !session.status?.includes('finalized') && (
+          <div className="add-item-section">
+            <button
+              className="btn-add-item"
+              onClick={() => setShowAddItemModal(true)}
+            >
+              ➕ Agregar item manualmente
+            </button>
+          </div>
+        )}
       </div>
 
       {!isOwner && (
@@ -1076,6 +1231,49 @@ const CollaborativeSession = () => {
             <div className="modal-actions">
               <button onClick={() => setShowAddParticipant(false)}>Cancelar</button>
               <button onClick={handleAddParticipant} disabled={!newParticipantName.trim()}>
+                Agregar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para agregar item */}
+      {showAddItemModal && (
+        <div className="modal-overlay" onClick={() => setShowAddItemModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Agregar item</h3>
+            <div className="input-group">
+              <label>Nombre:</label>
+              <input
+                type="text"
+                value={newItemForm.name}
+                onChange={e => setNewItemForm(prev => ({...prev, name: e.target.value}))}
+                placeholder="Ej: Hamburguesa"
+                autoFocus
+              />
+            </div>
+            <div className="input-group">
+              <label>Cantidad:</label>
+              <input
+                type="number"
+                min="1"
+                value={newItemForm.quantity}
+                onChange={e => setNewItemForm(prev => ({...prev, quantity: parseInt(e.target.value) || 1}))}
+              />
+            </div>
+            <div className="input-group">
+              <label>Precio total:</label>
+              <input
+                type="number"
+                value={newItemForm.price}
+                onChange={e => setNewItemForm(prev => ({...prev, price: parseInt(e.target.value) || 0}))}
+                placeholder="Precio total (no unitario)"
+              />
+            </div>
+            <div className="modal-actions">
+              <button onClick={() => setShowAddItemModal(false)}>Cancelar</button>
+              <button onClick={handleAddItem} disabled={!newItemForm.name || !newItemForm.price}>
                 Agregar
               </button>
             </div>
