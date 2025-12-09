@@ -157,6 +157,36 @@ const BillItem = ({
     <div className={`bill-item ${isFinalized ? 'finalized' : ''}`}>
       <div className="item-header">
         <div className="item-info">
+          {/* Cantidad del item - editable inline (solo owner) */}
+          {hasQuantity && isOwner && !isFinalized && (
+            editingField === 'quantity' ? (
+              <input
+                type="number"
+                min="1"
+                value={tempValue}
+                onChange={(e) => setTempValue(e.target.value)}
+                onBlur={saveEdit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') saveEdit();
+                  if (e.key === 'Escape') cancelEdit();
+                }}
+                autoFocus
+                className="inline-edit-input inline-edit-qty"
+              />
+            ) : (
+              <span
+                className="item-qty editable-qty"
+                onClick={() => startEdit('quantity', item.quantity)}
+              >
+                {item.quantity}x
+                <span className="edit-hint"> ✏️</span>
+              </span>
+            )
+          )}
+          {hasQuantity && (!isOwner || isFinalized) && (
+            <span className="item-qty">{item.quantity}x </span>
+          )}
+
           {/* Nombre del item - editable inline */}
           {editingField === 'name' ? (
             <input
@@ -176,7 +206,6 @@ const BillItem = ({
               className={`item-name ${isOwner && !isFinalized ? 'editable-text' : ''}`}
               onClick={() => startEdit('name', item.name)}
             >
-              {hasQuantity && <span className="item-qty">{item.quantity}x </span>}
               {item.name}
               {isOwner && !isFinalized && <span className="edit-hint"> ✏️</span>}
             </span>
@@ -940,17 +969,32 @@ const CollaborativeSession = () => {
               </span>
             )}
           </div>
-          <div className="summary-row calculated">
-            <span>📋 Suma de items:</span>
-            <span className={Math.abs((session.subtotal || 0) - calculateItemsTotal()) > 100 ? 'warning' : ''}>
-              {formatCurrency(calculateItemsTotal())}
-              {Math.abs((session.subtotal || 0) - calculateItemsTotal()) > 100 && (
-                <span className="difference-text">
-                  {' '}(dif: {formatCurrency(Math.abs((session.subtotal || 0) - calculateItemsTotal()))})
-                </span>
-              )}
-            </span>
-          </div>
+          {/* Subtotal calculado con validación visual */}
+          {(() => {
+            const calculado = calculateItemsTotal();
+            const confirmado = session.subtotal || 0;
+            const diferencia = Math.abs(confirmado - calculado);
+            const coincide = diferencia < 100; // Tolerancia de $100
+
+            return (
+              <div className={`summary-row calculated ${coincide ? 'match' : 'mismatch'}`}>
+                <div className="calculated-header">
+                  <span>📋 Subtotal calculado:</span>
+                  <span className={coincide ? 'success' : 'warning'}>
+                    {formatCurrency(calculado)}
+                    {coincide ? ' ✅' : ' ⚠️'}
+                  </span>
+                </div>
+                {coincide ? (
+                  <small className="validation-message success">Boleta leída correctamente</small>
+                ) : (
+                  <small className="validation-message warning">
+                    La suma no coincide (dif: {formatCurrency(diferencia)}). Revisa los items y/o precios.
+                  </small>
+                )}
+              </div>
+            );
+          })()}
           <div className="summary-row assigned">
             <span>✅ Subtotal asignado:</span>
             <span className={calculateAssignedTotal() < calculateItemsTotal() ? 'warning-assigned' : 'complete-assigned'}>
