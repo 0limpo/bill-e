@@ -183,6 +183,71 @@
   gap: 12px;
 }
 
+/* Quantity assignments - todos los participantes */
+.quantity-assignments {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.participant-quantity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.participant-quantity-row .participant-name {
+  font-size: 14px;
+  color: #4a5568;
+  min-width: 100px;
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.qty-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid #667eea;
+  background: white;
+  color: #667eea;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qty-btn:disabled {
+  border-color: #ccc;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: #667eea;
+  color: white;
+}
+
+.unassigned-info {
+  text-align: center;
+  font-size: 13px;
+  color: #e53e3e;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #e2e8f0;
+}
+
 .quantity-selector {
   display: flex;
   justify-content: space-between;

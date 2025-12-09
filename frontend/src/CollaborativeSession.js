@@ -88,9 +88,28 @@ const BillItem = ({
   const myAssignment = itemAssignments.find(a => a.participant_id === currentParticipant?.id);
   const myQuantity = myAssignment?.quantity || 0;
 
-  const handleQuantityChange = (newQty) => {
+  // Obtener asignación de un participante específico
+  const getParticipantAssignment = (participantId) => {
+    return itemAssignments.find(a => a.participant_id === participantId);
+  };
+
+  // Manejar cambio de cantidad para cualquier participante
+  const handleQuantityChange = (participantId, newQty) => {
     if (isFinalized) return;
-    onAssign(itemId, currentParticipant.id, newQty, newQty > 0);
+    if (newQty < 0) return;
+
+    // Verificar permisos: owner puede editar cualquiera, editor solo el suyo
+    if (!isOwner && participantId !== currentParticipant?.id) return;
+
+    // Verificar que no exceda el total disponible
+    const currentParticipantQty = getParticipantAssignment(participantId)?.quantity || 0;
+    const otherAssigned = totalAssigned - currentParticipantQty;
+
+    if (newQty + otherAssigned > item.quantity) {
+      return; // No permitir exceder
+    }
+
+    onAssign(itemId, participantId, newQty, newQty > 0);
   };
 
   const handleToggle = (participantId) => {
@@ -199,38 +218,42 @@ const BillItem = ({
       </div>
 
       {hasQuantity ? (
-        <div className="quantity-assignment">
-          <div className="quantity-selector">
-            <span>¿Cuántas consumiste?</span>
-            <div className="qty-controls">
-              <button
-                onClick={() => handleQuantityChange(Math.max(0, myQuantity - 1))}
-                disabled={isFinalized || myQuantity <= 0}
-              >-</button>
-              <span className="qty-value">{myQuantity}</span>
-              <button
-                onClick={() => handleQuantityChange(myQuantity + 1)}
-                disabled={isFinalized || (remaining !== null && remaining <= 0)}
-              >+</button>
-            </div>
-          </div>
+        <div className="quantity-assignments">
+          {participants.map(participant => {
+            const assignment = getParticipantAssignment(participant.id);
+            const assignedQty = assignment?.quantity || 0;
+            const canEdit = isOwner || participant.id === currentParticipant?.id;
 
-          {remaining !== null && remaining > 0 && (
-            <div className="remaining-info">
+            return (
+              <div key={participant.id} className="participant-quantity-row">
+                <span className="participant-name">
+                  {participant.name}
+                  {participant.id === currentParticipant?.id && ' (yo)'}:
+                </span>
+                <div className="quantity-controls">
+                  <button
+                    onClick={() => handleQuantityChange(participant.id, assignedQty - 1)}
+                    disabled={isFinalized || !canEdit || assignedQty <= 0}
+                    className="qty-btn"
+                  >
+                    -
+                  </button>
+                  <span className="qty-value">{assignedQty}</span>
+                  <button
+                    onClick={() => handleQuantityChange(participant.id, assignedQty + 1)}
+                    disabled={isFinalized || !canEdit || remaining <= 0}
+                    className="qty-btn"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {remaining > 0 && (
+            <div className="unassigned-info">
               {remaining} sin asignar de {item.quantity}
-            </div>
-          )}
-
-          {itemAssignments.length > 0 && (
-            <div className="assigned-list">
-              {itemAssignments.map(a => {
-                const p = participants.find(p => p.id === a.participant_id);
-                return p ? (
-                  <span key={a.participant_id} className="assigned-badge">
-                    {p.name}: {a.quantity}
-                  </span>
-                ) : null;
-              })}
             </div>
           )}
         </div>
