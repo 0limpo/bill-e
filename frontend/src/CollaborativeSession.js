@@ -74,10 +74,9 @@ const BillItem = ({
   onEditItem,
   isFinalized
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editName, setEditName] = useState(item.name);
-  const [editPrice, setEditPrice] = useState(item.price);
-  const [editQuantity, setEditQuantity] = useState(item.quantity || 1);
+  // Estados para edición inline
+  const [editingField, setEditingField] = useState(null); // 'name', 'price', 'quantity'
+  const [tempValue, setTempValue] = useState('');
 
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
@@ -102,82 +101,101 @@ const BillItem = ({
     onAssign(itemId, participantId, 1, !isCurrentlyAssigned);
   };
 
-  const handleSaveEdit = () => {
-    if (onEditItem) {
-      onEditItem(itemId, {
-        name: editName,
-        price: parseFloat(editPrice) || 0,
-        quantity: parseInt(editQuantity) || 1
-      });
-    }
-    setIsEditing(false);
+  // Iniciar edición inline
+  const startEdit = (field, value) => {
+    if (!isOwner || isFinalized) return;
+    setEditingField(field);
+    setTempValue(value.toString());
   };
 
-  const handleStartEdit = () => {
-    setEditName(item.name);
-    setEditPrice(item.price);
-    setEditQuantity(item.quantity || 1);
-    setIsEditing(true);
+  // Guardar edición inline
+  const saveEdit = () => {
+    if (!editingField || !onEditItem) {
+      setEditingField(null);
+      return;
+    }
+
+    const updates = {};
+    if (editingField === 'name') {
+      updates.name = tempValue || item.name;
+    } else if (editingField === 'price') {
+      updates.price = parseFloat(tempValue) || item.price;
+    } else if (editingField === 'quantity') {
+      updates.quantity = parseInt(tempValue) || item.quantity || 1;
+    }
+
+    onEditItem(itemId, updates);
+    setEditingField(null);
+  };
+
+  // Cancelar edición
+  const cancelEdit = () => {
+    setEditingField(null);
+    setTempValue('');
   };
 
   return (
     <div className={`bill-item ${isFinalized ? 'finalized' : ''}`}>
       <div className="item-header">
-        {isEditing && isOwner ? (
-          <div className="item-edit-form">
+        <div className="item-info">
+          {/* Nombre del item - editable inline */}
+          {editingField === 'name' ? (
             <input
               type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              placeholder="Nombre del item"
-              className="edit-input edit-name"
+              value={tempValue}
+              onChange={(e) => setTempValue(e.target.value)}
+              onBlur={saveEdit}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveEdit();
+                if (e.key === 'Escape') cancelEdit();
+              }}
+              autoFocus
+              className="inline-edit-input inline-edit-name"
             />
-            <div className="edit-row">
-              <input
-                type="number"
-                value={editQuantity}
-                onChange={(e) => setEditQuantity(e.target.value)}
-                placeholder="Cant"
-                className="edit-input edit-qty"
-                min="1"
-              />
-              <span>×</span>
-              <input
-                type="number"
-                value={editPrice}
-                onChange={(e) => setEditPrice(e.target.value)}
-                placeholder="Precio"
-                className="edit-input edit-price"
-              />
-            </div>
-            <div className="edit-buttons">
-              <button onClick={handleSaveEdit} className="btn-save">💾 Guardar</button>
-              <button onClick={() => setIsEditing(false)} className="btn-cancel">✕</button>
-            </div>
-          </div>
-        ) : (
-          <div className="item-info">
-            <span className="item-name">
+          ) : (
+            <span
+              className={`item-name ${isOwner && !isFinalized ? 'editable-text' : ''}`}
+              onClick={() => startEdit('name', item.name)}
+            >
               {hasQuantity && <span className="item-qty">{item.quantity}x </span>}
               {item.name}
+              {isOwner && !isFinalized && <span className="edit-hint"> ✏️</span>}
             </span>
-            <div className="item-right">
-              {isOwner && (
-                <span className="item-price">
+          )}
+
+          {/* Precio del item - editable inline (solo owner) */}
+          <div className="item-right">
+            {isOwner && (
+              editingField === 'price' ? (
+                <input
+                  type="number"
+                  value={tempValue}
+                  onChange={(e) => setTempValue(e.target.value)}
+                  onBlur={saveEdit}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') saveEdit();
+                    if (e.key === 'Escape') cancelEdit();
+                  }}
+                  autoFocus
+                  className="inline-edit-input inline-edit-price"
+                />
+              ) : (
+                <span
+                  className={`item-price ${!isFinalized ? 'editable-price' : ''}`}
+                  onClick={() => startEdit('price', item.price)}
+                >
                   {formatCurrency(item.price)}
                   {hasQuantity && (
                     <span className="unit-price">
                       ({formatCurrency(Math.round(item.price / item.quantity))} c/u)
                     </span>
                   )}
+                  {!isFinalized && <span className="edit-hint"> ✏️</span>}
                 </span>
-              )}
-              {isOwner && !isFinalized && (
-                <button onClick={handleStartEdit} className="btn-edit-item">✏️</button>
-              )}
-            </div>
+              )
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {hasQuantity ? (
@@ -397,6 +415,19 @@ const CollaborativeSession = () => {
     if (!session?.items) return 0;
     return session.items.reduce((sum, item) => sum + (item.price || 0), 0);
   }, [session?.items]);
+
+  // Calcular subtotal asignado (solo items que tienen asignaciones)
+  const calculateAssignedTotal = useCallback(() => {
+    if (!session?.items || !session?.assignments) return 0;
+    let total = 0;
+    Object.entries(session.assignments).forEach(([itemId, itemAssignments]) => {
+      const item = session.items.find(i => (i.id || i.name) === itemId);
+      if (item && itemAssignments.length > 0) {
+        total += item.price || 0;
+      }
+    });
+    return total;
+  }, [session?.items, session?.assignments]);
 
   const loadSession = useCallback(async () => {
     try {
@@ -811,27 +842,37 @@ const CollaborativeSession = () => {
             >
               {p.role === 'owner' ? '👑' : '👤'}{' '}
 
-              {/* Si es owner y está editando su nombre */}
+              {/* Si es owner y está editando su nombre - inline sin botones */}
               {p.id === currentParticipant?.id && isOwner && isEditingName ? (
-                <span className="edit-name-inline">
-                  <input
-                    type="text"
-                    value={ownerName}
-                    onChange={(e) => setOwnerName(e.target.value)}
-                    className="input-name-inline"
-                    autoFocus
-                  />
-                  <button onClick={handleUpdateOwnerName} className="btn-save-name">✓</button>
-                  <button onClick={() => setIsEditingName(false)} className="btn-cancel-name">✕</button>
-                </span>
+                <input
+                  type="text"
+                  value={ownerName}
+                  onChange={(e) => setOwnerName(e.target.value)}
+                  onBlur={handleUpdateOwnerName}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleUpdateOwnerName();
+                    if (e.key === 'Escape') {
+                      setOwnerName(p.name);
+                      setIsEditingName(false);
+                    }
+                  }}
+                  className="input-name-inline"
+                  autoFocus
+                />
               ) : (
-                <>
+                <span
+                  className={p.id === currentParticipant?.id && isOwner ? 'editable-name' : ''}
+                  onClick={() => {
+                    if (p.id === currentParticipant?.id && isOwner) {
+                      setOwnerName(p.name);
+                      setIsEditingName(true);
+                    }
+                  }}
+                >
                   {p.name}
                   {p.id === currentParticipant?.id && ' (tú)'}
-                  {p.id === currentParticipant?.id && isOwner && !isEditingName && (
-                    <button onClick={() => setIsEditingName(true)} className="btn-edit-name">✏️</button>
-                  )}
-                </>
+                  {p.id === currentParticipant?.id && isOwner && <span className="edit-hint"> ✏️</span>}
+                </span>
               )}
             </span>
           ))}
@@ -847,9 +888,9 @@ const CollaborativeSession = () => {
       </div>
 
       {isOwner && (
-        <div className="section summary-section">
+        <div className="section summary-section sticky-summary">
           <div className="summary-row">
-            <span>Subtotal confirmado:</span>
+            <span>📝 Subtotal confirmado:</span>
             {editingSubtotal ? (
               <input
                 type="number"
@@ -877,7 +918,7 @@ const CollaborativeSession = () => {
             )}
           </div>
           <div className="summary-row calculated">
-            <span>Suma de items:</span>
+            <span>📋 Suma de items:</span>
             <span className={Math.abs((session.subtotal || 0) - calculateItemsTotal()) > 100 ? 'warning' : ''}>
               {formatCurrency(calculateItemsTotal())}
               {Math.abs((session.subtotal || 0) - calculateItemsTotal()) > 100 && (
@@ -887,12 +928,23 @@ const CollaborativeSession = () => {
               )}
             </span>
           </div>
+          <div className="summary-row assigned">
+            <span>✅ Subtotal asignado:</span>
+            <span className={calculateAssignedTotal() < calculateItemsTotal() ? 'warning-assigned' : 'complete-assigned'}>
+              {formatCurrency(calculateAssignedTotal())}
+              {calculateAssignedTotal() < calculateItemsTotal() && (
+                <span className="pending-text">
+                  {' '}(faltan: {formatCurrency(calculateItemsTotal() - calculateAssignedTotal())})
+                </span>
+              )}
+            </span>
+          </div>
           <div className="summary-row">
-            <span>Propina ({session.tip_percentage || 10}%):</span>
+            <span>🎁 Propina ({session.tip_percentage || 10}%):</span>
             <span>{formatCurrency(session.tip)}</span>
           </div>
           <div className="summary-row total">
-            <span>Total:</span>
+            <span>💰 Total:</span>
             <span>{formatCurrency(session.total)}</span>
           </div>
         </div>

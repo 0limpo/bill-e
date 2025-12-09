@@ -80,6 +80,14 @@
   background: #f7fafc;
 }
 
+/* Sticky summary section */
+.sticky-summary {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .summary-row {
   display: flex;
   justify-content: space-between;
@@ -735,11 +743,88 @@
   font-size: 12px;
 }
 
+/* Subtotal asignado */
+.summary-row.assigned {
+  color: #4a5568;
+}
+
+.warning-assigned {
+  color: #ed8936;
+  font-weight: bold;
+}
+
+.complete-assigned {
+  color: #38a169;
+  font-weight: bold;
+}
+
+.pending-text {
+  color: #ed8936;
+  font-size: 12px;
+}
+
 /* Precio unitario */
 .unit-price {
   font-size: 12px;
   color: #718096;
   margin-left: 4px;
+}
+
+/* Inline editing styles */
+.inline-edit-input {
+  border: 2px solid #667eea;
+  border-radius: 4px;
+  font-size: inherit;
+  padding: 2px 6px;
+  background: white;
+}
+
+.inline-edit-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+}
+
+.inline-edit-name {
+  width: 150px;
+  font-weight: 600;
+}
+
+.inline-edit-price {
+  width: 100px;
+  text-align: right;
+}
+
+.editable-text {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: background 0.2s;
+}
+
+.editable-text:hover {
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.editable-price {
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.editable-price:hover {
+  background: rgba(56, 161, 105, 0.1);
+}
+
+.editable-name {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.editable-name:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Botón agregar participante */
