@@ -348,6 +348,33 @@ const CollaborativeSession = () => {
     return () => clearInterval(interval);
   }, [session?.expires_at]);
 
+  // 4. BACK BUTTON HANDLER (Modal closing on Android back)
+  useEffect(() => {
+    const isModalOpen = editingParticipant || showAddParticipant || showAddItemModal;
+
+    if (isModalOpen) {
+      // Push a state so back button has something to pop
+      window.history.pushState({ modal: true }, '', window.location.href);
+    }
+
+    const handlePopState = (event) => {
+      if (editingParticipant) {
+        setEditingParticipant(null);
+        // Prevent actual navigation
+        window.history.pushState(null, '', window.location.href);
+      } else if (showAddParticipant) {
+        setShowAddParticipant(false);
+        window.history.pushState(null, '', window.location.href);
+      } else if (showAddItemModal) {
+        setShowAddItemModal(false);
+        window.history.pushState(null, '', window.location.href);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [editingParticipant, showAddParticipant, showAddItemModal]);
+
   // --- HANDLERS (Lógica de Negocio) ---
 
   const handleJoin = async (name, phone) => {

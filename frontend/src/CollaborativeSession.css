@@ -407,6 +407,8 @@ body {
   align-items: center;
   gap: 4px;
   min-width: 48px;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
 }
 
 .assign-avatar-btn.assigned {
@@ -839,8 +841,10 @@ body {
   background: rgba(0,0,0,0.4);
   backdrop-filter: blur(4px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 40px;
+  overflow-y: auto;
   z-index: 200;
 }
 
