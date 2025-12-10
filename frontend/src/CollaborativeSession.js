@@ -271,6 +271,8 @@ const CollaborativeSession = () => {
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [newItemPrice, setNewItemPrice] = useState('');
+  const [isCreatingItem, setIsCreatingItem] = useState(false);
+  const [isAddingParticipant, setIsAddingParticipant] = useState(false);
 
   // 1. CARGA INICIAL
   const loadSession = useCallback(async () => {
@@ -484,14 +486,27 @@ const CollaborativeSession = () => {
   };
 
   const handleAddNewItem = async () => {
-    if (!newItemName.trim() || !newItemPrice) return;
+    // Validation
+    const trimmedName = newItemName.trim();
+    const priceNum = parseFloat(newItemPrice);
+
+    if (!trimmedName) {
+      alert('Por favor ingresa un nombre para el item');
+      return;
+    }
+    if (isNaN(priceNum) || priceNum <= 0) {
+      alert('Por favor ingresa un precio válido mayor a 0');
+      return;
+    }
+
+    setIsCreatingItem(true);
     try {
       const res = await fetch(`${API_URL}/api/session/${sessionId}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newItemName,
-          price: parseInt(newItemPrice),
+          name: trimmedName,
+          price: priceNum,
           quantity: 1
         })
       });
@@ -500,9 +515,16 @@ const CollaborativeSession = () => {
         setShowAddItemModal(false);
         setNewItemName('');
         setNewItemPrice('');
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Error creating item:', res.status, errorData);
+        alert(`Error creando item: ${errorData.message || res.statusText}`);
       }
     } catch (err) {
-      alert('Error creando item');
+      console.error('Network error creating item:', err);
+      alert('Error de conexión al crear item');
+    } finally {
+      setIsCreatingItem(false);
     }
   };
 
@@ -674,34 +696,43 @@ const CollaborativeSession = () => {
             />
             <button
               className="btn-main"
-              disabled={!newParticipantName.trim()}
+              disabled={!newParticipantName.trim() || isAddingParticipant}
               onClick={async () => {
+                setIsAddingParticipant(true);
                 try {
                   const res = await fetch(`${API_URL}/api/session/${sessionId}/join`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newParticipantName })
+                    body: JSON.stringify({
+                      name: newParticipantName.trim(),
+                      phone: ""
+                    })
                   });
                   if (res.ok) {
                     await loadSession();
                     setShowAddParticipant(false);
                     setNewParticipantName('');
                   } else {
-                    alert('Error al agregar participante');
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error('Error adding participant:', res.status, errorData);
+                    alert(`Error al agregar participante: ${errorData.message || res.statusText}`);
                   }
                 } catch (e) {
+                  console.error('Network error adding participant:', e);
                   alert('Error de conexión');
+                } finally {
+                  setIsAddingParticipant(false);
                 }
               }}
             >
-              Agregar
+              {isAddingParticipant ? 'Agregando...' : 'Agregar'}
             </button>
           </div>
         </div>
       )}
 
       {showAddItemModal && (
-        <div className="modal-overlay" onClick={() => setShowAddItemModal(false)}>
+        <div className="modal-overlay" onClick={() => !isCreatingItem && setShowAddItemModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Nuevo Consumo</h3>
             <input
@@ -710,6 +741,7 @@ const CollaborativeSession = () => {
               onChange={e => setNewItemName(e.target.value)}
               placeholder="¿Qué pidieron?"
               autoFocus
+              disabled={isCreatingItem}
             />
             <input
               className="join-input"
@@ -717,9 +749,14 @@ const CollaborativeSession = () => {
               value={newItemPrice}
               onChange={e => setNewItemPrice(e.target.value)}
               placeholder="Precio ($)"
+              disabled={isCreatingItem}
             />
-            <button className="btn-main" onClick={handleAddNewItem}>
-              Crear Item
+            <button
+              className="btn-main"
+              onClick={handleAddNewItem}
+              disabled={isCreatingItem}
+            >
+              {isCreatingItem ? 'Creando...' : 'Crear Item'}
             </button>
           </div>
         </div>
