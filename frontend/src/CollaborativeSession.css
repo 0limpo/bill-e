@@ -120,16 +120,6 @@
   outline: none;
 }
 
-.host-edit-action {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  padding: 0 4px;
-}
-.host-edit-action.save { color: var(--success); }
-.host-edit-action.cancel { color: var(--danger); }
-
 .add-participant-btn {
   width: 36px;
   height: 36px;
@@ -187,6 +177,16 @@
   opacity: 0.5;
   padding: 4px;
   margin-left: 8px;
+}
+.item-edit-btn:hover {
+  opacity: 1;
+}
+.item-edit-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  border-radius: 4px;
+}
+.item-edit-btn[onClick*="Done"] { /* A bit of a hack to style the "Done" text */
+  font-size: 12px; font-weight: 600; color: var(--primary);
 }
 
 .item-edit-input {

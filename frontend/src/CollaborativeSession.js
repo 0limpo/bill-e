@@ -109,13 +109,13 @@ const BillItem = ({
   const handleFieldChange = (field, value) => {
     onEditItem(itemId, { [field]: value });
   };
-
+  
   return (
     <div className={`bill-item ${isAssignedToMe ? 'selected' : ''} ${isFinalized ? 'finalized' : ''}`}>
       <div className="item-header">
         <div className="item-info">
           {isEditing ? (
-            <input 
+            <input
               type="text"
               value={item.name}
               className="item-edit-input"
@@ -126,19 +126,19 @@ const BillItem = ({
           )}
           {isEditing ? (
             <div className="item-meta-edit">
-              <input 
+              <input
                 type="number"
                 value={item.quantity || 1}
                 className="item-edit-input qty"
                 onChange={(e) => handleFieldChange('quantity', parseInt(e.target.value, 10) || 1)}
               />
               <span>x</span>
-              <input 
+              <input
                 type="number"
                 value={item.price}
                 className="item-edit-input price"
                 onChange={(e) => handleFieldChange('price', parseFloat(e.target.value) || 0)}
-              />
+              />  
             </div>
           ) : (
             <div className="item-meta">
@@ -150,7 +150,7 @@ const BillItem = ({
         
         {isOwner && !isFinalized && (
           <button className="item-edit-btn" onClick={() => onToggleEdit(itemId)}>
-            {isEditing ? '💾' : '✏️'}
+            {isEditing ? 'Done' : '✏️'}
           </button>
         )}
         
@@ -438,13 +438,13 @@ const CollaborativeSession = () => {
       ...prev,
       items: prev.items.map(item => 
         (item.id || item.name) === itemId ? { ...item, isEditing: !item.isEditing } : item
-      )
+      ).map(item => (item.id || item.name) !== itemId ? { ...item, isEditing: false } : item) // Close other items
     }));
   };
 
   const handleItemUpdate = (itemId, updates) => {
-    // Aquí iría la llamada a la API para guardar los cambios del item
-    console.log(`Updating item ${itemId} with`, updates);
+    // Optimistic UI update
+    setSession(prev => ({ ...prev, items: prev.items.map(i => (i.id || i.name) === itemId ? { ...i, ...updates } : i) }));
   };
   // Cálculo de totales locales
   const getMyTotal = () => {
@@ -532,14 +532,17 @@ const CollaborativeSession = () => {
            {session.participants.map(p => ( 
              p.role === 'owner' && isEditingHostName ? (
               <div key={p.id} className="participant-chip editing">
-                <input 
+                <input
                   value={tempHostName}
                   onChange={(e) => setTempHostName(e.target.value)}
+                  onBlur={handleSaveHostName}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveHostName();
+                    if (e.key === 'Escape') handleCancelHostNameEdit();
+                  }}
                   className="host-edit-input"
                   autoFocus
                 />
-                <button onClick={handleSaveHostName} className="host-edit-action save">✅</button>
-                <button onClick={handleCancelHostNameEdit} className="host-edit-action cancel">❌</button>
               </div>
              ) : (
               <div key={p.id} className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''}`}>
@@ -577,6 +580,7 @@ const CollaborativeSession = () => {
             itemMode={itemModes[item.id || item.name]}
             onToggleMode={toggleItemMode}
             isFinalized={session.status === 'finalized'}
+            onEditItem={handleItemUpdate}
             onToggleEdit={handleToggleItemEdit}
           />
         ))}
