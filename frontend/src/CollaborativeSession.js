@@ -499,7 +499,25 @@ const CollaborativeSession = () => {
       return;
     }
 
+    const tempId = `temp_item_${Date.now()}`;
+
+    // Optimistic UI: Add item immediately
+    const optimisticItem = {
+      id: tempId,
+      name: trimmedName,
+      price: priceNum,
+      quantity: 1
+    };
+
+    setSession(prev => ({
+      ...prev,
+      items: [...prev.items, optimisticItem]
+    }));
+    setShowAddItemModal(false);
+    setNewItemName('');
+    setNewItemPrice('');
     setIsCreatingItem(true);
+
     try {
       const res = await fetch(`${API_URL}/api/session/${sessionId}/add-item`, {
         method: 'POST',
@@ -512,17 +530,25 @@ const CollaborativeSession = () => {
         })
       });
       if (res.ok) {
+        // Replace temp item with real one from server
         await loadSession();
-        setShowAddItemModal(false);
-        setNewItemName('');
-        setNewItemPrice('');
       } else {
+        // Rollback on error
         const errorData = await res.json().catch(() => ({}));
         console.error('Error creating item:', res.status, errorData);
+        setSession(prev => ({
+          ...prev,
+          items: prev.items.filter(i => i.id !== tempId)
+        }));
         alert(`Error creando item: ${errorData.message || res.statusText}`);
       }
     } catch (err) {
+      // Rollback on network error
       console.error('Network error creating item:', err);
+      setSession(prev => ({
+        ...prev,
+        items: prev.items.filter(i => i.id !== tempId)
+      }));
       alert('Error de conexión al crear item');
     } finally {
       setIsCreatingItem(false);
@@ -605,15 +631,11 @@ const CollaborativeSession = () => {
               </div>
              ) : (
               <div key={p.id} className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''}`}>
-                <Avatar name={p.name} size="small" />
+                {p.role === 'owner' && <span className="badge-owner">Host</span>}
+                <Avatar name={p.name} />
                 <span className="participant-name">{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
-                {p.role === 'owner' && (
-                  <>
-                    <span className="badge-owner">Host</span>
-                    {session.status !== 'finalized' && (
-                      <button className="host-edit-btn" onClick={handleEditHostName}>✏️</button>
-                    )}
-                  </>
+                {p.role === 'owner' && session.status !== 'finalized' && (
+                  <button className="host-edit-btn" onClick={handleEditHostName}>✏️</button>
                 )}
               </div>
              )
@@ -699,27 +721,52 @@ const CollaborativeSession = () => {
               className="btn-main"
               disabled={!newParticipantName.trim() || isAddingParticipant}
               onClick={async () => {
+                const trimmedName = newParticipantName.trim();
+                const tempId = `temp_${Date.now()}`;
+
+                // Optimistic UI: Add participant immediately
+                const optimisticParticipant = {
+                  id: tempId,
+                  name: trimmedName,
+                  phone: "N/A",
+                  role: "editor",
+                  joined_at: new Date().toISOString()
+                };
+
+                setSession(prev => ({
+                  ...prev,
+                  participants: [...prev.participants, optimisticParticipant]
+                }));
+                setShowAddParticipant(false);
+                setNewParticipantName('');
                 setIsAddingParticipant(true);
+
                 try {
                   const res = await fetch(`${API_URL}/api/session/${sessionId}/join`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      name: newParticipantName.trim(),
-                      phone: ""
-                    })
+                    body: JSON.stringify({ name: trimmedName, phone: "" })
                   });
                   if (res.ok) {
+                    // Replace temp participant with real one from server
                     await loadSession();
-                    setShowAddParticipant(false);
-                    setNewParticipantName('');
                   } else {
+                    // Rollback on error
                     const errorData = await res.json().catch(() => ({}));
                     console.error('Error adding participant:', res.status, errorData);
+                    setSession(prev => ({
+                      ...prev,
+                      participants: prev.participants.filter(p => p.id !== tempId)
+                    }));
                     alert(`Error al agregar participante: ${errorData.message || res.statusText}`);
                   }
                 } catch (e) {
+                  // Rollback on network error
                   console.error('Network error adding participant:', e);
+                  setSession(prev => ({
+                    ...prev,
+                    participants: prev.participants.filter(p => p.id !== tempId)
+                  }));
                   alert('Error de conexión');
                 } finally {
                   setIsAddingParticipant(false);

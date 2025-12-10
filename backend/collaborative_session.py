@@ -99,13 +99,16 @@ def add_participant(
     if session_data["status"] == SessionStatus.FINALIZED.value:
         return {"error": "La sesion ya fue finalizada", "code": 403}
 
-    for p in session_data["participants"]:
-        if p["phone"] == phone:
-            return {
-                "participant": p,
-                "is_existing": True,
-                "is_owner": p["role"] == ParticipantRole.OWNER.value
-            }
+    # Only check for existing participant if phone is a real phone number
+    # Skip this check if phone is empty, "N/A", or placeholder values
+    if phone and phone not in ["N/A", "", "n/a"]:
+        for p in session_data["participants"]:
+            if p.get("phone") == phone:
+                return {
+                    "participant": p,
+                    "is_existing": True,
+                    "is_owner": p["role"] == ParticipantRole.OWNER.value
+                }
 
     new_participant = {
         "id": str(uuid.uuid4())[:8],
