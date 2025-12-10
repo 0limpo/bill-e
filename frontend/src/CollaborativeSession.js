@@ -110,6 +110,11 @@ const BillItem = ({
     onEditItem(itemId, { [field]: value });
   };
   
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      e.target.blur(); // Trigger onBlur to save/close
+    }
+  };
   return (
     <div className={`bill-item ${isAssignedToMe ? 'selected' : ''} ${isFinalized ? 'finalized' : ''}`}>
       <div className="item-header">
@@ -120,6 +125,8 @@ const BillItem = ({
               value={item.name}
               className="item-edit-input"
               onChange={(e) => handleFieldChange('name', e.target.value)}
+              onBlur={() => onToggleEdit(itemId)} // Save and close on blur
+              onKeyDown={handleKeyDown}
             />
           ) : (
             <span className="item-name">{item.name}</span>
@@ -131,6 +138,8 @@ const BillItem = ({
                 value={item.quantity || 1}
                 className="item-edit-input qty"
                 onChange={(e) => handleFieldChange('quantity', parseInt(e.target.value, 10) || 1)}
+                onBlur={() => onToggleEdit(itemId)}
+                onKeyDown={handleKeyDown}
               />
               <span>x</span>
               <input
@@ -138,6 +147,8 @@ const BillItem = ({
                 value={item.price}
                 className="item-edit-input price"
                 onChange={(e) => handleFieldChange('price', parseFloat(e.target.value) || 0)}
+                onBlur={() => onToggleEdit(itemId)}
+                onKeyDown={handleKeyDown}
               />  
             </div>
           ) : (
@@ -150,7 +161,7 @@ const BillItem = ({
         
         {isOwner && !isFinalized && (
           <button className="item-edit-btn" onClick={() => onToggleEdit(itemId)}>
-            {isEditing ? 'Done' : '✏️'}
+            {!isEditing && '✏️'}
           </button>
         )}
         

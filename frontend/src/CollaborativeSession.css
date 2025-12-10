@@ -185,9 +185,6 @@
   outline: 2px solid var(--primary);
   border-radius: 4px;
 }
-.item-edit-btn[onClick*="Done"] { /* A bit of a hack to style the "Done" text */
-  font-size: 12px; font-weight: 600; color: var(--primary);
-}
 
 .item-edit-input {
   border: 1px solid var(--primary);
