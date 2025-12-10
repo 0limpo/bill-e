@@ -810,26 +810,77 @@ const CollaborativeSession = () => {
 
   // Vista Finalizada
   if (session.status === 'finalized') {
+    const getMyFinalTotal = () => {
+      if (!session.totals || !currentParticipant) return 0;
+      const myTotal = session.totals.find(t => t.participant_id === currentParticipant.id);
+      return myTotal?.total || 0;
+    };
+
     return (
       <div className="collaborative-session finalized-view">
-        <div className="header">
-          <h1>✅ Cuenta Cerrada</h1>
-        </div>
-        <div className="join-card">
+        <div className="finalized-card">
+          <span className="success-icon-large">🎉</span>
+          <h1 className="finalized-title">¡Cuenta Cerrada!</h1>
           <p className="finalized-message">
-            El anfitrión ha finalizado la cuenta.
+            {isOwner ? 'La cuenta ha sido dividida exitosamente' : 'Gracias por compartir la mesa'}
           </p>
-          {session.totals && (
-            <div className="my-total-amount success">
-              {isOwner
-                ? formatCurrency(session.total)
-                : formatCurrency(session.totals.find(t => t.id === currentParticipant.id)?.total || 0)
-              }
+
+          <div className="finalized-amount-large">
+            {isOwner ? formatCurrency(session.total) : formatCurrency(getMyFinalTotal())}
+          </div>
+          <p className="finalized-amount-label">
+            {isOwner ? 'Total Recaudado' : 'Tu aporte total'}
+          </p>
+
+          {isOwner && session.totals && session.totals.length > 0 && (
+            <div className="summary-list">
+              <h3 className="summary-title">Desglose por persona</h3>
+              {session.totals.map(t => (
+                <div key={t.participant_id} className="summary-row">
+                  <div className="summary-person">
+                    <span className="summary-avatar" style={{ background: getAvatarColor(t.name) }}>
+                      {getInitials(t.name)}
+                    </span>
+                    <span>{t.name}</span>
+                  </div>
+                  <div className="summary-amounts">
+                    <span className="summary-subtotal">{formatCurrency(t.subtotal)}</span>
+                    <span className="summary-tip">+{formatCurrency(t.tip)} prop.</span>
+                    <span className="summary-total">{formatCurrency(t.total)}</span>
+                  </div>
+                </div>
+              ))}
+              <div className="summary-row total">
+                <span>Total Mesa</span>
+                <span>{formatCurrency(session.total)}</span>
+              </div>
             </div>
           )}
-          <p className="finalized-total-label">
-            {isOwner ? 'Total Mesa' : 'Tu total a pagar'}
-          </p>
+
+          {!isOwner && (
+            <div className="summary-list participant-summary">
+              <div className="summary-row">
+                <span>Subtotal consumo</span>
+                <span>{formatCurrency(session.totals?.find(t => t.participant_id === currentParticipant?.id)?.subtotal || 0)}</span>
+              </div>
+              <div className="summary-row">
+                <span>Propina proporcional</span>
+                <span>{formatCurrency(session.totals?.find(t => t.participant_id === currentParticipant?.id)?.tip || 0)}</span>
+              </div>
+              <div className="summary-row total">
+                <span>Tu Total</span>
+                <span>{formatCurrency(getMyFinalTotal())}</span>
+              </div>
+            </div>
+          )}
+
+          <button className="btn-main" onClick={() => window.location.href = '/'} style={{ marginTop: '24px' }}>
+            Volver al Inicio
+          </button>
+
+          <button className="btn-secondary" onClick={() => navigator.share?.({ title: 'Bill-e', text: `Mi parte de la cuenta: ${formatCurrency(isOwner ? session.total : getMyFinalTotal())}`, url: window.location.href }).catch(() => {})} style={{ marginTop: '8px' }}>
+            📤 Compartir
+          </button>
         </div>
       </div>
     );
