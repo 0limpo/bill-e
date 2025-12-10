@@ -7,23 +7,6 @@ import './CollaborativeSession.css';
 
 const API_URL = 'https://bill-e-backend-lfwp.onrender.com';
 
-const AVATAR_COLORS = [
-  '#ffadad', '#ffd6a5', '#fdffb6', '#caffbf', '#9bf6ff', '#a0c4ff', '#bdb2ff', '#ffc6ff'
-];
-
-// Genera un color y una inicial consistentes para un avatar
-const getAvatarProps = (name) => {
-  if (!name) return { initial: '?', color: '#e0e0e0' };
-  const initial = name.charAt(0).toUpperCase();
-  // Simple hash para obtener un índice de color consistente
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const color = AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-  return { initial, color };
-};
-
 const formatCurrency = (amount) => {
   return `${Math.round(amount).toLocaleString('es-CL')}`;
 };
@@ -231,7 +214,7 @@ const BillItem = ({
             </span>
           )}
 
-          {/* Precio del item - editable inline (solo owner) o estático */}
+          {/* Precio del item - editable inline (solo owner) */}
           <div className="item-right">
             {isOwner && (
               editingField === 'price' ? (
@@ -261,12 +244,6 @@ const BillItem = ({
                   {!isFinalized && <span className="edit-hint"> ✏️</span>}
                 </span>
               )
-            )}
-            {!isOwner && (
-              <span className="item-price">
-                {formatCurrency(item.price * (item.quantity || 1))}
-                {hasQuantity && <span className="unit-price">({formatCurrency(item.price)} c/u)</span>}
-              </span>
             )}
           </div>
         </div>
@@ -298,21 +275,20 @@ const BillItem = ({
                 <span className="sub-item-price">{formatCurrency(item.price)}</span>
               </div>
               <div className="sub-item-participants">
-                {participants.map(participant => {
-                  const assigned = isSubItemAssigned(itemId, idx, participant.id);
-                  const canToggle = isOwner || participant.id === currentParticipant?.id;
-                  const { initial, color } = getAvatarProps(participant.name);
+                {participants.map(p => {
+                  const assigned = isSubItemAssigned(itemId, idx, p.id);
+                  const canToggle = isOwner || p.id === currentParticipant?.id;
                   return (
-                    <div
-                      key={participant.id}
-                      className={`avatar-assign ${assigned ? 'assigned' : ''} ${!canToggle ? 'disabled' : ''}`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => canToggle && onSubItemAssign(itemId, idx, participant.id)}
+                    <button
+                      key={p.id}
+                      className={`assign-btn ${assigned ? 'assigned' : ''} ${!canToggle ? 'disabled' : ''}`}
+                      onClick={() => canToggle && onSubItemAssign(itemId, idx, p.id)}
                       disabled={isFinalized || !canToggle}
-                      title={participant.name}
                     >
-                      {initial}
-                    </div>
+                      {p.name}
+                      {assigned && ' ✓'}
+                      {p.id === currentParticipant?.id && !assigned && ' (yo)'}
+                    </button>
                   );
                 })}
               </div>
@@ -362,22 +338,22 @@ const BillItem = ({
         </div>
       ) : (
         /* Items con quantity = 1: botones toggle */
-        <div className="avatar-assignment-container">
-          {participants.map(participant => {
-            const isAssigned = itemAssignments.some(a => a.participant_id === participant.id);
-            const canToggle = isOwner || participant.id === currentParticipant?.id;
-            const { initial, color } = getAvatarProps(participant.name);
+        <div className="simple-assignment">
+          {participants.map(p => {
+            const isAssigned = itemAssignments.some(a => a.participant_id === p.id);
+            const canToggle = isOwner || p.id === currentParticipant?.id;
+
             return (
-              <div
-                key={participant.id}
-                className={`avatar-assign ${isAssigned ? 'assigned' : ''} ${!canToggle ? 'disabled' : ''}`}
-                style={{ backgroundColor: color }}
-                onClick={() => canToggle && handleToggle(participant.id)}
+              <button
+                key={p.id}
+                className={`assign-btn ${isAssigned ? 'assigned' : ''} ${!canToggle ? 'disabled' : ''}`}
+                onClick={() => canToggle && handleToggle(p.id)}
                 disabled={isFinalized || !canToggle}
-                title={participant.name}
               >
-                {initial}
-              </div>
+                {p.name}
+                {isAssigned && ' ✓'}
+                {p.id === currentParticipant?.id && !isAssigned && ' (yo)'}
+              </button>
             );
           })}
         </div>
@@ -1106,7 +1082,7 @@ const CollaborativeSession = () => {
       </div>
 
       {isOwner && (
-        <div className="owner-bottom-bar">
+        <div className="section summary-section sticky-summary">
           <div className="summary-row">
             <span>📝 Subtotal confirmado:</span>
             {editingSubtotal ? (
@@ -1180,12 +1156,6 @@ const CollaborativeSession = () => {
             <span>💰 Total:</span>
             <span>{formatCurrency(session.total)}</span>
           </div>
-          <div className="owner-footer">
-            <button className="btn-finalize" onClick={handleFinalize}>
-              🔒 Finalizar y Ver Totales
-            </button>
-            <p className="finalize-hint">Los editores ya no podrán hacer cambios</p>
-          </div>
         </div>
       )}
 
@@ -1224,13 +1194,22 @@ const CollaborativeSession = () => {
       </div>
 
       {!isOwner && (
-        <div className="editor-bottom-bar">
+        <div className="section editor-footer">
           <EditorSummary
             items={session.items}
             assignments={session.assignments}
             participantId={currentParticipant?.id}
           />
           <p className="waiting-message">⏳ Esperando que el anfitrión finalice...</p>
+        </div>
+      )}
+
+      {isOwner && (
+        <div className="section owner-footer">
+          <button className="btn-finalize" onClick={handleFinalize}>
+            🔒 Finalizar y Ver Totales
+          </button>
+          <p className="finalize-hint">Los editores ya no podrán hacer cambios</p>
         </div>
       )}
 

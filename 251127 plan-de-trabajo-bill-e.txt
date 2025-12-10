@@ -1,0 +1,409 @@
+# PLAN DE TRABAJO BILL-E: LANZAMIENTO ESCALONADO Y MONETIZACIÓN
+================================================================================
+
+## RESUMEN EJECUTIVO
+
+**Objetivo**: Lanzamiento exitoso de Bill-e con estrategia de pricing optimizada
+**Timeline**: 8 semanas hasta lanzamiento público, 16 semanas hasta escala
+**Modelo**: Freemium → Paywall único (Fase 1) → Dual Paywall (Fase 2)
+**Target Año 1**: 10K usuarios, 15% conversión, $15-25K revenue
+
+================================================================================
+
+## FASE 0: PREPARACIÓN CRÍTICA (Semanas 1-3) - EXTENDIDA
+
+### SEMANA 1: SEGURIDAD Y INFRAESTRUCTURA
+**Prioridad: CRÍTICA**
+
+SEGURIDAD (1-2 días):
+□ URGENTE: Rotar credenciales Google Cloud (expuestas en repo)
+□ Migrar todas las credenciales a variables de entorno  
+□ Audit completo de seguridad
+□ Implementar rate limiting avanzado (dual users)
+□ Setup monitoring y alertas
+
+INFRAESTRUCTURA (3-4 días):
+□ Upgrade Render free → Starter ($7/mes) - eliminar spin-down
+□ Configurar health checks y uptime monitoring
+□ Optimizar OCR pipeline para performance
+□ Setup Redis persistence y backup
+□ Test load con 100+ usuarios simultáneos
+
+### SEMANA 2-3: DUAL PAYWALL IMPLEMENTATION
+**Prioridad: CRÍTICA** (Complejidad mayor)
+
+DUAL PAYMENT SYSTEM (10-12 días):
+□ Implementar Flow/Webpay para pagos locales (CLP)
+□ Implementar Lemon Squeezy para pagos globales (USD/EUR)
+□ Dual paywall: Owner (escanea) + Editor (colabora)
+□ Logic de detección Owner vs Editor
+□ Webhooks para ambos sistemas de pago
+□ Tax compliance (IVA local + VAT internacional)
+□ Test exhaustivo de ambos flows
+□ User role management (Owner/Editor/Viewer)
+
+PRICING IMPLEMENTATION:
+□ V4 constante: $990/mes (siempre presente)
+□ Sequential A/B: V1/V2/V3 rotación cada 2 semanas
+□ Geo-detection para payment provider correcto
+□ Currency conversion y display
+□ Billing dashboard para usuarios
+
+MÉTRICAS Y TRACKING:
+□ Google Analytics 4 setup
+□ Conversion funnel tracking
+□ Payment success/failure monitoring
+□ User behavior analytics básico
+
+================================================================================
+
+## FASE 1: SOFT LAUNCH (Semanas 4-5)
+
+### SEMANA 4: LANZAMIENTO CONTROLADO
+**Target: 50-100 usuarios**
+
+ACTIVACIÓN WHATSAPP:
+□ Activar bot WhatsApp en producción
+□ Test extensivo con usuarios reales
+□ Optimizar mensajes y respuestas
+□ Monitor error rates y performance
+
+SOFT LAUNCH:
+□ Invitar amigos, familia, network cercano (50 personas)
+□ Crear grupo WhatsApp de beta testers
+□ Documentar todos los bugs y feedback
+□ Iterar rápidamente basado en feedback
+
+LANDING PAGE BÁSICA:
+□ Página simple explicando el producto
+□ Call-to-action claro
+□ SEO básico (meta tags, sitemap)
+□ Google Search Console setup
+
+### SEMANA 4: OPTIMIZACIÓN TEMPRANA
+**Target: 100-200 usuarios**
+
+PRODUCT OPTIMIZATION:
+□ Fix todos los bugs críticos encontrados
+□ Optimizar UX basado en feedback
+□ Mejorar OCR accuracy con data real
+□ Implement error recovery flows
+
+EARLY METRICS:
+□ Analizar primera data de conversión
+□ Entender user behavior patterns
+□ Identificar drop-off points
+□ Ajustar pricing si es necesario
+
+CONTENT INICIAL:
+□ FAQ basado en preguntas reales
+□ Tutorial en video (2-3 minutos)
+□ Testimonios de early users
+□ Blog post: "Cómo dividir cuentas justas"
+
+================================================================================
+
+## FASE 2: BETA LAUNCH (Semanas 5-8)
+
+### SEMANA 5-6: SCALING INICIAL
+**Target: 500-1000 usuarios**
+
+MARKETING ORGÁNICO:
+□ Post en comunidades tech chilenas (Reddit Chile, HackerNews)
+□ Compartir en grupos emprendedores
+□ Outreach a influencers tech locales
+□ Email a network profesional
+
+PRODUCT IMPROVEMENTS:
+□ Implement caching para OCR results
+□ Add bulk operations
+□ Improve mobile experience
+□ Add export functionality
+
+CUSTOMER SUPPORT:
+□ Setup email support (support@bill-e.app)
+□ Create knowledge base
+□ Automate common responses
+□ Define SLA para response times
+
+### SEMANA 7-8: PREPARACIÓN PARA ESCALA
+**Target: 1000+ usuarios**
+
+A/B TEST PRICING (Implementar estrategia Gemini):
+□ Implement pricing variants (V1, V2, V3, V4)
+□ Setup testing infrastructure
+□ Define success metrics (INPU, CLV)
+□ Begin sequential A/B testing
+
+INFRAESTRUCTURA ESCALA:
+□ Database optimization
+□ CDN para assets estáticos
+□ Load balancing preparation
+□ Backup y disaster recovery
+
+ANALYTICS AVANZADO:
+□ Cohort analysis setup
+□ LTV calculation
+□ Churn prediction modelo
+□ Revenue forecasting
+
+================================================================================
+
+## FASE 3: PUBLIC LAUNCH (Semanas 9-12)
+
+### SEMANA 9-10: LANZAMIENTO PÚBLICO
+
+MARKETING CAMPAIGN:
+□ Press release a medios tech chilenos
+□ Launch en Product Hunt
+□ Social media campaign
+□ Influencer partnerships
+
+DUAL PAYWALL IMPLEMENTATION:
+□ Implementar estrategia dual (Dueño + Editor)
+□ Setup payment providers (Flow/Webpay + Lemon Squeezy)
+□ Test fiscal compliance
+□ Train support team en nuevo modelo
+
+CONTENT MARKETING:
+□ Blog posts sobre división de cuentas
+□ Calculadora de propinas (SEO tool)
+□ Guías para restaurantes/bares
+□ Video testimonials
+
+### SEMANA 11-12: OPTIMIZATION
+
+CONVERSION OPTIMIZATION:
+□ Analyze A/B test results
+□ Implement winning price variant
+□ Optimize onboarding flow
+□ Reduce friction points
+
+REFERRAL PROGRAM:
+□ Implement viral loops
+□ Incentives para sharing
+□ Track viral coefficient
+□ Optimize share messages
+
+================================================================================
+
+## FASE 4: GROWTH & SCALE (Semanas 13-16)
+
+### FEATURES AVANZADAS:
+□ Historial de cuentas por usuario
+□ Teams/grupos funcionalidad
+□ Integración con delivery apps
+□ API pública para terceros
+
+### INTERNATIONAL EXPANSION:
+□ Localization para otros países LATAM
+□ Currency support (USD, EUR, etc.)
+□ Legal compliance internacional
+□ Local payment methods
+
+================================================================================
+
+## ESTRATEGIA DE PRICING DUAL (DESDE EL LANZAMIENTO)
+
+### IMPLEMENTACIÓN INMEDIATA: DUAL PAYWALL
+**Objetivo: Maximizar INPU desde día 1**
+
+MODELO DUAL:
+- **Owner (Dueño)**: Paga por escanear boletas con OCR
+- **Editor (Colaborador)**: Paga por acceso de edición/colaboración
+- **Freemium**: 1 escaneo gratis como demo, luego paywall
+
+PRICING VARIANTS (Estrategia Gemini):
+- **V4 Constante**: $990/mes (ancla psicológica, siempre presente)
+- **Testing Secuencial** (2 semanas cada uno):
+  * Período 1: V1 ($1.800 anual) vs V4 ($990 mensual)
+  * Período 2: V2 ($3.490 anual) vs V4 ($990 mensual)  
+  * Período 3: V3 ($5.990 anual) vs V4 ($990 mensual)
+
+PROCESAMIENTO DUAL DESDE DÍA 1:
+- **Local (Chile)**: Flow/Webpay para CLP - mejor INPU local
+- **Global**: Lemon Squeezy para USD/EUR - manejo fiscal automático
+
+INPU PROYECTADO:
+- V1 Local: $1.436 CLP (20% comisión)
+- V3 Local: $5.477 CLP (8.5% comisión)  
+- V1 Global: $1.260 CLP (30% comisión)
+- V3 Global: $5.240 CLP (12.5% comisión)
+
+### CRITERIO DE ÉXITO:
+**La variante que maximice INPU Total = (Ventas Anuales + CLV Proyectado V4)**
+
+================================================================================
+
+## MÉTRICAS Y KPIs
+
+### MÉTRICAS TÉCNICAS:
+- Uptime: >99.5%
+- OCR Accuracy: >85%
+- Response Time: <3s
+- Error Rate: <2%
+
+### MÉTRICAS DE PRODUCTO:
+- MAU Growth Rate: 20%/mes
+- Session Success Rate: >90%
+- Feature Adoption: >60%
+- NPS Score: >50
+
+### MÉTRICAS DE NEGOCIO:
+- CAC: <$5 USD
+- LTV: >$15 USD  
+- LTV/CAC Ratio: >3
+- Payback Period: <6 meses
+- Monthly Churn: <5%
+
+### MILESTONE OBJECTIVES:
+
+MES 1 (Post-launch):
+□ 500 usuarios únicos
+□ 100 conversiones paying
+□ $150-300 USD revenue
+□ <5% bug rate
+
+MES 3:
+□ 2,000 usuarios únicos  
+□ 400 conversiones paying
+□ $600-1,200 USD revenue
+□ 15% referral rate
+
+MES 6:
+□ 8,000 usuarios únicos
+□ 1,500 conversiones paying
+□ $2,500-5,000 USD revenue
+□ Channel optimization
+
+MES 12:
+□ 25,000 usuarios únicos
+□ 5,000 conversiones paying  
+□ $8,000-15,000 USD revenue
+□ International expansion
+
+================================================================================
+
+## RIESGOS Y MITIGACIÓN
+
+### RIESGOS TÉCNICOS:
+- OCR baja accuracy → Manual editing + GPT-4V backup
+- Render downtime → Upgrade a professional tier
+- High OCR costs → Caching + optimization
+
+### RIESGOS DE NEGOCIO:
+- Baja conversión → Adjust pricing + value props
+- Alta competencia → Focus en UX diferenciado  
+- Regulation changes → Legal compliance audit
+
+### RIESGOS OPERACIONALES:
+- Support overflow → Automated responses + FAQ
+- Payment failures → Multiple payment methods
+- User abuse → Rate limiting + fraud detection
+
+================================================================================
+
+## RECURSOS NECESARIOS
+
+### TECHNICAL STACK:
+- Current: $0/mes (todos free tiers)
+- Month 1: $50/mes (Render Pro + Upstash Pro)
+- Month 3: $150/mes (añadir OCR costs)
+- Month 6: $300/mes (scaling infrastructure)
+
+### TEAM (si es necesario):
+- Month 1-3: Solo (full-stack)
+- Month 4-6: +1 Customer Support part-time
+- Month 6-12: +1 Developer + +1 Marketing
+
+### MARKETING BUDGET:
+- Month 1-2: $0 (organic only)
+- Month 3-6: $500/mes (paid ads)
+- Month 6-12: $1,500/mes (scaled marketing)
+
+================================================================================
+
+## NEXT ACTIONS (Esta semana)
+
+### INMEDIATO (Hoy):
+1. ✅ Documentar credenciales expuestas en repo
+2. ✅ Crear plan de rotación de credenciales  
+3. ✅ Backup completo de base de datos
+
+### DÍA 1-3:
+1. 🔴 Rotar todas las credenciales Google Cloud
+2. 🔴 Migrar secrets a environment variables
+3. 🔴 Security audit básico
+
+### SEMANA 2:
+1. 🟡 Implementar Flow/Webpay integration (local)
+2. 🟡 Implementar Lemon Squeezy (global)
+3. 🟡 Dual user roles (Owner/Editor logic)
+
+### SEMANA 3:
+1. 🟡 Complete dual paywall testing
+2. 🟡 Geo-detection para payment routing
+3. 🟡 A/B testing infrastructure
+
+### SEMANA 4:
+1. 🟢 Soft launch con dual paywall activo
+2. 🟢 Start sequential pricing testing (V1 period)
+3. 🟢 Monitor INPU y conversion metrics
+
+================================================================================
+
+## COMPLEJIDAD ADICIONAL DEL DUAL PAYWALL
+
+### TECHNICAL REQUIREMENTS EXTRA:
+
+USER ROLES & LOGIC:
+□ Owner detection: Usuario que sube/escanea imagen
+□ Editor detection: Usuario que modifica/colabora
+□ Viewer role: Solo ve resultados (gratis)
+□ Session ownership management
+□ Permission system implementation
+
+PAYMENT FLOW DUAL:
+□ Owner hits paywall al intentar OCR scan
+□ Editor hits paywall al intentar editar items
+□ Geo-routing: Chilean IPs → Flow, Others → Lemon Squeezy
+□ Currency display adaptation
+□ Payment confirmation para ambos roles
+
+A/B TESTING INFRASTRUCTURE:
+□ Sequential variant assignment (no concurrent)
+□ Temporal buckets (2 semanas cada variant)
+□ Metrics tracking per variant
+□ INPU calculation automation
+□ Winner detection algorithm
+
+### ESTIMATED DEVELOPMENT TIME:
+- Single paywall: 5-7 días
+- **Dual paywall: 12-15 días**
+- A/B testing: +3-5 días
+- **Total: 15-20 días** vs 5-7 días original
+
+### LAUNCH TIMELINE ADJUSTMENT:
+- Original plan: 4 semanas hasta soft launch
+- **Dual plan: 5-6 semanas hasta soft launch**
+- Benefit: Maximizar revenue desde día 1
+- Risk: Mayor complejidad técnica y delay
+
+================================================================================
+
+## CONCLUSIÓN
+
+Este plan integra tu estrategia de pricing sofisticada con un approach pragmático de lanzamiento. Empezamos simple para validar mercado, luego evolucionamos a tu modelo dual paywall una vez que tengamos data real.
+
+El éxito dependerá de:
+1. Execution perfecta de la seguridad y Stripe
+2. Feedback loop rápido con early users  
+3. Data-driven optimization del pricing
+4. Viralidad natural del producto
+
+Bill-e tiene todos los elementos técnicos para ser exitoso. Ahora es momento de ejecutar metódicamente este plan.
+
+================================================================================
+ÚLTIMA ACTUALIZACIÓN: 27 Noviembre 2025
+AUTOR: Plan colaborativo (Gonzalo + Claude)
+PRÓXIMA REVISIÓN: Cada semana durante ejecución

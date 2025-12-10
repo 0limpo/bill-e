@@ -1,0 +1,253 @@
+# 🔐 BILL-E SECURITY AUDIT & CREDENTIAL ROTATION
+================================================================================
+FECHA: 27 Noviembre 2025
+PRIORIDAD: CRÍTICA - EJECUTAR INMEDIATAMENTE
+================================================================================
+
+## 🚨 SITUACIÓN ACTUAL CRÍTICA
+
+Según el análisis, las **credenciales de Google Cloud están expuestas en el repositorio**:
+- Archivo: `backend/bill-e-ocr-bce903295fd1.json`
+- Riesgo: Acceso no autorizado a Google Cloud Vision API
+- Impacto: Costos elevados, breach de datos, suspensión del servicio
+
+## ⚡ PLAN DE ACCIÓN INMEDIATA (HOY)
+
+### PASO 1: ASSESSMENT COMPLETO (30 minutos)
+```bash
+# 1. Revisar qué está expuesto en el repo
+git log --oneline | head -20
+git show --name-only
+
+# 2. Buscar todas las credenciales expuestas
+grep -r "private_key" .
+grep -r "client_secret" .  
+grep -r "project_id" .
+grep -r "redis" .
+grep -r "whatsapp" .
+
+# 3. Verificar historial de commits
+git log --all --grep="credential"
+git log --all --grep="key"
+```
+
+### PASO 2: ROTACIÓN INMEDIATA (Google Cloud)
+
+#### A. Acceder a Google Cloud Console
+1. Ve a: https://console.cloud.google.com/
+2. Proyecto: `bill-e-ocr` (o el nombre que uses)
+3. Navega a: IAM & Admin → Service Accounts
+
+#### B. Crear nueva Service Account
+```bash
+# Comando alternativo si prefieres CLI
+gcloud iam service-accounts create bill-e-prod \
+    --description="Bill-e production OCR service" \
+    --display-name="Bill-e Production"
+
+# Asignar permisos
+gcloud projects add-iam-policy-binding PROJECT_ID \
+    --member="serviceAccount:bill-e-prod@PROJECT_ID.iam.gserviceaccount.com" \
+    --role="roles/vision.imageAnnotator"
+```
+
+#### C. Generar nueva clave
+1. Click en la service account nueva
+2. Keys → Add Key → Create New Key
+3. Formato: JSON
+4. **DESCARGAR pero NO commitear al repo**
+
+#### D. Desactivar clave antigua
+1. Encontrar la service account actual
+2. Keys → encontrar la key expuesta
+3. **Delete** la clave comprometida
+4. Confirmar que OCR deja de funcionar (para verificar)
+
+### PASO 3: SETUP SEGURO DE VARIABLES DE ENTORNO
+
+#### A. Render (Backend)
+1. Ve a: https://dashboard.render.com/
+2. Tu servicio `bill-e-backend`
+3. Environment → Add Environment Variable
+
+```bash
+# Variables críticas para agregar:
+GOOGLE_APPLICATION_CREDENTIALS_JSON='{toda_la_nueva_key_json_aqui}'
+REDIS_URL=rediss://default:password@host:6379
+WHATSAPP_ACCESS_TOKEN=EAA...
+WHATSAPP_PHONE_NUMBER_ID=123...
+WHATSAPP_VERIFY_TOKEN=tu_token
+```
+
+#### B. Local Development (.env)
+```bash
+# Crear archivo .env en backend/ (si no existe)
+cd backend
+touch .env
+
+# Añadir al .env (NO commitear):
+GOOGLE_APPLICATION_CREDENTIALS_JSON='{"type":"service_account",...}'
+REDIS_URL="rediss://default:password@host:6379"
+WHATSAPP_ACCESS_TOKEN="EAA..."
+WHATSAPP_PHONE_NUMBER_ID="123..."
+WHATSAPP_VERIFY_TOKEN="tu_token_secreto"
+```
+
+#### C. Actualizar .gitignore
+```bash
+# Verificar que estos estén en .gitignore:
+.env
+*.json
+credentials/
+keys/
+secrets/
+```
+
+### PASO 4: LIMPIAR HISTORIAL DE GIT (CRÍTICO)
+
+#### Opción A: BFG Repo Cleaner (Recomendado)
+```bash
+# Instalar BFG
+# Mac: brew install bfg
+# Windows: descargar desde https://rtyley.github.io/bfg-repo-cleaner/
+
+# Backup del repo
+git clone --mirror https://github.com/0limpo/bill-e.git bill-e-backup.git
+
+# Limpiar archivos JSON del historial
+bfg --delete-files "*.json" bill-e-backup.git
+cd bill-e-backup.git
+git reflog expire --expire=now --all && git gc --prune=now --aggressive
+
+# Push force (PELIGROSO - hacer backup antes)
+git push --force
+```
+
+#### Opción B: git filter-branch (Manual)
+```bash
+# PELIGROSO: Reescribe todo el historial
+git filter-branch --force --index-filter \
+'git rm --cached --ignore-unmatch backend/bill-e-ocr-*.json' \
+--prune-empty --tag-name-filter cat -- --all
+```
+
+#### Opción C: Nuevo repo (Más seguro)
+```bash
+# Si el historial es corto, crear repo nuevo:
+mkdir bill-e-clean
+cd bill-e-clean
+git init
+# Copiar solo archivos necesarios (sin credenciales)
+# Commit inicial limpio
+# Configurar como nuevo remote
+```
+
+### PASO 5: VERIFICAR ROTACIÓN EXITOSA
+
+```bash
+# 1. Test local
+cd backend
+python test_redis.py
+python test_session.py
+
+# 2. Test producción
+curl https://bill-e-backend-lfwp.onrender.com/health
+
+# 3. Test OCR
+# Subir imagen de prueba y verificar que funciona
+```
+
+### PASO 6: OTRAS CREDENCIALES A REVISAR
+
+#### WhatsApp (si están expuestas)
+1. Meta Developers: https://developers.facebook.com/
+2. Regenerar Access Token
+3. Cambiar Verify Token
+4. Actualizar webhook URL si es necesario
+
+#### Upstash Redis (verificar)
+1. https://console.upstash.com/
+2. Database → Details
+3. Regenerar password si es necesario
+
+#### Render
+1. Cambiar deploy key si está expuesto
+2. Rotar API keys si aplica
+
+## 🛡️ MEJORAS DE SEGURIDAD A IMPLEMENTAR
+
+### INMEDIATAS (Hoy)
+□ Rotar todas las credenciales expuestas
+□ Configurar variables de entorno en Render
+□ Limpiar historial de Git
+□ Verificar .gitignore actualizado
+
+### ESTA SEMANA
+□ Implementar rate limiting por IP
+□ Agregar request logging
+□ Setup monitoring de costos Google Cloud
+□ Configurar alertas de uso anómalo
+
+### PRÓXIMA SEMANA
+□ Audit de dependencias (vulnerabilidades)
+□ HTTPS enforcement
+□ Input validation mejorada
+□ Security headers
+
+## 📊 MONITOREO POST-ROTACIÓN
+
+### Métricas a vigilar (24-48 horas):
+- **Google Cloud Vision**: Requests, errores, costos
+- **Upstash Redis**: Connections, commands
+- **Render**: Response times, error rates
+- **WhatsApp**: Message delivery rates
+
+### Alertas a configurar:
+- Google Cloud: >$10 USD/día
+- Redis: >80% memory usage
+- API: >5% error rate
+- Unusual access patterns
+
+## 🚨 CHECKLIST DE EMERGENCIA
+
+Si algo sale mal durante la rotación:
+□ Revertir a credenciales backup temporalmente
+□ Verificar logs de errores en Render
+□ Contactar soporte de servicios si es necesario
+□ Documentar issues para post-mortem
+
+## ⏰ TIMELINE DE EJECUCIÓN
+
+**HOY (2-3 horas):**
+- [ ] 30min: Assessment completo
+- [ ] 60min: Rotar Google Cloud credenciales
+- [ ] 30min: Configurar variables entorno Render
+- [ ] 30min: Verificar funcionamiento
+- [ ] 30min: Limpiar repo (método seguro)
+
+**MAÑANA:**
+- [ ] Verificar métricas 24h
+- [ ] Confirmar no hay costos anómalos
+- [ ] Documentar cambios realizados
+
+## 📝 DOCUMENTACIÓN POST-ROTACIÓN
+
+Crear archivo `SECURITY.md` con:
+- Inventory de credenciales y dónde están
+- Proceso de rotación para futuro
+- Contactos de emergencia
+- Logs de cambios realizados
+
+================================================================================
+
+## ⚡ EJECUTAR AHORA - ORDEN DE PRIORIDAD:
+
+1. 🔴 **IMMEDIATAMENTE**: Assessment + backup repo
+2. 🔴 **EN 1 HORA**: Rotar Google Cloud credentials  
+3. 🟡 **EN 2 HORAS**: Variables entorno + test funcionamiento
+4. 🟡 **EN 3 HORAS**: Limpiar historial Git
+5. 🟢 **MAÑANA**: Monitoreo y documentación
+
+================================================================================
+
+¿EMPEZAMOS AHORA CON EL PASO 1 (ASSESSMENT)?

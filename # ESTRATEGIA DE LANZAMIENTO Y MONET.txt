@@ -1,0 +1,52 @@
+# ESTRATEGIA DE LANZAMIENTO Y MONETIZACIÓN DE BILL-E (ANÁLISIS DETALLADO DE INPU)
+
+## 1. MODELO DE NEGOCIO, VIABILIDAD Y ESTRATEGIA DE PAGO
+
+* **Modelo:** Dual Paywall P2P (Dueño paga por Escaneo, Editor paga por Colaboración).
+* **Target:** Maximizar el Ingreso Neto por Usuario (INPU) y el Valor de por Vida del Cliente (CLV).
+* **Estrategia de Procesamiento de Pago (Doble Vía Fiscal):**
+    1.  **Ventas en Chile (Local):** Se utilizará un **Proveedor de Pago Local** (ej. Flow, Webpay/Transbank) para gestionar las transacciones en CLP y simplificar la gestión fiscal (IVA) de la SpA.
+    2.  **Ventas Internacionales (Global):** Se utilizará un **Merchant of Record (MoR)** (ej. Lemon Squeezy, Paddle) para gestionar las transacciones en USD/divisas extranjeras, recaudar el IVA/VAT en cada país y absorber la complejidad fiscal internacional.
+
+---
+
+## 2. ANÁLISIS DE COMISIONES E INPU (Ingreso Neto por Usuario)
+
+El costo de la Comisión Fija consume agresivamente las ventas de bajo precio, validando la estrategia Global/Local.
+
+| Variante (Precio) | INPU Local (CLP) | INPU Global (CLP) | % de Comisión Global | Conclusión Viabilidad |
+| :--- | :--- | :--- | :--- | :--- |
+| **V1 (Anual Bajo)** - $1.800 | $\approx \mathbf{1.436}$ | $\approx 1.260$ | $30\%$ | Viable Local, Marginal Global. |
+| **V3 (Anual Alto)** - $5.990$ | $\approx \mathbf{5.477}$ | $\approx 5.240$ | $12.5\%$ | Viable en Ambos. |
+| **V4 (Mensual)** - $990$ | $\approx \mathbf{655}$ | $\approx 490$ | $50\%$ | **Margen Crítico.** La Comisión Fija consume 50% del ingreso internacional. |
+
+---
+
+## 3. FUNDAMENTO DE LA ESTRATEGIA DE PRICING (Anclaje y Riesgo)
+
+La selección de las variantes de precio y el método de prueba se basan en mitigar el riesgo social y asegurar la viabilidad financiera:
+
+### A. Razón del Pago Único Anual
+
+El modelo Anual (V1, V2, V3) es el foco principal porque:
+1.  **Reduce Fricción:** Evita la alta fricción del pago mensual recurrente.
+2.  **Viabilidad Global:** Absorbe el costo fijo del MoR y lo hace rentable ($5.990 CLP tiene un margen saludable global).
+
+### B. Uso de la Opción Mensual (V4: $990/Mes) como Ancla de Precio
+
+* **Propósito de V4:** V4 ($990/mes, que equivale a $11.880/año) actúa como un **Ancla de Alto Valor**. Su única función es hacer que las opciones de Pago Anual (V1, V2, V3) parezcan una **oferta de ahorro masivo** al compararlas ($5.990/año parece una ganga frente a $11.880/año).
+* **Estrategia:** Se busca que el usuario opte por la opción de pago único Anual (V3) por el *ahorro percibido*, lo que maximiza el INPU inmediato.
+
+### C. Mitigación de Riesgo Social (Testing Temporal)
+
+Para evitar que amigos se comparen y generen desconfianza (si uno paga V1 y el otro V3), la prueba de precios se hará de forma **secuencial (temporal)**:
+
+1.  **V4 es Constante:** La opción mensual V4 (\$990) siempre está presente.
+2.  **V1, V2, V3 son Secuenciales:** En cada fase de 2 semanas, el 100% del tráfico ve solo una opción anual (V1, V2 o V3) junto a V4. Esto elimina la comparación directa de dos precios anuales distintos.
+
+---
+
+## 4. PLAN DE A/B TESTING Y CRITERIO DE ÉXITO
+
+* **Ejecución:** Prueba A/B concurrente de la Arquitectura de Elección (V_Anual vs. V4) ejecutada en 3 fases temporales de 2 semanas c/u.
+* **Criterio de Éxito:** La fase que maximice el **INPU Total** (Ventas Anuales + CLV Proyectado de V4) será la ganadora.
