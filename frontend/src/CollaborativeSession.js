@@ -84,6 +84,149 @@ const JoinScreen = ({ onJoin, isLoading }) => {
   );
 };
 
+// Edit inputs with local state to prevent sticky "0" behavior
+const EditableInput = ({ type, initialValue, onSave, className, defaultValue = 0 }) => {
+  const [localVal, setLocalVal] = useState(initialValue?.toString() || '');
+
+  const handleBlur = () => {
+    let parsed;
+    if (type === 'number') {
+      parsed = parseFloat(localVal);
+      if (isNaN(parsed) || parsed < 0) parsed = defaultValue;
+    } else {
+      parsed = localVal.trim() || defaultValue;
+    }
+    onSave(parsed);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      e.target.blur();
+    }
+  };
+
+  return (
+    <input
+      type={type === 'number' ? 'number' : 'text'}
+      value={localVal}
+      className={className}
+      onChange={(e) => setLocalVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+    />
+  );
+};
+
+// Validation Dashboard Component (Host Only)
+const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
+  const [editingSubtotal, setEditingSubtotal] = useState(false);
+  const [subtotalInput, setSubtotalInput] = useState(session.subtotal?.toString() || '0');
+
+  // Calculate Total Items (sum of item price * quantity)
+  const totalItems = session.items.reduce((sum, item) => {
+    return sum + (item.price * (item.quantity || 1));
+  }, 0);
+
+  // Calculate Total Assigned (sum of assigned shares value)
+  const totalAsignado = (() => {
+    let total = 0;
+    const itemsById = {};
+    session.items.forEach(item => {
+      itemsById[item.id || item.name] = item;
+    });
+
+    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+      const item = itemsById[itemId];
+      if (!item) return;
+
+      const pricePerUnit = item.price / (item.quantity || 1);
+      assigns.forEach(a => {
+        total += pricePerUnit * (a.quantity || 1);
+      });
+    });
+    return total;
+  })();
+
+  const totalBoleta = session.subtotal || 0;
+
+  // Validation logic
+  const itemsMatch = Math.abs(totalItems - totalBoleta) < 1;
+  const assignedMatch = Math.abs(totalAsignado - totalBoleta) < 1;
+  const isBalanced = itemsMatch && assignedMatch;
+
+  const handleSaveSubtotal = () => {
+    const parsed = parseFloat(subtotalInput);
+    if (!isNaN(parsed) && parsed >= 0) {
+      onUpdateSubtotal(parsed);
+    }
+    setEditingSubtotal(false);
+  };
+
+  return (
+    <div className={`validation-dashboard ${isBalanced ? 'balanced' : 'warning'}`}>
+      <div className="validation-header">
+        {isBalanced ? (
+          <span className="validation-status success">✅ Cuenta Cuadrada</span>
+        ) : (
+          <span className="validation-status warning">⚠️ Revisar Totales</span>
+        )}
+      </div>
+
+      <div className="validation-metrics">
+        <div className="metric">
+          <span className="metric-label">Total Items</span>
+          <span className={`metric-value ${itemsMatch ? 'match' : 'mismatch'}`}>
+            {formatCurrency(totalItems)}
+          </span>
+        </div>
+
+        <div className="metric">
+          <span className="metric-label">Total Asignado</span>
+          <span className={`metric-value ${assignedMatch ? 'match' : 'mismatch'}`}>
+            {formatCurrency(totalAsignado)}
+          </span>
+        </div>
+
+        <div className="metric editable">
+          <span className="metric-label">Total Boleta</span>
+          {editingSubtotal ? (
+            <input
+              type="number"
+              className="metric-input"
+              value={subtotalInput}
+              onChange={(e) => setSubtotalInput(e.target.value)}
+              onBlur={handleSaveSubtotal}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
+              autoFocus
+            />
+          ) : (
+            <span
+              className="metric-value clickable"
+              onClick={() => {
+                setSubtotalInput(totalBoleta.toString());
+                setEditingSubtotal(true);
+              }}
+            >
+              {formatCurrency(totalBoleta)} ✏️
+            </span>
+          )}
+        </div>
+      </div>
+
+      {!assignedMatch && totalAsignado < totalBoleta && (
+        <div className="validation-warning">
+          Faltan {formatCurrency(totalBoleta - totalAsignado)} por asignar
+        </div>
+      )}
+      {!assignedMatch && totalAsignado > totalBoleta && (
+        <div className="validation-warning">
+          Sobrepasado por {formatCurrency(totalAsignado - totalBoleta)}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const BillItem = ({
   item,
   assignments,
@@ -102,61 +245,48 @@ const BillItem = ({
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
   const isAssignedToMe = itemAssignments.some(a => a.participant_id === currentParticipant?.id);
-  
+
   const totalAssigned = itemAssignments.reduce((sum, a) => sum + (a.quantity || 1), 0);
   const remaining = Math.max(0, (item.quantity || 1) - totalAssigned);
 
   const isEditing = item.isEditing;
 
-  const handleFieldChange = (field, value) => {
+  const handleSaveField = (field, value) => {
     onEditItem(itemId, { [field]: value });
+    onToggleEdit(itemId);
   };
-  
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === 'Escape') {
-      e.target.blur(); // Trigger onBlur to save/close
-    }
-  };
+
   return (
     <div className={`bill-item ${isAssignedToMe ? 'selected' : ''} ${isFinalized ? 'finalized' : ''}`}>
       <div className="item-header">
         <div className="item-info">
           {isEditing ? (
-            <input
+            <EditableInput
               type="text"
-              value={item.name}
+              initialValue={item.name}
               className="item-edit-input"
-              onChange={(e) => handleFieldChange('name', e.target.value)}
-              onBlur={() => onToggleEdit(itemId)} // Save and close on blur
-              onKeyDown={handleKeyDown}
+              defaultValue="Item"
+              onSave={(val) => handleSaveField('name', val)}
             />
           ) : (
             <span className="item-name">{item.name}</span>
           )}
           {isEditing ? (
             <div className="item-meta-edit">
-              <input
+              <EditableInput
                 type="number"
-                value={item.quantity === '' ? '' : (item.quantity || 1)}
+                initialValue={item.quantity || 1}
                 className="item-edit-input qty"
-                onChange={(e) => handleFieldChange('quantity', e.target.value === '' ? '' : e.target.value)}
-                onBlur={(e) => {
-                  handleFieldChange('quantity', parseInt(e.target.value, 10) || 1);
-                  onToggleEdit(itemId);
-                }}
-                onKeyDown={handleKeyDown}
+                defaultValue={1}
+                onSave={(val) => handleSaveField('quantity', Math.max(1, Math.round(val)))}
               />
               <span>x</span>
-              <input
+              <EditableInput
                 type="number"
-                value={item.price === '' ? '' : item.price}
+                initialValue={item.price}
                 className="item-edit-input price"
-                onChange={(e) => handleFieldChange('price', e.target.value === '' ? '' : e.target.value)}
-                onBlur={(e) => {
-                  handleFieldChange('price', parseFloat(e.target.value) || 0);
-                  onToggleEdit(itemId);
-                }}
-                onKeyDown={handleKeyDown}
+                defaultValue={0}
+                onSave={(val) => handleSaveField('price', val)}
               />
               <button
                 className="btn-delete-item"
@@ -478,6 +608,30 @@ const CollaborativeSession = () => {
         setSession(prev => ({ ...prev, status: 'finalized', totals: data.totals }));
       }
     } catch (err) { alert('Error al finalizar'); }
+  };
+
+  // WhatsApp Share - Text only summary
+  const handleShareWhatsapp = () => {
+    if (!session?.totals) return;
+
+    let text = `🧾 Resumen Cuenta - Mesa #${sessionId.slice(0, 4)}\n\n`;
+
+    session.totals.forEach(t => {
+      text += `${t.name}: ${formatCurrency(t.total)}\n`;
+    });
+
+    text += `----------------\n`;
+    text += `Total: ${formatCurrency(session.total)}\n\n`;
+    text += `Generado por Bill-e 🤖`;
+
+    // Try native share first, fallback to WhatsApp URL
+    if (navigator.share) {
+      navigator.share({ text }).catch(() => {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      });
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
   };
 
   // Reopen a finalized session
@@ -859,16 +1013,14 @@ const CollaborativeSession = () => {
         <div className="timer">⏱️ {timeLeft}</div>
       </div>
 
-      {/* VALIDACION OWNER (Resumen rápido) */}
-      {isOwner && (
-        <div className={`validation-box ${session.subtotal !== session.original_subtotal ? 'warning' : ''}`}>
-           <div className="sheet-column">
-             <span className="validation-label">Subtotal Boleta</span>
-             <span className="validation-value">
-                {formatCurrency(session.subtotal)}
-             </span>
-           </div>
-        </div>
+      {/* VALIDATION DASHBOARD (Host Only) */}
+      {isOwner && !isFinalized && (
+        <ValidationDashboard
+          session={session}
+          onUpdateSubtotal={(newSubtotal) => {
+            setSession(prev => ({ ...prev, subtotal: newSubtotal }));
+          }}
+        />
       )}
 
       {/* LISTA PARTICIPANTES */}
@@ -922,17 +1074,17 @@ const CollaborativeSession = () => {
       </div>
 
       {/* BOTTOM SHEET (Barra inferior fija) */}
-      <div className={`bottom-sheet ${isFinalized ? 'finalized-sheet' : ''}`}>
+      <div className={`bottom-sheet ${isFinalized ? 'expanded' : ''}`}>
         <div className="sheet-handle"></div>
 
         {isFinalized ? (
-          // VISTA FINALIZADA (Integrada en Bottom Sheet)
+          // VISTA FINALIZADA (Expandable Bottom Sheet)
           <>
             <div className="sheet-finalized-header">
               <span className="sheet-finalized-icon">🎉</span>
-              <div>
+              <div className="sheet-finalized-info">
                 <span className="sheet-finalized-title">¡Cuenta Cerrada!</span>
-                <span className="sheet-finalized-total">{formatCurrency(session.total)}</span>
+                <span className="sheet-finalized-subtitle">Desglose por Persona</span>
               </div>
             </div>
 
@@ -945,33 +1097,39 @@ const CollaborativeSession = () => {
                       <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(t.name) }}>
                         {getInitials(t.name)}
                       </span>
-                      <span className="sheet-breakdown-name">
-                        {t.participant_id === currentParticipant?.id ? 'Tú' : t.name}
-                      </span>
+                      <div className="sheet-breakdown-details">
+                        <span className="sheet-breakdown-name">
+                          {t.participant_id === currentParticipant?.id ? 'Tú' : t.name}
+                        </span>
+                        {t.tip > 0 && (
+                          <span className="sheet-breakdown-tip">
+                            +{formatCurrency(t.tip)} propina
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span className="sheet-breakdown-amount">{formatCurrency(t.total)}</span>
                   </div>
                 ))}
+
+                {/* Total Row */}
+                <div className="sheet-breakdown-total">
+                  <span>Total Mesa</span>
+                  <span className="sheet-total-amount">{formatCurrency(session.total)}</span>
+                </div>
               </div>
             )}
+
+            {/* WhatsApp Share Button */}
+            <button className="share-btn" onClick={handleShareWhatsapp}>
+              📱 Compartir por WhatsApp
+            </button>
 
             {isOwner && (
               <button className="btn-reopen" onClick={handleReopenSession}>
                 🔓 Reabrir Mesa para Editar
               </button>
             )}
-
-            <button
-              className="btn-secondary"
-              onClick={() => navigator.share?.({
-                title: 'Bill-e',
-                text: `Mi parte de la cuenta: ${formatCurrency(isOwner ? session.total : getMyFinalTotal())}`,
-                url: window.location.href
-              }).catch(() => {})}
-              style={{ marginTop: '8px' }}
-            >
-              📤 Compartir
-            </button>
           </>
         ) : isOwner ? (
           // VISTA OWNER (No finalizada)
