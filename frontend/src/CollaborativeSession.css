@@ -644,6 +644,29 @@ body {
   margin-top: 8px;
 }
 
+.btn-danger {
+  width: 100%;
+  background: transparent;
+  color: var(--danger);
+  border: 2px solid var(--danger);
+  padding: 14px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-danger:active {
+  transform: scale(0.98);
+}
+
 /* --- UTILS --- */
 .badge-owner {
   background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);

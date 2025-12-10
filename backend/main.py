@@ -703,6 +703,60 @@ async def patch_participant(session_id: str, participant_id: str, request: Reque
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.delete("/api/session/{session_id}/participant/{participant_id}")
+async def delete_participant(session_id: str, participant_id: str, request: Request):
+    """Remove a participant from the session (owner only)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Cannot remove the owner
+        participant_to_remove = None
+        for p in session_data["participants"]:
+            if p["id"] == participant_id:
+                participant_to_remove = p
+                break
+
+        if not participant_to_remove:
+            raise HTTPException(status_code=404, detail="Participante no encontrado")
+
+        if participant_to_remove.get("role") == "owner":
+            raise HTTPException(status_code=400, detail="No puedes eliminar al anfitrion")
+
+        # Remove participant
+        session_data["participants"] = [p for p in session_data["participants"] if p["id"] != participant_id]
+
+        # Remove their assignments
+        for item_id in session_data.get("assignments", {}):
+            session_data["assignments"][item_id] = [
+                a for a in session_data["assignments"][item_id]
+                if a.get("participant_id") != participant_id
+            ]
+
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Save to Redis
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "removed_id": participant_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/session/{session_id}/update-totals")
 async def update_totals(session_id: str, request: Request):
     """Actualizar subtotal, propina y total (solo owner)."""

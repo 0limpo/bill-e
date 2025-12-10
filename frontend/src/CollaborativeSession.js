@@ -265,14 +265,16 @@ const CollaborativeSession = () => {
   // Estados de UI
   const [itemModes, setItemModes] = useState({});
   const [showAddParticipant, setShowAddParticipant] = useState(false);
-  const [isEditingHostName, setIsEditingHostName] = useState(false);
-  const [tempHostName, setTempHostName] = useState('');
   const [newParticipantName, setNewParticipantName] = useState('');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
   const [newItemName, setNewItemName] = useState('');
   const [newItemPrice, setNewItemPrice] = useState('');
   const [isCreatingItem, setIsCreatingItem] = useState(false);
   const [isAddingParticipant, setIsAddingParticipant] = useState(false);
+
+  // Participant management modal
+  const [editingParticipant, setEditingParticipant] = useState(null);
+  const [editParticipantName, setEditParticipantName] = useState('');
 
   // 1. CARGA INICIAL
   const loadSession = useCallback(async () => {
@@ -411,41 +413,82 @@ const CollaborativeSession = () => {
     } catch (err) { alert('Error al finalizar'); }
   };
 
-  const handleEditHostName = () => {
-    const owner = session.participants.find(p => p.role === 'owner');
-    if (owner) {
-      setTempHostName(owner.name);
-      setIsEditingHostName(true);
-    }
+  // Open participant edit modal
+  const handleOpenParticipantEdit = (participant) => {
+    if (!isOwner) return;
+    setEditingParticipant(participant);
+    setEditParticipantName(participant.name);
   };
 
-  const handleCancelHostNameEdit = () => {
-    setIsEditingHostName(false);
-    setTempHostName('');
-  };
-
-  const handleSaveHostName = async () => {
-    const owner = session.participants.find(p => p.role === 'owner');
-    if (!owner || !tempHostName.trim() || owner.name === tempHostName) {
-      setIsEditingHostName(false);
+  // Save participant name
+  const handleSaveParticipantName = async () => {
+    if (!editingParticipant || !editParticipantName.trim()) return;
+    if (editParticipantName.trim() === editingParticipant.name) {
+      setEditingParticipant(null);
       return;
     }
+
+    const participantId = editingParticipant.id;
+    const newName = editParticipantName.trim();
+
+    // Optimistic update
+    setSession(prev => ({
+      ...prev,
+      participants: prev.participants.map(p =>
+        p.id === participantId ? { ...p, name: newName } : p
+      )
+    }));
+    setEditingParticipant(null);
+
     try {
-      await fetch(`${API_URL}/api/session/${sessionId}/participant/${owner.id}`, {
+      const res = await fetch(`${API_URL}/api/session/${sessionId}/participant/${participantId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: tempHostName })
+        body: JSON.stringify({ name: newName })
       });
-      // Optimistic update
-      setSession(prev => ({
-        ...prev,
-        participants: prev.participants.map(p => p.id === owner.id ? { ...p, name: tempHostName } : p)
-      }));
+      if (!res.ok) {
+        // Rollback
+        await loadSession();
+        alert('Error al actualizar nombre');
+      }
     } catch (err) {
       console.error(err);
-      alert('No se pudo actualizar el nombre.');
-    } finally {
-      setIsEditingHostName(false);
+      await loadSession();
+      alert('Error de conexión');
+    }
+  };
+
+  // Remove participant
+  const handleRemoveParticipant = async () => {
+    if (!editingParticipant || editingParticipant.role === 'owner') return;
+
+    const participantId = editingParticipant.id;
+    const participantName = editingParticipant.name;
+
+    if (!window.confirm(`¿Eliminar a ${participantName} de la mesa?`)) return;
+
+    // Optimistic update
+    setSession(prev => ({
+      ...prev,
+      participants: prev.participants.filter(p => p.id !== participantId)
+    }));
+    setEditingParticipant(null);
+
+    try {
+      const res = await fetch(`${API_URL}/api/session/${sessionId}/participant/${participantId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner_token: ownerToken })
+      });
+      if (!res.ok) {
+        // Rollback
+        await loadSession();
+        alert('Error al eliminar participante');
+      }
+    } catch (err) {
+      console.error(err);
+      await loadSession();
+      alert('Error de conexión');
     }
   };
 
@@ -674,30 +717,15 @@ const CollaborativeSession = () => {
              <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)} />
            )}
            {session.participants.map(p => (
-             p.role === 'owner' && isEditingHostName ? (
-              <div key={p.id} className="participant-chip editing">
-                <input
-                  value={tempHostName}
-                  onChange={(e) => setTempHostName(e.target.value)}
-                  onBlur={handleSaveHostName}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveHostName();
-                    if (e.key === 'Escape') handleCancelHostNameEdit();
-                  }}
-                  className="host-edit-input"
-                  autoFocus
-                />
-              </div>
-             ) : (
-              <div key={p.id} className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''}`}>
+              <div
+                key={p.id}
+                className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${isOwner ? 'clickable' : ''}`}
+                onClick={() => isOwner && session.status !== 'finalized' && handleOpenParticipantEdit(p)}
+              >
                 {p.role === 'owner' && <span className="badge-owner">Host</span>}
                 <Avatar name={p.name} />
                 <span className="participant-name">{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
-                {p.role === 'owner' && session.status !== 'finalized' && (
-                  <button className="host-edit-btn" onClick={handleEditHostName}>✏️</button>
-                )}
               </div>
-             )
            ))}
         </div>
       </div>
@@ -812,6 +840,38 @@ const CollaborativeSession = () => {
             >
               {isCreatingItem ? 'Creando...' : 'Crear Item'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Manage Participant Modal */}
+      {editingParticipant && (
+        <div className="modal-overlay" onClick={() => setEditingParticipant(null)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Editar Participante</h3>
+            <input
+              className="join-input"
+              value={editParticipantName}
+              onChange={e => setEditParticipantName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSaveParticipantName(); }}
+              placeholder="Nombre"
+              autoFocus
+            />
+            <button
+              className="btn-main"
+              disabled={!editParticipantName.trim() || editParticipantName === editingParticipant.name}
+              onClick={handleSaveParticipantName}
+            >
+              Guardar Nombre
+            </button>
+            {editingParticipant.role !== 'owner' && (
+              <button
+                className="btn-danger"
+                onClick={handleRemoveParticipant}
+              >
+                Eliminar de la mesa
+              </button>
+            )}
           </div>
         </div>
       )}
