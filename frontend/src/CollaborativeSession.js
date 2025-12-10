@@ -1082,68 +1082,73 @@ const CollaborativeSession = () => {
 
       {/* BOTTOM SHEET (Interactive Expandable) */}
       <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
-        {/* Handle - Clickable to toggle */}
-        <div
-          className="sheet-handle"
-          onClick={() => !isFinalized && setIsSheetExpanded(!isSheetExpanded)}
-        />
 
         {isFinalized ? (
-          // VISTA FINALIZADA
+          // ============ FINALIZED VIEW ============
           <>
-            <div className="sheet-finalized-header">
-              <span className="sheet-finalized-icon">🎉</span>
-              <div className="sheet-finalized-info">
-                <span className="sheet-finalized-title">¡Cuenta Cerrada!</span>
-                <span className="sheet-finalized-subtitle">Desglose por Persona</span>
+            {/* Header - Clickable to toggle */}
+            <div
+              className="sheet-summary-row clickable"
+              onClick={() => setIsSheetExpanded(!isSheetExpanded)}
+            >
+              <div className="sheet-column">
+                <span className="my-total-label finalized-label">🎉 ¡Cuenta Cerrada!</span>
+                <small className="sheet-subtitle">Toca para ver desglose</small>
               </div>
+              <span className="my-total-amount">{formatCurrency(session.total)}</span>
             </div>
 
-            {/* Breakdown List */}
-            {session.totals && session.totals.length > 0 && (
-              <div className="sheet-breakdown">
-                {session.totals.map(t => (
-                  <div key={t.participant_id} className="sheet-breakdown-item">
-                    <div className="sheet-breakdown-person">
-                      <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(t.name) }}>
-                        {getInitials(t.name)}
-                      </span>
-                      <div className="sheet-breakdown-details">
-                        <span className="sheet-breakdown-name">
-                          {t.participant_id === currentParticipant?.id ? 'Tú' : t.name}
-                        </span>
-                        {t.tip > 0 && (
-                          <span className="sheet-breakdown-tip">
-                            +{formatCurrency(t.tip)} propina
+            {/* Expanded: Breakdown + Share (ONLY when finalized) */}
+            {isSheetExpanded && (
+              <div className="sheet-expanded-content">
+                {/* Breakdown List */}
+                {session.totals && session.totals.length > 0 && (
+                  <div className="sheet-breakdown">
+                    {session.totals.map(t => (
+                      <div key={t.participant_id} className="sheet-breakdown-item">
+                        <div className="sheet-breakdown-person">
+                          <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(t.name) }}>
+                            {getInitials(t.name)}
                           </span>
-                        )}
+                          <div className="sheet-breakdown-details">
+                            <span className="sheet-breakdown-name">
+                              {t.participant_id === currentParticipant?.id ? 'Tú' : t.name}
+                            </span>
+                            {t.tip > 0 && (
+                              <span className="sheet-breakdown-tip">
+                                +{formatCurrency(t.tip)} propina
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="sheet-breakdown-amount">{formatCurrency(t.total)}</span>
                       </div>
+                    ))}
+
+                    <div className="sheet-breakdown-total">
+                      <span>Total Mesa</span>
+                      <span className="sheet-total-amount">{formatCurrency(session.total)}</span>
                     </div>
-                    <span className="sheet-breakdown-amount">{formatCurrency(t.total)}</span>
                   </div>
-                ))}
+                )}
 
-                <div className="sheet-breakdown-total">
-                  <span>Total Mesa</span>
-                  <span className="sheet-total-amount">{formatCurrency(session.total)}</span>
-                </div>
+                {/* WhatsApp Share - ONLY when finalized */}
+                <button className="share-btn" onClick={handleShareWhatsapp}>
+                  📱 Compartir por WhatsApp
+                </button>
+
+                {isOwner && (
+                  <button className="btn-reopen" onClick={handleReopenSession}>
+                    🔓 Reabrir Mesa para Editar
+                  </button>
+                )}
               </div>
-            )}
-
-            <button className="share-btn" onClick={handleShareWhatsapp}>
-              📱 Compartir por WhatsApp
-            </button>
-
-            {isOwner && (
-              <button className="btn-reopen" onClick={handleReopenSession}>
-                🔓 Reabrir Mesa para Editar
-              </button>
             )}
           </>
         ) : (
-          // VISTA NO FINALIZADA (Owner y Participante)
+          // ============ ACTIVE VIEW ============
           <>
-            {/* Summary Row - Always visible, clickable to expand */}
+            {/* Summary Row - Clickable to expand (no arrows) */}
             <div
               className="sheet-summary-row clickable"
               onClick={() => setIsSheetExpanded(!isSheetExpanded)}
@@ -1152,117 +1157,117 @@ const CollaborativeSession = () => {
                 <span className="my-total-label">
                   {isOwner ? 'Total Mesa' : 'Tu parte (+ propina)'}
                 </span>
-                {!isOwner && <small className="sheet-subtitle">Toca para ver detalles</small>}
                 {isOwner && (
                   <small className={`sheet-subtitle ${isBalanced ? 'balanced' : 'warning'}`}>
-                    {isBalanced ? '✓ Cuadrado' : '⚠️ Revisar'}
+                    {isBalanced ? '✓ Neteado' : '⚠️ Revisar subtotales'}
                   </small>
                 )}
+                {!isOwner && <small className="sheet-subtitle">Toca para ver detalles</small>}
               </div>
-              <div className="sheet-total-row">
-                <span className="my-total-amount">
-                  {formatCurrency(isOwner ? session.total : getMyTotal())}
-                </span>
-                <span className={`expand-indicator ${isSheetExpanded ? 'expanded' : ''}`}>
-                  ▼
-                </span>
-              </div>
+              <span className="my-total-amount">
+                {formatCurrency(isOwner ? session.total : getMyTotal())}
+              </span>
             </div>
 
-            {/* Expanded Content */}
+            {/* Expanded: ONLY Validation Dashboard (Active mode) */}
             {isSheetExpanded && (
               <div className="sheet-expanded-content">
-                {/* Validation Dashboard (Host Only) */}
+                {/* Validation Dashboard (Host Only - Focus on SUBTOTALS) */}
                 {isOwner && (
                   <div className={`sheet-validation ${isBalanced ? 'balanced' : 'warning'}`}>
-                    <div className="validation-row">
-                      <span className="validation-label">Total Items</span>
-                      <span className={`validation-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
-                        {formatCurrency(totalItems)}
-                      </span>
+                    <div className="validation-grid">
+                      <div className="validation-metric">
+                        <span className="validation-metric-label">Subtotal Boleta</span>
+                        <input
+                          type="number"
+                          className="validation-metric-input"
+                          value={totalBoleta || ''}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            setSession(prev => ({ ...prev, subtotal: val }));
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      <div className="validation-metric">
+                        <span className="validation-metric-label">Suma Items</span>
+                        <span className={`validation-metric-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
+                          {formatCurrency(totalItems)}
+                        </span>
+                      </div>
+                      <div className="validation-metric">
+                        <span className="validation-metric-label">Asignado</span>
+                        <span className={`validation-metric-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
+                          {formatCurrency(totalAsignado)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="validation-row">
-                      <span className="validation-label">Total Asignado</span>
-                      <span className={`validation-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
-                        {formatCurrency(totalAsignado)}
-                      </span>
-                    </div>
-                    <div className="validation-row editable">
-                      <span className="validation-label">Total Boleta</span>
-                      <input
-                        type="number"
-                        className="validation-input"
-                        value={totalBoleta}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setSession(prev => ({ ...prev, subtotal: val }));
-                        }}
-                      />
-                    </div>
-                    {!isBalanced && (
-                      <div className="validation-alert">
+
+                    {/* Feedback */}
+                    {isBalanced ? (
+                      <div className="validation-feedback success">
+                        ✅ Boleta Neteada
+                      </div>
+                    ) : (
+                      <div className="validation-feedback warning">
                         {totalAsignado < totalBoleta
-                          ? `Faltan ${formatCurrency(totalBoleta - totalAsignado)} por asignar`
-                          : `Sobrepasado por ${formatCurrency(totalAsignado - totalBoleta)}`
+                          ? `Faltan ${formatCurrency(totalBoleta - totalAsignado)}`
+                          : `Sobrepasado ${formatCurrency(totalAsignado - totalBoleta)}`
                         }
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Breakdown by Person (Preview) */}
-                <div className="sheet-breakdown-preview">
-                  <div className="breakdown-title">Desglose por Persona</div>
-                  {session.participants.map(p => {
-                    let personTotal = 0;
-                    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
-                      const myAssign = assigns.find(a => a.participant_id === p.id);
-                      if (myAssign) {
-                        const item = session.items.find(i => (i.id || i.name) === itemId);
-                        if (item) personTotal += (item.price / (item.quantity || 1)) * (myAssign.quantity || 1);
-                      }
-                    });
-                    const tipPct = session.tip_percentage || 10;
-                    const withTip = personTotal * (1 + tipPct / 100);
+                {/* Participant: Show their breakdown only */}
+                {!isOwner && (
+                  <div className="participant-breakdown">
+                    <div className="breakdown-title">Tu consumo</div>
+                    {(() => {
+                      const myItems = [];
+                      let mySubtotal = 0;
+                      Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+                        const myAssign = assigns.find(a => a.participant_id === currentParticipant?.id);
+                        if (myAssign) {
+                          const item = session.items.find(i => (i.id || i.name) === itemId);
+                          if (item) {
+                            const amount = (item.price / (item.quantity || 1)) * (myAssign.quantity || 1);
+                            mySubtotal += amount;
+                            myItems.push({ name: item.name, amount });
+                          }
+                        }
+                      });
+                      const tipPct = session.tip_percentage || 10;
+                      const myTip = mySubtotal * (tipPct / 100);
 
-                    return (
-                      <div key={p.id} className="breakdown-row">
-                        <div className="breakdown-person">
-                          <span className="breakdown-avatar" style={{ background: getAvatarColor(p.name) }}>
-                            {getInitials(p.name)}
-                          </span>
-                          <span>{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
-                        </div>
-                        <span className="breakdown-amount">{formatCurrency(withTip)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Share Button */}
-                <button className="share-btn" onClick={() => {
-                  let text = `🧾 Cuenta - Mesa #${sessionId.slice(0, 4)}\n\n`;
-                  session.participants.forEach(p => {
-                    let personTotal = 0;
-                    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
-                      const myAssign = assigns.find(a => a.participant_id === p.id);
-                      if (myAssign) {
-                        const item = session.items.find(i => (i.id || i.name) === itemId);
-                        if (item) personTotal += (item.price / (item.quantity || 1)) * (myAssign.quantity || 1);
-                      }
-                    });
-                    const tipPct = session.tip_percentage || 10;
-                    text += `${p.name}: ${formatCurrency(personTotal * (1 + tipPct / 100))}\n`;
-                  });
-                  text += `----------------\nTotal: ${formatCurrency(session.total)}\n\nBill-e 🤖`;
-                  if (navigator.share) {
-                    navigator.share({ text }).catch(() => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'));
-                  } else {
-                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-                  }
-                }}>
-                  📱 Compartir por WhatsApp
-                </button>
+                      return (
+                        <>
+                          {myItems.map((item, idx) => (
+                            <div key={idx} className="breakdown-row">
+                              <span>{item.name}</span>
+                              <span>{formatCurrency(item.amount)}</span>
+                            </div>
+                          ))}
+                          {myItems.length === 0 && (
+                            <div className="breakdown-empty">No has seleccionado items</div>
+                          )}
+                          {myItems.length > 0 && (
+                            <>
+                              <div className="breakdown-row subtotal">
+                                <span>Subtotal</span>
+                                <span>{formatCurrency(mySubtotal)}</span>
+                              </div>
+                              <div className="breakdown-row tip">
+                                <span>Propina ({tipPct}%)</span>
+                                <span>{formatCurrency(myTip)}</span>
+                              </div>
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
             )}
 

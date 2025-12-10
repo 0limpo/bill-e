@@ -742,48 +742,28 @@ body {
   box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
 }
 
+/* Handle hidden - interaction via summary row */
 .sheet-handle {
-  width: 40px;
-  height: 5px;
-  background: rgba(0,0,0,0.12);
-  border-radius: 3px;
-  margin: -4px auto 12px;
-  cursor: pointer;
-  transition: background 0.2s;
+  display: none;
 }
 
-.sheet-handle:hover {
-  background: rgba(0,0,0,0.2);
-}
-
-/* Summary row - clickable */
+/* Summary row - clickable (entire header) */
 .sheet-summary-row.clickable {
   cursor: pointer;
-  padding: 8px;
-  margin: -8px;
-  border-radius: 12px;
+  padding: 12px;
+  margin: -12px -12px 0 -12px;
+  border-radius: 16px;
   transition: background 0.2s;
 }
 
 .sheet-summary-row.clickable:active {
-  background: rgba(0,0,0,0.03);
+  background: rgba(0,0,0,0.04);
 }
 
-.sheet-total-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.expand-indicator {
-  font-size: 12px;
-  color: var(--text-secondary);
-  transition: transform 0.3s ease;
-  opacity: 0.6;
-}
-
-.expand-indicator.expanded {
-  transform: rotate(180deg);
+/* Finalized label style */
+.my-total-label.finalized-label {
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 /* Subtitle colors */
@@ -816,75 +796,104 @@ body {
 
 /* --- VALIDATION IN SHEET (Host Only) --- */
 .sheet-validation {
+  background: transparent;
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.sheet-validation.balanced .validation-feedback {
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.sheet-validation.warning .validation-feedback {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+/* Grid layout for 3 metrics */
+.validation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.validation-metric {
+  text-align: center;
+  padding: 12px 8px;
   background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 14px;
-  padding: 14px;
-  margin-bottom: 16px;
+  border-radius: 12px;
 }
 
-.sheet-validation.balanced {
-  border-color: rgba(16, 185, 129, 0.3);
-  background: rgba(16, 185, 129, 0.05);
-}
-
-.sheet-validation.warning {
-  border-color: rgba(245, 158, 11, 0.3);
-  background: rgba(245, 158, 11, 0.05);
-}
-
-.validation-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px dashed rgba(0,0,0,0.05);
-}
-
-.validation-row:last-of-type {
-  border-bottom: none;
-}
-
-.validation-row .validation-label {
-  font-size: 12px;
-  color: var(--text-secondary);
+.validation-metric-label {
+  display: block;
+  font-size: 10px;
   text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
   letter-spacing: 0.3px;
 }
 
-.validation-row .validation-value {
-  font-size: 14px;
+.validation-metric-value {
+  display: block;
+  font-size: 16px;
   font-weight: 700;
+  color: var(--text-main);
 }
 
-.validation-row .validation-value.match {
+.validation-metric-value.match {
   color: var(--success);
 }
 
-.validation-row .validation-value.mismatch {
+.validation-metric-value.mismatch {
   color: var(--danger);
 }
 
-.validation-input {
-  width: 100px;
-  padding: 6px 10px;
-  border: 1px solid var(--primary);
-  border-radius: 8px;
-  font-size: 14px;
+/* Text-like editable input */
+.validation-metric-input {
+  width: 100%;
+  padding: 4px 0;
+  border: none;
+  border-bottom: 1px dashed rgba(0,0,0,0.2);
+  background: transparent;
+  font-size: 16px;
   font-weight: 700;
-  text-align: right;
-  background: white;
+  text-align: center;
+  color: var(--primary);
   outline: none;
+  transition: border-color 0.2s;
 }
 
-.validation-alert {
-  margin-top: 10px;
+.validation-metric-input:focus {
+  border-bottom-color: var(--primary);
+  border-bottom-style: solid;
+}
+
+.validation-metric-input::-webkit-inner-spin-button,
+.validation-metric-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.validation-metric-input {
+  -moz-appearance: textfield;
+}
+
+/* Feedback row */
+.validation-feedback {
   padding: 10px;
-  background: rgba(245, 158, 11, 0.1);
   border-radius: 10px;
   text-align: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
+}
+
+.validation-feedback.success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+}
+
+.validation-feedback.warning {
+  background: rgba(245, 158, 11, 0.1);
   color: #d97706;
 }
 
@@ -937,6 +946,39 @@ body {
   font-size: 15px;
   font-weight: 700;
   color: var(--text-main);
+}
+
+/* Participant breakdown (non-owner view) */
+.participant-breakdown {
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.participant-breakdown .breakdown-row {
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.participant-breakdown .breakdown-row.subtotal {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(0,0,0,0.1);
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.participant-breakdown .breakdown-row.tip {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.breakdown-empty {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 16px 0;
 }
 
 /* Finalized Header */
