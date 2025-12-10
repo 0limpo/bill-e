@@ -268,6 +268,9 @@ const CollaborativeSession = () => {
   const [isEditingHostName, setIsEditingHostName] = useState(false);
   const [tempHostName, setTempHostName] = useState('');
   const [newParticipantName, setNewParticipantName] = useState('');
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemPrice, setNewItemPrice] = useState('');
 
   // 1. CARGA INICIAL
   const loadSession = useCallback(async () => {
@@ -425,23 +428,23 @@ const CollaborativeSession = () => {
       setIsEditingHostName(false);
       return;
     }
-    
-    // Lógica para guardar el nombre del host (llamada a API)
-    alert(`API call to update host name to: "${tempHostName}"`);
-    // Ejemplo de llamada a API:
-    // await fetch(`${API_URL}/api/session/${sessionId}/participant/${owner.id}`, {
-    //   method: 'PATCH',
-    //   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ownerToken}` },
-    //   body: JSON.stringify({ name: tempHostName })
-    // });
-
-    // Actualización optimista
-    setSession(prev => ({
-      ...prev,
-      participants: prev.participants.map(p => p.id === owner.id ? { ...p, name: tempHostName } : p)
-    }));
-
-    setIsEditingHostName(false);
+    try {
+      await fetch(`${API_URL}/api/session/${sessionId}/participant/${owner.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: tempHostName })
+      });
+      // Optimistic update
+      setSession(prev => ({
+        ...prev,
+        participants: prev.participants.map(p => p.id === owner.id ? { ...p, name: tempHostName } : p)
+      }));
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo actualizar el nombre.');
+    } finally {
+      setIsEditingHostName(false);
+    }
   };
 
   const handleToggleItemEdit = (itemId) => {
@@ -478,6 +481,29 @@ const CollaborativeSession = () => {
       ...prev,
       [itemId]: prev[itemId] === 'grupal' ? 'individual' : 'grupal'
     }));
+  };
+
+  const handleAddNewItem = async () => {
+    if (!newItemName.trim() || !newItemPrice) return;
+    try {
+      const res = await fetch(`${API_URL}/api/session/${sessionId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newItemName,
+          price: parseInt(newItemPrice),
+          quantity: 1
+        })
+      });
+      if (res.ok) {
+        await loadSession();
+        setShowAddItemModal(false);
+        setNewItemName('');
+        setNewItemPrice('');
+      }
+    } catch (err) {
+      alert('Error creando item');
+    }
   };
 
   // --- RENDER ---
@@ -596,7 +622,7 @@ const CollaborativeSession = () => {
         ))}
         
         {isOwner && (
-          <button className="add-item-btn" onClick={() => alert('Función agregar item pendiente de migrar al nuevo diseño')}>
+          <button className="add-item-btn" onClick={() => setShowAddItemModal(true)}>
             + Agregar Item Manual
           </button>
         )}
@@ -646,17 +672,54 @@ const CollaborativeSession = () => {
               placeholder="Nombre"
               autoFocus
             />
-            <button 
+            <button
               className="btn-main"
-              onClick={() => {
-                // Aquí deberías llamar a tu API de agregar participante manual
-                // fetch(..., { body: JSON.stringify({ name: newParticipantName ... }) })
-                alert('Implementar llamada a API add-participant-manual');
-                setShowAddParticipant(false);
-                setNewParticipantName('');
+              disabled={!newParticipantName.trim()}
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API_URL}/api/session/${sessionId}/join`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: newParticipantName })
+                  });
+                  if (res.ok) {
+                    await loadSession();
+                    setShowAddParticipant(false);
+                    setNewParticipantName('');
+                  } else {
+                    alert('Error al agregar participante');
+                  }
+                } catch (e) {
+                  alert('Error de conexión');
+                }
               }}
             >
               Agregar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showAddItemModal && (
+        <div className="modal-overlay" onClick={() => setShowAddItemModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3>Nuevo Consumo</h3>
+            <input
+              className="join-input"
+              value={newItemName}
+              onChange={e => setNewItemName(e.target.value)}
+              placeholder="¿Qué pidieron?"
+              autoFocus
+            />
+            <input
+              className="join-input"
+              type="number"
+              value={newItemPrice}
+              onChange={e => setNewItemPrice(e.target.value)}
+              placeholder="Precio ($)"
+            />
+            <button className="btn-main" onClick={handleAddNewItem}>
+              Crear Item
             </button>
           </div>
         </div>

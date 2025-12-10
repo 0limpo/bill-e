@@ -20,7 +20,7 @@
   --radius-md: 16px;
   --radius-sm: 12px;
 
-  --bottom-bar-height: 140px;
+  --bottom-bar-height: 200px;
 }
 
 /* Fondo animado sutil */
@@ -204,10 +204,13 @@ body {
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .item-info {
-  flex: 1;
+  flex: 1 1 150px;
+  min-width: 60%;
 }
 
 .item-name {
@@ -280,6 +283,8 @@ body {
   padding: 3px;
   border-radius: 10px;
   display: inline-flex;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .mode-option {
