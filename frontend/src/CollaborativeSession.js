@@ -53,8 +53,8 @@ const JoinScreen = ({ onJoin, isLoading }) => {
     <div className="join-screen">
       <div className="join-card">
         <div className="join-icon">👋</div>
-        <h1 style={{ marginBottom: '8px' }}>Bienvenido</h1>
-        <p style={{ color: '#6b7280', marginBottom: '32px' }}>Ingresa tus datos para unirte a la cuenta</p>
+        <h1>Bienvenido</h1>
+        <p>Ingresa tus datos para unirte a la cuenta</p>
         
         <input
           className="join-input"
@@ -194,9 +194,9 @@ const BillItem = ({
 
              return (
                <div key={p.id} className="quantity-row">
-                 <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                 <div className="quantity-row-info">
                     <Avatar name={p.name} size="small" />
-                    <span style={{fontSize: '14px', color: '#4b5563'}}>{p.name}</span>
+                    <span className="quantity-row-name">{p.name}</span>
                  </div>
                  <div className="qty-controls-small">
                    <button 
@@ -215,7 +215,7 @@ const BillItem = ({
              )
           })}
           {remaining > 0 && (
-             <div style={{marginTop: '8px', fontSize: '12px', color: '#f59e0b', textAlign: 'center', fontWeight: '600'}}>
+             <div className="grupal-warning">
                ⚠️ Faltan {remaining} por asignar
              </div>
           )}
@@ -490,22 +490,22 @@ const CollaborativeSession = () => {
   if (session.status === 'finalized') {
     return (
       <div className="collaborative-session finalized-view">
-        <div className="header" style={{justifyContent: 'center'}}>
+        <div className="header">
           <h1>✅ Cuenta Cerrada</h1>
         </div>
-        <div className="join-card" style={{margin: '0 auto'}}>
-          <p style={{marginBottom: '20px', color: '#6b7280'}}>
+        <div className="join-card">
+          <p className="finalized-message">
             El anfitrión ha finalizado la cuenta.
           </p>
           {session.totals && (
-            <div className="my-total-amount" style={{color: '#059669'}}>
-              {isOwner 
-                ? formatCurrency(session.total) 
+            <div className="my-total-amount success">
+              {isOwner
+                ? formatCurrency(session.total)
                 : formatCurrency(session.totals.find(t => t.id === currentParticipant.id)?.total || 0)
               }
             </div>
           )}
-          <p style={{marginTop: '8px', fontSize: '14px'}}>
+          <p className="finalized-total-label">
             {isOwner ? 'Total Mesa' : 'Tu total a pagar'}
           </p>
         </div>
@@ -518,7 +518,7 @@ const CollaborativeSession = () => {
       {/* HEADER */}
       <div className="header">
         <div>
-          <div style={{fontSize: '12px', color: '#6b7280', fontWeight: '600'}}>MESA #{sessionId.slice(0,4)}</div>
+          <div className="header-meta">MESA #{sessionId.slice(0,4)}</div>
           <h1>Dividir Cuenta</h1>
         </div>
         <div className="timer">⏱️ {timeLeft}</div>
@@ -527,13 +527,12 @@ const CollaborativeSession = () => {
       {/* VALIDACION OWNER (Resumen rápido) */}
       {isOwner && (
         <div className={`validation-box ${session.subtotal !== session.original_subtotal ? 'warning' : ''}`}>
-           <div style={{display: 'flex', flexDirection: 'column'}}>
-             <span style={{fontSize: '12px', color: '#6b7280', textTransform: 'uppercase'}}>Subtotal Boleta</span>
-             <span style={{fontWeight: 'bold', color: '#059669'}}>
+           <div className="sheet-column">
+             <span className="validation-label">Subtotal Boleta</span>
+             <span className="validation-value">
                 {formatCurrency(session.subtotal)}
              </span>
            </div>
-           {/* Aquí podrías agregar botón para editar subtotal si lo necesitas */}
         </div>
       )}
 
@@ -614,7 +613,7 @@ const CollaborativeSession = () => {
                 <span className="my-total-label">Total Mesa (aprox)</span>
                 <span className="my-total-amount">{formatCurrency(session.total)}</span>
               </div>
-              <button className="btn-main" onClick={handleFinalize} style={{background: '#111827'}}>
+              <button className="btn-main btn-dark" onClick={handleFinalize}>
                 🔒 Cerrar Cuenta y Cobrar
               </button>
             </>
@@ -622,9 +621,9 @@ const CollaborativeSession = () => {
             // VISTA PARTICIPANTE
             <>
               <div className="sheet-summary-row">
-                <div style={{display:'flex', flexDirection:'column'}}>
+                <div className="sheet-column">
                    <span className="my-total-label">Tu parte (+ propina)</span>
-                   <small style={{fontSize:'12px', color:'#9ca3af'}}>*Pendiente de cierre</small>
+                   <small className="sheet-subtitle">*Pendiente de cierre</small>
                 </div>
                 <span className="my-total-amount">{formatCurrency(getMyTotal())}</span>
               </div>
