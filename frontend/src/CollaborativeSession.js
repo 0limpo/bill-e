@@ -548,7 +548,7 @@ const CollaborativeSession = () => {
                 {p.role === 'owner' && (
                   <>
                     <span className="badge-owner">Host</span>
-                    {!isFinalized && (
+                    {session.status !== 'finalized' && (
                       <button className="host-edit-btn" onClick={handleEditHostName}>✏️</button>
                     )}
                   </>
