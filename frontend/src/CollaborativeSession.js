@@ -302,6 +302,9 @@ const CollaborativeSession = () => {
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [editParticipantName, setEditParticipantName] = useState('');
 
+  // Receipt overlay for finalized sessions
+  const [showReceipt, setShowReceipt] = useState(false);
+
   // Interaction lock to prevent polling race condition
   const lastInteraction = useRef(0);
 
@@ -347,20 +350,32 @@ const CollaborativeSession = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.has_changes) {
+            const wasFinalized = session.status !== 'finalized' && data.status === 'finalized';
             setSession(prev => ({
               ...prev,
               participants: data.participants,
               assignments: data.assignments,
               status: data.status,
-              totals: data.totals // Si se finalizó
+              totals: data.totals
             }));
             setLastUpdate(data.last_updated);
+            // Auto-show receipt when session becomes finalized
+            if (wasFinalized) {
+              setShowReceipt(true);
+            }
           }
         }
       } catch (err) { console.error('Error polling:', err); }
     }, 3000);
     return () => clearInterval(pollInterval);
   }, [sessionId, lastUpdate, session, currentParticipant]);
+
+  // Auto-show receipt on initial load if already finalized
+  useEffect(() => {
+    if (session?.status === 'finalized' && !showReceipt) {
+      setShowReceipt(true);
+    }
+  }, [session?.status]);
 
   // 3. TIMER
   useEffect(() => {
@@ -470,8 +485,35 @@ const CollaborativeSession = () => {
       if (res.ok) {
         const data = await res.json();
         setSession(prev => ({ ...prev, status: 'finalized', totals: data.totals }));
+        setShowReceipt(true); // Auto-show receipt
       }
     } catch (err) { alert('Error al finalizar'); }
+  };
+
+  // Reopen a finalized session
+  const handleReopenSession = async () => {
+    if (!window.confirm('¿Reabrir la mesa para editar? Los totales se recalcularán al cerrar de nuevo.')) return;
+
+    lastInteraction.current = Date.now();
+
+    // Optimistic update
+    setSession(prev => ({ ...prev, status: 'assigning', totals: null }));
+    setShowReceipt(false);
+
+    try {
+      const res = await fetch(`${API_URL}/api/session/${sessionId}/reopen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner_token: ownerToken })
+      });
+
+      if (!res.ok) throw new Error('Error al reabrir');
+    } catch (err) {
+      console.error('Error reopening session:', err);
+      // Rollback
+      await loadSession();
+      alert('Error al reabrir la mesa');
+    }
   };
 
   // Split an item into separate units
@@ -808,83 +850,14 @@ const CollaborativeSession = () => {
   if (error) return <div className="join-screen"><h3>⚠️ Error: {error}</h3></div>;
   if (!isOwner && !currentParticipant) return <JoinScreen onJoin={handleJoin} isLoading={joining} />;
 
-  // Vista Finalizada
-  if (session.status === 'finalized') {
-    const getMyFinalTotal = () => {
-      if (!session.totals || !currentParticipant) return 0;
-      const myTotal = session.totals.find(t => t.participant_id === currentParticipant.id);
-      return myTotal?.total || 0;
-    };
+  // Helper for finalized totals
+  const getMyFinalTotal = () => {
+    if (!session?.totals || !currentParticipant) return 0;
+    const myTotal = session.totals.find(t => t.participant_id === currentParticipant.id);
+    return myTotal?.total || 0;
+  };
 
-    return (
-      <div className="collaborative-session finalized-view">
-        <div className="finalized-card">
-          <span className="success-icon-large">🎉</span>
-          <h1 className="finalized-title">¡Cuenta Cerrada!</h1>
-          <p className="finalized-message">
-            {isOwner ? 'La cuenta ha sido dividida exitosamente' : 'Gracias por compartir la mesa'}
-          </p>
-
-          <div className="finalized-amount-large">
-            {isOwner ? formatCurrency(session.total) : formatCurrency(getMyFinalTotal())}
-          </div>
-          <p className="finalized-amount-label">
-            {isOwner ? 'Total Recaudado' : 'Tu aporte total'}
-          </p>
-
-          {isOwner && session.totals && session.totals.length > 0 && (
-            <div className="summary-list">
-              <h3 className="summary-title">Desglose por persona</h3>
-              {session.totals.map(t => (
-                <div key={t.participant_id} className="summary-row">
-                  <div className="summary-person">
-                    <span className="summary-avatar" style={{ background: getAvatarColor(t.name) }}>
-                      {getInitials(t.name)}
-                    </span>
-                    <span>{t.name}</span>
-                  </div>
-                  <div className="summary-amounts">
-                    <span className="summary-subtotal">{formatCurrency(t.subtotal)}</span>
-                    <span className="summary-tip">+{formatCurrency(t.tip)} prop.</span>
-                    <span className="summary-total">{formatCurrency(t.total)}</span>
-                  </div>
-                </div>
-              ))}
-              <div className="summary-row total">
-                <span>Total Mesa</span>
-                <span>{formatCurrency(session.total)}</span>
-              </div>
-            </div>
-          )}
-
-          {!isOwner && (
-            <div className="summary-list participant-summary">
-              <div className="summary-row">
-                <span>Subtotal consumo</span>
-                <span>{formatCurrency(session.totals?.find(t => t.participant_id === currentParticipant?.id)?.subtotal || 0)}</span>
-              </div>
-              <div className="summary-row">
-                <span>Propina proporcional</span>
-                <span>{formatCurrency(session.totals?.find(t => t.participant_id === currentParticipant?.id)?.tip || 0)}</span>
-              </div>
-              <div className="summary-row total">
-                <span>Tu Total</span>
-                <span>{formatCurrency(getMyFinalTotal())}</span>
-              </div>
-            </div>
-          )}
-
-          <button className="btn-main" onClick={() => window.location.href = '/'} style={{ marginTop: '24px' }}>
-            Volver al Inicio
-          </button>
-
-          <button className="btn-secondary" onClick={() => navigator.share?.({ title: 'Bill-e', text: `Mi parte de la cuenta: ${formatCurrency(isOwner ? session.total : getMyFinalTotal())}`, url: window.location.href }).catch(() => {})} style={{ marginTop: '8px' }}>
-            📤 Compartir
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const isFinalized = session?.status === 'finalized';
 
   return (
     <div className="collaborative-session">
@@ -1074,6 +1047,91 @@ const CollaborativeSession = () => {
                 Eliminar de la mesa
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING BUTTON: View Receipt (when finalized but receipt hidden) */}
+      {isFinalized && !showReceipt && (
+        <button className="floating-receipt-btn" onClick={() => setShowReceipt(true)}>
+          📄 Ver Recibo
+        </button>
+      )}
+
+      {/* RECEIPT OVERLAY (Finalized Session) */}
+      {isFinalized && showReceipt && (
+        <div className="receipt-overlay">
+          <div className="finalized-card">
+            <button className="receipt-close-btn" onClick={() => setShowReceipt(false)}>✕</button>
+
+            <span className="success-icon-large">🎉</span>
+            <h1 className="finalized-title">¡Cuenta Cerrada!</h1>
+            <p className="finalized-message">
+              {isOwner ? 'La cuenta ha sido dividida exitosamente' : 'Gracias por compartir la mesa'}
+            </p>
+
+            <div className="finalized-amount-large">
+              {isOwner ? formatCurrency(session.total) : formatCurrency(getMyFinalTotal())}
+            </div>
+            <p className="finalized-amount-label">
+              {isOwner ? 'Total Recaudado' : 'Tu aporte total'}
+            </p>
+
+            {isOwner && session.totals && session.totals.length > 0 && (
+              <div className="summary-list">
+                <h3 className="summary-title">Desglose por persona</h3>
+                {session.totals.map(t => (
+                  <div key={t.participant_id} className="summary-row">
+                    <div className="summary-person">
+                      <span className="summary-avatar" style={{ background: getAvatarColor(t.name) }}>
+                        {getInitials(t.name)}
+                      </span>
+                      <span>{t.name}</span>
+                    </div>
+                    <div className="summary-amounts">
+                      <span className="summary-subtotal">{formatCurrency(t.subtotal)}</span>
+                      <span className="summary-tip">+{formatCurrency(t.tip)} prop.</span>
+                      <span className="summary-total">{formatCurrency(t.total)}</span>
+                    </div>
+                  </div>
+                ))}
+                <div className="summary-row total">
+                  <span>Total Mesa</span>
+                  <span>{formatCurrency(session.total)}</span>
+                </div>
+              </div>
+            )}
+
+            {!isOwner && (
+              <div className="summary-list participant-summary">
+                <div className="summary-row">
+                  <span>Subtotal consumo</span>
+                  <span>{formatCurrency(session.totals?.find(t => t.participant_id === currentParticipant?.id)?.subtotal || 0)}</span>
+                </div>
+                <div className="summary-row">
+                  <span>Propina proporcional</span>
+                  <span>{formatCurrency(session.totals?.find(t => t.participant_id === currentParticipant?.id)?.tip || 0)}</span>
+                </div>
+                <div className="summary-row total">
+                  <span>Tu Total</span>
+                  <span>{formatCurrency(getMyFinalTotal())}</span>
+                </div>
+              </div>
+            )}
+
+            <button className="btn-main" onClick={() => setShowReceipt(false)} style={{ marginTop: '24px' }}>
+              Volver a la Mesa {isFinalized ? '(Solo Lectura)' : ''}
+            </button>
+
+            {isOwner && (
+              <button className="btn-reopen" onClick={handleReopenSession}>
+                🔓 Reabrir Mesa para Editar
+              </button>
+            )}
+
+            <button className="btn-secondary" onClick={() => navigator.share?.({ title: 'Bill-e', text: `Mi parte de la cuenta: ${formatCurrency(isOwner ? session.total : getMyFinalTotal())}`, url: window.location.href }).catch(() => {})} style={{ marginTop: '8px' }}>
+              📤 Compartir
+            </button>
           </div>
         </div>
       )}

@@ -525,6 +525,51 @@ async def finalize_session_endpoint(session_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/session/{session_id}/reopen")
+async def reopen_session_endpoint(session_id: str, request: Request):
+    """Reopen a finalized session (owner only)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+
+        if not owner_token:
+            raise HTTPException(status_code=400, detail="Token de owner requerido")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        if session_data.get("status") != "finalized":
+            raise HTTPException(status_code=400, detail="La sesion no esta finalizada")
+
+        # Reopen the session
+        session_data["status"] = "assigning"
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Clear the calculated totals (will be recalculated on next finalize)
+        if "totals" in session_data:
+            del session_data["totals"]
+        if "finalized_at" in session_data:
+            del session_data["finalized_at"]
+
+        # Save to Redis
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "status": "assigning"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/session/{session_id}/poll")
 async def poll_session(session_id: str, last_update: str = None):
     try:
