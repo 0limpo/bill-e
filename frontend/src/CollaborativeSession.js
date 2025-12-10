@@ -501,13 +501,14 @@ const CollaborativeSession = () => {
 
     setIsCreatingItem(true);
     try {
-      const res = await fetch(`${API_URL}/api/session/${sessionId}/items`, {
+      const res = await fetch(`${API_URL}/api/session/${sessionId}/add-item`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: trimmedName,
           price: priceNum,
-          quantity: 1
+          quantity: 1,
+          owner_token: ownerToken
         })
       });
       if (res.ok) {

@@ -461,12 +461,11 @@ async def join_session(session_id: str, request: Request):
     try:
         data = await request.json()
         name = data.get("name", "").strip()
-        phone = data.get("phone", "").strip()
+        phone = data.get("phone", "").strip() or "N/A"  # Phone is now optional
 
         if not name:
             raise HTTPException(status_code=400, detail="El nombre es requerido")
-        if not phone:
-            raise HTTPException(status_code=400, detail="El telefono es requerido")
+        # Phone validation removed - now optional
 
         result = add_participant(redis_client, session_id, name, phone)
 
@@ -655,6 +654,48 @@ async def update_participant(session_id: str, request: Request):
             redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
 
         return {"success": True, "participants": session_data["participants"]}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.patch("/api/session/{session_id}/participant/{participant_id}")
+async def patch_participant(session_id: str, participant_id: str, request: Request):
+    """Update a participant's name via PATCH (simpler endpoint for frontend)."""
+    try:
+        data = await request.json()
+        new_name = data.get("name", "").strip()
+
+        if not new_name:
+            raise HTTPException(status_code=400, detail="El nombre es requerido")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        # Find and update the participant
+        participant_found = False
+        for participant in session_data["participants"]:
+            if participant["id"] == participant_id:
+                participant["name"] = new_name
+                participant_found = True
+                break
+
+        if not participant_found:
+            raise HTTPException(status_code=404, detail="Participante no encontrado")
+
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = new_name
+
+        # Save to Redis
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "participant": {"id": participant_id, "name": new_name}}
 
     except HTTPException:
         raise
