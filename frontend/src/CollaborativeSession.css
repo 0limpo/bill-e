@@ -106,20 +106,20 @@ body {
   background: transparent;
   border: none;
   padding: 2px;
-  min-width: 48px;
-  max-width: 60px;
+  min-width: 54px;
+  max-width: 68px;
   position: relative;
   transition: transform 0.2s;
 }
 
 .participant-chip .avatar {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: bold;
   color: white;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
@@ -139,11 +139,11 @@ body {
 }
 
 .participant-name {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   text-align: center;
-  max-width: 56px;
+  max-width: 64px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -212,7 +212,7 @@ body {
   align-items: center;
   gap: 4px;
   padding: 2px;
-  min-width: 48px;
+  min-width: 54px;
   background: transparent;
   border: none;
   cursor: pointer;
@@ -222,8 +222,8 @@ body {
 
 .add-participant-btn::before {
   content: '+';
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   border: 2px dashed rgba(79, 70, 229, 0.4);
   background: rgba(255, 255, 255, 0.6);
@@ -231,7 +231,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 300;
   transition: all 0.2s;
 }
@@ -407,8 +407,10 @@ body {
   align-items: center;
   gap: 4px;
   min-width: 48px;
+  margin: 2px;
   -webkit-tap-highlight-color: transparent;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
 }
 
 .assign-avatar-btn.assigned {
@@ -429,8 +431,8 @@ body {
 .assign-avatar-btn.assigned::after {
   content: '✓';
   position: absolute;
-  top: -2px;
-  right: -2px;
+  top: -3px;
+  right: -3px;
   background: var(--success);
   color: white;
   font-size: 10px;
@@ -441,6 +443,7 @@ body {
   align-items: center;
   justify-content: center;
   border: 2px solid white;
+  z-index: 10;
 }
 
 .assign-avatar-btn span {
