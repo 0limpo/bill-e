@@ -85,6 +85,11 @@
   transition: all 0.2s;
   white-space: nowrap;
 }
+.participant-chip.editing {
+  padding: 6px 8px;
+  background: #eef2ff;
+  border-color: var(--primary);
+}
 
 .participant-chip.current {
   border-color: var(--primary);
@@ -95,6 +100,36 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--text-main);
+}
+
+.host-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 0 0 4px;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.host-edit-input {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  width: 100px;
+  outline: none;
+}
+
+.host-edit-action {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+}
+.host-edit-action.save { color: var(--success); }
+.host-edit-action.cancel { color: var(--danger); }
+
 }
 
 .add-participant-btn {
@@ -144,6 +179,35 @@
 
 .item-info {
   flex: 1;
+}
+
+.item-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0.5;
+  padding: 4px;
+  margin-left: 8px;
+}
+
+.item-edit-input {
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  background: #f4f4f5;
+  outline: none;
+}
+.item-edit-input.qty { width: 50px; }
+.item-edit-input.price { width: 90px; }
+
+.item-meta-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
 }
 
 .item-name {

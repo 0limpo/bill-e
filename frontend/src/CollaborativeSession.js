@@ -93,7 +93,9 @@ const BillItem = ({
   onAssign, 
   onToggleMode, 
   itemMode,
-  isFinalized 
+  isFinalized,
+  onEditItem,
+  onToggleEdit
 }) => {
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
@@ -102,19 +104,57 @@ const BillItem = ({
   const totalAssigned = itemAssignments.reduce((sum, a) => sum + (a.quantity || 1), 0);
   const remaining = Math.max(0, (item.quantity || 1) - totalAssigned);
 
+  const isEditing = item.isEditing;
+
+  const handleFieldChange = (field, value) => {
+    onEditItem(itemId, { [field]: value });
+  };
+
   return (
     <div className={`bill-item ${isAssignedToMe ? 'selected' : ''} ${isFinalized ? 'finalized' : ''}`}>
       <div className="item-header">
         <div className="item-info">
-          <span className="item-name">{item.name}</span>
-          <div className="item-meta">
-            <span className="item-qty-badge">{item.quantity || 1}x</span>
-            <span className="item-price">{formatCurrency(item.price * (item.quantity || 1))}</span>
-          </div>
+          {isEditing ? (
+            <input 
+              type="text"
+              value={item.name}
+              className="item-edit-input"
+              onChange={(e) => handleFieldChange('name', e.target.value)}
+            />
+          ) : (
+            <span className="item-name">{item.name}</span>
+          )}
+          {isEditing ? (
+            <div className="item-meta-edit">
+              <input 
+                type="number"
+                value={item.quantity || 1}
+                className="item-edit-input qty"
+                onChange={(e) => handleFieldChange('quantity', parseInt(e.target.value, 10) || 1)}
+              />
+              <span>x</span>
+              <input 
+                type="number"
+                value={item.price}
+                className="item-edit-input price"
+                onChange={(e) => handleFieldChange('price', parseFloat(e.target.value) || 0)}
+              />
+            </div>
+          ) : (
+            <div className="item-meta">
+              <span className="item-qty-badge">{item.quantity || 1}x</span>
+              <span className="item-price">{formatCurrency(item.price * (item.quantity || 1))}</span>
+            </div>
+          )}
         </div>
         
-        {/* Toggle Individual/Grupal: Solo visible si hay más de 1 unidad o si es Owner */}
-        {((item.quantity > 1) || isOwner) && !isFinalized && (
+        {isOwner && !isFinalized && (
+          <button className="item-edit-btn" onClick={() => onToggleEdit(itemId)}>
+            {isEditing ? '💾' : '✏️'}
+          </button>
+        )}
+        
+        {((item.quantity > 1) || isOwner) && !isFinalized && !isEditing && (
            <div className="item-mode-switch">
              <div 
                 className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
@@ -214,6 +254,8 @@ const CollaborativeSession = () => {
   // Estados de UI
   const [itemModes, setItemModes] = useState({});
   const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [isEditingHostName, setIsEditingHostName] = useState(false);
+  const [tempHostName, setTempHostName] = useState('');
   const [newParticipantName, setNewParticipantName] = useState('');
 
   // 1. CARGA INICIAL
@@ -353,6 +395,57 @@ const CollaborativeSession = () => {
     } catch (err) { alert('Error al finalizar'); }
   };
 
+  const handleEditHostName = () => {
+    const owner = session.participants.find(p => p.role === 'owner');
+    if (owner) {
+      setTempHostName(owner.name);
+      setIsEditingHostName(true);
+    }
+  };
+
+  const handleCancelHostNameEdit = () => {
+    setIsEditingHostName(false);
+    setTempHostName('');
+  };
+
+  const handleSaveHostName = async () => {
+    const owner = session.participants.find(p => p.role === 'owner');
+    if (!owner || !tempHostName.trim() || owner.name === tempHostName) {
+      setIsEditingHostName(false);
+      return;
+    }
+    
+    // Lógica para guardar el nombre del host (llamada a API)
+    alert(`API call to update host name to: "${tempHostName}"`);
+    // Ejemplo de llamada a API:
+    // await fetch(`${API_URL}/api/session/${sessionId}/participant/${owner.id}`, {
+    //   method: 'PATCH',
+    //   headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${ownerToken}` },
+    //   body: JSON.stringify({ name: tempHostName })
+    // });
+
+    // Actualización optimista
+    setSession(prev => ({
+      ...prev,
+      participants: prev.participants.map(p => p.id === owner.id ? { ...p, name: tempHostName } : p)
+    }));
+
+    setIsEditingHostName(false);
+  };
+
+  const handleToggleItemEdit = (itemId) => {
+    setSession(prev => ({
+      ...prev,
+      items: prev.items.map(item => 
+        (item.id || item.name) === itemId ? { ...item, isEditing: !item.isEditing } : item
+      )
+    }));
+  };
+
+  const handleItemUpdate = (itemId, updates) => {
+    // Aquí iría la llamada a la API para guardar los cambios del item
+    console.log(`Updating item ${itemId} with`, updates);
+  };
   // Cálculo de totales locales
   const getMyTotal = () => {
     if (!session || !currentParticipant) return 0;
@@ -436,12 +529,32 @@ const CollaborativeSession = () => {
       {/* LISTA PARTICIPANTES */}
       <div className="participants-section">
         <div className="participants-list">
-           {session.participants.map(p => (
-             <div key={p.id} className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''}`}>
-               <Avatar name={p.name} size="small" />
-               <span className="participant-name">{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
-               {p.role === 'owner' && <span className="badge-owner">Host</span>}
-             </div>
+           {session.participants.map(p => ( 
+             p.role === 'owner' && isEditingHostName ? (
+              <div key={p.id} className="participant-chip editing">
+                <input 
+                  value={tempHostName}
+                  onChange={(e) => setTempHostName(e.target.value)}
+                  className="host-edit-input"
+                  autoFocus
+                />
+                <button onClick={handleSaveHostName} className="host-edit-action save">✅</button>
+                <button onClick={handleCancelHostNameEdit} className="host-edit-action cancel">❌</button>
+              </div>
+             ) : (
+              <div key={p.id} className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''}`}>
+                <Avatar name={p.name} size="small" />
+                <span className="participant-name">{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
+                {p.role === 'owner' && (
+                  <>
+                    <span className="badge-owner">Host</span>
+                    {!isFinalized && (
+                      <button className="host-edit-btn" onClick={handleEditHostName}>✏️</button>
+                    )}
+                  </>
+                )}
+              </div>
+             )
            ))}
            {isOwner && (
              <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>+</button>
@@ -463,7 +576,8 @@ const CollaborativeSession = () => {
             onAssign={handleAssign}
             itemMode={itemModes[item.id || item.name]}
             onToggleMode={toggleItemMode}
-            isFinalized={false}
+            isFinalized={session.status === 'finalized'}
+            onToggleEdit={handleToggleItemEdit}
           />
         ))}
         
