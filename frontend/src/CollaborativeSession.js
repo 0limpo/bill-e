@@ -555,6 +555,61 @@ const CollaborativeSession = () => {
     }
   };
 
+  const handleAddParticipant = async () => {
+    const trimmedName = newParticipantName.trim();
+    if (!trimmedName || isAddingParticipant) return;
+
+    const tempId = `temp_${Date.now()}`;
+
+    // Optimistic UI: Add participant immediately
+    const optimisticParticipant = {
+      id: tempId,
+      name: trimmedName,
+      phone: "N/A",
+      role: "editor",
+      joined_at: new Date().toISOString()
+    };
+
+    setSession(prev => ({
+      ...prev,
+      participants: [...prev.participants, optimisticParticipant]
+    }));
+    setShowAddParticipant(false);
+    setNewParticipantName('');
+    setIsAddingParticipant(true);
+
+    try {
+      const res = await fetch(`${API_URL}/api/session/${sessionId}/join`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmedName, phone: "" })
+      });
+      if (res.ok) {
+        // Replace temp participant with real one from server
+        await loadSession();
+      } else {
+        // Rollback on error
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Error adding participant:', res.status, errorData);
+        setSession(prev => ({
+          ...prev,
+          participants: prev.participants.filter(p => p.id !== tempId)
+        }));
+        alert(`Error al agregar participante: ${errorData.message || res.statusText}`);
+      }
+    } catch (e) {
+      // Rollback on network error
+      console.error('Network error adding participant:', e);
+      setSession(prev => ({
+        ...prev,
+        participants: prev.participants.filter(p => p.id !== tempId)
+      }));
+      alert('Error de conexión');
+    } finally {
+      setIsAddingParticipant(false);
+    }
+  };
+
   // --- RENDER ---
 
   if (loading) return <div className="join-screen"><div className="spinner"></div></div>;
@@ -614,7 +669,11 @@ const CollaborativeSession = () => {
       {/* LISTA PARTICIPANTES */}
       <div className="participants-section">
         <div className="participants-list">
-           {session.participants.map(p => ( 
+           {/* Add button first (sticky left) */}
+           {isOwner && (
+             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>+</button>
+           )}
+           {session.participants.map(p => (
              p.role === 'owner' && isEditingHostName ? (
               <div key={p.id} className="participant-chip editing">
                 <input
@@ -640,9 +699,6 @@ const CollaborativeSession = () => {
               </div>
              )
            ))}
-           {isOwner && (
-             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>+</button>
-           )}
         </div>
       </div>
 
@@ -710,68 +766,18 @@ const CollaborativeSession = () => {
         <div className="modal-overlay" onClick={() => setShowAddParticipant(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h3>Agregar Participante</h3>
-            <input 
+            <input
               className="join-input"
               value={newParticipantName}
               onChange={e => setNewParticipantName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleAddParticipant(); }}
               placeholder="Nombre"
               autoFocus
             />
             <button
               className="btn-main"
               disabled={!newParticipantName.trim() || isAddingParticipant}
-              onClick={async () => {
-                const trimmedName = newParticipantName.trim();
-                const tempId = `temp_${Date.now()}`;
-
-                // Optimistic UI: Add participant immediately
-                const optimisticParticipant = {
-                  id: tempId,
-                  name: trimmedName,
-                  phone: "N/A",
-                  role: "editor",
-                  joined_at: new Date().toISOString()
-                };
-
-                setSession(prev => ({
-                  ...prev,
-                  participants: [...prev.participants, optimisticParticipant]
-                }));
-                setShowAddParticipant(false);
-                setNewParticipantName('');
-                setIsAddingParticipant(true);
-
-                try {
-                  const res = await fetch(`${API_URL}/api/session/${sessionId}/join`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: trimmedName, phone: "" })
-                  });
-                  if (res.ok) {
-                    // Replace temp participant with real one from server
-                    await loadSession();
-                  } else {
-                    // Rollback on error
-                    const errorData = await res.json().catch(() => ({}));
-                    console.error('Error adding participant:', res.status, errorData);
-                    setSession(prev => ({
-                      ...prev,
-                      participants: prev.participants.filter(p => p.id !== tempId)
-                    }));
-                    alert(`Error al agregar participante: ${errorData.message || res.statusText}`);
-                  }
-                } catch (e) {
-                  // Rollback on network error
-                  console.error('Network error adding participant:', e);
-                  setSession(prev => ({
-                    ...prev,
-                    participants: prev.participants.filter(p => p.id !== tempId)
-                  }));
-                  alert('Error de conexión');
-                } finally {
-                  setIsAddingParticipant(false);
-                }
-              }}
+              onClick={handleAddParticipant}
             >
               {isAddingParticipant ? 'Agregando...' : 'Agregar'}
             </button>

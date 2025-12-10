@@ -207,27 +207,33 @@ body {
 }
 
 .add-participant-btn {
+  position: sticky;
+  left: 0;
+  z-index: 10;
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 2px dashed rgba(0,0,0,0.15);
-  background: rgba(255,255,255,0.5);
-  backdrop-filter: blur(var(--blur-amount));
-  color: var(--text-secondary);
+  border: 2px dashed rgba(79, 70, 229, 0.3);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  color: #4f46e5;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  font-size: 20px;
+  font-size: 24px;
   transition: all 0.2s;
-  margin-top: 4px;
+  box-shadow: 4px 0 12px rgba(0,0,0,0.05);
+  margin-right: 12px;
+  margin-top: 0;
 }
 
 .add-participant-btn:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: rgba(79, 70, 229, 0.05);
+  background: white;
+  transform: scale(1.05);
+  border-style: solid;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
 }
 
 /* --- ITEMS LIST (GLASS CARDS) --- */
