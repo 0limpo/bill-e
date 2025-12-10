@@ -714,7 +714,7 @@ body {
   bottom: 20px;
   left: 20px;
   right: 20px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   padding: 24px;
@@ -724,6 +724,16 @@ body {
   z-index: 100;
   max-width: 560px;
   margin: 0 auto;
+  max-height: 200px;
+  transition: max-height 0.3s ease, padding 0.3s ease;
+  overflow: hidden;
+}
+
+/* Finalized state - expandable */
+.bottom-sheet.finalized-sheet {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-bottom: 20px;
 }
 
 .sheet-handle {
@@ -732,6 +742,81 @@ body {
   background: rgba(0,0,0,0.1);
   border-radius: 2px;
   margin: 0 auto 16px;
+}
+
+/* Finalized Header */
+.sheet-finalized-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px dashed rgba(0,0,0,0.08);
+}
+
+.sheet-finalized-icon {
+  font-size: 36px;
+}
+
+.sheet-finalized-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sheet-finalized-total {
+  display: block;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -1px;
+}
+
+/* Breakdown List in Sheet */
+.sheet-breakdown {
+  margin-bottom: 16px;
+}
+
+.sheet-breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(0,0,0,0.06);
+}
+
+.sheet-breakdown-item:last-child {
+  border-bottom: none;
+}
+
+.sheet-breakdown-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sheet-breakdown-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+}
+
+.sheet-breakdown-name {
+  font-size: 14px;
+  color: var(--text-main);
+}
+
+.sheet-breakdown-amount {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
 }
 
 .sheet-summary-row {

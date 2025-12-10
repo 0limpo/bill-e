@@ -137,19 +137,25 @@ const BillItem = ({
             <div className="item-meta-edit">
               <input
                 type="number"
-                value={item.quantity || 1}
+                value={item.quantity === '' ? '' : (item.quantity || 1)}
                 className="item-edit-input qty"
-                onChange={(e) => handleFieldChange('quantity', parseInt(e.target.value, 10) || 1)}
-                onBlur={() => onToggleEdit(itemId)}
+                onChange={(e) => handleFieldChange('quantity', e.target.value === '' ? '' : e.target.value)}
+                onBlur={(e) => {
+                  handleFieldChange('quantity', parseInt(e.target.value, 10) || 1);
+                  onToggleEdit(itemId);
+                }}
                 onKeyDown={handleKeyDown}
               />
               <span>x</span>
               <input
                 type="number"
-                value={item.price}
+                value={item.price === '' ? '' : item.price}
                 className="item-edit-input price"
-                onChange={(e) => handleFieldChange('price', parseFloat(e.target.value) || 0)}
-                onBlur={() => onToggleEdit(itemId)}
+                onChange={(e) => handleFieldChange('price', e.target.value === '' ? '' : e.target.value)}
+                onBlur={(e) => {
+                  handleFieldChange('price', parseFloat(e.target.value) || 0);
+                  onToggleEdit(itemId);
+                }}
                 onKeyDown={handleKeyDown}
               />
               <button
@@ -302,9 +308,6 @@ const CollaborativeSession = () => {
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [editParticipantName, setEditParticipantName] = useState('');
 
-  // Receipt overlay for finalized sessions
-  const [showReceipt, setShowReceipt] = useState(false);
-
   // Interaction lock to prevent polling race condition
   const lastInteraction = useRef(0);
 
@@ -350,7 +353,6 @@ const CollaborativeSession = () => {
         if (response.ok) {
           const data = await response.json();
           if (data.has_changes) {
-            const wasFinalized = session.status !== 'finalized' && data.status === 'finalized';
             setSession(prev => ({
               ...prev,
               participants: data.participants,
@@ -359,23 +361,12 @@ const CollaborativeSession = () => {
               totals: data.totals
             }));
             setLastUpdate(data.last_updated);
-            // Auto-show receipt when session becomes finalized
-            if (wasFinalized) {
-              setShowReceipt(true);
-            }
           }
         }
       } catch (err) { console.error('Error polling:', err); }
     }, 3000);
     return () => clearInterval(pollInterval);
   }, [sessionId, lastUpdate, session, currentParticipant]);
-
-  // Auto-show receipt on initial load if already finalized
-  useEffect(() => {
-    if (session?.status === 'finalized' && !showReceipt) {
-      setShowReceipt(true);
-    }
-  }, [session?.status]);
 
   // 3. TIMER
   useEffect(() => {
@@ -485,7 +476,6 @@ const CollaborativeSession = () => {
       if (res.ok) {
         const data = await res.json();
         setSession(prev => ({ ...prev, status: 'finalized', totals: data.totals }));
-        setShowReceipt(true); // Auto-show receipt
       }
     } catch (err) { alert('Error al finalizar'); }
   };
@@ -498,7 +488,6 @@ const CollaborativeSession = () => {
 
     // Optimistic update
     setSession(prev => ({ ...prev, status: 'assigning', totals: null }));
-    setShowReceipt(false);
 
     try {
       const res = await fetch(`${API_URL}/api/session/${sessionId}/reopen`, {
@@ -933,34 +922,82 @@ const CollaborativeSession = () => {
       </div>
 
       {/* BOTTOM SHEET (Barra inferior fija) */}
-      <div className="bottom-sheet">
+      <div className={`bottom-sheet ${isFinalized ? 'finalized-sheet' : ''}`}>
         <div className="sheet-handle"></div>
-        
-        {isOwner ? (
-            // VISTA OWNER
-            <>
-              <div className="sheet-summary-row">
-                <span className="my-total-label">Total Mesa (aprox)</span>
-                <span className="my-total-amount">{formatCurrency(session.total)}</span>
+
+        {isFinalized ? (
+          // VISTA FINALIZADA (Integrada en Bottom Sheet)
+          <>
+            <div className="sheet-finalized-header">
+              <span className="sheet-finalized-icon">🎉</span>
+              <div>
+                <span className="sheet-finalized-title">¡Cuenta Cerrada!</span>
+                <span className="sheet-finalized-total">{formatCurrency(session.total)}</span>
               </div>
-              <button className="btn-main btn-dark" onClick={handleFinalize}>
-                🔒 Cerrar Cuenta y Cobrar
+            </div>
+
+            {/* Breakdown List */}
+            {session.totals && session.totals.length > 0 && (
+              <div className="sheet-breakdown">
+                {session.totals.map(t => (
+                  <div key={t.participant_id} className="sheet-breakdown-item">
+                    <div className="sheet-breakdown-person">
+                      <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(t.name) }}>
+                        {getInitials(t.name)}
+                      </span>
+                      <span className="sheet-breakdown-name">
+                        {t.participant_id === currentParticipant?.id ? 'Tú' : t.name}
+                      </span>
+                    </div>
+                    <span className="sheet-breakdown-amount">{formatCurrency(t.total)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isOwner && (
+              <button className="btn-reopen" onClick={handleReopenSession}>
+                🔓 Reabrir Mesa para Editar
               </button>
-            </>
+            )}
+
+            <button
+              className="btn-secondary"
+              onClick={() => navigator.share?.({
+                title: 'Bill-e',
+                text: `Mi parte de la cuenta: ${formatCurrency(isOwner ? session.total : getMyFinalTotal())}`,
+                url: window.location.href
+              }).catch(() => {})}
+              style={{ marginTop: '8px' }}
+            >
+              📤 Compartir
+            </button>
+          </>
+        ) : isOwner ? (
+          // VISTA OWNER (No finalizada)
+          <>
+            <div className="sheet-summary-row">
+              <span className="my-total-label">Total Mesa (aprox)</span>
+              <span className="my-total-amount">{formatCurrency(session.total)}</span>
+            </div>
+            <button className="btn-main btn-dark" onClick={handleFinalize}>
+              🔒 Cerrar Cuenta y Cobrar
+            </button>
+          </>
         ) : (
-            // VISTA PARTICIPANTE
-            <>
-              <div className="sheet-summary-row">
-                <div className="sheet-column">
-                   <span className="my-total-label">Tu parte (+ propina)</span>
-                   <small className="sheet-subtitle">*Pendiente de cierre</small>
-                </div>
-                <span className="my-total-amount">{formatCurrency(getMyTotal())}</span>
+          // VISTA PARTICIPANTE (No finalizada)
+          <>
+            <div className="sheet-summary-row">
+              <div className="sheet-column">
+                <span className="my-total-label">Tu parte (+ propina)</span>
+                <small className="sheet-subtitle">*Pendiente de cierre</small>
               </div>
-              <button className="btn-main" disabled>
-                 Esperando al anfitrión...
-              </button>
-            </>
+              <span className="my-total-amount">{formatCurrency(getMyTotal())}</span>
+            </div>
+            <button className="btn-main" disabled>
+              Esperando al anfitrión...
+            </button>
+          </>
         )}
       </div>
 
@@ -1047,91 +1084,6 @@ const CollaborativeSession = () => {
                 Eliminar de la mesa
               </button>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* FLOATING BUTTON: View Receipt (when finalized but receipt hidden) */}
-      {isFinalized && !showReceipt && (
-        <button className="floating-receipt-btn" onClick={() => setShowReceipt(true)}>
-          📄 Ver Recibo
-        </button>
-      )}
-
-      {/* RECEIPT OVERLAY (Finalized Session) */}
-      {isFinalized && showReceipt && (
-        <div className="receipt-overlay">
-          <div className="finalized-card">
-            <button className="receipt-close-btn" onClick={() => setShowReceipt(false)}>✕</button>
-
-            <span className="success-icon-large">🎉</span>
-            <h1 className="finalized-title">¡Cuenta Cerrada!</h1>
-            <p className="finalized-message">
-              {isOwner ? 'La cuenta ha sido dividida exitosamente' : 'Gracias por compartir la mesa'}
-            </p>
-
-            <div className="finalized-amount-large">
-              {isOwner ? formatCurrency(session.total) : formatCurrency(getMyFinalTotal())}
-            </div>
-            <p className="finalized-amount-label">
-              {isOwner ? 'Total Recaudado' : 'Tu aporte total'}
-            </p>
-
-            {isOwner && session.totals && session.totals.length > 0 && (
-              <div className="summary-list">
-                <h3 className="summary-title">Desglose por persona</h3>
-                {session.totals.map(t => (
-                  <div key={t.participant_id} className="summary-row">
-                    <div className="summary-person">
-                      <span className="summary-avatar" style={{ background: getAvatarColor(t.name) }}>
-                        {getInitials(t.name)}
-                      </span>
-                      <span>{t.name}</span>
-                    </div>
-                    <div className="summary-amounts">
-                      <span className="summary-subtotal">{formatCurrency(t.subtotal)}</span>
-                      <span className="summary-tip">+{formatCurrency(t.tip)} prop.</span>
-                      <span className="summary-total">{formatCurrency(t.total)}</span>
-                    </div>
-                  </div>
-                ))}
-                <div className="summary-row total">
-                  <span>Total Mesa</span>
-                  <span>{formatCurrency(session.total)}</span>
-                </div>
-              </div>
-            )}
-
-            {!isOwner && (
-              <div className="summary-list participant-summary">
-                <div className="summary-row">
-                  <span>Subtotal consumo</span>
-                  <span>{formatCurrency(session.totals?.find(t => t.participant_id === currentParticipant?.id)?.subtotal || 0)}</span>
-                </div>
-                <div className="summary-row">
-                  <span>Propina proporcional</span>
-                  <span>{formatCurrency(session.totals?.find(t => t.participant_id === currentParticipant?.id)?.tip || 0)}</span>
-                </div>
-                <div className="summary-row total">
-                  <span>Tu Total</span>
-                  <span>{formatCurrency(getMyFinalTotal())}</span>
-                </div>
-              </div>
-            )}
-
-            <button className="btn-main" onClick={() => setShowReceipt(false)} style={{ marginTop: '24px' }}>
-              Volver a la Mesa {isFinalized ? '(Solo Lectura)' : ''}
-            </button>
-
-            {isOwner && (
-              <button className="btn-reopen" onClick={handleReopenSession}>
-                🔓 Reabrir Mesa para Editar
-              </button>
-            )}
-
-            <button className="btn-secondary" onClick={() => navigator.share?.({ title: 'Bill-e', text: `Mi parte de la cuenta: ${formatCurrency(isOwner ? session.total : getMyFinalTotal())}`, url: window.location.href }).catch(() => {})} style={{ marginTop: '8px' }}>
-              📤 Compartir
-            </button>
           </div>
         </div>
       )}
