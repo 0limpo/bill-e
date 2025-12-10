@@ -266,8 +266,8 @@ body {
   backdrop-filter: blur(var(--blur-amount));
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
-  padding: 20px;
-  margin-bottom: 16px;
+  padding: 16px 16px 12px 16px;
+  margin-bottom: 12px;
   box-shadow: var(--glass-shadow);
   transition: all 0.3s ease;
   position: relative;
@@ -385,14 +385,36 @@ body {
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
+/* Split Item Button */
+.split-item-btn {
+  background: rgba(79, 70, 229, 0.08);
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  color: var(--primary);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 8px;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.split-item-btn:active {
+  background: var(--primary);
+  color: white;
+  transform: scale(0.95);
+}
+
 /* --- AVATAR ASSIGNMENT (Modern Grid) --- */
 /* --- CONSUMER SCROLL LIST (Horizontal for both modes) --- */
 .consumer-scroll-list {
   display: flex;
   flex-direction: row;
   overflow-x: auto;
-  gap: 12px;
-  padding: 12px 4px;
+  gap: 8px;
+  padding: 4px 0;
   border-top: 1px solid rgba(0,0,0,0.05);
   scrollbar-width: none;
   -ms-overflow-style: none;

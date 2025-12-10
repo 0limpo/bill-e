@@ -2,7 +2,7 @@
 // Componente principal para sesiones colaborativas de Bill-e
 // Diseño Mobile First con lógica completa de producción
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import './CollaborativeSession.css';
 
@@ -84,18 +84,19 @@ const JoinScreen = ({ onJoin, isLoading }) => {
   );
 };
 
-const BillItem = ({ 
-  item, 
-  assignments, 
-  participants, 
-  currentParticipant, 
-  isOwner, 
-  onAssign, 
-  onToggleMode, 
+const BillItem = ({
+  item,
+  assignments,
+  participants,
+  currentParticipant,
+  isOwner,
+  onAssign,
+  onToggleMode,
   itemMode,
   isFinalized,
   onEditItem,
-  onToggleEdit
+  onToggleEdit,
+  onSplitItem
 }) => {
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
@@ -167,19 +168,30 @@ const BillItem = ({
         
         {((item.quantity > 1) || isOwner) && !isFinalized && !isEditing && (
            <div className="item-mode-switch">
-             <div 
+             <div
                 className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
                 onClick={() => onToggleMode(itemId)}
              >
                Individual
              </div>
-             <div 
+             <div
                 className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
                 onClick={() => onToggleMode(itemId)}
              >
                Grupal
              </div>
            </div>
+        )}
+
+        {/* Split Item Button - Only for items with qty > 1 */}
+        {isOwner && !isFinalized && !isEditing && item.quantity > 1 && (
+          <button
+            className="split-item-btn"
+            onClick={() => onSplitItem(itemId)}
+            title="Separar en items individuales"
+          >
+            ✂️ Separar
+          </button>
         )}
       </div>
 
@@ -282,6 +294,9 @@ const CollaborativeSession = () => {
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [editParticipantName, setEditParticipantName] = useState('');
 
+  // Interaction lock to prevent polling race condition
+  const lastInteraction = useRef(0);
+
   // 1. CARGA INICIAL
   const loadSession = useCallback(async () => {
     try {
@@ -314,6 +329,9 @@ const CollaborativeSession = () => {
   useEffect(() => {
     if (!session || !currentParticipant) return;
     const pollInterval = setInterval(async () => {
+      // Skip polling if user interacted recently (prevents race condition)
+      if (Date.now() - lastInteraction.current < 4000) return;
+
       try {
         const response = await fetch(
           `${API_URL}/api/session/${sessionId}/poll?last_update=${encodeURIComponent(lastUpdate || '')}`
@@ -384,6 +402,7 @@ const CollaborativeSession = () => {
   // --- HANDLERS (Lógica de Negocio) ---
 
   const handleJoin = async (name, phone) => {
+    lastInteraction.current = Date.now();
     setJoining(true);
     try {
       const res = await fetch(`${API_URL}/api/session/${sessionId}/join`, {
@@ -400,6 +419,7 @@ const CollaborativeSession = () => {
   };
 
   const handleAssign = async (itemId, participantId, quantity, isAssigned) => {
+    lastInteraction.current = Date.now();
     // Actualización Optimista UI
     setSession(prev => {
       const currentAssignments = prev.assignments[itemId] || [];
@@ -444,6 +464,55 @@ const CollaborativeSession = () => {
         setSession(prev => ({ ...prev, status: 'finalized', totals: data.totals }));
       }
     } catch (err) { alert('Error al finalizar'); }
+  };
+
+  // Split an item into separate units
+  const handleSplitItem = async (itemId) => {
+    lastInteraction.current = Date.now();
+    const item = session.items.find(i => (i.id || i.name) === itemId);
+    if (!item || item.quantity <= 1) return;
+
+    const pricePerUnit = item.price / item.quantity;
+    const newItemId = `${itemId}_split_${Date.now()}`;
+
+    // Optimistic update: reduce original qty, add new item
+    setSession(prev => ({
+      ...prev,
+      items: [
+        ...prev.items.map(i =>
+          (i.id || i.name) === itemId
+            ? { ...i, quantity: i.quantity - 1, price: i.price - pricePerUnit }
+            : i
+        ),
+        {
+          id: newItemId,
+          name: item.name,
+          quantity: 1,
+          price: pricePerUnit
+        }
+      ]
+    }));
+
+    // API calls (background)
+    try {
+      // Update original item
+      await fetch(`${API_URL}/api/session/${sessionId}/add-item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          owner_token: ownerToken,
+          name: item.name,
+          price: pricePerUnit,
+          quantity: 1
+        })
+      });
+      // Reload to get server-assigned ID
+      await loadSession();
+    } catch (err) {
+      console.error('Error splitting item:', err);
+      // Rollback on error
+      await loadSession();
+    }
   };
 
   // Open participant edit modal
@@ -767,8 +836,8 @@ const CollaborativeSession = () => {
       <div className="items-section">
         <h3>Consumo</h3>
         {session.items.map((item, idx) => (
-          <BillItem 
-            key={item.id || idx} 
+          <BillItem
+            key={item.id || idx}
             item={item}
             assignments={session.assignments}
             participants={session.participants}
@@ -780,6 +849,7 @@ const CollaborativeSession = () => {
             isFinalized={session.status === 'finalized'}
             onEditItem={handleItemUpdate}
             onToggleEdit={handleToggleItemEdit}
+            onSplitItem={handleSplitItem}
           />
         ))}
         
