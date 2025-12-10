@@ -129,7 +129,6 @@
 }
 .host-edit-action.save { color: var(--success); }
 .host-edit-action.cancel { color: var(--danger); }
-}
 
 .add-participant-btn {
   width: 36px;
