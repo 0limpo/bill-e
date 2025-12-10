@@ -386,6 +386,126 @@ body {
 }
 
 /* --- AVATAR ASSIGNMENT (Modern Grid) --- */
+/* --- CONSUMER SCROLL LIST (Horizontal for both modes) --- */
+.consumer-scroll-list {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 12px 4px;
+  border-top: 1px solid rgba(0,0,0,0.05);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.consumer-scroll-list::-webkit-scrollbar {
+  display: none;
+}
+
+.consumer-item-wrapper {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 56px;
+  gap: 4px;
+}
+
+.consumer-item-wrapper.dimmed {
+  opacity: 0.4;
+}
+
+.consumer-item-wrapper.assigned {
+  opacity: 1;
+}
+
+.consumer-item-wrapper .avatar {
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.consumer-item-wrapper.assigned .avatar {
+  box-shadow: 0 0 0 3px var(--success), 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.consumer-item-wrapper .consumer-name {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Green checkmark badge for Group mode */
+.consumer-item-wrapper.assigned .avatar-wrapper {
+  position: relative;
+}
+
+.consumer-item-wrapper.assigned .check-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  background: var(--success);
+  color: white;
+  font-size: 10px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  z-index: 10;
+}
+
+/* --- STEPPER COMPACT (Individual mode) --- */
+.stepper-compact {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.stepper-compact .stepper-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.1);
+  background: white;
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stepper-compact .stepper-btn:active {
+  background: var(--primary);
+  color: white;
+  transform: scale(0.95);
+}
+
+.stepper-compact .stepper-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.stepper-compact .stepper-val {
+  min-width: 18px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Legacy simple-assignment (keeping for compatibility) */
 .simple-assignment {
   display: flex;
   flex-wrap: wrap;

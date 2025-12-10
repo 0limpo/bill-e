@@ -183,62 +183,68 @@ const BillItem = ({
         )}
       </div>
 
-      {itemMode === 'grupal' ? (
-        // MODO GRUPAL
-        <div className="grupal-container">
-          <span className="grupal-instruction">Reparte las {item.quantity} unidades:</span>
-          {participants.map(p => {
-             const assignment = itemAssignments.find(a => a.participant_id === p.id);
-             const qty = assignment?.quantity || 0;
-             const canEdit = !isFinalized && (isOwner || p.id === currentParticipant?.id);
+      {/* HORIZONTAL SCROLL LIST - Both modes use same layout */}
+      <div className="consumer-scroll-list">
+        {participants.map(p => {
+          const assignment = itemAssignments.find(a => a.participant_id === p.id);
+          const qty = assignment?.quantity || 0;
+          const isAssigned = qty > 0;
+          const canEdit = !isFinalized && (isOwner || p.id === currentParticipant?.id);
+          const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
 
-             return (
-               <div key={p.id} className="quantity-row">
-                 <div className="quantity-row-info">
-                    <Avatar name={p.name} size="small" />
-                    <span className="quantity-row-name">{p.name}</span>
-                 </div>
-                 <div className="qty-controls-small">
-                   <button 
-                     className="qty-btn-small"
-                     disabled={!canEdit || qty <= 0}
-                     onClick={() => onAssign(itemId, p.id, qty - 1, qty - 1 > 0)}
-                   >-</button>
-                   <span className="qty-val-small">{qty}</span>
-                   <button 
-                     className="qty-btn-small"
-                     disabled={!canEdit || remaining <= 0}
-                     onClick={() => onAssign(itemId, p.id, qty + 1, true)}
-                   >+</button>
-                 </div>
-               </div>
-             )
-          })}
-          {remaining > 0 && (
-             <div className="grupal-warning">
-               ⚠️ Faltan {remaining} por asignar
-             </div>
-          )}
-        </div>
-      ) : (
-        // MODO INDIVIDUAL SIMPLE
-        <div className="simple-assignment">
-          {participants.map(p => {
-            const isAssigned = itemAssignments.some(a => a.participant_id === p.id);
-            const canToggle = !isFinalized && (isOwner || p.id === currentParticipant?.id);
-            
-            return (
-              <button
-                key={p.id}
-                className={`assign-avatar-btn ${isAssigned ? 'assigned' : ''}`}
-                onClick={() => canToggle && onAssign(itemId, p.id, 1, !isAssigned)}
-                disabled={!canToggle}
-              >
-                <Avatar name={p.name} />
-                <span>{p.id === currentParticipant?.id ? 'Yo' : p.name}</span>
-              </button>
-            );
-          })}
+          return (
+            <div
+              key={p.id}
+              className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
+            >
+              {itemMode === 'grupal' ? (
+                // MODO GRUPAL: Simple toggle (checkmark), shared equally
+                <div
+                  className="avatar-wrapper"
+                  onClick={() => canEdit && onAssign(itemId, p.id, 1, !isAssigned)}
+                  style={{ position: 'relative', cursor: canEdit ? 'pointer' : 'default' }}
+                >
+                  <Avatar name={p.name} />
+                  {isAssigned && <span className="check-badge">✓</span>}
+                </div>
+              ) : (
+                // MODO INDIVIDUAL: Specific quantities per person
+                <div
+                  className="avatar-wrapper"
+                  onClick={() => canEdit && !isAssigned && onAssign(itemId, p.id, 1, true)}
+                  style={{ position: 'relative', cursor: canEdit && !isAssigned ? 'pointer' : 'default' }}
+                >
+                  <Avatar name={p.name} />
+                  {isAssigned && <span className="check-badge">✓</span>}
+                </div>
+              )}
+              <span className="consumer-name">{displayName}</span>
+
+              {/* Stepper only in Individual mode when assigned */}
+              {itemMode !== 'grupal' && isAssigned && (
+                <div className="stepper-compact">
+                  <button
+                    className="stepper-btn"
+                    disabled={!canEdit || qty <= 0}
+                    onClick={() => onAssign(itemId, p.id, qty - 1, qty - 1 > 0)}
+                  >−</button>
+                  <span className="stepper-val">{qty}</span>
+                  <button
+                    className="stepper-btn"
+                    disabled={!canEdit || remaining <= 0}
+                    onClick={() => onAssign(itemId, p.id, qty + 1, true)}
+                  >+</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Warning for Individual mode when items not fully assigned */}
+      {itemMode !== 'grupal' && remaining > 0 && totalAssigned > 0 && (
+        <div className="grupal-warning">
+          ⚠️ Faltan {remaining} por asignar
         </div>
       )}
     </div>
