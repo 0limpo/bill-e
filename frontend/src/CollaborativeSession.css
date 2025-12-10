@@ -345,15 +345,61 @@ body {
 .item-edit-input {
   border: 1px solid var(--primary);
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 6px 8px;
   font-size: 16px;
   font-weight: 600;
   background: rgba(255,255,255,0.9);
   outline: none;
+  width: 100%;
 }
 
-.item-edit-input.qty { width: 50px; }
-.item-edit-input.price { width: 90px; }
+.item-edit-input.qty { width: 60px; }
+.item-edit-input.price { width: 100px; }
+
+/* Edit form layout */
+.item-edit-form {
+  margin-top: 8px;
+}
+
+.item-edit-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.item-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item-edit-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+}
+
+.item-edit-x {
+  font-size: 16px;
+  color: var(--text-secondary);
+  padding-bottom: 6px;
+}
+
+.item-edit-helper {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(79, 70, 229, 0.08);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.item-edit-helper strong {
+  color: var(--primary);
+  font-weight: 700;
+}
 
 .item-meta-edit {
   display: flex;

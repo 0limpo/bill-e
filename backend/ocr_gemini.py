@@ -178,10 +178,11 @@ RESPONDE SOLO con JSON válido, sin explicaciones:
     def _normalize_result(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Normaliza y valida el resultado de Gemini.
-        
+        Incluye detección inteligente de si los precios son unitarios o totales de línea.
+
         Args:
             data: Datos crudos de Gemini
-            
+
         Returns:
             Dict normalizado con formato consistente
         """
@@ -191,7 +192,7 @@ RESPONDE SOLO con JSON válido, sin explicaciones:
         tip = int(data.get('tip', 0) or 0)
         confidence = int(data.get('confidence', 80) or 80)
         currency = data.get('currency', 'CLP')
-        
+
         # Normalizar items
         items = []
         for item in data.get('items', []):
@@ -203,9 +204,56 @@ RESPONDE SOLO con JSON válido, sin explicaciones:
             # Solo agregar items válidos
             if normalized_item['name'] and normalized_item['price'] > 0:
                 items.append(normalized_item)
-        
-        # Calcular suma de items (price ya es el total de la línea, NO multiplicar por quantity)
-        items_sum = sum(item['price'] for item in items)
+
+        # ============================================================
+        # INTELLIGENT PRICE DEDUCTION
+        # Detect if OCR read LINE TOTALS as UNIT PRICES
+        # ============================================================
+
+        # Reference total (prefer subtotal, fallback to total)
+        reference_total = subtotal if subtotal > 0 else total
+
+        if reference_total > 0 and len(items) > 0:
+            # Scenario 1: Prices are UNIT PRICES (multiply by qty)
+            sum_as_unit_prices = sum(item['price'] * item['quantity'] for item in items)
+
+            # Scenario 2: Prices are LINE TOTALS (use as-is)
+            sum_as_line_totals = sum(item['price'] for item in items)
+
+            # Calculate how close each scenario is to the reference
+            diff_unit = abs(sum_as_unit_prices - reference_total)
+            diff_line = abs(sum_as_line_totals - reference_total)
+
+            # Margin of error: 5% of reference or $500, whichever is higher
+            margin = max(reference_total * 0.05, 500)
+
+            logger.info(f"🔍 Price Detection Analysis:")
+            logger.info(f"   Reference Total: ${reference_total:,}")
+            logger.info(f"   Sum if UNIT prices (×qty): ${sum_as_unit_prices:,} (diff: ${diff_unit:,})")
+            logger.info(f"   Sum if LINE totals: ${sum_as_line_totals:,} (diff: ${diff_line:,})")
+
+            # Decision: If line totals are closer AND unit prices would be way off
+            if diff_line < diff_unit and diff_unit > margin:
+                # OCR read LINE TOTALS - convert to UNIT PRICES
+                logger.warning(f"⚡ AUTO-CORRECTION: Detected LINE TOTALS read as prices")
+                logger.warning(f"   Converting prices to unit prices (dividing by quantity)")
+
+                for item in items:
+                    if item['quantity'] > 1:
+                        original_price = item['price']
+                        item['price'] = int(item['price'] / item['quantity'])
+                        logger.info(f"   {item['name']}: ${original_price:,} / {item['quantity']} = ${item['price']:,}/unit")
+
+                # Recalculate sum after correction
+                items_sum = sum(item['price'] * item['quantity'] for item in items)
+                logger.info(f"   ✅ Corrected items sum: ${items_sum:,}")
+            else:
+                # Prices are already UNIT PRICES
+                items_sum = sum_as_unit_prices
+                logger.info(f"   ✅ Prices confirmed as UNIT prices")
+        else:
+            # No reference, assume prices are line totals (original behavior)
+            items_sum = sum(item['price'] for item in items)
         
         # Auto-corregir si hay inconsistencias
         if subtotal == 0 and items_sum > 0:

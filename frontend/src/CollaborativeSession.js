@@ -272,29 +272,41 @@ const BillItem = ({
             <span className="item-name">{item.name}</span>
           )}
           {isEditing ? (
-            <div className="item-meta-edit">
-              <EditableInput
-                type="number"
-                initialValue={item.quantity || 1}
-                className="item-edit-input qty"
-                defaultValue={1}
-                onSave={(val) => handleSaveField('quantity', Math.max(1, Math.round(val)))}
-              />
-              <span>x</span>
-              <EditableInput
-                type="number"
-                initialValue={item.price}
-                className="item-edit-input price"
-                defaultValue={0}
-                onSave={(val) => handleSaveField('price', val)}
-              />
-              <button
-                className="btn-delete-item"
-                onClick={(e) => { e.stopPropagation(); onDeleteItem(itemId); }}
-                title="Eliminar item"
-              >
-                🗑️
-              </button>
+            <div className="item-edit-form">
+              <div className="item-edit-row">
+                <div className="item-edit-field">
+                  <label className="item-edit-label">Cantidad</label>
+                  <EditableInput
+                    type="number"
+                    initialValue={item.quantity || 1}
+                    className="item-edit-input qty"
+                    defaultValue={1}
+                    onSave={(val) => handleSaveField('quantity', Math.max(1, Math.round(val)))}
+                  />
+                </div>
+                <span className="item-edit-x">×</span>
+                <div className="item-edit-field">
+                  <label className="item-edit-label">Precio Unitario ($)</label>
+                  <EditableInput
+                    type="number"
+                    initialValue={item.price}
+                    className="item-edit-input price"
+                    defaultValue={0}
+                    onSave={(val) => handleSaveField('price', val)}
+                  />
+                </div>
+                <button
+                  className="btn-delete-item"
+                  onClick={(e) => { e.stopPropagation(); onDeleteItem(itemId); }}
+                  title="Eliminar item"
+                >
+                  🗑️
+                </button>
+              </div>
+              {/* Helper text showing calculated line total */}
+              <div className="item-edit-helper">
+                Total Línea: <strong>{formatCurrency(item.price * (item.quantity || 1))}</strong>
+              </div>
             </div>
           ) : (
             <div className="item-meta">
@@ -1004,21 +1016,29 @@ const CollaborativeSession = () => {
   const isFinalized = session?.status === 'finalized';
 
   // Calculate validation metrics for bottom sheet
-  const totalItems = session.items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
-  const totalAsignado = (() => {
-    let total = 0;
-    const itemsById = {};
-    session.items.forEach(item => { itemsById[item.id || item.name] = item; });
-    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
-      const item = itemsById[itemId];
-      if (!item) return;
-      const pricePerUnit = item.price / (item.quantity || 1);
-      assigns.forEach(a => { total += pricePerUnit * (a.quantity || 1); });
-    });
-    return total;
-  })();
+  // NOTE: item.price is UNIT PRICE (backend guarantees this after OCR auto-correction)
+
+  // Total Items = sum of (unit_price × quantity) for all items
+  const totalItems = session.items.reduce((sum, item) => {
+    return sum + (item.price * (item.quantity || 1));
+  }, 0);
+
+  // Total Assigned = sum of (unit_price × assigned_qty) for all items
+  // CRITICAL: Use item.price directly (it's already unit price), NOT divided by quantity
+  const totalAsignado = session.items.reduce((acc, item) => {
+    const itemId = item.id || item.name;
+    const assignments = session.assignments[itemId] || [];
+    const assignedQty = assignments.reduce((sum, a) => sum + (a.quantity || 0), 0);
+    // Multiply assigned quantity by UNIT PRICE
+    return acc + (assignedQty * item.price);
+  }, 0);
+
   const totalBoleta = session.subtotal || 0;
-  const isBalanced = Math.abs(totalItems - totalBoleta) < 1 && Math.abs(totalAsignado - totalBoleta) < 1;
+
+  // Check if totals are balanced (within $1 tolerance)
+  const itemsMatch = Math.abs(totalItems - totalBoleta) < 1;
+  const assignedMatch = Math.abs(totalAsignado - totalBoleta) < 1;
+  const isBalanced = itemsMatch && assignedMatch;
 
   return (
     <div className="collaborative-session">
