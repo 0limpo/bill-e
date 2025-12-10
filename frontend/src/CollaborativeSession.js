@@ -669,9 +669,9 @@ const CollaborativeSession = () => {
       {/* LISTA PARTICIPANTES */}
       <div className="participants-section">
         <div className="participants-list">
-           {/* Add button first (sticky left) */}
+           {/* Add button first (ghost avatar style) */}
            {isOwner && (
-             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>+</button>
+             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)} />
            )}
            {session.participants.map(p => (
              p.role === 'owner' && isEditingHostName ? (

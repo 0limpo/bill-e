@@ -86,64 +86,64 @@ body {
 
 /* --- PARTICIPANTS (Compact Circular Design) --- */
 .participants-section {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   overflow-x: auto;
-  padding: 8px 4px;
+  padding: 4px 0;
   -webkit-overflow-scrolling: touch;
 }
 
 .participants-list {
   display: flex;
-  gap: 16px;
-  padding: 4px;
+  gap: 8px;
+  padding: 2px 4px;
 }
 
 .participant-chip {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: transparent;
   border: none;
-  padding: 4px;
-  min-width: 56px;
-  max-width: 70px;
+  padding: 2px;
+  min-width: 48px;
+  max-width: 60px;
   position: relative;
   transition: transform 0.2s;
 }
 
 .participant-chip .avatar {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: bold;
   color: white;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   border: 2px solid transparent;
   transition: all 0.2s;
 }
 
 .participant-chip.current .avatar {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-glow), 0 4px 12px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 0 0 2px var(--primary-glow);
 }
 
 .participant-chip.editing {
   background: rgba(238, 242, 255, 0.8);
-  border-radius: 12px;
-  padding: 8px;
+  border-radius: 10px;
+  padding: 6px;
 }
 
 .participant-name {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-secondary);
   text-align: center;
-  max-width: 64px;
+  max-width: 56px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -207,33 +207,47 @@ body {
 }
 
 .add-participant-btn {
-  position: sticky;
-  left: 0;
-  z-index: 10;
-  width: 44px;
-  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  min-width: 48px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.add-participant-btn::before {
+  content: '+';
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  border: 2px dashed rgba(79, 70, 229, 0.3);
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(16px);
-  color: #4f46e5;
+  border: 2px dashed rgba(79, 70, 229, 0.4);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  font-size: 24px;
+  font-size: 20px;
+  font-weight: 300;
   transition: all 0.2s;
-  box-shadow: 4px 0 12px rgba(0,0,0,0.05);
-  margin-right: 12px;
-  margin-top: 0;
 }
 
-.add-participant-btn:hover {
-  background: white;
-  transform: scale(1.05);
+.add-participant-btn::after {
+  content: 'Añadir';
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.add-participant-btn:hover::before {
+  background: rgba(79, 70, 229, 0.1);
   border-style: solid;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+  border-color: var(--primary);
+  transform: scale(1.05);
 }
 
 /* --- ITEMS LIST (GLASS CARDS) --- */
