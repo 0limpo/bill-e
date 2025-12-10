@@ -433,6 +433,7 @@ const CollaborativeSession = () => {
   const [newItemPrice, setNewItemPrice] = useState('');
   const [isCreatingItem, setIsCreatingItem] = useState(false);
   const [isAddingParticipant, setIsAddingParticipant] = useState(false);
+  const [isSheetExpanded, setIsSheetExpanded] = useState(false);
 
   // Participant management modal
   const [editingParticipant, setEditingParticipant] = useState(null);
@@ -1002,28 +1003,34 @@ const CollaborativeSession = () => {
 
   const isFinalized = session?.status === 'finalized';
 
+  // Calculate validation metrics for bottom sheet
+  const totalItems = session.items.reduce((sum, item) => sum + (item.price * (item.quantity || 1)), 0);
+  const totalAsignado = (() => {
+    let total = 0;
+    const itemsById = {};
+    session.items.forEach(item => { itemsById[item.id || item.name] = item; });
+    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+      const item = itemsById[itemId];
+      if (!item) return;
+      const pricePerUnit = item.price / (item.quantity || 1);
+      assigns.forEach(a => { total += pricePerUnit * (a.quantity || 1); });
+    });
+    return total;
+  })();
+  const totalBoleta = session.subtotal || 0;
+  const isBalanced = Math.abs(totalItems - totalBoleta) < 1 && Math.abs(totalAsignado - totalBoleta) < 1;
+
   return (
     <div className="collaborative-session">
-      {/* HEADER */}
-      <div className="header">
-        <div>
-          <div className="header-meta">MESA #{sessionId.slice(0,4)}</div>
-          <h1>Dividir Cuenta</h1>
-        </div>
-        <div className="timer">⏱️ {timeLeft}</div>
-      </div>
+      {/* FLOATING TIMER - Top right corner */}
+      <div className="floating-timer">⏱️ {timeLeft}</div>
 
-      {/* VALIDATION DASHBOARD (Host Only) */}
-      {isOwner && !isFinalized && (
-        <ValidationDashboard
-          session={session}
-          onUpdateSubtotal={(newSubtotal) => {
-            setSession(prev => ({ ...prev, subtotal: newSubtotal }));
-          }}
-        />
+      {/* Backdrop for expanded sheet */}
+      {isSheetExpanded && !isFinalized && (
+        <div className="sheet-backdrop" onClick={() => setIsSheetExpanded(false)} />
       )}
 
-      {/* LISTA PARTICIPANTES */}
+      {/* LISTA PARTICIPANTES - Right at the top */}
       <div className="participants-section">
         <div className="participants-list">
            {/* Add button first (ghost avatar style) */}
@@ -1073,12 +1080,16 @@ const CollaborativeSession = () => {
         )}
       </div>
 
-      {/* BOTTOM SHEET (Barra inferior fija) */}
-      <div className={`bottom-sheet ${isFinalized ? 'expanded' : ''}`}>
-        <div className="sheet-handle"></div>
+      {/* BOTTOM SHEET (Interactive Expandable) */}
+      <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
+        {/* Handle - Clickable to toggle */}
+        <div
+          className="sheet-handle"
+          onClick={() => !isFinalized && setIsSheetExpanded(!isSheetExpanded)}
+        />
 
         {isFinalized ? (
-          // VISTA FINALIZADA (Expandable Bottom Sheet)
+          // VISTA FINALIZADA
           <>
             <div className="sheet-finalized-header">
               <span className="sheet-finalized-icon">🎉</span>
@@ -1112,7 +1123,6 @@ const CollaborativeSession = () => {
                   </div>
                 ))}
 
-                {/* Total Row */}
                 <div className="sheet-breakdown-total">
                   <span>Total Mesa</span>
                   <span className="sheet-total-amount">{formatCurrency(session.total)}</span>
@@ -1120,7 +1130,6 @@ const CollaborativeSession = () => {
               </div>
             )}
 
-            {/* WhatsApp Share Button */}
             <button className="share-btn" onClick={handleShareWhatsapp}>
               📱 Compartir por WhatsApp
             </button>
@@ -1131,30 +1140,142 @@ const CollaborativeSession = () => {
               </button>
             )}
           </>
-        ) : isOwner ? (
-          // VISTA OWNER (No finalizada)
-          <>
-            <div className="sheet-summary-row">
-              <span className="my-total-label">Total Mesa (aprox)</span>
-              <span className="my-total-amount">{formatCurrency(session.total)}</span>
-            </div>
-            <button className="btn-main btn-dark" onClick={handleFinalize}>
-              🔒 Cerrar Cuenta y Cobrar
-            </button>
-          </>
         ) : (
-          // VISTA PARTICIPANTE (No finalizada)
+          // VISTA NO FINALIZADA (Owner y Participante)
           <>
-            <div className="sheet-summary-row">
+            {/* Summary Row - Always visible, clickable to expand */}
+            <div
+              className="sheet-summary-row clickable"
+              onClick={() => setIsSheetExpanded(!isSheetExpanded)}
+            >
               <div className="sheet-column">
-                <span className="my-total-label">Tu parte (+ propina)</span>
-                <small className="sheet-subtitle">*Pendiente de cierre</small>
+                <span className="my-total-label">
+                  {isOwner ? 'Total Mesa' : 'Tu parte (+ propina)'}
+                </span>
+                {!isOwner && <small className="sheet-subtitle">Toca para ver detalles</small>}
+                {isOwner && (
+                  <small className={`sheet-subtitle ${isBalanced ? 'balanced' : 'warning'}`}>
+                    {isBalanced ? '✓ Cuadrado' : '⚠️ Revisar'}
+                  </small>
+                )}
               </div>
-              <span className="my-total-amount">{formatCurrency(getMyTotal())}</span>
+              <div className="sheet-total-row">
+                <span className="my-total-amount">
+                  {formatCurrency(isOwner ? session.total : getMyTotal())}
+                </span>
+                <span className={`expand-indicator ${isSheetExpanded ? 'expanded' : ''}`}>
+                  ▼
+                </span>
+              </div>
             </div>
-            <button className="btn-main" disabled>
-              Esperando al anfitrión...
-            </button>
+
+            {/* Expanded Content */}
+            {isSheetExpanded && (
+              <div className="sheet-expanded-content">
+                {/* Validation Dashboard (Host Only) */}
+                {isOwner && (
+                  <div className={`sheet-validation ${isBalanced ? 'balanced' : 'warning'}`}>
+                    <div className="validation-row">
+                      <span className="validation-label">Total Items</span>
+                      <span className={`validation-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
+                        {formatCurrency(totalItems)}
+                      </span>
+                    </div>
+                    <div className="validation-row">
+                      <span className="validation-label">Total Asignado</span>
+                      <span className={`validation-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
+                        {formatCurrency(totalAsignado)}
+                      </span>
+                    </div>
+                    <div className="validation-row editable">
+                      <span className="validation-label">Total Boleta</span>
+                      <input
+                        type="number"
+                        className="validation-input"
+                        value={totalBoleta}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setSession(prev => ({ ...prev, subtotal: val }));
+                        }}
+                      />
+                    </div>
+                    {!isBalanced && (
+                      <div className="validation-alert">
+                        {totalAsignado < totalBoleta
+                          ? `Faltan ${formatCurrency(totalBoleta - totalAsignado)} por asignar`
+                          : `Sobrepasado por ${formatCurrency(totalAsignado - totalBoleta)}`
+                        }
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Breakdown by Person (Preview) */}
+                <div className="sheet-breakdown-preview">
+                  <div className="breakdown-title">Desglose por Persona</div>
+                  {session.participants.map(p => {
+                    let personTotal = 0;
+                    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+                      const myAssign = assigns.find(a => a.participant_id === p.id);
+                      if (myAssign) {
+                        const item = session.items.find(i => (i.id || i.name) === itemId);
+                        if (item) personTotal += (item.price / (item.quantity || 1)) * (myAssign.quantity || 1);
+                      }
+                    });
+                    const tipPct = session.tip_percentage || 10;
+                    const withTip = personTotal * (1 + tipPct / 100);
+
+                    return (
+                      <div key={p.id} className="breakdown-row">
+                        <div className="breakdown-person">
+                          <span className="breakdown-avatar" style={{ background: getAvatarColor(p.name) }}>
+                            {getInitials(p.name)}
+                          </span>
+                          <span>{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
+                        </div>
+                        <span className="breakdown-amount">{formatCurrency(withTip)}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Share Button */}
+                <button className="share-btn" onClick={() => {
+                  let text = `🧾 Cuenta - Mesa #${sessionId.slice(0, 4)}\n\n`;
+                  session.participants.forEach(p => {
+                    let personTotal = 0;
+                    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+                      const myAssign = assigns.find(a => a.participant_id === p.id);
+                      if (myAssign) {
+                        const item = session.items.find(i => (i.id || i.name) === itemId);
+                        if (item) personTotal += (item.price / (item.quantity || 1)) * (myAssign.quantity || 1);
+                      }
+                    });
+                    const tipPct = session.tip_percentage || 10;
+                    text += `${p.name}: ${formatCurrency(personTotal * (1 + tipPct / 100))}\n`;
+                  });
+                  text += `----------------\nTotal: ${formatCurrency(session.total)}\n\nBill-e 🤖`;
+                  if (navigator.share) {
+                    navigator.share({ text }).catch(() => window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank'));
+                  } else {
+                    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                  }
+                }}>
+                  📱 Compartir por WhatsApp
+                </button>
+              </div>
+            )}
+
+            {/* Action Button - Always visible */}
+            {isOwner ? (
+              <button className="btn-main btn-dark" onClick={handleFinalize}>
+                🔒 Cerrar Cuenta y Cobrar
+              </button>
+            ) : (
+              <button className="btn-main" disabled>
+                Esperando al anfitrión...
+              </button>
+            )}
           </>
         )}
       </div>
