@@ -96,7 +96,8 @@ const BillItem = ({
   isFinalized,
   onEditItem,
   onToggleEdit,
-  onSplitItem
+  onSplitItem,
+  onDeleteItem
 }) => {
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
@@ -150,7 +151,14 @@ const BillItem = ({
                 onChange={(e) => handleFieldChange('price', parseFloat(e.target.value) || 0)}
                 onBlur={() => onToggleEdit(itemId)}
                 onKeyDown={handleKeyDown}
-              />  
+              />
+              <button
+                className="btn-delete-item"
+                onClick={(e) => { e.stopPropagation(); onDeleteItem(itemId); }}
+                title="Eliminar item"
+              >
+                🗑️
+              </button>
             </div>
           ) : (
             <div className="item-meta">
@@ -183,8 +191,8 @@ const BillItem = ({
            </div>
         )}
 
-        {/* Split Item Button - Only for items with qty > 1 */}
-        {isOwner && !isFinalized && !isEditing && item.quantity > 1 && (
+        {/* Split Item Button - Only in Grupal mode for items with qty > 1 */}
+        {isOwner && !isFinalized && !isEditing && item.quantity > 1 && itemMode === 'grupal' && (
           <button
             className="split-item-btn"
             onClick={() => onSplitItem(itemId)}
@@ -512,6 +520,45 @@ const CollaborativeSession = () => {
       console.error('Error splitting item:', err);
       // Rollback on error
       await loadSession();
+    }
+  };
+
+  // Delete an item from the session
+  const handleDeleteItem = async (itemId) => {
+    if (!window.confirm('¿Eliminar este item?')) return;
+
+    lastInteraction.current = Date.now();
+
+    // Store for rollback
+    const previousItems = session.items;
+    const previousAssignments = session.assignments;
+
+    // Optimistic update
+    setSession(prev => ({
+      ...prev,
+      items: prev.items.filter(i => (i.id || i.name) !== itemId),
+      assignments: Object.fromEntries(
+        Object.entries(prev.assignments).filter(([key]) => key !== itemId)
+      )
+    }));
+
+    try {
+      const res = await fetch(`${API_URL}/api/session/${sessionId}/items/${itemId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner_token: ownerToken })
+      });
+
+      if (!res.ok) throw new Error('Error al eliminar');
+    } catch (err) {
+      console.error('Error deleting item:', err);
+      // Rollback on error
+      setSession(prev => ({
+        ...prev,
+        items: previousItems,
+        assignments: previousAssignments
+      }));
+      alert('Error al eliminar el item');
     }
   };
 
@@ -850,6 +897,7 @@ const CollaborativeSession = () => {
             onEditItem={handleItemUpdate}
             onToggleEdit={handleToggleItemEdit}
             onSplitItem={handleSplitItem}
+            onDeleteItem={handleDeleteItem}
           />
         ))}
         

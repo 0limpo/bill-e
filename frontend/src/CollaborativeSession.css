@@ -359,6 +359,28 @@ body {
   margin-top: 4px;
 }
 
+.btn-delete-item {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: 4px;
+  font-size: 14px;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-delete-item:active {
+  background: var(--danger);
+  transform: scale(0.95);
+}
+
 /* --- TOGGLES & BUTTONS --- */
 .item-mode-switch {
   background: rgba(0,0,0,0.04);

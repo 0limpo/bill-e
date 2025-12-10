@@ -757,6 +757,48 @@ async def delete_participant(session_id: str, participant_id: str, request: Requ
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.delete("/api/session/{session_id}/items/{item_id}")
+async def delete_item(session_id: str, item_id: str, request: Request):
+    """Remove an item from the session (owner only)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Find and remove the item
+        original_items = session_data.get("items", [])
+        session_data["items"] = [i for i in original_items if (i.get("id") or i.get("name")) != item_id]
+
+        if len(session_data["items"]) == len(original_items):
+            raise HTTPException(status_code=404, detail="Item no encontrado")
+
+        # Remove assignments for this item
+        if item_id in session_data.get("assignments", {}):
+            del session_data["assignments"][item_id]
+
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Save to Redis
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "removed_id": item_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/session/{session_id}/update-totals")
 async def update_totals(session_id: str, request: Request):
     """Actualizar subtotal, propina y total (solo owner)."""
