@@ -26,7 +26,7 @@ class Item(BaseModel):
     id: str
     name: str
     price: float
-    quantity: int = 1
+    quantity: float = 1  # Float to support fractional assignments (e.g., 0.33 for 3-way split)
     assigned_to: List[str] = []
 
 class SessionData(BaseModel):

@@ -255,12 +255,12 @@ body {
 
 /* --- ITEMS LIST (GLASS CARDS) --- */
 .items-section h3 {
-  font-size: 14px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
-  margin-bottom: 16px;
-  padding-left: 8px;
+  margin-bottom: 12px;
+  padding-left: 4px;
   font-weight: 700;
 }
 
@@ -268,9 +268,9 @@ body {
   background: var(--glass-surface);
   backdrop-filter: blur(var(--blur-amount));
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-lg);
-  padding: 16px 16px 12px 16px;
-  margin-bottom: 12px;
+  border-radius: var(--radius-md);
+  padding: 12px 14px 10px 14px;
+  margin-bottom: 10px;
   box-shadow: var(--glass-shadow);
   transition: all 0.3s ease;
   position: relative;
@@ -284,47 +284,56 @@ body {
   transform: translateY(-2px);
 }
 
+/* COMPACT 3-LEVEL LAYOUT */
 .item-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 8px;
 }
 
 .item-info {
-  flex: 1 1 150px;
-  min-width: 60%;
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .item-name {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-main);
-  margin-bottom: 6px;
-  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .item-meta {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .item-price {
   font-weight: 700;
-  color: var(--text-main);
-  font-size: 15px;
+  color: var(--primary);
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .item-qty-badge {
-  background: rgba(0,0,0,0.05);
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary);
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .item-edit-btn {
@@ -433,17 +442,16 @@ body {
 /* --- TOGGLES & BUTTONS --- */
 .item-mode-switch {
   background: rgba(0,0,0,0.04);
-  padding: 3px;
-  border-radius: 10px;
+  padding: 2px;
+  border-radius: 8px;
   display: inline-flex;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .mode-option {
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
   font-weight: 700;
   cursor: pointer;
   color: var(--text-secondary);
@@ -453,7 +461,7 @@ body {
 .mode-option.active {
   background: white;
   color: var(--primary);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 /* Split Item Button */
@@ -484,9 +492,9 @@ body {
   display: flex;
   flex-direction: row;
   overflow-x: auto;
-  gap: 8px;
-  padding: 4px 0;
-  border-top: 1px solid rgba(0,0,0,0.05);
+  gap: 6px;
+  padding: 8px 0 4px 0;
+  border-top: 1px solid rgba(0,0,0,0.04);
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -500,8 +508,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 56px;
-  gap: 4px;
+  width: 50px;
+  gap: 2px;
 }
 
 .consumer-item-wrapper.dimmed {
@@ -515,17 +523,20 @@ body {
 .consumer-item-wrapper .avatar {
   cursor: pointer;
   transition: all 0.2s;
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 13px !important;
 }
 
 .consumer-item-wrapper.assigned .avatar {
-  box-shadow: 0 0 0 3px var(--success), 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 0 2px var(--success), 0 3px 8px rgba(16, 185, 129, 0.25);
 }
 
 .consumer-item-wrapper .consumer-name {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-secondary);
   text-align: center;
-  max-width: 56px;
+  max-width: 50px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -538,13 +549,13 @@ body {
 
 .consumer-item-wrapper.assigned .check-badge {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  top: -2px;
+  right: -2px;
   background: var(--success);
   color: white;
-  font-size: 10px;
-  width: 16px;
-  height: 16px;
+  font-size: 9px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -558,18 +569,18 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 2px;
-  margin-top: 2px;
+  gap: 1px;
+  margin-top: 1px;
 }
 
 .stepper-compact .stepper-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
   border: 1px solid rgba(0,0,0,0.1);
   background: white;
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -591,9 +602,9 @@ body {
 }
 
 .stepper-compact .stepper-val {
-  min-width: 18px;
+  min-width: 14px;
   text-align: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-main);
 }

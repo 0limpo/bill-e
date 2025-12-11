@@ -234,6 +234,7 @@ const BillItem = ({
   currentParticipant,
   isOwner,
   onAssign,
+  onGroupAssign,
   onToggleMode,
   itemMode,
   isFinalized,
@@ -366,10 +367,10 @@ const BillItem = ({
               className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
             >
               {itemMode === 'grupal' ? (
-                // MODO GRUPAL: Simple toggle (checkmark), shared equally
+                // MODO GRUPAL: Simple toggle, splits evenly (1/N) among all assignees
                 <div
                   className="avatar-wrapper"
-                  onClick={() => canEdit && onAssign(itemId, p.id, 1, !isAssigned)}
+                  onClick={() => canEdit && onGroupAssign(itemId, p.id, !isAssigned)}
                   style={{ position: 'relative', cursor: canEdit ? 'pointer' : 'default' }}
                 >
                   <Avatar name={p.name} />
@@ -575,6 +576,7 @@ const CollaborativeSession = () => {
     finally { setJoining(false); }
   };
 
+  // Individual mode assignment (specific quantities per person)
   const handleAssign = async (itemId, participantId, quantity, isAssigned) => {
     lastInteraction.current = Date.now();
     // Actualización Optimista UI
@@ -606,6 +608,74 @@ const CollaborativeSession = () => {
         updated_by: currentParticipant?.name
       })
     }).catch(console.error);
+  };
+
+  // Group mode assignment (splits evenly among all assignees: 1/N)
+  const handleGroupAssign = async (itemId, participantId, isAdding) => {
+    lastInteraction.current = Date.now();
+
+    const item = session.items.find(i => (i.id || i.name) === itemId);
+    if (!item) return;
+
+    const currentAssignments = session.assignments[itemId] || [];
+    const currentAssignees = currentAssignments.map(a => a.participant_id);
+
+    // Calculate new list of assignees
+    let newAssignees;
+    if (isAdding) {
+      if (currentAssignees.includes(participantId)) return; // Already assigned
+      newAssignees = [...currentAssignees, participantId];
+    } else {
+      newAssignees = currentAssignees.filter(id => id !== participantId);
+    }
+
+    // Calculate new share (equal split)
+    const itemQty = item.quantity || 1;
+    const newShare = newAssignees.length > 0 ? itemQty / newAssignees.length : 0;
+
+    // Build new assignments with equal shares
+    const newAssignments = newAssignees.map(pid => ({
+      participant_id: pid,
+      quantity: newShare
+    }));
+
+    // Optimistic UI update
+    setSession(prev => ({
+      ...prev,
+      assignments: { ...prev.assignments, [itemId]: newAssignments }
+    }));
+
+    // Send updates to server (batch: one call per participant)
+    // First, remove anyone who was removed
+    const removedAssignees = currentAssignees.filter(id => !newAssignees.includes(id));
+    for (const pid of removedAssignees) {
+      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: itemId,
+          participant_id: pid,
+          quantity: 0,
+          is_assigned: false,
+          updated_by: currentParticipant?.name
+        })
+      }).catch(console.error);
+    }
+
+    // Then, update all current assignees with new share
+    for (const pid of newAssignees) {
+      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: itemId,
+          participant_id: pid,
+          quantity: newShare,
+          is_assigned: true,
+          updated_by: currentParticipant?.name
+        })
+      }).catch(console.error);
+    }
   };
 
   const handleFinalize = async () => {
@@ -1083,6 +1153,7 @@ const CollaborativeSession = () => {
             currentParticipant={currentParticipant}
             isOwner={isOwner}
             onAssign={handleAssign}
+            onGroupAssign={handleGroupAssign}
             itemMode={itemModes[item.id || item.name]}
             onToggleMode={toggleItemMode}
             isFinalized={session.status === 'finalized'}

@@ -138,7 +138,7 @@ def update_assignment(
     session_id: str,
     participant_id: str,
     item_id: str,
-    quantity: int,
+    quantity: float,  # Float to support fractional assignments (e.g., 0.33 for 3-way split)
     is_assigned: bool,
     updated_by: str
 ) -> Dict[str, Any]:
