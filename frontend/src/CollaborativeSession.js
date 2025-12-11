@@ -57,6 +57,7 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
 
   // Phone confirmation screen for existing participant
   if (selectedParticipant) {
+    const phoneValid = phone.trim().length > 0;
     return (
       <div className="join-screen">
         <div className="join-card">
@@ -70,18 +71,19 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
           <p>Confirma tu teléfono para continuar</p>
 
           <input
-            className="join-input"
+            className={`join-input ${!phoneValid && phone.length > 0 ? 'input-error' : ''}`}
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Tu Teléfono"
+            placeholder="Tu Teléfono (requerido)"
             autoFocus
           />
+          {!phoneValid && <span className="input-hint">* Teléfono requerido</span>}
 
           <button
             className="btn-main"
             onClick={() => onSelectParticipant(selectedParticipant, phone)}
-            disabled={isLoading}
+            disabled={isLoading || !phoneValid}
           >
             {isLoading ? 'Entrando...' : 'Confirmar y Entrar'}
           </button>
@@ -98,6 +100,7 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
 
   // New participant form
   if (showNewForm) {
+    const phoneValid = phone.trim().length > 0;
     return (
       <div className="join-screen">
         <div className="join-card">
@@ -114,17 +117,18 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
             autoFocus
           />
           <input
-            className="join-input"
+            className={`join-input ${!phoneValid && phone.length > 0 ? 'input-error' : ''}`}
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Tu Teléfono (opcional)"
+            placeholder="Tu Teléfono (requerido)"
           />
+          {!phoneValid && <span className="input-hint">* Teléfono requerido</span>}
 
           <button
             className="btn-main"
             onClick={() => onCreateNew(name, phone)}
-            disabled={isLoading || !name.trim()}
+            disabled={isLoading || !name.trim() || !phoneValid}
           >
             {isLoading ? 'Uniendo...' : 'Unirme a la mesa'}
           </button>
@@ -492,13 +496,13 @@ const BillItem = ({
                     <button
                       className="stepper-btn"
                       disabled={!canAssign || pQty <= 0}
-                      onClick={() => onAssign(itemId, p.id, pQty - 1, pQty - 1 > 0)}
+                      onClick={() => onAssign(itemId, p.id, Math.max(0, Math.round(pQty) - 1), Math.round(pQty) - 1 > 0)}
                     >−</button>
-                    <span className="stepper-val">{pQty}</span>
+                    <span className="stepper-val">{Math.round(pQty)}</span>
                     <button
                       className="stepper-btn"
                       disabled={!canAssign || remaining <= 0}
-                      onClick={() => onAssign(itemId, p.id, pQty + 1, true)}
+                      onClick={() => onAssign(itemId, p.id, Math.round(pQty) + 1, true)}
                     >+</button>
                   </div>
                 )}
@@ -1008,9 +1012,26 @@ const CollaborativeSession = () => {
     }));
   };
 
-  const handleItemUpdate = (itemId, updates) => {
+  const handleItemUpdate = async (itemId, updates) => {
+    lastInteraction.current = Date.now();
+
     // Optimistic UI update
     setSession(prev => ({ ...prev, items: prev.items.map(i => (i.id || i.name) === itemId ? { ...i, ...updates } : i) }));
+
+    // Call backend to persist changes (triggers sync for editors)
+    try {
+      await fetch(`${API_URL}/api/session/${sessionId}/update-item`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          owner_token: ownerToken,
+          item_id: itemId,
+          updates
+        })
+      });
+    } catch (err) {
+      console.error('Error updating item:', err);
+    }
   };
   // Cálculo de totales locales
   const getMyTotal = () => {
@@ -1330,32 +1351,34 @@ const CollaborativeSession = () => {
 
             {/* Always show breakdown when finalized */}
             <div className="sheet-expanded-content">
-                {/* Breakdown List */}
+                {/* Breakdown List with Subtotal and Total columns */}
                 {session.totals && session.totals.length > 0 && (
                   <div className="sheet-breakdown">
+                    {/* Column Headers */}
+                    <div className="sheet-breakdown-header">
+                      <span className="header-name">Nombre</span>
+                      <span className="header-consumo">Consumo</span>
+                      <span className="header-total">Total</span>
+                    </div>
+
                     {session.totals.map(t => (
                       <div key={t.participant_id} className="sheet-breakdown-item">
                         <div className="sheet-breakdown-person">
                           <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(t.name) }}>
                             {getInitials(t.name)}
                           </span>
-                          <div className="sheet-breakdown-details">
-                            <span className="sheet-breakdown-name">
-                              {t.participant_id === currentParticipant?.id ? 'Tú' : t.name}
-                            </span>
-                            {t.tip > 0 && (
-                              <span className="sheet-breakdown-tip">
-                                +{formatCurrency(t.tip)} propina
-                              </span>
-                            )}
-                          </div>
+                          <span className="sheet-breakdown-name">
+                            {t.participant_id === currentParticipant?.id ? 'Tú' : t.name}
+                          </span>
                         </div>
+                        <span className="sheet-breakdown-subtotal">{formatCurrency(t.subtotal || 0)}</span>
                         <span className="sheet-breakdown-amount">{formatCurrency(t.total)}</span>
                       </div>
                     ))}
 
                     <div className="sheet-breakdown-total">
                       <span>Total Mesa</span>
+                      <span></span>
                       <span className="sheet-total-amount">{formatCurrency(session.total)}</span>
                     </div>
                   </div>
