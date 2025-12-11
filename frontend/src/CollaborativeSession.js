@@ -57,7 +57,7 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
 
   // Phone confirmation screen for existing participant
   if (selectedParticipant) {
-    const phoneValid = phone.trim().length > 0;
+    const phoneValid = phone.trim().length >= 8;  // Require at least 8 digits
     return (
       <div className="join-screen">
         <div className="join-card">
@@ -78,7 +78,7 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
             placeholder="Tu Teléfono (requerido)"
             autoFocus
           />
-          {!phoneValid && <span className="input-hint">* Teléfono requerido</span>}
+          {!phoneValid && <span className="input-hint">* Teléfono requerido (min. 8 dígitos)</span>}
 
           <button
             className="btn-main"
@@ -100,7 +100,7 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
 
   // New participant form
   if (showNewForm) {
-    const phoneValid = phone.trim().length > 0;
+    const phoneValid = phone.trim().length >= 8;  // Require at least 8 digits
     return (
       <div className="join-screen">
         <div className="join-card">
@@ -123,7 +123,7 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
             onChange={(e) => setPhone(e.target.value)}
             placeholder="Tu Teléfono (requerido)"
           />
-          {!phoneValid && <span className="input-hint">* Teléfono requerido</span>}
+          {!phoneValid && <span className="input-hint">* Teléfono requerido (min. 8 dígitos)</span>}
 
           <button
             className="btn-main"
@@ -424,18 +424,20 @@ const BillItem = ({
           )}
         </div>
 
-        {/* Mode switch & controls - only when not editing */}
+        {/* Mode switch & controls - visible for multi-qty items, only owner can toggle */}
         {!isEditing && ((qty > 1) || isOwner) && !isFinalized && (
-           <div className="item-mode-switch">
+           <div className={`item-mode-switch ${!isOwner ? 'readonly' : ''}`}>
              <div
                 className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
-                onClick={() => onToggleMode(itemId)}
+                onClick={() => isOwner && onToggleMode(itemId)}
+                style={{ cursor: isOwner ? 'pointer' : 'default' }}
              >
                Individual
              </div>
              <div
                 className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
-                onClick={() => onToggleMode(itemId)}
+                onClick={() => isOwner && onToggleMode(itemId)}
+                style={{ cursor: isOwner ? 'pointer' : 'default' }}
              >
                Grupal
              </div>
@@ -481,8 +483,8 @@ const BillItem = ({
                   // MODO INDIVIDUAL: Specific quantities per person
                   <div
                     className="avatar-wrapper"
-                    onClick={() => canAssign && !isAssigned && onAssign(itemId, p.id, 1, true)}
-                    style={{ position: 'relative', cursor: canAssign && !isAssigned ? 'pointer' : 'default' }}
+                    onClick={() => canAssign && !isAssigned && remaining > 0 && onAssign(itemId, p.id, 1, true)}
+                    style={{ position: 'relative', cursor: canAssign && !isAssigned && remaining > 0 ? 'pointer' : 'default' }}
                   >
                     <Avatar name={p.name} />
                     {isAssigned && <span className="check-badge">✓</span>}
@@ -540,7 +542,6 @@ const CollaborativeSession = () => {
   const [timeLeft, setTimeLeft] = useState('');
   
   // Estados de UI
-  const [itemModes, setItemModes] = useState({});
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [newParticipantName, setNewParticipantName] = useState('');
   const [showAddItemModal, setShowAddItemModal] = useState(false);
@@ -603,6 +604,7 @@ const CollaborativeSession = () => {
               ...prev,
               participants: data.participants,
               assignments: data.assignments,
+              items: data.items || prev.items,  // Sync items (mode, name, price, quantity)
               status: data.status,
               totals: data.totals
             }));
@@ -795,19 +797,21 @@ const CollaborativeSession = () => {
     } catch (err) { alert('Error al finalizar'); }
   };
 
-  // WhatsApp Share - Text only summary (using api.whatsapp.com for better compatibility)
+  // WhatsApp Share - Text only summary (using wa.me for best compatibility)
   const handleShareWhatsapp = () => {
     if (!session?.totals) return;
 
     let text = `🧾 *Resumen Bill-e*\n\n`;
 
     session.totals.forEach(t => {
-      text += `${t.name}: ${formatCurrency(t.total)}\n`;
+      text += `• ${t.name}: ${formatCurrency(t.total)}\n`;
     });
 
-    text += `\n*Total: ${formatCurrency(session.total)}*`;
+    text += `\n*Total Mesa: ${formatCurrency(session.total)}*`;
+    text += `\n\n📱 Ver detalle: https://bill-e.vercel.app/s/${sessionId}`;
 
-    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    // wa.me works best across mobile and desktop
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
   };
 
@@ -1052,15 +1056,16 @@ const CollaborativeSession = () => {
   const toggleItemMode = (itemId) => {
     lastInteraction.current = Date.now();
 
-    // Get current assignees before clearing
+    // Get current item and assignees
+    const item = session.items.find(i => (i.id || i.name) === itemId);
+    const currentMode = item?.mode || 'individual';
+    const newMode = currentMode === 'grupal' ? 'individual' : 'grupal';
+
     const currentAssignments = session.assignments[itemId] || [];
     const assigneeIds = currentAssignments.map(a => a.participant_id);
 
-    // 1. Update mode state
-    setItemModes(prev => ({
-      ...prev,
-      [itemId]: prev[itemId] === 'grupal' ? 'individual' : 'grupal'
-    }));
+    // 1. Update mode via API (syncs to all participants)
+    handleItemUpdate(itemId, { mode: newMode });
 
     // 2. Hard reset: Clear all assignments for this item (optimistic UI)
     setSession(prev => ({
@@ -1313,7 +1318,7 @@ const CollaborativeSession = () => {
             isOwner={isOwner}
             onAssign={handleAssign}
             onGroupAssign={handleGroupAssign}
-            itemMode={itemModes[item.id || item.name]}
+            itemMode={item.mode || 'individual'}
             onToggleMode={toggleItemMode}
             isFinalized={session.status === 'finalized'}
             onEditItem={handleItemUpdate}

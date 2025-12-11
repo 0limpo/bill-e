@@ -496,6 +496,15 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
+/* Readonly mode switch for editors */
+.item-mode-switch.readonly {
+  opacity: 0.7;
+}
+
+.item-mode-switch.readonly .mode-option {
+  cursor: default;
+}
+
 /* Split Item Button */
 .split-item-btn {
   background: rgba(79, 70, 229, 0.08);
@@ -526,7 +535,7 @@ body {
   overflow-x: auto;
   gap: 6px;
   padding: 8px 0 4px 0;
-  border-top: 1px solid rgba(0,0,0,0.04);
+  margin-top: 8px;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -851,9 +860,9 @@ body {
   box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
 }
 
-/* Handle hidden - interaction via summary row */
-.sheet-handle {
-  display: none;
+/* Sheet handle - visible for mobile UX */
+.bottom-sheet .sheet-handle {
+  display: block;
 }
 
 /* Summary row - clickable (entire header) */

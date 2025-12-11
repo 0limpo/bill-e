@@ -587,7 +587,9 @@ async def poll_session(session_id: str, last_update: str = None):
             "has_changes": True,
             "participants": session_data["participants"],
             "assignments": session_data["assignments"],
+            "items": session_data["items"],  # Include items for mode/name/price sync
             "status": session_data["status"],
+            "totals": session_data.get("totals"),  # Include totals for finalized state
             "last_updated": current_update,
             "last_updated_by": session_data.get("last_updated_by", "")
         }
@@ -639,6 +641,8 @@ async def update_item(session_id: str, request: Request):
                     item["price"] = updates["price"]
                 if "quantity" in updates:
                     item["quantity"] = updates["quantity"]
+                if "mode" in updates:
+                    item["mode"] = updates["mode"]  # "individual" or "group"
                 break
 
         # Recalcular subtotal
@@ -945,7 +949,8 @@ async def add_item_to_session(session_id: str, request: Request):
             "id": f"manual_{uuid.uuid4().hex[:8]}",
             "name": data.get("name", "Item"),
             "quantity": data.get("quantity", 1),
-            "price": data.get("price", 0)
+            "price": data.get("price", 0),
+            "mode": data.get("mode", "individual")  # Default to individual mode
         }
 
         session_data["items"].append(new_item)

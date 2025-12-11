@@ -28,6 +28,7 @@ class Item(BaseModel):
     price: float
     quantity: float = 1  # Float to support fractional assignments (e.g., 0.33 for 3-way split)
     assigned_to: List[str] = []
+    mode: str = "individual"  # "individual" or "group" - synced across all participants
 
 class SessionData(BaseModel):
     session_id: str
