@@ -305,9 +305,12 @@ body {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-main);
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
   flex-shrink: 1;
   min-width: 0;
 }

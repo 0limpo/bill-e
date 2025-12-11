@@ -939,10 +939,38 @@ const CollaborativeSession = () => {
   };
 
   const toggleItemMode = (itemId) => {
+    lastInteraction.current = Date.now();
+
+    // Get current assignees before clearing
+    const currentAssignments = session.assignments[itemId] || [];
+    const assigneeIds = currentAssignments.map(a => a.participant_id);
+
+    // 1. Update mode state
     setItemModes(prev => ({
       ...prev,
       [itemId]: prev[itemId] === 'grupal' ? 'individual' : 'grupal'
     }));
+
+    // 2. Hard reset: Clear all assignments for this item (optimistic UI)
+    setSession(prev => ({
+      ...prev,
+      assignments: { ...prev.assignments, [itemId]: [] }
+    }));
+
+    // 3. Send API calls to clear assignments for all previous assignees
+    for (const pid of assigneeIds) {
+      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: itemId,
+          participant_id: pid,
+          quantity: 0,
+          is_assigned: false,
+          updated_by: currentParticipant?.name
+        })
+      }).catch(console.error);
+    }
   };
 
   const handleAddNewItem = async () => {
