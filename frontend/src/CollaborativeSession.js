@@ -48,9 +48,55 @@ const Avatar = ({ name, size = 'medium', className = '' }) => (
 // Selection Screen - Pick existing participant or create new
 const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoading }) => {
   const [showNewForm, setShowNewForm] = useState(false);
+  const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
 
+  // Filter out the host - editors can't claim the host avatar
+  const editableParticipants = participants.filter(p => p.role !== 'owner');
+
+  // Phone confirmation screen for existing participant
+  if (selectedParticipant) {
+    return (
+      <div className="join-screen">
+        <div className="join-card">
+          <div
+            className="join-avatar-large"
+            style={{ backgroundColor: getAvatarColor(selectedParticipant.name) }}
+          >
+            {getInitials(selectedParticipant.name)}
+          </div>
+          <h1>Hola, {selectedParticipant.name}</h1>
+          <p>Confirma tu teléfono para continuar</p>
+
+          <input
+            className="join-input"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Tu Teléfono"
+            autoFocus
+          />
+
+          <button
+            className="btn-main"
+            onClick={() => onSelectParticipant(selectedParticipant, phone)}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Entrando...' : 'Confirmar y Entrar'}
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => { setSelectedParticipant(null); setPhone(''); }}
+          >
+            ← Volver
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // New participant form
   if (showNewForm) {
     return (
       <div className="join-screen">
@@ -101,11 +147,11 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
         <p>Selecciona tu nombre de la lista</p>
 
         <div className="selection-grid">
-          {participants.map(p => (
+          {editableParticipants.map(p => (
             <button
               key={p.id}
               className="selection-avatar-btn"
-              onClick={() => onSelectParticipant(p)}
+              onClick={() => setSelectedParticipant(p)}
             >
               <div
                 className="selection-avatar"
@@ -114,7 +160,6 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
                 {getInitials(p.name)}
               </div>
               <span className="selection-name">{p.name}</span>
-              {p.role === 'owner' && <span className="selection-badge">Host</span>}
             </button>
           ))}
         </div>
@@ -297,51 +342,55 @@ const BillItem = ({
   const remaining = Math.max(0, (item.quantity || 1) - totalAssigned);
 
   const isEditing = item.isEditing;
+  const qty = item.quantity || 1;
+  const unitPrice = item.price;
+  const totalPrice = unitPrice * qty;
 
-  const handleSaveField = (field, value) => {
-    onEditItem(itemId, { [field]: value });
-    onToggleEdit(itemId);
-  };
-
-  const canEdit = isOwner && !isFinalized;
+  const canEditItem = isOwner && !isFinalized;
 
   return (
-    <div className={`bill-item ${isAssignedToMe ? 'selected' : ''} ${isFinalized ? 'finalized' : ''}`}>
-      <div className="item-header">
-        <div className="item-info" onClick={() => canEdit && !isEditing && onToggleEdit(itemId)}>
+    <>
+      {/* Edit backdrop - click outside to save */}
+      {isEditing && (
+        <div className="edit-backdrop" onClick={() => onToggleEdit(itemId)} />
+      )}
+
+      <div className={`bill-item ${isAssignedToMe ? 'selected' : ''} ${isFinalized ? 'finalized' : ''} ${isEditing ? 'editing' : ''}`}>
+        {/* GRID LAYOUT: Qty | Name | Price */}
+        <div className="item-header" onClick={() => canEditItem && !isEditing && onToggleEdit(itemId)}>
           {isEditing ? (
-            <EditableInput
-              type="text"
-              initialValue={item.name}
-              className="item-edit-input"
-              defaultValue="Item"
-              onSave={(val) => handleSaveField('name', val)}
-            />
-          ) : (
-            <span className={`item-name ${canEdit ? 'editable' : ''}`}>{item.name}</span>
-          )}
-          {isEditing ? (
+            // EDIT MODE - Clean row with inputs
             <div className="item-edit-form" onClick={(e) => e.stopPropagation()}>
               <div className="item-edit-row">
                 <div className="item-edit-field">
-                  <label className="item-edit-label">Cantidad</label>
+                  <label className="item-edit-label">Cant.</label>
                   <EditableInput
                     type="number"
-                    initialValue={item.quantity || 1}
+                    initialValue={qty}
                     className="item-edit-input qty"
                     defaultValue={1}
-                    onSave={(val) => handleSaveField('quantity', Math.max(1, Math.round(val)))}
+                    onSave={(val) => { onEditItem(itemId, { quantity: Math.max(1, Math.round(val)) }); }}
                   />
                 </div>
                 <span className="item-edit-x">×</span>
+                <div className="item-edit-field flex-1">
+                  <label className="item-edit-label">Nombre</label>
+                  <EditableInput
+                    type="text"
+                    initialValue={item.name}
+                    className="item-edit-input name"
+                    defaultValue="Item"
+                    onSave={(val) => { onEditItem(itemId, { name: val }); }}
+                  />
+                </div>
                 <div className="item-edit-field">
-                  <label className="item-edit-label">Precio Unitario ($)</label>
+                  <label className="item-edit-label">$ c/u</label>
                   <EditableInput
                     type="number"
-                    initialValue={item.price}
+                    initialValue={unitPrice}
                     className="item-edit-input price"
                     defaultValue={0}
-                    onSave={(val) => handleSaveField('price', val)}
+                    onSave={(val) => { onEditItem(itemId, { price: val }); }}
                   />
                 </div>
                 <button
@@ -352,20 +401,27 @@ const BillItem = ({
                   🗑️
                 </button>
               </div>
-              {/* Helper text showing calculated line total */}
               <div className="item-edit-helper">
-                Total Línea: <strong>{formatCurrency(item.price * (item.quantity || 1))}</strong>
+                Total: <strong>{formatCurrency(totalPrice)}</strong>
               </div>
             </div>
           ) : (
-            <div className="item-meta">
-              <span className="item-qty-badge">{item.quantity || 1}x</span>
-              <span className={`item-price ${canEdit ? 'editable' : ''}`}>{formatCurrency(item.price * (item.quantity || 1))}</span>
-            </div>
+            // VIEW MODE - Grid: Qty | Name | Price
+            <>
+              <span className="item-qty-badge">{qty}x</span>
+              <span className={`item-name ${canEditItem ? 'editable' : ''}`}>{item.name}</span>
+              <div className="item-price-col">
+                <span className={`item-price ${canEditItem ? 'editable' : ''}`}>{formatCurrency(totalPrice)}</span>
+                {qty > 1 && (
+                  <span className="item-unit-price">{formatCurrency(unitPrice)} c/u</span>
+                )}
+              </div>
+            </>
           )}
         </div>
 
-        {((item.quantity > 1) || isOwner) && !isFinalized && !isEditing && (
+        {/* Mode switch & controls - only when not editing */}
+        {!isEditing && ((qty > 1) || isOwner) && !isFinalized && (
            <div className="item-mode-switch">
              <div
                 className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
@@ -392,73 +448,73 @@ const BillItem = ({
             ✂️ Separar
           </button>
         )}
-      </div>
 
-      {/* HORIZONTAL SCROLL LIST - Both modes use same layout */}
-      <div className="consumer-scroll-list">
-        {participants.map(p => {
-          const assignment = itemAssignments.find(a => a.participant_id === p.id);
-          const qty = assignment?.quantity || 0;
-          const isAssigned = qty > 0;
-          const canEdit = !isFinalized && (isOwner || p.id === currentParticipant?.id);
-          const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
+        {/* HORIZONTAL SCROLL LIST - Both modes use same layout */}
+        <div className="consumer-scroll-list">
+          {participants.map(p => {
+            const assignment = itemAssignments.find(a => a.participant_id === p.id);
+            const pQty = assignment?.quantity || 0;
+            const isAssigned = pQty > 0;
+            const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
+            const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
 
-          return (
-            <div
-              key={p.id}
-              className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
-            >
-              {itemMode === 'grupal' ? (
-                // MODO GRUPAL: Simple toggle, splits evenly (1/N) among all assignees
-                <div
-                  className="avatar-wrapper"
-                  onClick={() => canEdit && onGroupAssign(itemId, p.id, !isAssigned)}
-                  style={{ position: 'relative', cursor: canEdit ? 'pointer' : 'default' }}
-                >
-                  <Avatar name={p.name} />
-                  {isAssigned && <span className="check-badge">✓</span>}
-                </div>
-              ) : (
-                // MODO INDIVIDUAL: Specific quantities per person
-                <div
-                  className="avatar-wrapper"
-                  onClick={() => canEdit && !isAssigned && onAssign(itemId, p.id, 1, true)}
-                  style={{ position: 'relative', cursor: canEdit && !isAssigned ? 'pointer' : 'default' }}
-                >
-                  <Avatar name={p.name} />
-                  {isAssigned && <span className="check-badge">✓</span>}
-                </div>
-              )}
-              <span className="consumer-name">{displayName}</span>
+            return (
+              <div
+                key={p.id}
+                className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
+              >
+                {itemMode === 'grupal' ? (
+                  // MODO GRUPAL: Simple toggle, splits evenly (1/N) among all assignees
+                  <div
+                    className="avatar-wrapper"
+                    onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
+                    style={{ position: 'relative', cursor: canAssign ? 'pointer' : 'default' }}
+                  >
+                    <Avatar name={p.name} />
+                    {isAssigned && <span className="check-badge">✓</span>}
+                  </div>
+                ) : (
+                  // MODO INDIVIDUAL: Specific quantities per person
+                  <div
+                    className="avatar-wrapper"
+                    onClick={() => canAssign && !isAssigned && onAssign(itemId, p.id, 1, true)}
+                    style={{ position: 'relative', cursor: canAssign && !isAssigned ? 'pointer' : 'default' }}
+                  >
+                    <Avatar name={p.name} />
+                    {isAssigned && <span className="check-badge">✓</span>}
+                  </div>
+                )}
+                <span className="consumer-name">{displayName}</span>
 
-              {/* Stepper only in Individual mode when assigned */}
-              {itemMode !== 'grupal' && isAssigned && (
-                <div className="stepper-compact">
-                  <button
-                    className="stepper-btn"
-                    disabled={!canEdit || qty <= 0}
-                    onClick={() => onAssign(itemId, p.id, qty - 1, qty - 1 > 0)}
-                  >−</button>
-                  <span className="stepper-val">{qty}</span>
-                  <button
-                    className="stepper-btn"
-                    disabled={!canEdit || remaining <= 0}
-                    onClick={() => onAssign(itemId, p.id, qty + 1, true)}
-                  >+</button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Warning for Individual mode when items not fully assigned */}
-      {itemMode !== 'grupal' && remaining > 0 && totalAssigned > 0 && (
-        <div className="grupal-warning">
-          ⚠️ Faltan {remaining} por asignar
+                {/* Stepper only in Individual mode when assigned */}
+                {itemMode !== 'grupal' && isAssigned && (
+                  <div className="stepper-compact">
+                    <button
+                      className="stepper-btn"
+                      disabled={!canAssign || pQty <= 0}
+                      onClick={() => onAssign(itemId, p.id, pQty - 1, pQty - 1 > 0)}
+                    >−</button>
+                    <span className="stepper-val">{pQty}</span>
+                    <button
+                      className="stepper-btn"
+                      disabled={!canAssign || remaining <= 0}
+                      onClick={() => onAssign(itemId, p.id, pQty + 1, true)}
+                    >+</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
-      )}
-    </div>
+
+        {/* Warning for Individual mode when items not fully assigned */}
+        {itemMode !== 'grupal' && remaining > 0 && totalAssigned > 0 && (
+          <div className="grupal-warning">
+            ⚠️ Faltan {remaining} por asignar
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 
@@ -1132,8 +1188,12 @@ const CollaborativeSession = () => {
     }
   };
 
-  // Handler for selecting existing participant
-  const handleSelectParticipant = (participant) => {
+  // Handler for selecting existing participant (with phone confirmation)
+  const handleSelectParticipant = (participant, phone) => {
+    // Store phone if provided (for future use/validation)
+    if (phone) {
+      console.log(`Participant ${participant.name} confirmed with phone: ${phone}`);
+    }
     setCurrentParticipant(participant);
   };
 
@@ -1251,6 +1311,11 @@ const CollaborativeSession = () => {
 
       {/* BOTTOM SHEET (Interactive Expandable) */}
       <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
+        {/* Visual Handle - Click to toggle */}
+        <div
+          className="sheet-handle"
+          onClick={() => !isFinalized && setIsSheetExpanded(!isSheetExpanded)}
+        />
 
         {isFinalized ? (
           // ============ FINALIZED VIEW (Always Expanded) ============
