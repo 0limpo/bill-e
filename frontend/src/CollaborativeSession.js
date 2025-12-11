@@ -45,39 +45,85 @@ const Avatar = ({ name, size = 'medium', className = '' }) => (
   </div>
 );
 
-const JoinScreen = ({ onJoin, isLoading }) => {
+// Selection Screen - Pick existing participant or create new
+const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoading }) => {
+  const [showNewForm, setShowNewForm] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
 
+  if (showNewForm) {
+    return (
+      <div className="join-screen">
+        <div className="join-card">
+          <div className="join-icon">✨</div>
+          <h1>Nuevo Participante</h1>
+          <p>Ingresa tus datos para unirte</p>
+
+          <input
+            className="join-input"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Tu Nombre"
+            autoFocus
+          />
+          <input
+            className="join-input"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="Tu Teléfono (opcional)"
+          />
+
+          <button
+            className="btn-main"
+            onClick={() => onCreateNew(name, phone)}
+            disabled={isLoading || !name.trim()}
+          >
+            {isLoading ? 'Uniendo...' : 'Unirme a la mesa'}
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => setShowNewForm(false)}
+          >
+            ← Volver
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="join-screen">
-      <div className="join-card">
+      <div className="join-card selection-card">
         <div className="join-icon">👋</div>
-        <h1>Bienvenido</h1>
-        <p>Ingresa tus datos para unirte a la cuenta</p>
-        
-        <input
-          className="join-input"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Tu Nombre"
-          autoFocus
-        />
-        <input
-          className="join-input"
-          type="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="Tu Teléfono (para el total)"
-        />
-        
-        <button 
-          className="btn-main" 
-          onClick={() => onJoin(name, phone)}
-          disabled={isLoading || !name.trim()}
+        <h1>¿Quién eres?</h1>
+        <p>Selecciona tu nombre de la lista</p>
+
+        <div className="selection-grid">
+          {participants.map(p => (
+            <button
+              key={p.id}
+              className="selection-avatar-btn"
+              onClick={() => onSelectParticipant(p)}
+            >
+              <div
+                className="selection-avatar"
+                style={{ backgroundColor: getAvatarColor(p.name) }}
+              >
+                {getInitials(p.name)}
+              </div>
+              <span className="selection-name">{p.name}</span>
+              {p.role === 'owner' && <span className="selection-badge">Host</span>}
+            </button>
+          ))}
+        </div>
+
+        <button
+          className="btn-new-participant"
+          onClick={() => setShowNewForm(true)}
         >
-          {isLoading ? 'Uniendo...' : 'Entrar a la mesa'}
+          + No estoy en la lista
         </button>
       </div>
     </div>
@@ -257,10 +303,12 @@ const BillItem = ({
     onToggleEdit(itemId);
   };
 
+  const canEdit = isOwner && !isFinalized;
+
   return (
     <div className={`bill-item ${isAssignedToMe ? 'selected' : ''} ${isFinalized ? 'finalized' : ''}`}>
       <div className="item-header">
-        <div className="item-info">
+        <div className="item-info" onClick={() => canEdit && !isEditing && onToggleEdit(itemId)}>
           {isEditing ? (
             <EditableInput
               type="text"
@@ -270,10 +318,10 @@ const BillItem = ({
               onSave={(val) => handleSaveField('name', val)}
             />
           ) : (
-            <span className="item-name">{item.name}</span>
+            <span className={`item-name ${canEdit ? 'editable' : ''}`}>{item.name}</span>
           )}
           {isEditing ? (
-            <div className="item-edit-form">
+            <div className="item-edit-form" onClick={(e) => e.stopPropagation()}>
               <div className="item-edit-row">
                 <div className="item-edit-field">
                   <label className="item-edit-label">Cantidad</label>
@@ -312,17 +360,11 @@ const BillItem = ({
           ) : (
             <div className="item-meta">
               <span className="item-qty-badge">{item.quantity || 1}x</span>
-              <span className="item-price">{formatCurrency(item.price * (item.quantity || 1))}</span>
+              <span className={`item-price ${canEdit ? 'editable' : ''}`}>{formatCurrency(item.price * (item.quantity || 1))}</span>
             </div>
           )}
         </div>
-        
-        {isOwner && !isFinalized && (
-          <button className="item-edit-btn" onClick={() => onToggleEdit(itemId)}>
-            {!isEditing && '✏️'}
-          </button>
-        )}
-        
+
         {((item.quantity > 1) || isOwner) && !isFinalized && !isEditing && (
            <div className="item-mode-switch">
              <div
@@ -693,28 +735,20 @@ const CollaborativeSession = () => {
     } catch (err) { alert('Error al finalizar'); }
   };
 
-  // WhatsApp Share - Text only summary
+  // WhatsApp Share - Text only summary (using api.whatsapp.com for better compatibility)
   const handleShareWhatsapp = () => {
     if (!session?.totals) return;
 
-    let text = `🧾 Resumen Cuenta - Mesa #${sessionId.slice(0, 4)}\n\n`;
+    let text = `🧾 *Resumen Bill-e*\n\n`;
 
     session.totals.forEach(t => {
       text += `${t.name}: ${formatCurrency(t.total)}\n`;
     });
 
-    text += `----------------\n`;
-    text += `Total: ${formatCurrency(session.total)}\n\n`;
-    text += `Generado por Bill-e 🤖`;
+    text += `\n*Total: ${formatCurrency(session.total)}*`;
 
-    // Try native share first, fallback to WhatsApp URL
-    if (navigator.share) {
-      navigator.share({ text }).catch(() => {
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-      });
-    } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    }
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   // Reopen a finalized session
@@ -1098,11 +1132,27 @@ const CollaborativeSession = () => {
     }
   };
 
+  // Handler for selecting existing participant
+  const handleSelectParticipant = (participant) => {
+    setCurrentParticipant(participant);
+  };
+
   // --- RENDER ---
 
   if (loading) return <div className="join-screen"><div className="spinner"></div></div>;
   if (error) return <div className="join-screen"><h3>⚠️ Error: {error}</h3></div>;
-  if (!isOwner && !currentParticipant) return <JoinScreen onJoin={handleJoin} isLoading={joining} />;
+
+  // Show SelectionScreen for non-owners who haven't identified themselves
+  if (!isOwner && !currentParticipant && session) {
+    return (
+      <SelectionScreen
+        participants={session.participants}
+        onSelectParticipant={handleSelectParticipant}
+        onCreateNew={handleJoin}
+        isLoading={joining}
+      />
+    );
+  }
 
   // Helper for finalized totals
   const getMyFinalTotal = () => {
@@ -1151,8 +1201,8 @@ const CollaborativeSession = () => {
       {/* LISTA PARTICIPANTES - Right at the top */}
       <div className="participants-section">
         <div className="participants-list">
-           {/* Add button first (ghost avatar style) */}
-           {isOwner && (
+           {/* Add button first (ghost avatar style) - Anyone can add participants */}
+           {!isFinalized && (
              <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)} />
            )}
            {session.participants.map(p => (
@@ -1203,23 +1253,18 @@ const CollaborativeSession = () => {
       <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
 
         {isFinalized ? (
-          // ============ FINALIZED VIEW ============
+          // ============ FINALIZED VIEW (Always Expanded) ============
           <>
-            {/* Header - Clickable to toggle */}
-            <div
-              className="sheet-summary-row clickable"
-              onClick={() => setIsSheetExpanded(!isSheetExpanded)}
-            >
+            {/* Header */}
+            <div className="sheet-summary-row">
               <div className="sheet-column">
                 <span className="my-total-label finalized-label">🎉 ¡Cuenta Cerrada!</span>
-                <small className="sheet-subtitle">Toca para ver desglose</small>
               </div>
               <span className="my-total-amount">{formatCurrency(session.total)}</span>
             </div>
 
-            {/* Expanded: Breakdown + Share (ONLY when finalized) */}
-            {isSheetExpanded && (
-              <div className="sheet-expanded-content">
+            {/* Always show breakdown when finalized */}
+            <div className="sheet-expanded-content">
                 {/* Breakdown List */}
                 {session.totals && session.totals.length > 0 && (
                   <div className="sheet-breakdown">
@@ -1262,7 +1307,6 @@ const CollaborativeSession = () => {
                   </button>
                 )}
               </div>
-            )}
           </>
         ) : (
           // ============ ACTIVE VIEW ============
