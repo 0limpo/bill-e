@@ -445,9 +445,24 @@ const BillItem = ({
 
         {/* Grupal options for items with qty > 1 */}
         {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (() => {
-          const allAssigned = participants.length > 0 &&
+          // Check if assigned via parent item (Entre todos mode)
+          const allAssignedToParent = participants.length > 0 &&
             participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
-          const isEntreTodos = allAssigned && !isExpanded;
+
+          // Check if any unit has assignments (Por unidad mode)
+          let hasUnitAssignments = false;
+          for (let i = 0; i < qty; i++) {
+            const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
+            if (unitAssigns.length > 0) {
+              hasUnitAssignments = true;
+              break;
+            }
+          }
+
+          // "Entre todos" is active if all assigned to parent AND no unit assignments
+          const isEntreTodos = allAssignedToParent && !hasUnitAssignments && !isExpanded;
+          // "Por unidad" is active if expanded OR has unit assignments
+          const isPorUnidad = isExpanded || hasUnitAssignments;
 
           return (
             <div className="grupal-options">
@@ -457,6 +472,13 @@ const BillItem = ({
                   className={`grupal-switch-option ${isEntreTodos ? 'active' : ''}`}
                   onClick={() => {
                     if (!isEntreTodos) {
+                      // Clear unit assignments first, then assign all to parent
+                      for (let i = 0; i < qty; i++) {
+                        const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
+                        unitAssigns.forEach(a => {
+                          onUnitAssign(itemId, i, a.participant_id, false);
+                        });
+                      }
                       onGroupAssign(itemId, '__ALL__', true);
                       if (isExpanded) onToggleExpand(itemId); // Collapse if open
                     }
@@ -465,10 +487,10 @@ const BillItem = ({
                   👥 Entre todos
                 </div>
                 <div
-                  className={`grupal-switch-option ${!isEntreTodos ? 'active' : ''}`}
+                  className={`grupal-switch-option ${isPorUnidad ? 'active' : ''}`}
                   onClick={() => {
                     if (isEntreTodos) {
-                      // Clear all and switch to per-unit mode
+                      // Clear parent assignment when switching to per-unit mode
                       onGroupAssign(itemId, '__ALL__', true); // Toggle off
                     }
                     if (!isExpanded) onToggleExpand(itemId);
@@ -481,13 +503,15 @@ const BillItem = ({
           );
         })()}
 
-        {/* EXPANDED TREE VIEW - Show participants for the whole item (Entre todos mode can expand too) */}
+        {/* EXPANDED TREE VIEW - Per-unit independent assignments */}
         {isExpanded && itemMode === 'grupal' && qty > 1 ? (
           <div className="expanded-tree">
             {Array.from({ length: qty }, (_, unitIndex) => {
               const unitNum = unitIndex + 1;
-              // In expanded view, show participants assigned to the PARENT item
-              // Each participant toggle affects the parent item assignment
+              const unitId = `${itemId}_unit_${unitIndex}`;
+              // Get assignments for THIS specific unit (independent per unit)
+              const unitAssignments = assignments[unitId] || [];
+
               return (
                 <div key={unitIndex} className="tree-unit">
                   <div className="tree-connector"></div>
@@ -495,16 +519,16 @@ const BillItem = ({
                     <span className="tree-unit-label">Unidad {unitNum}</span>
                     <div className="tree-unit-assignees">
                       {participants.map(p => {
-                        // Check parent item assignment
-                        const parentAssignment = itemAssignments.find(a => a.participant_id === p.id);
-                        const isAssigned = parentAssignment && parentAssignment.quantity > 0;
+                        // Check THIS unit's assignment (not parent item)
+                        const unitAssignment = unitAssignments.find(a => a.participant_id === p.id);
+                        const isAssigned = unitAssignment && unitAssignment.quantity > 0;
                         const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
 
                         return (
                           <div
                             key={p.id}
                             className={`tree-assignee ${isAssigned ? 'assigned' : 'dimmed'}`}
-                            onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
+                            onClick={() => canAssign && onUnitAssign(itemId, unitIndex, p.id, !isAssigned)}
                             style={{ cursor: canAssign ? 'pointer' : 'default' }}
                           >
                             <Avatar name={p.name} size="small" />
@@ -519,29 +543,44 @@ const BillItem = ({
             })}
           </div>
         ) : itemMode === 'grupal' && qty > 1 ? (
-          /* COLLAPSED GRUPAL VIEW - Show summary of who's assigned */
-          <div className="grupal-summary">
-            {itemAssignments.length > 0 ? (
-              <div className="assigned-avatars">
-                {itemAssignments.map(a => {
-                  const p = participants.find(p => p.id === a.participant_id);
-                  if (!p) return null;
-                  return (
-                    <div key={p.id} className="assigned-avatar-small">
-                      <Avatar name={p.name} size="small" />
-                    </div>
-                  );
-                })}
-                <span className="assigned-label">
-                  {itemAssignments.length === participants.length
-                    ? '✓ Entre todos'
-                    : `✓ ${itemAssignments.length} personas`}
-                </span>
+          /* COLLAPSED GRUPAL VIEW - Show summary combining parent + unit assignments */
+          (() => {
+            // Collect all unique assignees from parent item AND all unit assignments
+            const allAssigneeIds = new Set();
+            // Check parent item
+            itemAssignments.forEach(a => allAssigneeIds.add(a.participant_id));
+            // Check each unit
+            for (let i = 0; i < qty; i++) {
+              const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
+              unitAssigns.forEach(a => allAssigneeIds.add(a.participant_id));
+            }
+            const uniqueAssignees = Array.from(allAssigneeIds);
+
+            return (
+              <div className="grupal-summary">
+                {uniqueAssignees.length > 0 ? (
+                  <div className="assigned-avatars">
+                    {uniqueAssignees.map(pid => {
+                      const p = participants.find(p => p.id === pid);
+                      if (!p) return null;
+                      return (
+                        <div key={p.id} className="assigned-avatar-small">
+                          <Avatar name={p.name} size="small" />
+                        </div>
+                      );
+                    })}
+                    <span className="assigned-label">
+                      {uniqueAssignees.length === participants.length
+                        ? '✓ Entre todos'
+                        : `✓ ${uniqueAssignees.length} personas`}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="no-assigned-label">Sin asignar - usa los botones arriba</span>
+                )}
               </div>
-            ) : (
-              <span className="no-assigned-label">Sin asignar - usa los botones arriba</span>
-            )}
-          </div>
+            );
+          })()
         ) : (
           /* HORIZONTAL SCROLL LIST - Normal view (individual mode or grupal qty=1) */
           <div className="consumer-scroll-list">
