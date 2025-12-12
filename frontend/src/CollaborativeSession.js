@@ -335,8 +335,9 @@ const BillItem = ({
   isFinalized,
   onEditItem,
   onToggleEdit,
-  onSplitItem,
-  onDeleteItem
+  onDeleteItem,
+  isExpanded,
+  onToggleExpand
 }) => {
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
@@ -441,74 +442,119 @@ const BillItem = ({
            </div>
         )}
 
-        {/* Split Item Button - Only in Grupal mode for items with qty > 1 */}
-        {isOwner && !isFinalized && !isEditing && item.quantity > 1 && itemMode === 'grupal' && (
+        {/* Expand/Collapse Chevron - Only for grupal items with qty > 1 */}
+        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && (
           <button
-            className="split-item-btn"
-            onClick={() => onSplitItem(itemId)}
-            title="Separar en items individuales"
+            className="expand-tree-btn"
+            onClick={() => onToggleExpand(itemId)}
+            title={isExpanded ? "Colapsar" : "Expandir para asignar individualmente"}
           >
-            ✂️ Separar
+            <span className={`chevron ${isExpanded ? 'expanded' : ''}`}>▼</span>
+            <span className="expand-label">{isExpanded ? 'Colapsar' : 'Ver unidades'}</span>
           </button>
         )}
 
-        {/* HORIZONTAL SCROLL LIST - Both modes use same layout */}
-        <div className="consumer-scroll-list">
-          {participants.map(p => {
-            const assignment = itemAssignments.find(a => a.participant_id === p.id);
-            const pQty = assignment?.quantity || 0;
-            const isAssigned = pQty > 0;
-            const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
-            const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
+        {/* EXPANDED TREE VIEW - Show N sub-items for grupal with qty > 1 */}
+        {isExpanded && itemMode === 'grupal' && qty > 1 ? (
+          <div className="expanded-tree">
+            {Array.from({ length: qty }, (_, unitIndex) => {
+              // Each sub-unit can have its own assignees
+              // For now, we show all participants and let them claim each unit
+              const unitNum = unitIndex + 1;
+              return (
+                <div key={unitIndex} className="tree-unit">
+                  <div className="tree-connector"></div>
+                  <div className="tree-unit-content">
+                    <span className="tree-unit-label">Unidad {unitNum}</span>
+                    <div className="tree-unit-assignees">
+                      {participants.map(p => {
+                        // Check if this participant is assigned to this specific unit
+                        // Using quantity fractions: if assigned qty >= unitNum, they have this unit
+                        const assignment = itemAssignments.find(a => a.participant_id === p.id);
+                        const pQty = assignment?.quantity || 0;
+                        // Simple logic: participant has unit N if their qty >= N/total (proportional)
+                        // Or simpler: show checkmark if they're assigned to the whole item
+                        const isAssigned = pQty > 0;
+                        const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
+                        const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
 
-            return (
-              <div
-                key={p.id}
-                className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
-              >
-                {itemMode === 'grupal' ? (
-                  // MODO GRUPAL: Simple toggle, splits evenly (1/N) among all assignees
-                  <div
-                    className="avatar-wrapper"
-                    onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
-                    style={{ position: 'relative', cursor: canAssign ? 'pointer' : 'default' }}
-                  >
-                    <Avatar name={p.name} />
-                    {isAssigned && <span className="check-badge">✓</span>}
+                        return (
+                          <div
+                            key={p.id}
+                            className={`tree-assignee ${isAssigned ? 'assigned' : 'dimmed'}`}
+                            onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
+                            style={{ cursor: canAssign ? 'pointer' : 'default' }}
+                          >
+                            <Avatar name={p.name} size="small" />
+                            {isAssigned && <span className="check-badge small">✓</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                ) : (
-                  // MODO INDIVIDUAL: Specific quantities per person
-                  <div
-                    className="avatar-wrapper"
-                    onClick={() => canAssign && !isAssigned && remaining > 0 && onAssign(itemId, p.id, 1, true)}
-                    style={{ position: 'relative', cursor: canAssign && !isAssigned && remaining > 0 ? 'pointer' : 'default' }}
-                  >
-                    <Avatar name={p.name} />
-                    {isAssigned && <span className="check-badge">✓</span>}
-                  </div>
-                )}
-                <span className="consumer-name">{displayName}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* HORIZONTAL SCROLL LIST - Normal view */
+          <div className="consumer-scroll-list">
+            {participants.map(p => {
+              const assignment = itemAssignments.find(a => a.participant_id === p.id);
+              const pQty = assignment?.quantity || 0;
+              const isAssigned = pQty > 0;
+              const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
+              const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
 
-                {/* Stepper only in Individual mode when assigned */}
-                {itemMode !== 'grupal' && isAssigned && (
-                  <div className="stepper-compact">
-                    <button
-                      className="stepper-btn"
-                      disabled={!canAssign || pQty <= 0}
-                      onClick={() => onAssign(itemId, p.id, Math.max(0, Math.round(pQty) - 1), Math.round(pQty) - 1 > 0)}
-                    >−</button>
-                    <span className="stepper-val">{Math.round(pQty)}</span>
-                    <button
-                      className="stepper-btn"
-                      disabled={!canAssign || remaining <= 0}
-                      onClick={() => onAssign(itemId, p.id, Math.round(pQty) + 1, true)}
-                    >+</button>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+              return (
+                <div
+                  key={p.id}
+                  className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
+                >
+                  {itemMode === 'grupal' ? (
+                    // MODO GRUPAL: Simple toggle, splits evenly (1/N) among all assignees
+                    <div
+                      className="avatar-wrapper"
+                      onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
+                      style={{ position: 'relative', cursor: canAssign ? 'pointer' : 'default' }}
+                    >
+                      <Avatar name={p.name} />
+                      {isAssigned && <span className="check-badge">✓</span>}
+                    </div>
+                  ) : (
+                    // MODO INDIVIDUAL: Specific quantities per person
+                    <div
+                      className="avatar-wrapper"
+                      onClick={() => canAssign && !isAssigned && remaining > 0 && onAssign(itemId, p.id, 1, true)}
+                      style={{ position: 'relative', cursor: canAssign && !isAssigned && remaining > 0 ? 'pointer' : 'default' }}
+                    >
+                      <Avatar name={p.name} />
+                      {isAssigned && <span className="check-badge">✓</span>}
+                    </div>
+                  )}
+                  <span className="consumer-name">{displayName}</span>
+
+                  {/* Stepper only in Individual mode when assigned */}
+                  {itemMode !== 'grupal' && isAssigned && (
+                    <div className="stepper-compact">
+                      <button
+                        className="stepper-btn"
+                        disabled={!canAssign || pQty <= 0}
+                        onClick={() => onAssign(itemId, p.id, Math.max(0, Math.round(pQty) - 1), Math.round(pQty) - 1 > 0)}
+                      >−</button>
+                      <span className="stepper-val">{Math.round(pQty)}</span>
+                      <button
+                        className="stepper-btn"
+                        disabled={!canAssign || remaining <= 0}
+                        onClick={() => onAssign(itemId, p.id, Math.round(pQty) + 1, true)}
+                      >+</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Warning for Individual mode when items not fully assigned */}
         {itemMode !== 'grupal' && remaining > 0 && totalAssigned > 0 && (
@@ -551,6 +597,9 @@ const CollaborativeSession = () => {
   // Participant management modal
   const [editingParticipant, setEditingParticipant] = useState(null);
   const [editParticipantName, setEditParticipantName] = useState('');
+
+  // Expanded items for grupal tree view (visual only, no backend change)
+  const [expandedItems, setExpandedItems] = useState({});
 
   // Interaction lock to prevent polling race condition
   const lastInteraction = useRef(0);
@@ -859,78 +908,6 @@ const CollaborativeSession = () => {
       // Rollback
       await loadSession();
       alert('Error al reabrir la mesa');
-    }
-  };
-
-  // Split/Expand a group item into N individual items (1 unit each)
-  // Example: 3x Pizza → 3 separate 1x Pizza items (all grupal mode)
-  const handleSplitItem = async (itemId) => {
-    lastInteraction.current = Date.now();
-    const item = session.items.find(i => (i.id || i.name) === itemId);
-    if (!item || item.quantity <= 1) return;
-
-    const originalQty = Math.floor(item.quantity);
-    const unitPrice = item.price;
-    const itemName = item.name;
-
-    // Optimistic update: Replace original item with N items of qty=1
-    setSession(prev => {
-      const originalIndex = prev.items.findIndex(i => (i.id || i.name) === itemId);
-      if (originalIndex === -1) return prev;
-
-      const newItems = [...prev.items];
-
-      // Remove original item
-      newItems.splice(originalIndex, 1);
-
-      // Create N new items (one for each unit)
-      const expandedItems = [];
-      for (let i = 0; i < originalQty; i++) {
-        expandedItems.push({
-          id: `split_temp_${Date.now()}_${i}`,
-          name: itemName,
-          quantity: 1,
-          price: unitPrice,
-          mode: 'grupal',  // All are grupal for group assignment
-          isSplitChild: i > 0  // First one is "parent", rest are children
-        });
-      }
-
-      // Insert all expanded items at original position
-      newItems.splice(originalIndex, 0, ...expandedItems);
-
-      // Remove assignments for original item
-      const newAssignments = { ...prev.assignments };
-      delete newAssignments[itemId];
-
-      return {
-        ...prev,
-        items: newItems,
-        assignments: newAssignments
-      };
-    });
-
-    // API call to expand item
-    try {
-      const res = await fetch(`${API_URL}/api/session/${sessionId}/split-item`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          owner_token: ownerToken,
-          item_id: itemId
-        })
-      });
-
-      if (res.ok) {
-        // Reload to get server state with proper IDs
-        await loadSession();
-      } else {
-        console.error('Error splitting item:', await res.text());
-        await loadSession(); // Rollback
-      }
-    } catch (err) {
-      console.error('Error splitting item:', err);
-      await loadSession(); // Rollback on error
     }
   };
 
@@ -1424,44 +1401,30 @@ const CollaborativeSession = () => {
       {/* LISTA ITEMS */}
       <div className="items-section">
         <h3>Consumo</h3>
-        {session.items
-          // Sort to keep split children grouped with parents (same name, lower qty after higher)
-          .map((item, originalIdx) => ({ ...item, originalIdx }))
-          .sort((a, b) => {
-            if (a.name === b.name) {
-              // Parent (higher qty) comes first, children after
-              return (b.quantity || 0) - (a.quantity || 0);
-            }
-            return a.originalIdx - b.originalIdx; // Preserve original order for different items
-          })
-          .map((item, idx, array) => {
-            // Detect if this is a child item (same name as previous, or has isSplitChild flag)
-            const isChild = item.isSplitChild || (idx > 0 && array[idx - 1].name === item.name);
-
-            return (
-              <div key={item.id || idx} className={`item-wrapper ${isChild ? 'is-child-item' : ''}`}>
-                {/* Visual connector for child items */}
-                {isChild && <div className="child-connector"></div>}
-
-                <BillItem
-                  item={item}
-                  assignments={session.assignments}
-                  participants={session.participants}
-                  currentParticipant={currentParticipant}
-                  isOwner={isOwner}
-                  onAssign={handleAssign}
-                  onGroupAssign={handleGroupAssign}
-                  itemMode={item.mode || 'individual'}
-                  onToggleMode={toggleItemMode}
-                  isFinalized={session.status === 'finalized'}
-                  onEditItem={handleItemUpdate}
-                  onToggleEdit={handleToggleItemEdit}
-                  onSplitItem={handleSplitItem}
-                  onDeleteItem={handleDeleteItem}
-                />
-              </div>
-            );
-          })}
+        {session.items.map((item, idx) => {
+          const itemId = item.id || item.name;
+          return (
+            <div key={itemId || idx} className="item-wrapper">
+              <BillItem
+                item={item}
+                assignments={session.assignments}
+                participants={session.participants}
+                currentParticipant={currentParticipant}
+                isOwner={isOwner}
+                onAssign={handleAssign}
+                onGroupAssign={handleGroupAssign}
+                itemMode={item.mode || 'individual'}
+                onToggleMode={toggleItemMode}
+                isFinalized={session.status === 'finalized'}
+                onEditItem={handleItemUpdate}
+                onToggleEdit={handleToggleItemEdit}
+                onDeleteItem={handleDeleteItem}
+                isExpanded={expandedItems[itemId] || false}
+                onToggleExpand={(id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }))}
+              />
+            </div>
+          );
+        })}
         
         {isOwner && (
           <button className="add-item-btn" onClick={() => setShowAddItemModal(true)}>
