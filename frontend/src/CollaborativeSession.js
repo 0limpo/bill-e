@@ -1355,6 +1355,8 @@ const CollaborativeSession = () => {
 
     // Get current item and assignees
     const item = session.items.find(i => (i.id || i.name) === itemId);
+    if (!item) return;
+
     const currentMode = item?.mode || 'individual';
     const newMode = currentMode === 'grupal' ? 'individual' : 'grupal';
 
@@ -1364,7 +1366,7 @@ const CollaborativeSession = () => {
     // 1. Update mode via API (syncs to all participants)
     handleItemUpdate(itemId, { mode: newMode });
 
-    // 2. Clear all assignments for this item first
+    // 2. Clear all current assignments via API
     for (const pid of assigneeIds) {
       fetch(`${API_URL}/api/session/${sessionId}/assign`, {
         method: 'POST',
@@ -1379,13 +1381,38 @@ const CollaborativeSession = () => {
       }).catch(console.error);
     }
 
-    // 3. If switching TO grupal mode, assign all participants automatically
+    // 3. Build new state atomically
     if (newMode === 'grupal') {
-      // Use handleGroupAssign with __ALL__ to assign everyone
-      // Small delay to ensure clear happens first
-      setTimeout(() => {
-        handleGroupAssign(itemId, '__ALL__', true);
-      }, 100);
+      // Switching TO grupal: assign all participants with correct share
+      const allParticipantIds = session.participants.map(p => p.id);
+      const itemQty = item.quantity || 1;
+      const newShare = itemQty / allParticipantIds.length;
+
+      const newAssignments = allParticipantIds.map(pid => ({
+        participant_id: pid,
+        quantity: newShare
+      }));
+
+      // Send API calls for new assignments
+      allParticipantIds.forEach(pid => {
+        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: itemId,
+            participant_id: pid,
+            quantity: newShare,
+            is_assigned: true,
+            updated_by: currentParticipant?.name
+          })
+        }).catch(console.error);
+      });
+
+      // Optimistic UI update (atomic)
+      setSession(prev => ({
+        ...prev,
+        assignments: { ...prev.assignments, [itemId]: newAssignments }
+      }));
     } else {
       // Switching to individual - just clear (optimistic UI)
       setSession(prev => ({
