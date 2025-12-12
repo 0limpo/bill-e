@@ -445,13 +445,9 @@ const BillItem = ({
 
         {/* Grupal options for items with qty > 1 */}
         {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (() => {
-          // Collect all participants assigned to any unit
-          const unitAssigneeIds = new Set();
-          for (let i = 0; i < qty; i++) {
-            const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
-            unitAssigns.forEach(a => unitAssigneeIds.add(a.participant_id));
-          }
-          const hasUnitAssignments = unitAssigneeIds.size > 0;
+          // Check if all participants are assigned to parent item
+          const allAssignedToParent = participants.length > 0 &&
+            participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
 
           return (
             <div className="grupal-options">
@@ -469,18 +465,17 @@ const BillItem = ({
                           onUnitAssign(itemId, i, a.participant_id, false);
                         });
                       }
-                      // 2. Assign all collected participants to parent item (equal split)
-                      if (hasUnitAssignments) {
-                        unitAssigneeIds.forEach(pid => {
-                          onGroupAssign(itemId, pid, true);
-                        });
-                      }
+                      // 2. Assign ALL participants to parent item (equal split)
+                      onGroupAssign(itemId, '__ALL__', true);
                       // 3. Collapse
                       onToggleExpand(itemId);
+                    } else if (!allAssignedToParent) {
+                      // Already in "Entre todos" but not all assigned - assign all
+                      onGroupAssign(itemId, '__ALL__', true);
                     }
                   }}
                 >
-                  👥 Entre todos
+                  {!isExpanded && allAssignedToParent ? '✓ ' : ''}👥 Entre todos
                 </div>
                 <div
                   className={`grupal-switch-option ${isExpanded ? 'active' : ''}`}
@@ -544,37 +539,8 @@ const BillItem = ({
             })}
           </div>
         ) : itemMode === 'grupal' && qty > 1 ? (
-          /* COLLAPSED GRUPAL VIEW - "Entre todos" mode: one-click assign ALL */
-          (() => {
-            const allAssigned = participants.length > 0 &&
-              participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
-            const canAssign = !isFinalized && currentParticipant;
-
-            return (
-              <div
-                className={`grupal-entre-todos ${allAssigned ? 'assigned' : ''}`}
-                onClick={() => canAssign && onGroupAssign(itemId, '__ALL__', true)}
-                style={{ cursor: canAssign ? 'pointer' : 'default' }}
-              >
-                {allAssigned ? (
-                  <>
-                    <div className="entre-todos-avatars">
-                      {participants.map(p => (
-                        <div key={p.id} className="assigned-avatar-small">
-                          <Avatar name={p.name} size="small" />
-                        </div>
-                      ))}
-                    </div>
-                    <span className="entre-todos-label">✓ Dividido entre todos</span>
-                  </>
-                ) : (
-                  <span className="entre-todos-label unassigned">
-                    👆 Toca para dividir entre todos
-                  </span>
-                )}
-              </div>
-            );
-          })()
+          /* COLLAPSED GRUPAL VIEW - "Entre todos" mode: no extra UI needed, switch handles it */
+          null
         ) : (
           /* HORIZONTAL SCROLL LIST - Normal view (individual mode or grupal qty=1) */
           <div className="consumer-scroll-list">
@@ -1316,13 +1282,7 @@ const CollaborativeSession = () => {
     // 1. Update mode via API (syncs to all participants)
     handleItemUpdate(itemId, { mode: newMode });
 
-    // 2. Hard reset: Clear all assignments for this item (optimistic UI)
-    setSession(prev => ({
-      ...prev,
-      assignments: { ...prev.assignments, [itemId]: [] }
-    }));
-
-    // 3. Send API calls to clear assignments for all previous assignees
+    // 2. Clear all assignments for this item first
     for (const pid of assigneeIds) {
       fetch(`${API_URL}/api/session/${sessionId}/assign`, {
         method: 'POST',
@@ -1335,6 +1295,21 @@ const CollaborativeSession = () => {
           updated_by: currentParticipant?.name
         })
       }).catch(console.error);
+    }
+
+    // 3. If switching TO grupal mode, assign all participants automatically
+    if (newMode === 'grupal') {
+      // Use handleGroupAssign with __ALL__ to assign everyone
+      // Small delay to ensure clear happens first
+      setTimeout(() => {
+        handleGroupAssign(itemId, '__ALL__', true);
+      }, 100);
+    } else {
+      // Switching to individual - just clear (optimistic UI)
+      setSession(prev => ({
+        ...prev,
+        assignments: { ...prev.assignments, [itemId]: [] }
+      }));
     }
   };
 
