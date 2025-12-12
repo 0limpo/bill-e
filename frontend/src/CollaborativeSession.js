@@ -544,31 +544,37 @@ const BillItem = ({
             })}
           </div>
         ) : itemMode === 'grupal' && qty > 1 ? (
-          /* COLLAPSED GRUPAL VIEW - "Entre todos" mode: assign to parent item */
-          <div className="consumer-scroll-list">
-            {participants.map(p => {
-              const assignment = itemAssignments.find(a => a.participant_id === p.id);
-              const isAssigned = assignment && assignment.quantity > 0;
-              const canAssign = !isFinalized && currentParticipant;
+          /* COLLAPSED GRUPAL VIEW - "Entre todos" mode: one-click assign ALL */
+          (() => {
+            const allAssigned = participants.length > 0 &&
+              participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
+            const canAssign = !isFinalized && currentParticipant;
 
-              return (
-                <div
-                  key={p.id}
-                  className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
-                >
-                  <div
-                    className="avatar-wrapper"
-                    onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
-                    style={{ position: 'relative', cursor: canAssign ? 'pointer' : 'default' }}
-                  >
-                    <Avatar name={p.name} />
-                    {isAssigned && <span className="check-badge">✓</span>}
-                  </div>
-                  <span className="consumer-name">{p.id === currentParticipant?.id ? 'Yo' : p.name}</span>
-                </div>
-              );
-            })}
-          </div>
+            return (
+              <div
+                className={`grupal-entre-todos ${allAssigned ? 'assigned' : ''}`}
+                onClick={() => canAssign && onGroupAssign(itemId, '__ALL__', true)}
+                style={{ cursor: canAssign ? 'pointer' : 'default' }}
+              >
+                {allAssigned ? (
+                  <>
+                    <div className="entre-todos-avatars">
+                      {participants.map(p => (
+                        <div key={p.id} className="assigned-avatar-small">
+                          <Avatar name={p.name} size="small" />
+                        </div>
+                      ))}
+                    </div>
+                    <span className="entre-todos-label">✓ Dividido entre todos</span>
+                  </>
+                ) : (
+                  <span className="entre-todos-label unassigned">
+                    👆 Toca para dividir entre todos
+                  </span>
+                )}
+              </div>
+            );
+          })()
         ) : (
           /* HORIZONTAL SCROLL LIST - Normal view (individual mode or grupal qty=1) */
           <div className="consumer-scroll-list">
