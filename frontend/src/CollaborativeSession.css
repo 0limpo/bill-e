@@ -272,68 +272,38 @@ body {
 
 /* --- GRUPAL OPTIONS ROW --- */
 .grupal-options {
-  display: flex;
-  gap: 8px;
   margin: 8px 0;
 }
 
-.split-all-btn {
-  flex: 1;
+/* --- GRUPAL SWITCH (Entre todos / Por unidad) --- */
+.grupal-switch {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+}
+
+.grupal-switch-option {
+  flex: 1;
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--success);
+  text-align: center;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
+  color: var(--text-secondary);
 }
 
-.split-all-btn:hover {
-  background: rgba(16, 185, 129, 0.2);
+.grupal-switch-option:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
-.split-all-btn:active {
-  transform: scale(0.98);
-}
-
-/* --- EXPAND/COLLAPSE BUTTON --- */
-.expand-tree-btn {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(79, 70, 229, 0.08);
-  border: 1px solid rgba(79, 70, 229, 0.2);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
+.grupal-switch-option.active {
+  background: white;
   color: var(--primary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  justify-content: center;
-}
-
-.expand-tree-btn:hover {
-  background: rgba(79, 70, 229, 0.15);
-}
-
-.expand-tree-btn .chevron {
-  transition: transform 0.3s ease;
-  font-size: 10px;
-}
-
-.expand-tree-btn .chevron.expanded {
-  transform: rotate(180deg);
-}
-
-.expand-tree-btn .expand-label {
-  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 /* --- COLLAPSED GRUPAL SUMMARY --- */

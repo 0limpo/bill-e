@@ -444,37 +444,50 @@ const BillItem = ({
         )}
 
         {/* Grupal options for items with qty > 1 */}
-        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (
-          <div className="grupal-options">
-            {/* Quick "Split among all" button */}
-            <button
-              className="split-all-btn"
-              onClick={() => onGroupAssign(itemId, '__ALL__', true)}
-              title="Dividir entre todos los participantes"
-            >
-              👥 Entre todos
-            </button>
-            {/* Expand/Collapse for individual unit assignment */}
-            <button
-              className="expand-tree-btn"
-              onClick={() => onToggleExpand(itemId)}
-              title={isExpanded ? "Colapsar" : "Asignar por unidad"}
-            >
-              <span className={`chevron ${isExpanded ? 'expanded' : ''}`}>▼</span>
-              <span className="expand-label">{isExpanded ? 'Colapsar' : 'Por unidad'}</span>
-            </button>
-          </div>
-        )}
+        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (() => {
+          const allAssigned = participants.length > 0 &&
+            participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
+          const isEntreTodos = allAssigned && !isExpanded;
 
-        {/* EXPANDED TREE VIEW - Show N sub-items for grupal with qty > 1 */}
+          return (
+            <div className="grupal-options">
+              {/* Switch: Entre todos / Por unidad */}
+              <div className="grupal-switch">
+                <div
+                  className={`grupal-switch-option ${isEntreTodos ? 'active' : ''}`}
+                  onClick={() => {
+                    if (!isEntreTodos) {
+                      onGroupAssign(itemId, '__ALL__', true);
+                      if (isExpanded) onToggleExpand(itemId); // Collapse if open
+                    }
+                  }}
+                >
+                  👥 Entre todos
+                </div>
+                <div
+                  className={`grupal-switch-option ${!isEntreTodos ? 'active' : ''}`}
+                  onClick={() => {
+                    if (isEntreTodos) {
+                      // Clear all and switch to per-unit mode
+                      onGroupAssign(itemId, '__ALL__', true); // Toggle off
+                    }
+                    if (!isExpanded) onToggleExpand(itemId);
+                  }}
+                >
+                  Por unidad {isExpanded ? '▲' : '▼'}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* EXPANDED TREE VIEW - Show participants for the whole item (Entre todos mode can expand too) */}
         {isExpanded && itemMode === 'grupal' && qty > 1 ? (
           <div className="expanded-tree">
             {Array.from({ length: qty }, (_, unitIndex) => {
-              // Each unit has its own independent assignments
-              const unitId = `${itemId}_unit_${unitIndex}`;
-              const unitAssignments = assignments[unitId] || [];
               const unitNum = unitIndex + 1;
-
+              // In expanded view, show participants assigned to the PARENT item
+              // Each participant toggle affects the parent item assignment
               return (
                 <div key={unitIndex} className="tree-unit">
                   <div className="tree-connector"></div>
@@ -482,16 +495,16 @@ const BillItem = ({
                     <span className="tree-unit-label">Unidad {unitNum}</span>
                     <div className="tree-unit-assignees">
                       {participants.map(p => {
-                        // Check if this participant is assigned to THIS SPECIFIC unit
-                        const unitAssignment = unitAssignments.find(a => a.participant_id === p.id);
-                        const isAssigned = unitAssignment && unitAssignment.quantity > 0;
+                        // Check parent item assignment
+                        const parentAssignment = itemAssignments.find(a => a.participant_id === p.id);
+                        const isAssigned = parentAssignment && parentAssignment.quantity > 0;
                         const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
 
                         return (
                           <div
                             key={p.id}
                             className={`tree-assignee ${isAssigned ? 'assigned' : 'dimmed'}`}
-                            onClick={() => canAssign && onUnitAssign(itemId, unitIndex, p.id, !isAssigned)}
+                            onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
                             style={{ cursor: canAssign ? 'pointer' : 'default' }}
                           >
                             <Avatar name={p.name} size="small" />
