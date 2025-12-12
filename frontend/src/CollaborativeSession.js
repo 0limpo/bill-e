@@ -815,17 +815,21 @@ const CollaborativeSession = () => {
     } catch (err) { alert('Error al finalizar'); }
   };
 
-  // WhatsApp Share - Text only summary (using wa.me for best compatibility)
+  // WhatsApp Share - Uses LOCAL calculations for accurate numbers
   const handleShareWhatsapp = () => {
-    if (!session?.totals) return;
+    if (!session?.participants) return;
 
     let text = `🧾 *Resumen Bill-e*\n\n`;
 
-    session.totals.forEach(t => {
-      text += `• ${t.name}: ${formatCurrency(t.total)}\n`;
+    // Use local calculateParticipantTotal instead of session.totals
+    let grandTotal = 0;
+    session.participants.forEach(p => {
+      const { total } = calculateParticipantTotal(p.id, true);
+      text += `• ${p.name}: ${formatCurrency(total)}\n`;
+      grandTotal += total;
     });
 
-    text += `\n*Total Mesa: ${formatCurrency(session.total)}*`;
+    text += `\n*Total Mesa: ${formatCurrency(grandTotal)}*`;
     text += `\n\n📱 Ver detalle: https://bill-e.vercel.app/s/${sessionId}`;
 
     // wa.me works best across mobile and desktop
@@ -1058,7 +1062,7 @@ const CollaborativeSession = () => {
   // Calculate participant total dynamically from local state (not backend totals)
   // This ensures Host sees the same math as Editor when items are edited
   const calculateParticipantTotal = (participantId, includesTip = true) => {
-    if (!session) return { subtotal: 0, total: 0 };
+    if (!session) return { subtotal: 0, total: 0, tipAmount: 0 };
 
     let subtotal = 0;
     Object.entries(session.assignments).forEach(([itemId, assigns]) => {
@@ -1066,8 +1070,8 @@ const CollaborativeSession = () => {
       if (assignment) {
         const item = session.items.find(i => (i.id || i.name) === itemId);
         if (item) {
-          // item.price is unit price, multiply by assigned quantity
-          subtotal += item.price * (assignment.quantity || 1);
+          // item.price is UNIT PRICE - just multiply by assigned quantity
+          subtotal += item.price * (assignment.quantity || 0);
         }
       }
     });
@@ -1376,15 +1380,13 @@ const CollaborativeSession = () => {
       </div>
 
       {/* BOTTOM SHEET (Interactive Expandable with Swipe) */}
-      <div
-        className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
-        {/* Visual Handle - Click to toggle */}
+      <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
+        {/* Visual Handle - Swipe/Click to toggle (handlers here, not on content) */}
         <div
           className="sheet-handle"
           onClick={() => !isFinalized && setIsSheetExpanded(!isSheetExpanded)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         />
 
         {isFinalized ? (
@@ -1411,7 +1413,7 @@ const CollaborativeSession = () => {
                   {/* Column Headers */}
                   <div className="sheet-breakdown-header">
                     <span className="header-name">Nombre</span>
-                    <span className="header-consumo">Consumo</span>
+                    <span className="header-consumo">Subtotal</span>
                     <span className="header-total">Total</span>
                   </div>
 
@@ -1470,10 +1472,12 @@ const CollaborativeSession = () => {
         ) : (
           // ============ ACTIVE VIEW ============
           <>
-            {/* Summary Row - Clickable to expand (no arrows) */}
+            {/* Summary Row - Clickable/Swipeable to expand */}
             <div
               className="sheet-summary-row clickable"
               onClick={() => setIsSheetExpanded(!isSheetExpanded)}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
               <div className="sheet-column">
                 <span className="my-total-label">
@@ -1555,7 +1559,8 @@ const CollaborativeSession = () => {
                         if (myAssign) {
                           const item = session.items.find(i => (i.id || i.name) === itemId);
                           if (item) {
-                            const amount = (item.price / (item.quantity || 1)) * (myAssign.quantity || 1);
+                            // item.price is UNIT PRICE - just multiply by assigned quantity
+                            const amount = item.price * (myAssign.quantity || 0);
                             mySubtotal += amount;
                             myItems.push({ name: item.name, amount });
                           }
