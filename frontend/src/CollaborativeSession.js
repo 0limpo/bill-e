@@ -1601,7 +1601,10 @@ const CollaborativeSession = () => {
                         // item.price is UNIT PRICE - just multiply by assigned quantity
                         const amount = item.price * (myAssign.quantity || 0);
                         mySubtotal += amount;
-                        myItems.push({ name: item.name, amount });
+                        // Track split count for visual display
+                        const splitCount = assigns.length;
+                        const myQty = myAssign.quantity || 0;
+                        myItems.push({ name: item.name, amount, splitCount, quantity: myQty });
                       }
                     }
                   });
@@ -1620,7 +1623,15 @@ const CollaborativeSession = () => {
                     <>
                       {myItems.map((item, idx) => (
                         <div key={idx} className="breakdown-row">
-                          <span>{item.name}</span>
+                          <span>
+                            {/* Show split badge for shared items, qty badge for multiples */}
+                            {item.splitCount > 1 ? (
+                              <span className="split-badge">/{item.splitCount}</span>
+                            ) : item.quantity > 1 ? (
+                              <span className="qty-badge">{Math.round(item.quantity)}x</span>
+                            ) : null}
+                            {item.name}
+                          </span>
                           <span>{formatCurrency(item.amount)}</span>
                         </div>
                       ))}
