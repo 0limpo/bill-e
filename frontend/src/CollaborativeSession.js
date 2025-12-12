@@ -330,6 +330,7 @@ const BillItem = ({
   isOwner,
   onAssign,
   onGroupAssign,
+  onUnitAssign,
   onToggleMode,
   itemMode,
   isFinalized,
@@ -458,9 +459,11 @@ const BillItem = ({
         {isExpanded && itemMode === 'grupal' && qty > 1 ? (
           <div className="expanded-tree">
             {Array.from({ length: qty }, (_, unitIndex) => {
-              // Each sub-unit can have its own assignees
-              // For now, we show all participants and let them claim each unit
+              // Each unit has its own independent assignments
+              const unitId = `${itemId}_unit_${unitIndex}`;
+              const unitAssignments = assignments[unitId] || [];
               const unitNum = unitIndex + 1;
+
               return (
                 <div key={unitIndex} className="tree-unit">
                   <div className="tree-connector"></div>
@@ -468,21 +471,16 @@ const BillItem = ({
                     <span className="tree-unit-label">Unidad {unitNum}</span>
                     <div className="tree-unit-assignees">
                       {participants.map(p => {
-                        // Check if this participant is assigned to this specific unit
-                        // Using quantity fractions: if assigned qty >= unitNum, they have this unit
-                        const assignment = itemAssignments.find(a => a.participant_id === p.id);
-                        const pQty = assignment?.quantity || 0;
-                        // Simple logic: participant has unit N if their qty >= N/total (proportional)
-                        // Or simpler: show checkmark if they're assigned to the whole item
-                        const isAssigned = pQty > 0;
+                        // Check if this participant is assigned to THIS SPECIFIC unit
+                        const unitAssignment = unitAssignments.find(a => a.participant_id === p.id);
+                        const isAssigned = unitAssignment && unitAssignment.quantity > 0;
                         const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
-                        const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
 
                         return (
                           <div
                             key={p.id}
                             className={`tree-assignee ${isAssigned ? 'assigned' : 'dimmed'}`}
-                            onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
+                            onClick={() => canAssign && onUnitAssign(itemId, unitIndex, p.id, !isAssigned)}
                             style={{ cursor: canAssign ? 'pointer' : 'default' }}
                           >
                             <Avatar name={p.name} size="small" />
@@ -849,6 +847,73 @@ const CollaborativeSession = () => {
     }
   };
 
+  // Handle assignment for a specific unit within an expanded grupal item
+  // unitId format: "{itemId}_unit_{unitIndex}" (e.g., "item-1_unit_0")
+  const handleUnitAssign = async (itemId, unitIndex, participantId, isAdding) => {
+    lastInteraction.current = Date.now();
+
+    const item = session.items.find(i => (i.id || i.name) === itemId);
+    if (!item) return;
+
+    const unitId = `${itemId}_unit_${unitIndex}`;
+    const currentAssignments = session.assignments[unitId] || [];
+    const currentAssignees = currentAssignments.map(a => a.participant_id);
+
+    // Calculate new list of assignees for this unit
+    let newAssignees;
+    if (isAdding) {
+      if (currentAssignees.includes(participantId)) return;
+      newAssignees = [...currentAssignees, participantId];
+    } else {
+      newAssignees = currentAssignees.filter(id => id !== participantId);
+    }
+
+    // Each unit is 1 item, split equally among assignees
+    const unitShare = newAssignees.length > 0 ? 1 / newAssignees.length : 0;
+
+    // Build assignments for this unit
+    const newUnitAssignments = newAssignees.map(pid => ({
+      participant_id: pid,
+      quantity: unitShare
+    }));
+
+    // Optimistic UI update
+    setSession(prev => ({
+      ...prev,
+      assignments: { ...prev.assignments, [unitId]: newUnitAssignments }
+    }));
+
+    // Send updates to server
+    const removedAssignees = currentAssignees.filter(id => !newAssignees.includes(id));
+    for (const pid of removedAssignees) {
+      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: unitId,
+          participant_id: pid,
+          quantity: 0,
+          is_assigned: false,
+          updated_by: currentParticipant?.name
+        })
+      }).catch(console.error);
+    }
+
+    for (const pid of newAssignees) {
+      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: unitId,
+          participant_id: pid,
+          quantity: unitShare,
+          is_assigned: true,
+          updated_by: currentParticipant?.name
+        })
+      }).catch(console.error);
+    }
+  };
+
   const handleFinalize = async () => {
     if (!window.confirm('¿Cerrar la cuenta? Los participantes ya no podrán editar.')) return;
     try {
@@ -1062,17 +1127,32 @@ const CollaborativeSession = () => {
   // Calculate participant total dynamically from local state (not backend totals)
   // This ensures Host sees the same math as Editor when items are edited
   // Supports SMART TIP: percent mode (proportional) or fixed mode (equal split)
+  // Also supports unit-level assignments (itemId_unit_N format)
   const calculateParticipantTotal = (participantId, includesTip = true) => {
     if (!session) return { subtotal: 0, total: 0, tipAmount: 0 };
 
     let subtotal = 0;
-    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+    Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
       const assignment = assigns.find(a => a.participant_id === participantId);
       if (assignment) {
-        const item = session.items.find(i => (i.id || i.name) === itemId);
-        if (item) {
-          // item.price is UNIT PRICE - just multiply by assigned quantity
-          subtotal += item.price * (assignment.quantity || 0);
+        // Check if this is a unit assignment (format: itemId_unit_N)
+        const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
+
+        if (unitMatch) {
+          // Unit assignment - find parent item by base itemId
+          const baseItemId = unitMatch[1];
+          const item = session.items.find(i => (i.id || i.name) === baseItemId);
+          if (item) {
+            // Each unit is worth 1 * unitPrice, split by quantity assigned
+            subtotal += item.price * (assignment.quantity || 0);
+          }
+        } else {
+          // Regular item assignment
+          const item = session.items.find(i => (i.id || i.name) === assignmentKey);
+          if (item) {
+            // item.price is UNIT PRICE - just multiply by assigned quantity
+            subtotal += item.price * (assignment.quantity || 0);
+          }
         }
       }
     });
@@ -1413,6 +1493,7 @@ const CollaborativeSession = () => {
                 isOwner={isOwner}
                 onAssign={handleAssign}
                 onGroupAssign={handleGroupAssign}
+                onUnitAssign={handleUnitAssign}
                 itemMode={item.mode || 'individual'}
                 onToggleMode={toggleItemMode}
                 isFinalized={session.status === 'finalized'}
@@ -1558,18 +1639,31 @@ const CollaborativeSession = () => {
                 {(() => {
                   const myItems = [];
                   let mySubtotal = 0;
-                  Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+                  Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
                     const myAssign = assigns.find(a => a.participant_id === currentParticipant?.id);
                     if (myAssign) {
-                      const item = session.items.find(i => (i.id || i.name) === itemId);
+                      // Check if this is a unit assignment (format: itemId_unit_N)
+                      const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
+                      let item, itemName;
+
+                      if (unitMatch) {
+                        // Unit assignment - find parent item
+                        const baseItemId = unitMatch[1];
+                        const unitNum = parseInt(unitMatch[2]) + 1;
+                        item = session.items.find(i => (i.id || i.name) === baseItemId);
+                        itemName = item ? `${item.name} (U${unitNum})` : `Unidad ${unitNum}`;
+                      } else {
+                        // Regular item assignment
+                        item = session.items.find(i => (i.id || i.name) === assignmentKey);
+                        itemName = item?.name || 'Item';
+                      }
+
                       if (item) {
-                        // item.price is UNIT PRICE - just multiply by assigned quantity
                         const amount = item.price * (myAssign.quantity || 0);
                         mySubtotal += amount;
-                        // Track split count for visual display
                         const splitCount = assigns.length;
                         const myQty = myAssign.quantity || 0;
-                        myItems.push({ name: item.name, amount, splitCount, quantity: myQty });
+                        myItems.push({ name: itemName, amount, splitCount, quantity: myQty });
                       }
                     }
                   });
