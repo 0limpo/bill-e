@@ -522,7 +522,8 @@ const BillItem = ({
                         // Check THIS unit's assignment (not parent item)
                         const unitAssignment = unitAssignments.find(a => a.participant_id === p.id);
                         const isAssigned = unitAssignment && unitAssignment.quantity > 0;
-                        const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
+                        // Any authenticated participant can assign items to anyone
+                        const canAssign = !isFinalized && currentParticipant;
 
                         return (
                           <div
@@ -588,7 +589,8 @@ const BillItem = ({
               const assignment = itemAssignments.find(a => a.participant_id === p.id);
               const pQty = assignment?.quantity || 0;
               const isAssigned = pQty > 0;
-              const canAssign = !isFinalized && (isOwner || p.id === currentParticipant?.id);
+              // Any authenticated participant can assign items to anyone
+              const canAssign = !isFinalized && currentParticipant;
               const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
 
               return (
@@ -1513,12 +1515,27 @@ const CollaborativeSession = () => {
 
   // Total Assigned = sum of (unit_price × assigned_qty) for all items
   // CRITICAL: Use item.price directly (it's already unit price), NOT divided by quantity
+  // Must include BOTH parent item assignments AND per-unit assignments (itemId_unit_N)
   const totalAsignado = session.items.reduce((acc, item) => {
     const itemId = item.id || item.name;
-    const assignments = session.assignments[itemId] || [];
-    const assignedQty = assignments.reduce((sum, a) => sum + (a.quantity || 0), 0);
+    const qty = item.quantity || 1;
+
+    // Get assignments from parent item
+    const parentAssignments = session.assignments[itemId] || [];
+    const parentAssignedQty = parentAssignments.reduce((sum, a) => sum + (a.quantity || 0), 0);
+
+    // Get assignments from per-unit (itemId_unit_N format)
+    let unitAssignedQty = 0;
+    for (let i = 0; i < qty; i++) {
+      const unitAssigns = session.assignments[`${itemId}_unit_${i}`] || [];
+      unitAssignedQty += unitAssigns.reduce((sum, a) => sum + (a.quantity || 0), 0);
+    }
+
+    // Total assigned for this item = parent + all units
+    const totalItemAssigned = parentAssignedQty + unitAssignedQty;
+
     // Multiply assigned quantity by UNIT PRICE
-    return acc + (assignedQty * item.price);
+    return acc + (totalItemAssigned * item.price);
   }, 0);
 
   // Total Boleta = OCR target subtotal (static unless manually changed by Host)
