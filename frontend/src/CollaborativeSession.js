@@ -443,16 +443,27 @@ const BillItem = ({
            </div>
         )}
 
-        {/* Expand/Collapse Chevron - Only for grupal items with qty > 1 */}
-        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && (
-          <button
-            className="expand-tree-btn"
-            onClick={() => onToggleExpand(itemId)}
-            title={isExpanded ? "Colapsar" : "Expandir para asignar individualmente"}
-          >
-            <span className={`chevron ${isExpanded ? 'expanded' : ''}`}>▼</span>
-            <span className="expand-label">{isExpanded ? 'Colapsar' : 'Ver unidades'}</span>
-          </button>
+        {/* Grupal options for items with qty > 1 */}
+        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (
+          <div className="grupal-options">
+            {/* Quick "Split among all" button */}
+            <button
+              className="split-all-btn"
+              onClick={() => onGroupAssign(itemId, '__ALL__', true)}
+              title="Dividir entre todos los participantes"
+            >
+              👥 Entre todos
+            </button>
+            {/* Expand/Collapse for individual unit assignment */}
+            <button
+              className="expand-tree-btn"
+              onClick={() => onToggleExpand(itemId)}
+              title={isExpanded ? "Colapsar" : "Asignar por unidad"}
+            >
+              <span className={`chevron ${isExpanded ? 'expanded' : ''}`}>▼</span>
+              <span className="expand-label">{isExpanded ? 'Colapsar' : 'Por unidad'}</span>
+            </button>
+          </div>
         )}
 
         {/* EXPANDED TREE VIEW - Show N sub-items for grupal with qty > 1 */}
@@ -494,8 +505,32 @@ const BillItem = ({
               );
             })}
           </div>
+        ) : itemMode === 'grupal' && qty > 1 ? (
+          /* COLLAPSED GRUPAL VIEW - Show summary of who's assigned */
+          <div className="grupal-summary">
+            {itemAssignments.length > 0 ? (
+              <div className="assigned-avatars">
+                {itemAssignments.map(a => {
+                  const p = participants.find(p => p.id === a.participant_id);
+                  if (!p) return null;
+                  return (
+                    <div key={p.id} className="assigned-avatar-small">
+                      <Avatar name={p.name} size="small" />
+                    </div>
+                  );
+                })}
+                <span className="assigned-label">
+                  {itemAssignments.length === participants.length
+                    ? '✓ Entre todos'
+                    : `✓ ${itemAssignments.length} personas`}
+                </span>
+              </div>
+            ) : (
+              <span className="no-assigned-label">Sin asignar - usa los botones arriba</span>
+            )}
+          </div>
         ) : (
-          /* HORIZONTAL SCROLL LIST - Normal view */
+          /* HORIZONTAL SCROLL LIST - Normal view (individual mode or grupal qty=1) */
           <div className="consumer-scroll-list">
             {participants.map(p => {
               const assignment = itemAssignments.find(a => a.participant_id === p.id);
@@ -510,7 +545,7 @@ const BillItem = ({
                   className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
                 >
                   {itemMode === 'grupal' ? (
-                    // MODO GRUPAL: Simple toggle, splits evenly (1/N) among all assignees
+                    // MODO GRUPAL (qty=1): Simple toggle
                     <div
                       className="avatar-wrapper"
                       onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
@@ -780,6 +815,7 @@ const CollaborativeSession = () => {
   };
 
   // Group mode assignment (splits evenly among all assignees: 1/N)
+  // Special case: participantId === '__ALL__' assigns to ALL participants
   const handleGroupAssign = async (itemId, participantId, isAdding) => {
     lastInteraction.current = Date.now();
 
@@ -789,13 +825,21 @@ const CollaborativeSession = () => {
     const currentAssignments = session.assignments[itemId] || [];
     const currentAssignees = currentAssignments.map(a => a.participant_id);
 
-    // Calculate new list of assignees
+    // Special case: __ALL__ means assign to all participants
     let newAssignees;
-    if (isAdding) {
-      if (currentAssignees.includes(participantId)) return; // Already assigned
-      newAssignees = [...currentAssignees, participantId];
+    if (participantId === '__ALL__') {
+      // Toggle: if all are assigned, clear all; otherwise assign all
+      const allParticipantIds = session.participants.map(p => p.id);
+      const allAssigned = allParticipantIds.every(pid => currentAssignees.includes(pid));
+      newAssignees = allAssigned ? [] : allParticipantIds;
     } else {
-      newAssignees = currentAssignees.filter(id => id !== participantId);
+      // Normal single participant toggle
+      if (isAdding) {
+        if (currentAssignees.includes(participantId)) return;
+        newAssignees = [...currentAssignees, participantId];
+      } else {
+        newAssignees = currentAssignees.filter(id => id !== participantId);
+      }
     }
 
     // Calculate new share (equal split)
