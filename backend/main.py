@@ -978,18 +978,15 @@ async def add_item_to_session(session_id: str, request: Request):
 
 @app.post("/api/session/{session_id}/split-item")
 async def split_item(session_id: str, request: Request):
-    """Split a group item: decrement original by N, create new item with N units.
+    """Expand a group item into N individual items (1 unit each).
 
-    CRITICAL LOGIC:
-    - Original item: qty = qty - split_quantity
-    - New item: qty = split_quantity, inherits mode='grupal', no assignments
-    - If original reaches 0, remove it
+    Example: 3x Pizza → 3 separate items of 1x Pizza each
+    All new items are 'grupal' mode, inserted at original position.
     """
     try:
         data = await request.json()
         owner_token = data.get("owner_token")
         item_id = data.get("item_id")
-        split_quantity = data.get("split_quantity", 1)
 
         session_data = get_collab_session(redis_client, session_id)
 
@@ -1011,33 +1008,35 @@ async def split_item(session_id: str, request: Request):
         if not original_item:
             raise HTTPException(status_code=404, detail="Item no encontrado")
 
-        original_qty = original_item.get("quantity", 1)
-        if split_quantity >= original_qty:
-            raise HTTPException(status_code=400, detail="No se puede separar toda la cantidad")
+        original_qty = int(original_item.get("quantity", 1))
+        if original_qty <= 1:
+            raise HTTPException(status_code=400, detail="Item ya tiene cantidad 1")
 
-        # Get unit price (item.price is already unit price)
+        # Get unit price and name
         unit_price = original_item.get("price", 0)
+        item_name = original_item.get("name", "Item")
 
-        # 1. DECREMENT original item quantity
-        session_data["items"][original_index]["quantity"] = original_qty - split_quantity
+        # Remove original item and its assignments
+        if item_id in session_data.get("assignments", {}):
+            del session_data["assignments"][item_id]
+        session_data["items"].pop(original_index)
 
-        # 2. CREATE new item with split_quantity, mode='grupal', NO assignments
-        new_item = {
-            "id": f"split_{uuid.uuid4().hex[:8]}",
-            "name": original_item.get("name", "Item"),
-            "quantity": split_quantity,
-            "price": unit_price,  # Same unit price
-            "mode": "grupal"  # CRITICAL: Inherit group mode
-        }
-        session_data["items"].append(new_item)
+        # Create N new items (one for each unit), all grupal mode
+        new_items = []
+        for i in range(original_qty):
+            new_item = {
+                "id": f"split_{uuid.uuid4().hex[:8]}",
+                "name": item_name,
+                "quantity": 1,
+                "price": unit_price,
+                "mode": "grupal",  # All children are grupal for group assignment
+                "isSplitChild": True if i > 0 else False  # First one is "parent"
+            }
+            new_items.append(new_item)
 
-        # 3. If original item reaches 0, remove it and its assignments
-        if session_data["items"][original_index]["quantity"] <= 0:
-            # Remove assignments for original item
-            if item_id in session_data.get("assignments", {}):
-                del session_data["assignments"][item_id]
-            # Remove the item
-            session_data["items"].pop(original_index)
+        # Insert all new items at original position (in order)
+        for i, new_item in enumerate(new_items):
+            session_data["items"].insert(original_index + i, new_item)
 
         session_data["last_updated"] = datetime.now().isoformat()
         session_data["last_updated_by"] = "owner"
@@ -1049,7 +1048,7 @@ async def split_item(session_id: str, request: Request):
 
         return {
             "success": True,
-            "new_item": new_item,
+            "new_items": new_items,
             "items": session_data["items"]
         }
 

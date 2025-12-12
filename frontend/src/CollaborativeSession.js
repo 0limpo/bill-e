@@ -862,65 +862,67 @@ const CollaborativeSession = () => {
     }
   };
 
-  // Split an item into separate units (PROPER DIVIDE LOGIC)
-  // Splits 1 unit from a group item: original qty decrements, new item gets 1 unit
-  // NEW: Insert child item immediately after parent for visual hierarchy
+  // Split/Expand a group item into N individual items (1 unit each)
+  // Example: 3x Pizza → 3 separate 1x Pizza items (all grupal mode)
   const handleSplitItem = async (itemId) => {
     lastInteraction.current = Date.now();
     const item = session.items.find(i => (i.id || i.name) === itemId);
     if (!item || item.quantity <= 1) return;
 
-    const splitQty = 1; // Always split 1 unit at a time
-    const unitPrice = item.price; // item.price is already unit price
-    const tempNewItemId = `split_temp_${Date.now()}`;
+    const originalQty = Math.floor(item.quantity);
+    const unitPrice = item.price;
+    const itemName = item.name;
 
-    // Optimistic update: DECREMENT original qty, INSERT new item right after parent
+    // Optimistic update: Replace original item with N items of qty=1
     setSession(prev => {
       const originalIndex = prev.items.findIndex(i => (i.id || i.name) === itemId);
-      if (originalIndex === -1) return prev; // Safety check
+      if (originalIndex === -1) return prev;
 
       const newItems = [...prev.items];
 
-      // 1. Decrement parent quantity
-      newItems[originalIndex] = {
-        ...newItems[originalIndex],
-        quantity: newItems[originalIndex].quantity - splitQty
-      };
+      // Remove original item
+      newItems.splice(originalIndex, 1);
 
-      // 2. Create child item (individual mode for quick assignment)
-      const newItem = {
-        id: tempNewItemId,
-        name: item.name,
-        quantity: splitQty,
-        price: unitPrice,
-        mode: 'individual', // Individual for quick assignment
-        isSplitChild: true  // Flag for visual hierarchy
-      };
+      // Create N new items (one for each unit)
+      const expandedItems = [];
+      for (let i = 0; i < originalQty; i++) {
+        expandedItems.push({
+          id: `split_temp_${Date.now()}_${i}`,
+          name: itemName,
+          quantity: 1,
+          price: unitPrice,
+          mode: 'grupal',  // All are grupal for group assignment
+          isSplitChild: i > 0  // First one is "parent", rest are children
+        });
+      }
 
-      // 3. Insert child at index + 1 (right after parent)
-      newItems.splice(originalIndex + 1, 0, newItem);
+      // Insert all expanded items at original position
+      newItems.splice(originalIndex, 0, ...expandedItems);
 
-      // 4. Filter out items with qty <= 0
+      // Remove assignments for original item
+      const newAssignments = { ...prev.assignments };
+      delete newAssignments[itemId];
+
       return {
         ...prev,
-        items: newItems.filter(i => i.quantity > 0)
+        items: newItems,
+        assignments: newAssignments
       };
     });
 
-    // API call to proper split endpoint
+    // API call to expand item
     try {
       const res = await fetch(`${API_URL}/api/session/${sessionId}/split-item`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           owner_token: ownerToken,
-          item_id: itemId,
-          split_quantity: splitQty
+          item_id: itemId
         })
       });
 
       if (res.ok) {
-        // Reload to get server state (proper IDs, synced state)
+        // Reload to get server state with proper IDs
         await loadSession();
       } else {
         console.error('Error splitting item:', await res.text());
