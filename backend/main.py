@@ -434,6 +434,8 @@ async def get_collaborative_session(session_id: str, owner: str = None):
             "participants": session_data["participants"],
             "assignments": session_data["assignments"],
             "tip_percentage": session_data.get("tip_percentage", 10),
+            "tip_mode": session_data.get("tip_mode", "percent"),  # "percent" or "fixed"
+            "tip_value": session_data.get("tip_value", 10.0),  # Default 10%
             "expires_at": session_data["expires_at"],
             "last_updated": session_data.get("last_updated"),
             "last_updated_by": session_data.get("last_updated_by"),
@@ -590,6 +592,9 @@ async def poll_session(session_id: str, last_update: str = None):
             "items": session_data["items"],  # Include items for mode/name/price sync
             "status": session_data["status"],
             "totals": session_data.get("totals"),  # Include totals for finalized state
+            "tip_mode": session_data.get("tip_mode", "percent"),
+            "tip_value": session_data.get("tip_value", 10.0),
+            "tip_percentage": session_data.get("tip_percentage", 10),
             "last_updated": current_update,
             "last_updated_by": session_data.get("last_updated_by", "")
         }
@@ -645,15 +650,9 @@ async def update_item(session_id: str, request: Request):
                     item["mode"] = updates["mode"]  # "individual" or "group"
                 break
 
-        # Recalcular subtotal
-        new_subtotal = sum(item.get("price", 0) for item in session_data["items"])
-        tip_percentage = session_data.get("tip_percentage", 10)
-        new_tip = new_subtotal * (tip_percentage / 100)
-        new_total = new_subtotal + new_tip
-
-        session_data["subtotal"] = new_subtotal
-        session_data["tip"] = new_tip
-        session_data["total"] = new_total
+        # CRITICAL: DO NOT recalculate subtotal here!
+        # subtotal is the OCR target value - only changed via update-totals endpoint
+        # Frontend calculates displayed total dynamically from items
         session_data["last_updated"] = datetime.now().isoformat()
         session_data["last_updated_by"] = "owner"
 
@@ -870,6 +869,13 @@ async def update_totals(session_id: str, request: Request):
             session_data["tip"] = data["tip"]
         if "total" in data:
             session_data["total"] = data["total"]
+        # Smart Tip settings
+        if "tip_mode" in data:
+            session_data["tip_mode"] = data["tip_mode"]  # "percent" or "fixed"
+        if "tip_value" in data:
+            session_data["tip_value"] = data["tip_value"]
+        if "tip_percentage" in data:
+            session_data["tip_percentage"] = data["tip_percentage"]
 
         session_data["last_updated"] = datetime.now().isoformat()
         session_data["last_updated_by"] = "owner"

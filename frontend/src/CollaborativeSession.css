@@ -1009,6 +1009,95 @@ body {
   color: #d97706;
 }
 
+/* --- SMART TIP CONTROLS --- */
+.tip-controls {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(79, 70, 229, 0.05);
+  border-radius: 12px;
+  border: 1px dashed var(--primary);
+}
+
+.tip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.tip-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.tip-mode-switch {
+  display: flex;
+  gap: 4px;
+  background: rgba(0,0,0,0.05);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.tip-mode-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.tip-mode-btn.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+}
+
+.tip-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tip-input {
+  flex: 0 0 80px;
+  padding: 8px 10px;
+  border: 2px solid var(--primary);
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--primary);
+  background: white;
+  outline: none;
+}
+
+.tip-input:focus {
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.tip-input::-webkit-inner-spin-button,
+.tip-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.tip-input {
+  -moz-appearance: textfield;
+}
+
+.tip-helper {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 /* --- BREAKDOWN PREVIEW (In sheet) --- */
 .sheet-breakdown-preview {
   margin-bottom: 16px;

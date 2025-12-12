@@ -1061,6 +1061,7 @@ const CollaborativeSession = () => {
   };
   // Calculate participant total dynamically from local state (not backend totals)
   // This ensures Host sees the same math as Editor when items are edited
+  // Supports SMART TIP: percent mode (proportional) or fixed mode (equal split)
   const calculateParticipantTotal = (participantId, includesTip = true) => {
     if (!session) return { subtotal: 0, total: 0, tipAmount: 0 };
 
@@ -1076,11 +1077,52 @@ const CollaborativeSession = () => {
       }
     });
 
-    const tipPct = session.tip_percentage || 10;
-    const tipAmount = subtotal * (tipPct / 100);
+    // SMART TIP LOGIC
+    const tipMode = session.tip_mode || 'percent';
+    const tipValue = session.tip_value ?? session.tip_percentage ?? 10;
+    const numParticipants = session.participants?.length || 1;
+
+    let tipAmount = 0;
+    if (tipMode === 'fixed') {
+      // Fixed amount split equally among all participants
+      tipAmount = tipValue / numParticipants;
+    } else {
+      // Percent mode - proportional to consumption
+      tipAmount = subtotal * (tipValue / 100);
+    }
+
     const total = includesTip ? subtotal + tipAmount : subtotal;
 
     return { subtotal, total, tipAmount };
+  };
+
+  // Handle tip update (mode + value)
+  const handleUpdateTip = async (mode, value) => {
+    lastInteraction.current = Date.now();
+
+    // Optimistic update
+    setSession(prev => ({
+      ...prev,
+      tip_mode: mode,
+      tip_value: value,
+      tip_percentage: mode === 'percent' ? value : prev.tip_percentage
+    }));
+
+    // Persist to backend
+    try {
+      await fetch(`${API_URL}/api/session/${sessionId}/update-totals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          owner_token: ownerToken,
+          tip_mode: mode,
+          tip_value: value,
+          tip_percentage: mode === 'percent' ? value : session.tip_percentage
+        })
+      });
+    } catch (err) {
+      console.error('Error updating tip:', err);
+    }
   };
 
   // Cálculo de totales locales
@@ -1306,12 +1348,19 @@ const CollaborativeSession = () => {
   // Total Boleta = OCR target subtotal (static unless manually changed by Host)
   const totalBoleta = session.subtotal || 0;
 
-  // STEP 3: Dynamic displayedTotal - always mathematically correct based on current items
-  // This replaces session.total (which is stale backend value) for the sticky footer
+  // SMART TIP: Dynamic displayedTotal based on tip_mode
   const currentItemSum = totalItems; // Sum of all items at current prices
-  const tipPct = session.tip_percentage || 10;
-  const tipAmount = currentItemSum * (tipPct / 100);
-  const displayedTotal = currentItemSum + tipAmount;
+  const tipMode = session.tip_mode || 'percent';
+  const tipValue = session.tip_value ?? session.tip_percentage ?? 10;
+
+  // Calculate total tip amount based on mode
+  let totalTipAmount = 0;
+  if (tipMode === 'fixed') {
+    totalTipAmount = tipValue; // Fixed amount
+  } else {
+    totalTipAmount = currentItemSum * (tipValue / 100); // Percentage
+  }
+  const displayedTotal = currentItemSum + totalTipAmount;
 
   // Check if totals are balanced (within $1 tolerance)
   const itemsMatch = Math.abs(totalItems - totalBoleta) < 1;
@@ -1543,7 +1592,44 @@ const CollaborativeSession = () => {
                         }
                       </div>
                     )}
-                    {/* Desglose por Persona HIDDEN in active mode - only shown after closing */}
+
+                    {/* SMART TIP CONTROLS */}
+                    <div className="tip-controls" onClick={(e) => e.stopPropagation()}>
+                      <div className="tip-header">
+                        <span className="tip-label">Propina</span>
+                        <div className="tip-mode-switch">
+                          <button
+                            className={`tip-mode-btn ${tipMode === 'percent' ? 'active' : ''}`}
+                            onClick={() => handleUpdateTip('percent', tipValue)}
+                          >
+                            %
+                          </button>
+                          <button
+                            className={`tip-mode-btn ${tipMode === 'fixed' ? 'active' : ''}`}
+                            onClick={() => handleUpdateTip('fixed', tipValue)}
+                          >
+                            $
+                          </button>
+                        </div>
+                      </div>
+                      <div className="tip-input-row">
+                        <input
+                          type="number"
+                          className="tip-input"
+                          value={tipValue || ''}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            handleUpdateTip(tipMode, val);
+                          }}
+                        />
+                        <span className="tip-helper">
+                          {tipMode === 'percent'
+                            ? `= ${formatCurrency(totalTipAmount)}`
+                            : `÷ ${session.participants?.length || 1} = ${formatCurrency(totalTipAmount / (session.participants?.length || 1))}/pers`
+                          }
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
