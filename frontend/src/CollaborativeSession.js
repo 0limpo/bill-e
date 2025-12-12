@@ -331,6 +331,8 @@ const BillItem = ({
   onAssign,
   onGroupAssign,
   onUnitAssign,
+  onClearUnitsAndAssignAll,
+  onClearParent,
   onToggleMode,
   itemMode,
   isFinalized,
@@ -458,16 +460,8 @@ const BillItem = ({
                   onClick={() => {
                     if (isExpanded) {
                       // Switching from "Por unidad" to "Entre todos"
-                      // 1. Clear all unit assignments
-                      for (let i = 0; i < qty; i++) {
-                        const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
-                        unitAssigns.forEach(a => {
-                          onUnitAssign(itemId, i, a.participant_id, false);
-                        });
-                      }
-                      // 2. Assign ALL participants to parent item (equal split)
-                      onGroupAssign(itemId, '__ALL__', true);
-                      // 3. Collapse
+                      // Use onClearUnitsAndAssignAll to do it atomically
+                      onClearUnitsAndAssignAll(itemId, qty);
                       onToggleExpand(itemId);
                     } else if (!allAssignedToParent) {
                       // Already in "Entre todos" but not all assigned - assign all
@@ -482,11 +476,8 @@ const BillItem = ({
                   onClick={() => {
                     if (!isExpanded) {
                       // Switching from "Entre todos" to "Por unidad"
-                      // 1. Clear parent item assignments
-                      itemAssignments.forEach(a => {
-                        onGroupAssign(itemId, a.participant_id, false);
-                      });
-                      // 2. Expand
+                      // Use onClearParent to clear parent assignments
+                      onClearParent(itemId);
                       onToggleExpand(itemId);
                     }
                   }}
@@ -969,6 +960,97 @@ const CollaborativeSession = () => {
         })
       }).catch(console.error);
     }
+  };
+
+  // Clear all unit assignments and assign all participants to parent item (atomic operation)
+  const handleClearUnitsAndAssignAll = (itemId, qty) => {
+    lastInteraction.current = Date.now();
+
+    const item = session.items.find(i => (i.id || i.name) === itemId);
+    if (!item) return;
+
+    // 1. Build new state clearing all units and assigning to parent
+    const newAssignments = { ...session.assignments };
+
+    // Clear all unit assignments
+    for (let i = 0; i < qty; i++) {
+      const unitId = `${itemId}_unit_${i}`;
+      const unitAssigns = newAssignments[unitId] || [];
+      // Send API calls to clear
+      unitAssigns.forEach(a => {
+        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: unitId,
+            participant_id: a.participant_id,
+            quantity: 0,
+            is_assigned: false,
+            updated_by: currentParticipant?.name
+          })
+        }).catch(console.error);
+      });
+      newAssignments[unitId] = [];
+    }
+
+    // Assign all participants to parent item
+    const allParticipantIds = session.participants.map(p => p.id);
+    const itemQty = item.quantity || 1;
+    const newShare = itemQty / allParticipantIds.length;
+
+    newAssignments[itemId] = allParticipantIds.map(pid => ({
+      participant_id: pid,
+      quantity: newShare
+    }));
+
+    // Send API calls for parent assignments
+    allParticipantIds.forEach(pid => {
+      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: itemId,
+          participant_id: pid,
+          quantity: newShare,
+          is_assigned: true,
+          updated_by: currentParticipant?.name
+        })
+      }).catch(console.error);
+    });
+
+    // Optimistic UI update (atomic)
+    setSession(prev => ({
+      ...prev,
+      assignments: newAssignments
+    }));
+  };
+
+  // Clear parent item assignments
+  const handleClearParent = (itemId) => {
+    lastInteraction.current = Date.now();
+
+    const currentAssignments = session.assignments[itemId] || [];
+
+    // Send API calls to clear
+    currentAssignments.forEach(a => {
+      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: itemId,
+          participant_id: a.participant_id,
+          quantity: 0,
+          is_assigned: false,
+          updated_by: currentParticipant?.name
+        })
+      }).catch(console.error);
+    });
+
+    // Optimistic UI update
+    setSession(prev => ({
+      ...prev,
+      assignments: { ...prev.assignments, [itemId]: [] }
+    }));
   };
 
   const handleFinalize = async () => {
@@ -1575,6 +1657,8 @@ const CollaborativeSession = () => {
                 onAssign={handleAssign}
                 onGroupAssign={handleGroupAssign}
                 onUnitAssign={handleUnitAssign}
+                onClearUnitsAndAssignAll={handleClearUnitsAndAssignAll}
+                onClearParent={handleClearParent}
                 itemMode={item.mode || 'individual'}
                 onToggleMode={toggleItemMode}
                 isFinalized={session.status === 'finalized'}
