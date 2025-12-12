@@ -1037,20 +1037,34 @@ const CollaborativeSession = () => {
       console.error('Error updating item:', err);
     }
   };
+  // Calculate participant total dynamically from local state (not backend totals)
+  // This ensures Host sees the same math as Editor when items are edited
+  const calculateParticipantTotal = (participantId, includesTip = true) => {
+    if (!session) return { subtotal: 0, total: 0 };
+
+    let subtotal = 0;
+    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+      const assignment = assigns.find(a => a.participant_id === participantId);
+      if (assignment) {
+        const item = session.items.find(i => (i.id || i.name) === itemId);
+        if (item) {
+          // item.price is unit price, multiply by assigned quantity
+          subtotal += item.price * (assignment.quantity || 1);
+        }
+      }
+    });
+
+    const tipPct = session.tip_percentage || 10;
+    const tipAmount = subtotal * (tipPct / 100);
+    const total = includesTip ? subtotal + tipAmount : subtotal;
+
+    return { subtotal, total, tipAmount };
+  };
+
   // Cálculo de totales locales
   const getMyTotal = () => {
     if (!session || !currentParticipant) return 0;
-    let total = 0;
-    Object.entries(session.assignments).forEach(([itemId, assigns]) => {
-      const myAssign = assigns.find(a => a.participant_id === currentParticipant.id);
-      if (myAssign) {
-        const item = session.items.find(i => (i.id || i.name) === itemId);
-        if (item) total += item.price * (myAssign.quantity || 1);
-      }
-    });
-    // Sumar propina proporcional (si existe en session)
-    const tipPct = session.tip_percentage || 10;
-    return total * (1 + tipPct / 100);
+    return calculateParticipantTotal(currentParticipant.id, true).total;
   };
 
   const toggleItemMode = (itemId) => {
@@ -1252,7 +1266,7 @@ const CollaborativeSession = () => {
   // Calculate validation metrics for bottom sheet
   // NOTE: item.price is UNIT PRICE (backend guarantees this after OCR auto-correction)
 
-  // Total Items = sum of (unit_price × quantity) for all items
+  // Total Items = sum of (unit_price × quantity) for all items (this is "Suma Items" - the moving reality)
   const totalItems = session.items.reduce((sum, item) => {
     return sum + (item.price * (item.quantity || 1));
   }, 0);
@@ -1267,7 +1281,15 @@ const CollaborativeSession = () => {
     return acc + (assignedQty * item.price);
   }, 0);
 
+  // Total Boleta = OCR target subtotal (static unless manually changed by Host)
   const totalBoleta = session.subtotal || 0;
+
+  // STEP 3: Dynamic displayedTotal - always mathematically correct based on current items
+  // This replaces session.total (which is stale backend value) for the sticky footer
+  const currentItemSum = totalItems; // Sum of all items at current prices
+  const tipPct = session.tip_percentage || 10;
+  const tipAmount = currentItemSum * (tipPct / 100);
+  const displayedTotal = currentItemSum + tipAmount;
 
   // Check if totals are balanced (within $1 tolerance)
   const itemsMatch = Math.abs(totalItems - totalBoleta) < 1;
@@ -1421,7 +1443,8 @@ const CollaborativeSession = () => {
                 {!isOwner && <small className="sheet-subtitle">Toca para ver detalles</small>}
               </div>
               <span className="my-total-amount">
-                {formatCurrency(isOwner ? session.total : getMyTotal())}
+                {/* STEP 3: Use displayedTotal (dynamic) instead of session.total (stale) */}
+                {formatCurrency(isOwner ? displayedTotal : getMyTotal())}
               </span>
             </div>
 
@@ -1433,12 +1456,13 @@ const CollaborativeSession = () => {
                   <div className={`sheet-validation ${isBalanced ? 'balanced' : 'warning'}`}>
                     <div className="validation-grid">
                       <div className="validation-metric">
-                        <span className="validation-metric-label">Subtotal Boleta</span>
+                        <span className="validation-metric-label">Total Boleta</span>
                         <input
                           type="number"
                           className="validation-metric-input"
                           value={totalBoleta || ''}
                           onChange={(e) => {
+                            // STEP 2: Only update subtotal via this input (not from item edits)
                             const val = parseFloat(e.target.value) || 0;
                             setSession(prev => ({ ...prev, subtotal: val }));
                           }}
@@ -1472,6 +1496,32 @@ const CollaborativeSession = () => {
                         }
                       </div>
                     )}
+
+                    {/* STEP 4: Dynamic Participant Breakdown for Host (live calculation) */}
+                    <div className="participant-breakdown" style={{ marginTop: '16px' }}>
+                      <div className="breakdown-title">Desglose por Persona (+ {tipPct}% propina)</div>
+                      {session.participants.map(p => {
+                        const { subtotal, total } = calculateParticipantTotal(p.id, true);
+                        return (
+                          <div key={p.id} className="breakdown-row">
+                            <div className="breakdown-person">
+                              <span
+                                className="breakdown-avatar"
+                                style={{ background: getAvatarColor(p.name) }}
+                              >
+                                {getInitials(p.name)}
+                              </span>
+                              <span>{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
+                            </div>
+                            <span className="breakdown-amount">{formatCurrency(total)}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="breakdown-row subtotal" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed rgba(0,0,0,0.1)' }}>
+                        <span><strong>Total Mesa</strong></span>
+                        <span><strong>{formatCurrency(displayedTotal)}</strong></span>
+                      </div>
+                    </div>
                   </div>
                 )}
 

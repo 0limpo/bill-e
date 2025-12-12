@@ -380,11 +380,23 @@ body {
   outline: none;
   box-shadow: none;
   -webkit-appearance: none;
+  margin-top: 0;
 }
 
 .item-edit-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+/* Remove spin buttons from number inputs in edit mode */
+.item-edit-input::-webkit-inner-spin-button,
+.item-edit-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.item-edit-input[type="number"] {
+  -moz-appearance: textfield;
 }
 
 .item-edit-input.qty { width: 55px; text-align: center; }
@@ -412,14 +424,18 @@ body {
 .item-edit-field {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
+  border: none;
+  background: transparent;
 }
 
 .item-edit-label {
+  display: block;
   font-size: 10px;
   text-transform: uppercase;
   color: var(--text-secondary);
   letter-spacing: 0.3px;
+  margin-bottom: 4px;
 }
 
 .item-edit-x {
@@ -966,26 +982,33 @@ body {
   color: var(--danger);
 }
 
-/* Text-like editable input */
+/* Text-like editable input - clean, minimal, dashed underline */
 .validation-metric-input {
   width: 100%;
-  padding: 4px 0;
+  padding: 6px 4px;
   border: none;
-  border-bottom: 1px dashed rgba(0,0,0,0.2);
+  border-bottom: 2px dashed var(--primary);
   background: transparent;
   font-size: 16px;
   font-weight: 700;
   text-align: center;
   color: var(--primary);
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+  border-radius: 0;
+}
+
+.validation-metric-input::placeholder {
+  color: rgba(79, 70, 229, 0.4);
 }
 
 .validation-metric-input:focus {
   border-bottom-color: var(--primary);
   border-bottom-style: solid;
+  background: rgba(79, 70, 229, 0.05);
 }
 
+/* Remove native spin buttons for clean look */
 .validation-metric-input::-webkit-inner-spin-button,
 .validation-metric-input::-webkit-outer-spin-button {
   -webkit-appearance: none;
