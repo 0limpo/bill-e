@@ -1624,12 +1624,12 @@ const CollaborativeSession = () => {
                       {myItems.map((item, idx) => (
                         <div key={idx} className="breakdown-row">
                           <span>
-                            {/* Show split badge for shared items, qty badge for multiples */}
+                            {/* Show split badge for shared items, qty badge for all quantities */}
                             {item.splitCount > 1 ? (
                               <span className="split-badge">/{item.splitCount}</span>
-                            ) : item.quantity > 1 ? (
+                            ) : (
                               <span className="qty-badge">{Math.round(item.quantity)}x</span>
-                            ) : null}
+                            )}
                             {item.name}
                           </span>
                           <span>{formatCurrency(item.amount)}</span>
