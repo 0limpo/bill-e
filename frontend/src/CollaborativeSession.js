@@ -445,8 +445,14 @@ const BillItem = ({
 
         {/* Grupal options for items with qty > 1 */}
         {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (() => {
-          // Simple state: collapsed = "Entre todos" mode, expanded = "Por unidad" mode
-          // The switch just toggles the expanded state, no auto-assignments
+          // Collect all participants assigned to any unit
+          const unitAssigneeIds = new Set();
+          for (let i = 0; i < qty; i++) {
+            const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
+            unitAssigns.forEach(a => unitAssigneeIds.add(a.participant_id));
+          }
+          const hasUnitAssignments = unitAssigneeIds.size > 0;
+
           return (
             <div className="grupal-options">
               {/* Switch: Entre todos / Por unidad */}
@@ -454,7 +460,24 @@ const BillItem = ({
                 <div
                   className={`grupal-switch-option ${!isExpanded ? 'active' : ''}`}
                   onClick={() => {
-                    if (isExpanded) onToggleExpand(itemId); // Collapse
+                    if (isExpanded) {
+                      // Switching from "Por unidad" to "Entre todos"
+                      // 1. Clear all unit assignments
+                      for (let i = 0; i < qty; i++) {
+                        const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
+                        unitAssigns.forEach(a => {
+                          onUnitAssign(itemId, i, a.participant_id, false);
+                        });
+                      }
+                      // 2. Assign all collected participants to parent item (equal split)
+                      if (hasUnitAssignments) {
+                        unitAssigneeIds.forEach(pid => {
+                          onGroupAssign(itemId, pid, true);
+                        });
+                      }
+                      // 3. Collapse
+                      onToggleExpand(itemId);
+                    }
                   }}
                 >
                   👥 Entre todos
@@ -462,7 +485,15 @@ const BillItem = ({
                 <div
                   className={`grupal-switch-option ${isExpanded ? 'active' : ''}`}
                   onClick={() => {
-                    if (!isExpanded) onToggleExpand(itemId); // Expand
+                    if (!isExpanded) {
+                      // Switching from "Entre todos" to "Por unidad"
+                      // 1. Clear parent item assignments
+                      itemAssignments.forEach(a => {
+                        onGroupAssign(itemId, a.participant_id, false);
+                      });
+                      // 2. Expand
+                      onToggleExpand(itemId);
+                    }
                   }}
                 >
                   Por unidad {isExpanded ? '▲' : '▼'}
