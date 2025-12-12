@@ -445,55 +445,24 @@ const BillItem = ({
 
         {/* Grupal options for items with qty > 1 */}
         {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (() => {
-          // Check if assigned via parent item (Entre todos mode)
-          const allAssignedToParent = participants.length > 0 &&
-            participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
-
-          // Check if any unit has assignments (Por unidad mode)
-          let hasUnitAssignments = false;
-          for (let i = 0; i < qty; i++) {
-            const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
-            if (unitAssigns.length > 0) {
-              hasUnitAssignments = true;
-              break;
-            }
-          }
-
-          // "Entre todos" is active if all assigned to parent AND no unit assignments
-          const isEntreTodos = allAssignedToParent && !hasUnitAssignments && !isExpanded;
-          // "Por unidad" is active if expanded OR has unit assignments
-          const isPorUnidad = isExpanded || hasUnitAssignments;
-
+          // Simple state: collapsed = "Entre todos" mode, expanded = "Por unidad" mode
+          // The switch just toggles the expanded state, no auto-assignments
           return (
             <div className="grupal-options">
               {/* Switch: Entre todos / Por unidad */}
               <div className="grupal-switch">
                 <div
-                  className={`grupal-switch-option ${isEntreTodos ? 'active' : ''}`}
+                  className={`grupal-switch-option ${!isExpanded ? 'active' : ''}`}
                   onClick={() => {
-                    if (!isEntreTodos) {
-                      // Clear unit assignments first, then assign all to parent
-                      for (let i = 0; i < qty; i++) {
-                        const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
-                        unitAssigns.forEach(a => {
-                          onUnitAssign(itemId, i, a.participant_id, false);
-                        });
-                      }
-                      onGroupAssign(itemId, '__ALL__', true);
-                      if (isExpanded) onToggleExpand(itemId); // Collapse if open
-                    }
+                    if (isExpanded) onToggleExpand(itemId); // Collapse
                   }}
                 >
                   👥 Entre todos
                 </div>
                 <div
-                  className={`grupal-switch-option ${isPorUnidad ? 'active' : ''}`}
+                  className={`grupal-switch-option ${isExpanded ? 'active' : ''}`}
                   onClick={() => {
-                    if (isEntreTodos) {
-                      // Clear parent assignment when switching to per-unit mode
-                      onGroupAssign(itemId, '__ALL__', true); // Toggle off
-                    }
-                    if (!isExpanded) onToggleExpand(itemId);
+                    if (!isExpanded) onToggleExpand(itemId); // Expand
                   }}
                 >
                   Por unidad {isExpanded ? '▲' : '▼'}
@@ -544,44 +513,31 @@ const BillItem = ({
             })}
           </div>
         ) : itemMode === 'grupal' && qty > 1 ? (
-          /* COLLAPSED GRUPAL VIEW - Show summary combining parent + unit assignments */
-          (() => {
-            // Collect all unique assignees from parent item AND all unit assignments
-            const allAssigneeIds = new Set();
-            // Check parent item
-            itemAssignments.forEach(a => allAssigneeIds.add(a.participant_id));
-            // Check each unit
-            for (let i = 0; i < qty; i++) {
-              const unitAssigns = assignments[`${itemId}_unit_${i}`] || [];
-              unitAssigns.forEach(a => allAssigneeIds.add(a.participant_id));
-            }
-            const uniqueAssignees = Array.from(allAssigneeIds);
+          /* COLLAPSED GRUPAL VIEW - "Entre todos" mode: assign to parent item */
+          <div className="consumer-scroll-list">
+            {participants.map(p => {
+              const assignment = itemAssignments.find(a => a.participant_id === p.id);
+              const isAssigned = assignment && assignment.quantity > 0;
+              const canAssign = !isFinalized && currentParticipant;
 
-            return (
-              <div className="grupal-summary">
-                {uniqueAssignees.length > 0 ? (
-                  <div className="assigned-avatars">
-                    {uniqueAssignees.map(pid => {
-                      const p = participants.find(p => p.id === pid);
-                      if (!p) return null;
-                      return (
-                        <div key={p.id} className="assigned-avatar-small">
-                          <Avatar name={p.name} size="small" />
-                        </div>
-                      );
-                    })}
-                    <span className="assigned-label">
-                      {uniqueAssignees.length === participants.length
-                        ? '✓ Entre todos'
-                        : `✓ ${uniqueAssignees.length} personas`}
-                    </span>
+              return (
+                <div
+                  key={p.id}
+                  className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
+                >
+                  <div
+                    className="avatar-wrapper"
+                    onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
+                    style={{ position: 'relative', cursor: canAssign ? 'pointer' : 'default' }}
+                  >
+                    <Avatar name={p.name} />
+                    {isAssigned && <span className="check-badge">✓</span>}
                   </div>
-                ) : (
-                  <span className="no-assigned-label">Sin asignar - usa los botones arriba</span>
-                )}
-              </div>
-            );
-          })()
+                  <span className="consumer-name">{p.id === currentParticipant?.id ? 'Yo' : p.name}</span>
+                </div>
+              );
+            })}
+          </div>
         ) : (
           /* HORIZONTAL SCROLL LIST - Normal view (individual mode or grupal qty=1) */
           <div className="consumer-scroll-list">
@@ -1905,6 +1861,11 @@ const CollaborativeSession = () => {
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
                           handleUpdateTip(tipMode, val);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.target.blur();
+                          }
                         }}
                       />
                       <span className="tip-helper">
