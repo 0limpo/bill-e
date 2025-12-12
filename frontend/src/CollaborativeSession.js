@@ -862,52 +862,58 @@ const CollaborativeSession = () => {
     }
   };
 
-  // Split an item into separate units
+  // Split an item into separate units (PROPER DIVIDE LOGIC)
+  // Splits 1 unit from a group item: original qty decrements, new item gets 1 unit
   const handleSplitItem = async (itemId) => {
     lastInteraction.current = Date.now();
     const item = session.items.find(i => (i.id || i.name) === itemId);
     if (!item || item.quantity <= 1) return;
 
-    const pricePerUnit = item.price / item.quantity;
-    const newItemId = `${itemId}_split_${Date.now()}`;
+    const splitQty = 1; // Always split 1 unit at a time
+    const unitPrice = item.price; // item.price is already unit price
 
-    // Optimistic update: reduce original qty, add new item
+    // Optimistic update: DECREMENT original qty, add new item with mode='grupal'
+    const tempNewItemId = `split_temp_${Date.now()}`;
     setSession(prev => ({
       ...prev,
       items: [
         ...prev.items.map(i =>
           (i.id || i.name) === itemId
-            ? { ...i, quantity: i.quantity - 1, price: i.price - pricePerUnit }
+            ? { ...i, quantity: i.quantity - splitQty }
             : i
-        ),
+        ).filter(i => i.quantity > 0), // Remove if qty reaches 0
         {
-          id: newItemId,
+          id: tempNewItemId,
           name: item.name,
-          quantity: 1,
-          price: pricePerUnit
+          quantity: splitQty,
+          price: unitPrice,
+          mode: 'grupal' // CRITICAL: Inherit group mode, NO assignments
         }
       ]
     }));
 
-    // API calls (background)
+    // API call to proper split endpoint
     try {
-      // Update original item
-      await fetch(`${API_URL}/api/session/${sessionId}/add-item`, {
+      const res = await fetch(`${API_URL}/api/session/${sessionId}/split-item`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           owner_token: ownerToken,
-          name: item.name,
-          price: pricePerUnit,
-          quantity: 1
+          item_id: itemId,
+          split_quantity: splitQty
         })
       });
-      // Reload to get server-assigned ID
-      await loadSession();
+
+      if (res.ok) {
+        // Reload to get server state (proper IDs, synced state)
+        await loadSession();
+      } else {
+        console.error('Error splitting item:', await res.text());
+        await loadSession(); // Rollback
+      }
     } catch (err) {
       console.error('Error splitting item:', err);
-      // Rollback on error
-      await loadSession();
+      await loadSession(); // Rollback on error
     }
   };
 
@@ -1429,13 +1435,14 @@ const CollaborativeSession = () => {
       </div>
 
       {/* BOTTOM SHEET (Interactive Expandable with Swipe) */}
-      <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
-        {/* Visual Handle - Swipe/Click to toggle (handlers here, not on content) */}
+      {/* Editors always see expanded (their breakdown), Owners expand on demand */}
+      <div className={`bottom-sheet ${isSheetExpanded || isFinalized || !isOwner ? 'expanded' : ''}`}>
+        {/* Visual Handle - Swipe/Click to toggle (Owner only, Editors don't need to expand) */}
         <div
           className="sheet-handle"
-          onClick={() => !isFinalized && setIsSheetExpanded(!isSheetExpanded)}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          onClick={() => !isFinalized && isOwner && setIsSheetExpanded(!isSheetExpanded)}
+          onTouchStart={isOwner ? handleTouchStart : undefined}
+          onTouchEnd={isOwner ? handleTouchEnd : undefined}
         />
 
         {isFinalized ? (
@@ -1521,168 +1528,175 @@ const CollaborativeSession = () => {
         ) : (
           // ============ ACTIVE VIEW ============
           <>
-            {/* Summary Row - Clickable/Swipeable to expand */}
+            {/* Summary Row - Clickable/Swipeable to expand (Owner only needs expansion) */}
             <div
-              className="sheet-summary-row clickable"
-              onClick={() => setIsSheetExpanded(!isSheetExpanded)}
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
+              className={`sheet-summary-row ${isOwner ? 'clickable' : ''}`}
+              onClick={() => isOwner && setIsSheetExpanded(!isSheetExpanded)}
+              onTouchStart={isOwner ? handleTouchStart : undefined}
+              onTouchEnd={isOwner ? handleTouchEnd : undefined}
             >
               <div className="sheet-column">
                 <span className="my-total-label">
-                  {isOwner ? 'Total Mesa' : 'Tu parte (+ propina)'}
+                  {isOwner ? 'Total Mesa' : 'TU CONSUMO'}
                 </span>
                 {isOwner && (
                   <small className={`sheet-subtitle ${isBalanced ? 'balanced' : 'warning'}`}>
                     {isBalanced ? '✓ Neteado' : '⚠️ Revisar subtotales'}
                   </small>
                 )}
-                {!isOwner && <small className="sheet-subtitle">Toca para ver detalles</small>}
               </div>
               <span className="my-total-amount">
-                {/* STEP 3: Use displayedTotal (dynamic) instead of session.total (stale) */}
                 {formatCurrency(isOwner ? displayedTotal : getMyTotal())}
               </span>
             </div>
 
-            {/* Expanded: ONLY Validation Dashboard (Active mode) */}
-            {isSheetExpanded && (
-              <div className="sheet-expanded-content">
-                {/* Validation Dashboard (Host Only - Focus on SUBTOTALS) */}
-                {isOwner && (
-                  <div className={`sheet-validation ${isBalanced ? 'balanced' : 'warning'}`}>
-                    <div className="validation-grid">
-                      <div className="validation-metric">
-                        <span className="validation-metric-label">Subtotal Boleta</span>
-                        <input
-                          type="number"
-                          className="validation-metric-input"
-                          value={totalBoleta || ''}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            setSession(prev => ({ ...prev, subtotal: val }));
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                      <div className="validation-metric">
-                        <span className="validation-metric-label">Subtotal Items</span>
-                        <span className={`validation-metric-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
-                          {formatCurrency(totalItems)}
-                        </span>
-                      </div>
-                      <div className="validation-metric">
-                        <span className="validation-metric-label">Subtotal Asignado</span>
-                        <span className={`validation-metric-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
-                          {formatCurrency(totalAsignado)}
-                        </span>
-                      </div>
-                    </div>
+            {/* EDITOR: ALWAYS show My Consumption breakdown (no expansion needed) */}
+            {!isOwner && (
+              <div className="participant-breakdown">
+                <div className="breakdown-title">Detalle</div>
+                {(() => {
+                  const myItems = [];
+                  let mySubtotal = 0;
+                  Object.entries(session.assignments).forEach(([itemId, assigns]) => {
+                    const myAssign = assigns.find(a => a.participant_id === currentParticipant?.id);
+                    if (myAssign) {
+                      const item = session.items.find(i => (i.id || i.name) === itemId);
+                      if (item) {
+                        // item.price is UNIT PRICE - just multiply by assigned quantity
+                        const amount = item.price * (myAssign.quantity || 0);
+                        mySubtotal += amount;
+                        myItems.push({ name: item.name, amount });
+                      }
+                    }
+                  });
+                  // Use smart tip calculation
+                  const tipModeLocal = session.tip_mode || 'percent';
+                  const tipValueLocal = session.tip_value ?? session.tip_percentage ?? 10;
+                  const numParticipants = session.participants?.length || 1;
+                  let myTip = 0;
+                  if (tipModeLocal === 'fixed') {
+                    myTip = tipValueLocal / numParticipants;
+                  } else {
+                    myTip = mySubtotal * (tipValueLocal / 100);
+                  }
 
-                    {/* Feedback */}
-                    {isBalanced ? (
-                      <div className="validation-feedback success">
-                        ✅ Boleta Neteada
-                      </div>
-                    ) : (
-                      <div className="validation-feedback warning">
-                        {totalAsignado < totalBoleta
-                          ? `Faltan ${formatCurrency(totalBoleta - totalAsignado)}`
-                          : `Sobrepasado ${formatCurrency(totalAsignado - totalBoleta)}`
-                        }
-                      </div>
-                    )}
-
-                    {/* SMART TIP CONTROLS */}
-                    <div className="tip-controls" onClick={(e) => e.stopPropagation()}>
-                      <div className="tip-header">
-                        <span className="tip-label">Propina</span>
-                        <div className="tip-mode-switch">
-                          <button
-                            className={`tip-mode-btn ${tipMode === 'percent' ? 'active' : ''}`}
-                            onClick={() => handleUpdateTip('percent', tipValue)}
-                          >
-                            %
-                          </button>
-                          <button
-                            className={`tip-mode-btn ${tipMode === 'fixed' ? 'active' : ''}`}
-                            onClick={() => handleUpdateTip('fixed', tipValue)}
-                          >
-                            $
-                          </button>
+                  return (
+                    <>
+                      {myItems.map((item, idx) => (
+                        <div key={idx} className="breakdown-row">
+                          <span>{item.name}</span>
+                          <span>{formatCurrency(item.amount)}</span>
                         </div>
-                      </div>
-                      <div className="tip-input-row">
-                        <input
-                          type="number"
-                          className="tip-input"
-                          value={tipValue || ''}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            handleUpdateTip(tipMode, val);
-                          }}
-                        />
-                        <span className="tip-helper">
-                          {tipMode === 'percent'
-                            ? `= ${formatCurrency(totalTipAmount)}`
-                            : `÷ ${session.participants?.length || 1} = ${formatCurrency(totalTipAmount / (session.participants?.length || 1))}/pers`
-                          }
-                        </span>
-                      </div>
+                      ))}
+                      {myItems.length === 0 && (
+                        <div className="breakdown-empty">Selecciona items arriba</div>
+                      )}
+                      {myItems.length > 0 && (
+                        <>
+                          <div className="breakdown-row subtotal">
+                            <span>Subtotal</span>
+                            <span>{formatCurrency(mySubtotal)}</span>
+                          </div>
+                          <div className="breakdown-row tip">
+                            <span>Propina {tipModeLocal === 'percent' ? `(${tipValueLocal}%)` : '(fija)'}</span>
+                            <span>{formatCurrency(myTip)}</span>
+                          </div>
+                          <div className="breakdown-row subtotal">
+                            <span><strong>TOTAL</strong></span>
+                            <span className="my-total-amount">{formatCurrency(mySubtotal + myTip)}</span>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Owner Expanded: Validation Dashboard (only when expanded) */}
+            {isOwner && isSheetExpanded && (
+              <div className="sheet-expanded-content">
+                <div className={`sheet-validation ${isBalanced ? 'balanced' : 'warning'}`}>
+                  <div className="validation-grid">
+                    <div className="validation-metric">
+                      <span className="validation-metric-label">Subtotal Boleta</span>
+                      <input
+                        type="number"
+                        className="validation-metric-input"
+                        value={totalBoleta || ''}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setSession(prev => ({ ...prev, subtotal: val }));
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="validation-metric">
+                      <span className="validation-metric-label">Subtotal Items</span>
+                      <span className={`validation-metric-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
+                        {formatCurrency(totalItems)}
+                      </span>
+                    </div>
+                    <div className="validation-metric">
+                      <span className="validation-metric-label">Subtotal Asignado</span>
+                      <span className={`validation-metric-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
+                        {formatCurrency(totalAsignado)}
+                      </span>
                     </div>
                   </div>
-                )}
 
-                {/* Participant: Show their breakdown only */}
-                {!isOwner && (
-                  <div className="participant-breakdown">
-                    <div className="breakdown-title">Tu consumo</div>
-                    {(() => {
-                      const myItems = [];
-                      let mySubtotal = 0;
-                      Object.entries(session.assignments).forEach(([itemId, assigns]) => {
-                        const myAssign = assigns.find(a => a.participant_id === currentParticipant?.id);
-                        if (myAssign) {
-                          const item = session.items.find(i => (i.id || i.name) === itemId);
-                          if (item) {
-                            // item.price is UNIT PRICE - just multiply by assigned quantity
-                            const amount = item.price * (myAssign.quantity || 0);
-                            mySubtotal += amount;
-                            myItems.push({ name: item.name, amount });
-                          }
+                  {/* Feedback */}
+                  {isBalanced ? (
+                    <div className="validation-feedback success">
+                      ✅ Boleta Neteada
+                    </div>
+                  ) : (
+                    <div className="validation-feedback warning">
+                      {totalAsignado < totalBoleta
+                        ? `Faltan ${formatCurrency(totalBoleta - totalAsignado)}`
+                        : `Sobrepasado ${formatCurrency(totalAsignado - totalBoleta)}`
+                      }
+                    </div>
+                  )}
+
+                  {/* SMART TIP CONTROLS */}
+                  <div className="tip-controls" onClick={(e) => e.stopPropagation()}>
+                    <div className="tip-header">
+                      <span className="tip-label">Propina</span>
+                      <div className="tip-mode-switch">
+                        <button
+                          className={`tip-mode-btn ${tipMode === 'percent' ? 'active' : ''}`}
+                          onClick={() => handleUpdateTip('percent', tipValue)}
+                        >
+                          %
+                        </button>
+                        <button
+                          className={`tip-mode-btn ${tipMode === 'fixed' ? 'active' : ''}`}
+                          onClick={() => handleUpdateTip('fixed', tipValue)}
+                        >
+                          $
+                        </button>
+                      </div>
+                    </div>
+                    <div className="tip-input-row">
+                      <input
+                        type="number"
+                        className="tip-input"
+                        value={tipValue || ''}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          handleUpdateTip(tipMode, val);
+                        }}
+                      />
+                      <span className="tip-helper">
+                        {tipMode === 'percent'
+                          ? `= ${formatCurrency(totalTipAmount)}`
+                          : `÷ ${session.participants?.length || 1} = ${formatCurrency(totalTipAmount / (session.participants?.length || 1))}/pers`
                         }
-                      });
-                      const tipPct = session.tip_percentage || 10;
-                      const myTip = mySubtotal * (tipPct / 100);
-
-                      return (
-                        <>
-                          {myItems.map((item, idx) => (
-                            <div key={idx} className="breakdown-row">
-                              <span>{item.name}</span>
-                              <span>{formatCurrency(item.amount)}</span>
-                            </div>
-                          ))}
-                          {myItems.length === 0 && (
-                            <div className="breakdown-empty">No has seleccionado items</div>
-                          )}
-                          {myItems.length > 0 && (
-                            <>
-                              <div className="breakdown-row subtotal">
-                                <span>Subtotal</span>
-                                <span>{formatCurrency(mySubtotal)}</span>
-                              </div>
-                              <div className="breakdown-row tip">
-                                <span>Propina ({tipPct}%)</span>
-                                <span>{formatCurrency(myTip)}</span>
-                              </div>
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
+                      </span>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
 

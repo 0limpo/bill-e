@@ -976,6 +976,89 @@ async def add_item_to_session(session_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/session/{session_id}/split-item")
+async def split_item(session_id: str, request: Request):
+    """Split a group item: decrement original by N, create new item with N units.
+
+    CRITICAL LOGIC:
+    - Original item: qty = qty - split_quantity
+    - New item: qty = split_quantity, inherits mode='grupal', no assignments
+    - If original reaches 0, remove it
+    """
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+        item_id = data.get("item_id")
+        split_quantity = data.get("split_quantity", 1)
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesión no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Find the original item
+        original_item = None
+        original_index = -1
+        for idx, item in enumerate(session_data["items"]):
+            if (item.get("id") or item.get("name")) == item_id:
+                original_item = item
+                original_index = idx
+                break
+
+        if not original_item:
+            raise HTTPException(status_code=404, detail="Item no encontrado")
+
+        original_qty = original_item.get("quantity", 1)
+        if split_quantity >= original_qty:
+            raise HTTPException(status_code=400, detail="No se puede separar toda la cantidad")
+
+        # Get unit price (item.price is already unit price)
+        unit_price = original_item.get("price", 0)
+
+        # 1. DECREMENT original item quantity
+        session_data["items"][original_index]["quantity"] = original_qty - split_quantity
+
+        # 2. CREATE new item with split_quantity, mode='grupal', NO assignments
+        new_item = {
+            "id": f"split_{uuid.uuid4().hex[:8]}",
+            "name": original_item.get("name", "Item"),
+            "quantity": split_quantity,
+            "price": unit_price,  # Same unit price
+            "mode": "grupal"  # CRITICAL: Inherit group mode
+        }
+        session_data["items"].append(new_item)
+
+        # 3. If original item reaches 0, remove it and its assignments
+        if session_data["items"][original_index]["quantity"] <= 0:
+            # Remove assignments for original item
+            if item_id in session_data.get("assignments", {}):
+                del session_data["assignments"][item_id]
+            # Remove the item
+            session_data["items"].pop(original_index)
+
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Save to Redis
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {
+            "success": True,
+            "new_item": new_item,
+            "items": session_data["items"]
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
