@@ -864,6 +864,7 @@ const CollaborativeSession = () => {
 
   // Split an item into separate units (PROPER DIVIDE LOGIC)
   // Splits 1 unit from a group item: original qty decrements, new item gets 1 unit
+  // NEW: Insert child item immediately after parent for visual hierarchy
   const handleSplitItem = async (itemId) => {
     lastInteraction.current = Date.now();
     const item = session.items.find(i => (i.id || i.name) === itemId);
@@ -871,26 +872,40 @@ const CollaborativeSession = () => {
 
     const splitQty = 1; // Always split 1 unit at a time
     const unitPrice = item.price; // item.price is already unit price
-
-    // Optimistic update: DECREMENT original qty, add new item with mode='grupal'
     const tempNewItemId = `split_temp_${Date.now()}`;
-    setSession(prev => ({
-      ...prev,
-      items: [
-        ...prev.items.map(i =>
-          (i.id || i.name) === itemId
-            ? { ...i, quantity: i.quantity - splitQty }
-            : i
-        ).filter(i => i.quantity > 0), // Remove if qty reaches 0
-        {
-          id: tempNewItemId,
-          name: item.name,
-          quantity: splitQty,
-          price: unitPrice,
-          mode: 'grupal' // CRITICAL: Inherit group mode, NO assignments
-        }
-      ]
-    }));
+
+    // Optimistic update: DECREMENT original qty, INSERT new item right after parent
+    setSession(prev => {
+      const originalIndex = prev.items.findIndex(i => (i.id || i.name) === itemId);
+      if (originalIndex === -1) return prev; // Safety check
+
+      const newItems = [...prev.items];
+
+      // 1. Decrement parent quantity
+      newItems[originalIndex] = {
+        ...newItems[originalIndex],
+        quantity: newItems[originalIndex].quantity - splitQty
+      };
+
+      // 2. Create child item (individual mode for quick assignment)
+      const newItem = {
+        id: tempNewItemId,
+        name: item.name,
+        quantity: splitQty,
+        price: unitPrice,
+        mode: 'individual', // Individual for quick assignment
+        isSplitChild: true  // Flag for visual hierarchy
+      };
+
+      // 3. Insert child at index + 1 (right after parent)
+      newItems.splice(originalIndex + 1, 0, newItem);
+
+      // 4. Filter out items with qty <= 0
+      return {
+        ...prev,
+        items: newItems.filter(i => i.quantity > 0)
+      };
+    });
 
     // API call to proper split endpoint
     try {
@@ -1407,25 +1422,44 @@ const CollaborativeSession = () => {
       {/* LISTA ITEMS */}
       <div className="items-section">
         <h3>Consumo</h3>
-        {session.items.map((item, idx) => (
-          <BillItem
-            key={item.id || idx}
-            item={item}
-            assignments={session.assignments}
-            participants={session.participants}
-            currentParticipant={currentParticipant}
-            isOwner={isOwner}
-            onAssign={handleAssign}
-            onGroupAssign={handleGroupAssign}
-            itemMode={item.mode || 'individual'}
-            onToggleMode={toggleItemMode}
-            isFinalized={session.status === 'finalized'}
-            onEditItem={handleItemUpdate}
-            onToggleEdit={handleToggleItemEdit}
-            onSplitItem={handleSplitItem}
-            onDeleteItem={handleDeleteItem}
-          />
-        ))}
+        {session.items
+          // Sort to keep split children grouped with parents (same name, lower qty after higher)
+          .map((item, originalIdx) => ({ ...item, originalIdx }))
+          .sort((a, b) => {
+            if (a.name === b.name) {
+              // Parent (higher qty) comes first, children after
+              return (b.quantity || 0) - (a.quantity || 0);
+            }
+            return a.originalIdx - b.originalIdx; // Preserve original order for different items
+          })
+          .map((item, idx, array) => {
+            // Detect if this is a child item (same name as previous, or has isSplitChild flag)
+            const isChild = item.isSplitChild || (idx > 0 && array[idx - 1].name === item.name);
+
+            return (
+              <div key={item.id || idx} className={`item-wrapper ${isChild ? 'is-child-item' : ''}`}>
+                {/* Visual connector for child items */}
+                {isChild && <div className="child-connector"></div>}
+
+                <BillItem
+                  item={item}
+                  assignments={session.assignments}
+                  participants={session.participants}
+                  currentParticipant={currentParticipant}
+                  isOwner={isOwner}
+                  onAssign={handleAssign}
+                  onGroupAssign={handleGroupAssign}
+                  itemMode={item.mode || 'individual'}
+                  onToggleMode={toggleItemMode}
+                  isFinalized={session.status === 'finalized'}
+                  onEditItem={handleItemUpdate}
+                  onToggleEdit={handleToggleItemEdit}
+                  onSplitItem={handleSplitItem}
+                  onDeleteItem={handleDeleteItem}
+                />
+              </div>
+            );
+          })}
         
         {isOwner && (
           <button className="add-item-btn" onClick={() => setShowAddItemModal(true)}>
@@ -1435,14 +1469,14 @@ const CollaborativeSession = () => {
       </div>
 
       {/* BOTTOM SHEET (Interactive Expandable with Swipe) */}
-      {/* Editors always see expanded (their breakdown), Owners expand on demand */}
-      <div className={`bottom-sheet ${isSheetExpanded || isFinalized || !isOwner ? 'expanded' : ''}`}>
-        {/* Visual Handle - Swipe/Click to toggle (Owner only, Editors don't need to expand) */}
+      {/* All users can expand/collapse - starts collapsed, tap to see details */}
+      <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
+        {/* Visual Handle - Swipe/Click to toggle for ALL users */}
         <div
           className="sheet-handle"
-          onClick={() => !isFinalized && isOwner && setIsSheetExpanded(!isSheetExpanded)}
-          onTouchStart={isOwner ? handleTouchStart : undefined}
-          onTouchEnd={isOwner ? handleTouchEnd : undefined}
+          onClick={() => !isFinalized && setIsSheetExpanded(!isSheetExpanded)}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
         />
 
         {isFinalized ? (
@@ -1528,21 +1562,23 @@ const CollaborativeSession = () => {
         ) : (
           // ============ ACTIVE VIEW ============
           <>
-            {/* Summary Row - Clickable/Swipeable to expand (Owner only needs expansion) */}
+            {/* Summary Row - Clickable/Swipeable to expand for ALL users */}
             <div
-              className={`sheet-summary-row ${isOwner ? 'clickable' : ''}`}
-              onClick={() => isOwner && setIsSheetExpanded(!isSheetExpanded)}
-              onTouchStart={isOwner ? handleTouchStart : undefined}
-              onTouchEnd={isOwner ? handleTouchEnd : undefined}
+              className="sheet-summary-row clickable"
+              onClick={() => setIsSheetExpanded(!isSheetExpanded)}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
               <div className="sheet-column">
                 <span className="my-total-label">
-                  {isOwner ? 'Total Mesa' : 'TU CONSUMO'}
+                  {isOwner ? 'Total Mesa' : 'Tu parte'}
                 </span>
-                {isOwner && (
+                {isOwner ? (
                   <small className={`sheet-subtitle ${isBalanced ? 'balanced' : 'warning'}`}>
                     {isBalanced ? '✓ Neteado' : '⚠️ Revisar subtotales'}
                   </small>
+                ) : (
+                  <small className="sheet-subtitle">Toca para ver detalle</small>
                 )}
               </div>
               <span className="my-total-amount">
@@ -1550,10 +1586,10 @@ const CollaborativeSession = () => {
               </span>
             </div>
 
-            {/* EDITOR: ALWAYS show My Consumption breakdown (no expansion needed) */}
-            {!isOwner && (
+            {/* EDITOR: Show breakdown only when expanded */}
+            {!isOwner && isSheetExpanded && (
               <div className="participant-breakdown">
-                <div className="breakdown-title">Detalle</div>
+                <div className="breakdown-title">TU CONSUMO</div>
                 {(() => {
                   const myItems = [];
                   let mySubtotal = 0;
