@@ -363,49 +363,46 @@ const BillItem = ({
         {/* GRID LAYOUT: Qty | Name | Price */}
         <div className="item-header" onClick={() => canEditItem && !isEditing && onToggleEdit(itemId)}>
           {isEditing ? (
-            // EDIT MODE - Clean row with inputs
-            <div className="item-edit-form" onClick={(e) => e.stopPropagation()}>
-              <div className="item-edit-row">
-                <div className="item-edit-field">
-                  <label className="item-edit-label">Cant.</label>
-                  <EditableInput
-                    type="number"
-                    initialValue={qty}
-                    className="item-edit-input qty"
-                    defaultValue={1}
-                    onSave={(val) => { onEditItem(itemId, { quantity: Math.max(1, Math.round(val)) }); }}
-                  />
-                </div>
-                <span className="item-edit-x">×</span>
-                <div className="item-edit-field flex-1">
-                  <label className="item-edit-label">Nombre</label>
-                  <EditableInput
-                    type="text"
-                    initialValue={item.name}
-                    className="item-edit-input name"
-                    defaultValue="Item"
-                    onSave={(val) => { onEditItem(itemId, { name: val }); }}
-                  />
-                </div>
-                <div className="item-edit-field">
-                  <label className="item-edit-label">$ c/u</label>
-                  <EditableInput
-                    type="number"
-                    initialValue={unitPrice}
-                    className="item-edit-input price"
-                    defaultValue={0}
-                    onSave={(val) => { onEditItem(itemId, { price: val }); }}
-                  />
-                </div>
-                <button
-                  className="btn-delete-item"
-                  onClick={(e) => { e.stopPropagation(); onDeleteItem(itemId); }}
-                  title="Eliminar item"
-                >
-                  🗑️
-                </button>
-              </div>
-              <div className="item-edit-helper">
+            // EDIT MODE - Clean CSS Grid layout
+            <div className="item-edit-grid" onClick={(e) => e.stopPropagation()}>
+              {/* Row 1: Labels */}
+              <label className="edit-label">Cant.</label>
+              <label className="edit-label">Nombre del Item</label>
+              <label className="edit-label">Precio Unit.</label>
+              <span></span>
+
+              {/* Row 2: Inputs */}
+              <EditableInput
+                type="number"
+                initialValue={qty}
+                className="clean-input qty"
+                defaultValue={1}
+                onSave={(val) => { onEditItem(itemId, { quantity: Math.max(1, Math.round(val)) }); }}
+              />
+              <EditableInput
+                type="text"
+                initialValue={item.name}
+                className="clean-input name"
+                defaultValue="Item"
+                onSave={(val) => { onEditItem(itemId, { name: val }); }}
+              />
+              <EditableInput
+                type="number"
+                initialValue={unitPrice}
+                className="clean-input price"
+                defaultValue={0}
+                onSave={(val) => { onEditItem(itemId, { price: val }); }}
+              />
+              <button
+                className="btn-trash"
+                onClick={(e) => { e.stopPropagation(); onDeleteItem(itemId); }}
+                title="Eliminar item"
+              >
+                🗑️
+              </button>
+
+              {/* Row 3: Total helper */}
+              <div className="edit-total-row">
                 Total: <strong>{formatCurrency(totalPrice)}</strong>
               </div>
             </div>
@@ -557,6 +554,27 @@ const CollaborativeSession = () => {
 
   // Interaction lock to prevent polling race condition
   const lastInteraction = useRef(0);
+
+  // Touch tracking for swipe gesture on bottom sheet
+  const touchStartY = useRef(0);
+
+  // Swipe handlers for bottom sheet
+  const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    const endY = e.changedTouches[0].clientY;
+    const diff = endY - touchStartY.current;
+
+    if (diff < -30) {
+      // Swipe Up -> Expand
+      setIsSheetExpanded(true);
+    } else if (diff > 30) {
+      // Swipe Down -> Collapse
+      setIsSheetExpanded(false);
+    }
+  };
 
   // 1. CARGA INICIAL
   const loadSession = useCallback(async () => {
@@ -1357,8 +1375,12 @@ const CollaborativeSession = () => {
         )}
       </div>
 
-      {/* BOTTOM SHEET (Interactive Expandable) */}
-      <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
+      {/* BOTTOM SHEET (Interactive Expandable with Swipe) */}
+      <div
+        className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Visual Handle - Click to toggle */}
         <div
           className="sheet-handle"
@@ -1368,60 +1390,82 @@ const CollaborativeSession = () => {
         {isFinalized ? (
           // ============ FINALIZED VIEW (Always Expanded) ============
           <>
-            {/* Header */}
+            {/* Header - Use local calc for consistent display */}
             <div className="sheet-summary-row">
               <div className="sheet-column">
-                <span className="my-total-label finalized-label">🎉 ¡Cuenta Cerrada!</span>
+                <span className="my-total-label finalized-label">
+                  {isOwner ? '🎉 ¡Cuenta Cerrada!' : '🔒 Cuenta Cerrada'}
+                </span>
               </div>
-              <span className="my-total-amount">{formatCurrency(session.total)}</span>
+              <span className="my-total-amount">
+                {/* Use local calc to avoid NaN - displayedTotal for Host, getMyTotal for Editor */}
+                {formatCurrency(isOwner ? displayedTotal : getMyTotal())}
+              </span>
             </div>
 
-            {/* Always show breakdown when finalized */}
-            <div className="sheet-expanded-content">
-                {/* Breakdown List with Subtotal and Total columns */}
-                {session.totals && session.totals.length > 0 && (
-                  <div className="sheet-breakdown">
-                    {/* Column Headers */}
-                    <div className="sheet-breakdown-header">
-                      <span className="header-name">Nombre</span>
-                      <span className="header-consumo">Consumo</span>
-                      <span className="header-total">Total</span>
-                    </div>
+            {/* Breakdown - Only show to Host (Editors see simple closed status) */}
+            {isOwner && (
+              <div className="sheet-expanded-content">
+                {/* STEP 3: Use local calculateParticipantTotal instead of session.totals */}
+                <div className="sheet-breakdown">
+                  {/* Column Headers */}
+                  <div className="sheet-breakdown-header">
+                    <span className="header-name">Nombre</span>
+                    <span className="header-consumo">Consumo</span>
+                    <span className="header-total">Total</span>
+                  </div>
 
-                    {session.totals.map(t => (
-                      <div key={t.participant_id} className="sheet-breakdown-item">
+                  {session.participants.map(p => {
+                    const { subtotal, total } = calculateParticipantTotal(p.id, true);
+                    return (
+                      <div key={p.id} className="sheet-breakdown-item">
                         <div className="sheet-breakdown-person">
-                          <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(t.name) }}>
-                            {getInitials(t.name)}
+                          <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(p.name) }}>
+                            {getInitials(p.name)}
                           </span>
                           <span className="sheet-breakdown-name">
-                            {t.participant_id === currentParticipant?.id ? 'Tú' : t.name}
+                            {p.id === currentParticipant?.id ? 'Tú' : p.name}
                           </span>
                         </div>
-                        <span className="sheet-breakdown-subtotal">{formatCurrency(t.subtotal || 0)}</span>
-                        <span className="sheet-breakdown-amount">{formatCurrency(t.total)}</span>
+                        <span className="sheet-breakdown-subtotal">{formatCurrency(subtotal)}</span>
+                        <span className="sheet-breakdown-amount">{formatCurrency(total)}</span>
                       </div>
-                    ))}
+                    );
+                  })}
 
-                    <div className="sheet-breakdown-total">
-                      <span>Total Mesa</span>
-                      <span></span>
-                      <span className="sheet-total-amount">{formatCurrency(session.total)}</span>
-                    </div>
+                  <div className="sheet-breakdown-total">
+                    <span>Total Mesa</span>
+                    <span></span>
+                    <span className="sheet-total-amount">{formatCurrency(displayedTotal)}</span>
                   </div>
-                )}
+                </div>
 
-                {/* WhatsApp Share - ONLY when finalized */}
+                {/* WhatsApp Share - Only for Host */}
                 <button className="share-btn" onClick={handleShareWhatsapp}>
                   📱 Compartir por WhatsApp
                 </button>
 
-                {isOwner && (
-                  <button className="btn-reopen" onClick={handleReopenSession}>
-                    🔓 Reabrir Mesa para Editar
-                  </button>
-                )}
+                <button className="btn-reopen" onClick={handleReopenSession}>
+                  🔓 Reabrir Mesa para Editar
+                </button>
               </div>
+            )}
+
+            {/* STEP 4: Editor sees simple "Closed" status with their total */}
+            {!isOwner && (
+              <div className="sheet-expanded-content">
+                <div className="participant-breakdown">
+                  <div className="breakdown-title">Tu parte final</div>
+                  <div className="breakdown-row subtotal">
+                    <span>Total a pagar</span>
+                    <span><strong>{formatCurrency(getMyTotal())}</strong></span>
+                  </div>
+                </div>
+                <button className="btn-main" disabled style={{ marginTop: '16px' }}>
+                  🔒 Cuenta Cerrada
+                </button>
+              </div>
+            )}
           </>
         ) : (
           // ============ ACTIVE VIEW ============
@@ -1456,13 +1500,12 @@ const CollaborativeSession = () => {
                   <div className={`sheet-validation ${isBalanced ? 'balanced' : 'warning'}`}>
                     <div className="validation-grid">
                       <div className="validation-metric">
-                        <span className="validation-metric-label">Total Boleta</span>
+                        <span className="validation-metric-label">Subtotal Boleta</span>
                         <input
                           type="number"
                           className="validation-metric-input"
                           value={totalBoleta || ''}
                           onChange={(e) => {
-                            // STEP 2: Only update subtotal via this input (not from item edits)
                             const val = parseFloat(e.target.value) || 0;
                             setSession(prev => ({ ...prev, subtotal: val }));
                           }}
@@ -1470,13 +1513,13 @@ const CollaborativeSession = () => {
                         />
                       </div>
                       <div className="validation-metric">
-                        <span className="validation-metric-label">Suma Items</span>
+                        <span className="validation-metric-label">Subtotal Items</span>
                         <span className={`validation-metric-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
                           {formatCurrency(totalItems)}
                         </span>
                       </div>
                       <div className="validation-metric">
-                        <span className="validation-metric-label">Asignado</span>
+                        <span className="validation-metric-label">Subtotal Asignado</span>
                         <span className={`validation-metric-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
                           {formatCurrency(totalAsignado)}
                         </span>
@@ -1496,32 +1539,7 @@ const CollaborativeSession = () => {
                         }
                       </div>
                     )}
-
-                    {/* STEP 4: Dynamic Participant Breakdown for Host (live calculation) */}
-                    <div className="participant-breakdown" style={{ marginTop: '16px' }}>
-                      <div className="breakdown-title">Desglose por Persona (+ {tipPct}% propina)</div>
-                      {session.participants.map(p => {
-                        const { subtotal, total } = calculateParticipantTotal(p.id, true);
-                        return (
-                          <div key={p.id} className="breakdown-row">
-                            <div className="breakdown-person">
-                              <span
-                                className="breakdown-avatar"
-                                style={{ background: getAvatarColor(p.name) }}
-                              >
-                                {getInitials(p.name)}
-                              </span>
-                              <span>{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
-                            </div>
-                            <span className="breakdown-amount">{formatCurrency(total)}</span>
-                          </div>
-                        );
-                      })}
-                      <div className="breakdown-row subtotal" style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px dashed rgba(0,0,0,0.1)' }}>
-                        <span><strong>Total Mesa</strong></span>
-                        <span><strong>{formatCurrency(displayedTotal)}</strong></span>
-                      </div>
-                    </div>
+                    {/* Desglose por Persona HIDDEN in active mode - only shown after closing */}
                   </div>
                 )}
 

@@ -370,82 +370,82 @@ body {
   flex-shrink: 0;
 }
 
-.item-edit-input {
-  border: 1px solid var(--primary);
+/* === CLEAN ITEM EDIT GRID (Step 1 Surgery) === */
+.item-edit-grid {
+  display: grid;
+  grid-template-columns: 50px 1fr 80px auto;
+  gap: 4px 8px;
+  width: 100%;
+  grid-column: 1 / -1;
+  align-items: center;
+}
+
+.edit-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+
+.clean-input {
+  border: 1px solid #ccc;
   border-radius: 6px;
-  padding: 8px 10px;
+  padding: 8px 6px;
   font-size: 14px;
   font-weight: 600;
   background: white;
   outline: none;
   box-shadow: none;
   -webkit-appearance: none;
-  margin-top: 0;
+  width: 100%;
 }
 
-.item-edit-input:focus {
+.clean-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 2px var(--primary-glow);
 }
 
-/* Remove spin buttons from number inputs in edit mode */
-.item-edit-input::-webkit-inner-spin-button,
-.item-edit-input::-webkit-outer-spin-button {
+/* Remove spin buttons */
+.clean-input::-webkit-inner-spin-button,
+.clean-input::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.item-edit-input[type="number"] {
+.clean-input[type="number"] {
   -moz-appearance: textfield;
 }
 
-.item-edit-input.qty { width: 55px; text-align: center; }
-.item-edit-input.name { flex: 1; min-width: 80px; }
-.item-edit-input.price { width: 85px; text-align: right; }
+.clean-input.qty { text-align: center; }
+.clean-input.name { min-width: 0; }
+.clean-input.price { text-align: right; }
 
-/* Edit form layout */
-.item-edit-form {
-  width: 100%;
-  grid-column: 1 / -1;
-}
-
-.item-edit-row {
+.btn-trash {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
-
-.item-edit-field.flex-1 {
-  flex: 1;
-  min-width: 0;
-}
-
-.item-edit-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border: none;
-  background: transparent;
-}
-
-.item-edit-label {
-  display: block;
-  font-size: 10px;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  letter-spacing: 0.3px;
-  margin-bottom: 4px;
-}
-
-.item-edit-x {
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   font-size: 16px;
-  color: var(--text-secondary);
-  padding-bottom: 6px;
+  transition: all 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.item-edit-helper {
-  margin-top: 8px;
+.btn-trash:active {
+  background: var(--danger);
+  color: white;
+  transform: scale(0.95);
+}
+
+.edit-total-row {
+  grid-column: 1 / -1;
+  margin-top: 4px;
   padding: 8px 12px;
   background: rgba(79, 70, 229, 0.08);
   border-radius: 8px;
@@ -453,38 +453,9 @@ body {
   color: var(--text-secondary);
 }
 
-.item-edit-helper strong {
+.edit-total-row strong {
   color: var(--primary);
   font-weight: 700;
-}
-
-.item-meta-edit {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.btn-delete-item {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--danger);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 8px;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  margin-left: 4px;
-  font-size: 14px;
-  transition: all 0.2s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.btn-delete-item:active {
-  background: var(--danger);
-  transform: scale(0.95);
 }
 
 /* --- TOGGLES & BUTTONS --- */
