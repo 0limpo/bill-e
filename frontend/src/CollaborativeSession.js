@@ -662,6 +662,10 @@ const CollaborativeSession = () => {
   // Per-unit mode state (independent of expanded/collapsed visual state)
   const [perUnitModeItems, setPerUnitModeItems] = useState({});
 
+  // Saved assignments per mode (to restore when switching back)
+  // Structure: { [itemId]: { individual: [...], grupal: [...] } }
+  const [savedModeAssignments, setSavedModeAssignments] = useState({});
+
   // Interaction lock to prevent polling race condition
   const lastInteraction = useRef(0);
 
@@ -1377,47 +1381,129 @@ const CollaborativeSession = () => {
   const toggleItemMode = (itemId) => {
     lastInteraction.current = Date.now();
 
-    // Get current item and assignees
     const item = session.items.find(i => (i.id || i.name) === itemId);
     if (!item) return;
 
     const currentMode = item?.mode || 'individual';
     const newMode = currentMode === 'grupal' ? 'individual' : 'grupal';
+    const itemQty = item.quantity || 1;
 
-    const currentAssignments = session.assignments[itemId] || [];
-    const assigneeIds = currentAssignments.map(a => a.participant_id);
+    // 1. Collect ALL current assignments (parent + units) for this item
+    const currentParentAssignments = [...(session.assignments[itemId] || [])];
+    const currentUnitAssignments = {};
+    for (let i = 0; i < itemQty; i++) {
+      const unitId = `${itemId}_unit_${i}`;
+      if (session.assignments[unitId] && session.assignments[unitId].length > 0) {
+        currentUnitAssignments[unitId] = [...session.assignments[unitId]];
+      }
+    }
 
-    // 1. Update mode via API (syncs to all participants)
-    handleItemUpdate(itemId, { mode: newMode });
+    // 2. Save current mode's assignments (parent + units)
+    setSavedModeAssignments(prev => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        [currentMode]: {
+          parent: currentParentAssignments,
+          units: currentUnitAssignments,
+          perUnitMode: perUnitModeItems[itemId] || false
+        }
+      }
+    }));
 
-    // 2. Clear all current assignments via API
-    for (const pid of assigneeIds) {
+    // 3. Clear ALL current assignments via API (parent + units)
+    const allAssignmentsToClear = [];
+    currentParentAssignments.forEach(a => allAssignmentsToClear.push({ itemId, pid: a.participant_id }));
+    Object.entries(currentUnitAssignments).forEach(([unitId, assigns]) => {
+      assigns.forEach(a => allAssignmentsToClear.push({ itemId: unitId, pid: a.participant_id }));
+    });
+
+    allAssignmentsToClear.forEach(({ itemId: assignItemId, pid }) => {
       fetch(`${API_URL}/api/session/${sessionId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          item_id: itemId,
+          item_id: assignItemId,
           participant_id: pid,
           quantity: 0,
           is_assigned: false,
           updated_by: currentParticipant?.name
         })
       }).catch(console.error);
+    });
+
+    // 4. Update mode via API
+    handleItemUpdate(itemId, { mode: newMode });
+
+    // 5. Check if we have saved assignments for the new mode
+    const savedForNewMode = savedModeAssignments[itemId]?.[newMode];
+
+    // 6. Build new assignments state
+    const newAssignmentsState = { ...session.assignments };
+
+    // Clear all unit assignments for this item
+    for (let i = 0; i < itemQty; i++) {
+      newAssignmentsState[`${itemId}_unit_${i}`] = [];
     }
 
-    // 3. Build new state atomically
-    if (newMode === 'grupal') {
-      // Switching TO grupal: assign all participants with correct share
+    if (savedForNewMode && (savedForNewMode.parent?.length > 0 || Object.keys(savedForNewMode.units || {}).length > 0)) {
+      // Restore saved assignments
+      newAssignmentsState[itemId] = savedForNewMode.parent || [];
+
+      // Restore unit assignments if any
+      Object.entries(savedForNewMode.units || {}).forEach(([unitId, assigns]) => {
+        newAssignmentsState[unitId] = assigns;
+      });
+
+      // Restore perUnitMode state
+      setPerUnitModeItems(prev => ({
+        ...prev,
+        [itemId]: savedForNewMode.perUnitMode || false
+      }));
+
+      // Send API calls to restore assignments
+      (savedForNewMode.parent || []).forEach(a => {
+        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: itemId,
+            participant_id: a.participant_id,
+            quantity: a.quantity,
+            is_assigned: true,
+            updated_by: currentParticipant?.name
+          })
+        }).catch(console.error);
+      });
+
+      Object.entries(savedForNewMode.units || {}).forEach(([unitId, assigns]) => {
+        assigns.forEach(a => {
+          fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              item_id: unitId,
+              participant_id: a.participant_id,
+              quantity: a.quantity,
+              is_assigned: true,
+              updated_by: currentParticipant?.name
+            })
+          }).catch(console.error);
+        });
+      });
+    } else if (newMode === 'grupal') {
+      // No saved grupal assignments - assign all participants
       const allParticipantIds = session.participants.map(p => p.id);
-      const itemQty = item.quantity || 1;
       const newShare = itemQty / allParticipantIds.length;
 
-      const newAssignments = allParticipantIds.map(pid => ({
+      newAssignmentsState[itemId] = allParticipantIds.map(pid => ({
         participant_id: pid,
         quantity: newShare
       }));
 
-      // Send API calls for new assignments
+      // Reset perUnitMode
+      setPerUnitModeItems(prev => ({ ...prev, [itemId]: false }));
+
       allParticipantIds.forEach(pid => {
         fetch(`${API_URL}/api/session/${sessionId}/assign`, {
           method: 'POST',
@@ -1431,19 +1517,17 @@ const CollaborativeSession = () => {
           })
         }).catch(console.error);
       });
-
-      // Optimistic UI update (atomic)
-      setSession(prev => ({
-        ...prev,
-        assignments: { ...prev.assignments, [itemId]: newAssignments }
-      }));
     } else {
-      // Switching to individual - just clear (optimistic UI)
-      setSession(prev => ({
-        ...prev,
-        assignments: { ...prev.assignments, [itemId]: [] }
-      }));
+      // No saved individual assignments - start empty
+      newAssignmentsState[itemId] = [];
+      setPerUnitModeItems(prev => ({ ...prev, [itemId]: false }));
     }
+
+    // 7. Optimistic UI update
+    setSession(prev => ({
+      ...prev,
+      assignments: newAssignmentsState
+    }));
   };
 
   const handleAddNewItem = async () => {
