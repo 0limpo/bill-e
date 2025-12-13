@@ -1807,15 +1807,88 @@ const CollaborativeSession = () => {
               </div>
             )}
 
-            {/* STEP 4: Editor sees simple "Closed" status with their total */}
+            {/* STEP 4: Editor sees full breakdown with "Cuenta Cerrada" message */}
             {!isOwner && (
               <div className="sheet-expanded-content">
                 <div className="participant-breakdown">
-                  <div className="breakdown-title">Tu parte final</div>
-                  <div className="breakdown-row subtotal">
-                    <span>Total a pagar</span>
-                    <span><strong>{formatCurrency(getMyTotal())}</strong></span>
-                  </div>
+                  <div className="breakdown-title">TU CONSUMO</div>
+                  {(() => {
+                    const myItems = [];
+                    let mySubtotal = 0;
+                    Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
+                      const myAssign = assigns.find(a => a.participant_id === currentParticipant?.id);
+                      if (myAssign) {
+                        const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
+                        let item, itemName, isUnitAssignment = false;
+
+                        if (unitMatch) {
+                          isUnitAssignment = true;
+                          const baseItemId = unitMatch[1];
+                          const unitNum = parseInt(unitMatch[2]) + 1;
+                          item = session.items.find(i => (i.id || i.name) === baseItemId);
+                          itemName = item ? `${item.name} (U${unitNum})` : `Unidad ${unitNum}`;
+                        } else {
+                          item = session.items.find(i => (i.id || i.name) === assignmentKey);
+                          itemName = item?.name || 'Item';
+                        }
+
+                        if (item) {
+                          const amount = item.price * (myAssign.quantity || 0);
+                          mySubtotal += amount;
+                          const splitCount = assigns.length;
+                          const itemQty = isUnitAssignment ? 1 : (item.quantity || 1);
+                          const itemMode = item.mode || 'individual';
+                          myItems.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment, itemMode });
+                        }
+                      }
+                    });
+                    const tipModeLocal = session.tip_mode || 'percent';
+                    const tipValueLocal = session.tip_value ?? session.tip_percentage ?? 10;
+                    const numParticipants = session.participants?.length || 1;
+                    let myTip = 0;
+                    if (tipModeLocal === 'fixed') {
+                      myTip = tipValueLocal / numParticipants;
+                    } else {
+                      myTip = mySubtotal * (tipValueLocal / 100);
+                    }
+
+                    return (
+                      <>
+                        {myItems.map((item, idx) => (
+                          <div key={idx} className="breakdown-row">
+                            <span>
+                              {item.isUnitAssignment ? (
+                                item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>
+                              ) : (
+                                <>
+                                  <span className="qty-badge">{item.itemQty}x</span>
+                                  {item.itemMode === 'grupal' && item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
+                                </>
+                              )}
+                              {item.name}
+                            </span>
+                            <span>{formatCurrency(item.amount)}</span>
+                          </div>
+                        ))}
+                        {myItems.length > 0 && (
+                          <>
+                            <div className="breakdown-row subtotal">
+                              <span>Subtotal</span>
+                              <span>{formatCurrency(mySubtotal)}</span>
+                            </div>
+                            <div className="breakdown-row tip">
+                              <span>Propina {tipModeLocal === 'percent' ? `(${tipValueLocal}%)` : '(fija)'}</span>
+                              <span>{formatCurrency(myTip)}</span>
+                            </div>
+                            <div className="breakdown-row subtotal">
+                              <span><strong>TOTAL</strong></span>
+                              <span className="my-total-amount">{formatCurrency(mySubtotal + myTip)}</span>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
                 <button className="btn-main" disabled style={{ marginTop: '16px' }}>
                   🔒 Cuenta Cerrada
@@ -1884,7 +1957,8 @@ const CollaborativeSession = () => {
                         // For unit assignments, itemQty is always 1 (one unit)
                         // For parent assignments, itemQty is the total quantity
                         const itemQty = isUnitAssignment ? 1 : (item.quantity || 1);
-                        myItems.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment });
+                        const itemMode = item.mode || 'individual';
+                        myItems.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment, itemMode });
                       }
                     }
                   });
@@ -1910,10 +1984,10 @@ const CollaborativeSession = () => {
                               // Per-unit: just "/N itemName (UN)"
                               item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>
                             ) : (
-                              // Parent/individual: "Qx /N itemName" - always show qty for individual items
+                              // Parent/individual: "Qx itemName" for individual, "Qx /N itemName" for grupal
                               <>
                                 <span className="qty-badge">{item.itemQty}x</span>
-                                {item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
+                                {item.itemMode === 'grupal' && item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
                               </>
                             )}
                             {item.name}
