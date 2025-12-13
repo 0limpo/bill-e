@@ -333,7 +333,7 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
         'session_id': session_id,
         'phone': phone_number,
         'created_at': datetime.now().isoformat(),
-        'expires_at': (datetime.now() + timedelta(hours=2)).isoformat(),
+        'expires_at': (datetime.now() + timedelta(hours=24)).isoformat(),
         'items': session_items,
         'people': [],
         'total': total,
@@ -562,7 +562,7 @@ def format_collaborative_message(
 
 ━━━━━━━━━━━━━━━━━━
 
-⏰ La sesión expira en 2 horas"""
+⏰ La sesión expira en 24 horas"""
 
     return message
 
@@ -713,10 +713,10 @@ async def create_new_session(phone_number: str) -> str:
         "tip": 0,
         "people": [],
         "items": [],
-        "expires_at": (datetime.utcnow() + timedelta(hours=1)).isoformat()
+        "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat()
     }
-    
-    redis_client.setex(f"session:{session_id}", 3600, json.dumps(session_data))
+
+    redis_client.setex(f"session:{session_id}", 86400, json.dumps(session_data))
     
     print(f"✅ Sesión simple creada: {session_id}")
     return session_id

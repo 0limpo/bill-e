@@ -160,14 +160,14 @@ async def create_session():
         session = BillSession(
             id=session_id,
             created_at=datetime.now().isoformat(),
-            expires_at=(datetime.now() + timedelta(hours=1)).isoformat()
+            expires_at=(datetime.now() + timedelta(hours=24)).isoformat()
         )
-        
-        # Guardar en Redis (expira en 1 hora)
+
+        # Guardar en Redis (expira en 24 horas)
         if redis_client:
             redis_client.setex(
                 f"session:{session_id}",
-                3600,  # 1 hora en segundos
+                86400,  # 24 horas en segundos
                 session.json()
             )
         

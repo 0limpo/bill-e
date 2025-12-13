@@ -38,7 +38,7 @@ def create_collaborative_session(
         "owner_phone": owner_phone,
         "status": SessionStatus.ASSIGNING.value,
         "created_at": datetime.now().isoformat(),
-        "expires_at": (datetime.now() + timedelta(hours=2)).isoformat(),
+        "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
         "items": items,
         "total": total,
         "subtotal": subtotal,
