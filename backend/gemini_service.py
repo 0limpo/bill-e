@@ -134,33 +134,52 @@ class GeminiOCRService:
             import io
             image = PIL.Image.open(io.BytesIO(image_bytes))
 
-            # Prompt estructurado para obtener JSON directamente
-            prompt = """Analiza esta imagen de una boleta chilena y extrae la siguiente información:
+            # Prompt estructurado con análisis previo (chain of thought)
+            prompt = """Eres un experto analizando boletas de restaurantes chilenos. Tu tarea es extraer información precisa.
 
-1. total: El monto total a pagar (número)
-2. subtotal: El subtotal SIN propina (número)
-3. propina: El monto de propina/servicio/tip (número, puede ser 0 si no hay)
-4. items: Lista de items con nombre, cantidad y PRECIO TOTAL DE LA LÍNEA
+## FASE 1: ANÁLISIS ESTRUCTURAL (razona internamente)
 
-IMPORTANTE:
-- Los números en Chile usan punto como separador de miles: $111.793 = 111793
-- Si ves "PROPINA", "TIP", "SERVICIO", extrae ese monto
-- Si el total es mayor que la suma de items, la diferencia probablemente es propina
-- Las boletas chilenas muestran: CANTIDAD  NOMBRE_PRODUCTO  PRECIO_TOTAL
-- "precio" es el PRECIO TOTAL DE LA LÍNEA tal como aparece (NO dividir por cantidad)
-- Ejemplo: "3 Pan Mechada 35.970" → {"nombre": "Pan Mechada", "cantidad": 3, "precio": 35970}
-- Ejemplo: "2 Coca Cola 4.000" → {"nombre": "Coca Cola", "cantidad": 2, "precio": 4000}
-- Si no hay cantidad visible, usa cantidad: 1
-- Responde SOLO en formato JSON válido, sin texto adicional
+Antes de extraer datos, analiza la boleta:
+1. ¿Qué columnas tiene? (cantidad, descripción, precio unitario, precio total línea, etc.)
+2. ¿Hay encabezados de columna que indiquen qué representa cada valor?
+3. El precio junto a cada item, ¿es UNITARIO o es el TOTAL DE LA LÍNEA (cantidad × unitario)?
+4. ¿Dónde está el subtotal REAL (suma de items, SIN propina)?
+5. ¿Hay propina/servicio/tip? ¿Está separada o incluida en algún subtotal?
+6. Si hay múltiples líneas con "subtotal", ¿cuál es el correcto (sin propina)?
 
-Formato de respuesta (JSON):
+## FASE 2: EXTRACCIÓN
+
+Basándote en tu análisis, extrae la información.
+
+REGLA CRÍTICA para "precio":
+- "precio" SIEMPRE debe ser el PRECIO UNITARIO de UN item
+- Si la boleta muestra "3 Pan Mechada 35.970" y el 35.970 es el total de los 3:
+  → Calcula: 35970 / 3 = 11990
+  → Retorna: {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990}
+- Si la boleta muestra "3 Pan Mechada 11.990" y el 11.990 es el precio unitario:
+  → Retorna: {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990}
+
+## VALIDACIÓN (obligatoria)
+
+Antes de responder, verifica:
+- Suma de (precio × cantidad) para todos los items ≈ subtotal declarado
+- Si NO cuadra, revisa tu interpretación del precio (¿unitario o total línea?)
+- Subtotal + propina ≈ total
+
+## FORMATO DE RESPUESTA
+
+IMPORTANTE sobre números chilenos:
+- Usan PUNTO como separador de miles: $111.793 = 111793
+- Convierte todos los precios a números enteros sin puntos
+
+Responde SOLO con JSON válido (sin explicaciones):
 {
     "total": 111793,
     "subtotal": 101630,
     "propina": 10163,
     "items": [
-        {"nombre": "Pan Mechada", "cantidad": 3, "precio": 35970},
-        {"nombre": "Coca Cola Zero", "cantidad": 2, "precio": 4000},
+        {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990},
+        {"nombre": "Coca Cola Zero", "cantidad": 2, "precio": 2000},
         {"nombre": "Ensalada", "cantidad": 1, "precio": 6500}
     ]
 }"""
@@ -184,15 +203,16 @@ Formato de respuesta (JSON):
                 # Validar estructura
                 if 'total' in data and 'items' in data:
                     # Convertir items de Gemini al formato interno
-                    # price = precio total de la línea (NO unitario)
+                    # Gemini retorna precio UNITARIO, convertir a precio total de línea
                     items = []
                     for item in data.get('items', []):
-                        total_price = item.get('precio', item.get('precio_total', 0))
+                        unit_price = item.get('precio', 0)
                         quantity = item.get('cantidad', 1)
+                        line_total = unit_price * quantity
 
                         items.append({
                             'name': item.get('nombre', ''),
-                            'price': total_price,  # Precio total de la línea
+                            'price': line_total,  # Precio total de la línea (unitario × cantidad)
                             'quantity': quantity
                         })
 
@@ -206,8 +226,9 @@ Formato de respuesta (JSON):
                     }
 
                     logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}")
-                    for i, item in enumerate(items[:3]):  # Mostrar primeros 3
-                        logger.info(f"   Item {i+1}: {item['quantity']}x {item['name']} = ${item['price']} (total línea)")
+                    for i, it in enumerate(items[:3]):  # Mostrar primeros 3
+                        unit_p = it['price'] // it['quantity'] if it['quantity'] > 0 else it['price']
+                        logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${unit_p} = ${it['price']} (total línea)")
 
                     return result
                 else:
