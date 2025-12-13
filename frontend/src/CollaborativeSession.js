@@ -474,12 +474,8 @@ const BillItem = ({
                 <div
                   className={`grupal-switch-option ${isExpanded ? 'active' : ''}`}
                   onClick={() => {
-                    if (!isExpanded) {
-                      // Switching from "Entre todos" to "Por unidad"
-                      // Use onClearParent to clear parent assignments
-                      onClearParent(itemId);
-                      onToggleExpand(itemId);
-                    }
+                    // Just toggle expand/collapse, preserve all assignments
+                    onToggleExpand(itemId);
                   }}
                 >
                   Por unidad {isExpanded ? '▲' : '▼'}
