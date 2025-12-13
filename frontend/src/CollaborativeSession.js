@@ -669,6 +669,9 @@ const CollaborativeSession = () => {
   // Items currently syncing (to block switches during API calls)
   const [syncingItems, setSyncingItems] = useState(new Set());
 
+  // Expanded participants in finalized view (for host to see breakdown)
+  const [expandedParticipants, setExpandedParticipants] = useState({});
+
   // Saved assignments per mode (to restore when switching back)
   // Structure: { [itemId]: { individual: {...}, grupal: {...} } }
   // Using useRef for immediate updates (not dependent on React render cycle)
@@ -747,7 +750,11 @@ const CollaborativeSession = () => {
               assignments: data.assignments,
               items: data.items || prev.items,  // Sync items (mode, name, price, quantity)
               status: data.status,
-              totals: data.totals
+              totals: data.totals,
+              // Sync tip settings
+              tip_mode: data.tip_mode ?? prev.tip_mode,
+              tip_value: data.tip_value ?? prev.tip_value,
+              tip_percentage: data.tip_percentage ?? prev.tip_percentage
             }));
             setLastUpdate(data.last_updated);
           }
@@ -1232,6 +1239,8 @@ const CollaborativeSession = () => {
 
     text += `\n*Total Mesa: ${formatCurrency(grandTotal)}*`;
     text += `\n\n📱 Ver detalle: https://bill-e.vercel.app/s/${sessionId}`;
+    text += `\n\n🤖 *¿Quieres dividir tu cuenta fácil?*`;
+    text += `\nAgrega a Bill-e: https://wa.me/56962590001`;
 
     // wa.me works best across mobile and desktop
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
@@ -2004,19 +2013,100 @@ const CollaborativeSession = () => {
                   </div>
 
                   {session.participants.map(p => {
-                    const { subtotal, total } = calculateParticipantTotal(p.id, true);
+                    const { subtotal, total, tipAmount } = calculateParticipantTotal(p.id, true);
+                    const isExpanded = expandedParticipants[p.id];
+
+                    // Generate breakdown items for this participant
+                    const getParticipantItems = () => {
+                      const items = [];
+                      const itemsWithUnitAssignments = new Set();
+
+                      // Pre-scan for unit assignments
+                      Object.keys(session.assignments).forEach(key => {
+                        const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
+                        if (unitMatch && session.assignments[key]?.length > 0) {
+                          itemsWithUnitAssignments.add(unitMatch[1]);
+                        }
+                      });
+
+                      Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
+                        const pAssign = assigns.find(a => a.participant_id === p.id);
+                        if (pAssign) {
+                          const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
+                          let item, itemName, isUnitAssignment = false;
+
+                          if (unitMatch) {
+                            isUnitAssignment = true;
+                            const baseItemId = unitMatch[1];
+                            const unitNum = parseInt(unitMatch[2]) + 1;
+                            item = session.items.find(i => (i.id || i.name) === baseItemId);
+                            itemName = item ? `${item.name} (U${unitNum})` : `Unidad ${unitNum}`;
+                          } else {
+                            if (itemsWithUnitAssignments.has(assignmentKey)) return;
+                            item = session.items.find(i => (i.id || i.name) === assignmentKey);
+                            itemName = item?.name || assignmentKey;
+                          }
+
+                          if (item) {
+                            const amount = item.price * (pAssign.quantity || 0);
+                            const splitCount = assigns.length;
+                            const itemMode = item.mode || 'individual';
+                            const itemQty = itemMode === 'individual'
+                              ? Math.round(pAssign.quantity || 1)
+                              : (isUnitAssignment ? 1 : (item.quantity || 1));
+                            items.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment, itemMode });
+                          }
+                        }
+                      });
+                      return items;
+                    };
+
                     return (
-                      <div key={p.id} className="sheet-breakdown-item">
-                        <div className="sheet-breakdown-person">
-                          <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(p.name) }}>
-                            {getInitials(p.name)}
-                          </span>
-                          <span className="sheet-breakdown-name">
-                            {p.id === currentParticipant?.id ? 'Tú' : p.name}
-                          </span>
+                      <div key={p.id} className="sheet-breakdown-item-wrapper">
+                        <div
+                          className={`sheet-breakdown-item clickable ${isExpanded ? 'expanded' : ''}`}
+                          onClick={() => setExpandedParticipants(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+                        >
+                          <div className="sheet-breakdown-person">
+                            <span className="expand-indicator">{isExpanded ? '▼' : '▶'}</span>
+                            <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(p.name) }}>
+                              {getInitials(p.name)}
+                            </span>
+                            <span className="sheet-breakdown-name">
+                              {p.id === currentParticipant?.id ? 'Tú' : p.name}
+                            </span>
+                          </div>
+                          <span className="sheet-breakdown-subtotal">{formatCurrency(subtotal)}</span>
+                          <span className="sheet-breakdown-amount">{formatCurrency(total)}</span>
                         </div>
-                        <span className="sheet-breakdown-subtotal">{formatCurrency(subtotal)}</span>
-                        <span className="sheet-breakdown-amount">{formatCurrency(total)}</span>
+                        {isExpanded && (
+                          <div className="participant-breakdown host-view">
+                            {getParticipantItems().map((item, idx) => (
+                              <div key={idx} className="breakdown-row">
+                                <span>
+                                  {item.isUnitAssignment ? (
+                                    item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>
+                                  ) : (
+                                    <>
+                                      <span className="qty-badge">{item.itemQty}x</span>
+                                      {item.itemMode === 'grupal' && item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
+                                    </>
+                                  )}
+                                  {item.name}
+                                </span>
+                                <span>{formatCurrency(item.amount)}</span>
+                              </div>
+                            ))}
+                            <div className="breakdown-row subtotal">
+                              <span>Subtotal</span>
+                              <span>{formatCurrency(subtotal)}</span>
+                            </div>
+                            <div className="breakdown-row tip">
+                              <span>Propina</span>
+                              <span>{formatCurrency(tipAmount)}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

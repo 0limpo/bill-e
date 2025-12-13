@@ -1466,17 +1466,54 @@ body {
   min-width: 70px;
 }
 
+.sheet-breakdown-item-wrapper {
+  border-bottom: 1px dashed rgba(0,0,0,0.06);
+}
+
+.sheet-breakdown-item-wrapper:last-child {
+  border-bottom: none;
+}
+
 .sheet-breakdown-item {
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: 12px;
   align-items: center;
   padding: 10px 0;
-  border-bottom: 1px dashed rgba(0,0,0,0.06);
 }
 
-.sheet-breakdown-item:last-child {
-  border-bottom: none;
+.sheet-breakdown-item.clickable {
+  cursor: pointer;
+  transition: background 0.2s;
+  margin: 0 -12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.sheet-breakdown-item.clickable:hover {
+  background: rgba(0,0,0,0.03);
+}
+
+.sheet-breakdown-item.clickable:active {
+  background: rgba(0,0,0,0.06);
+}
+
+.expand-indicator {
+  font-size: 10px;
+  color: var(--text-secondary);
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.participant-breakdown.host-view {
+  background: rgba(0,0,0,0.02);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 0 0 8px 24px;
+}
+
+.participant-breakdown.host-view .breakdown-row {
+  font-size: 13px;
 }
 
 .sheet-breakdown-person {
