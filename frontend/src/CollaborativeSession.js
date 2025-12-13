@@ -723,7 +723,8 @@ const CollaborativeSession = () => {
     if (!session || !currentParticipant) return;
     const pollInterval = setInterval(async () => {
       // Skip polling if user interacted recently (prevents race condition)
-      if (Date.now() - lastInteraction.current < 4000) return;
+      // Extended to 8s to allow API calls to complete
+      if (Date.now() - lastInteraction.current < 8000) return;
 
       try {
         const response = await fetch(
@@ -1378,7 +1379,7 @@ const CollaborativeSession = () => {
     return calculateParticipantTotal(currentParticipant.id, true).total;
   };
 
-  const toggleItemMode = (itemId) => {
+  const toggleItemMode = async (itemId) => {
     lastInteraction.current = Date.now();
 
     const item = session.items.find(i => (i.id || i.name) === itemId);
@@ -1411,14 +1412,19 @@ const CollaborativeSession = () => {
       }
     }));
 
-    // 3. Clear ALL current assignments via API (parent + units)
+    // 3. Update mode via API FIRST (critical - must complete before polling)
+    await handleItemUpdate(itemId, { mode: newMode });
+    lastInteraction.current = Date.now(); // Reset interaction timer
+
+    // 4. Clear ALL current assignments via API (parent + units)
     const allAssignmentsToClear = [];
     currentParentAssignments.forEach(a => allAssignmentsToClear.push({ itemId, pid: a.participant_id }));
     Object.entries(currentUnitAssignments).forEach(([unitId, assigns]) => {
       assigns.forEach(a => allAssignmentsToClear.push({ itemId: unitId, pid: a.participant_id }));
     });
 
-    allAssignmentsToClear.forEach(({ itemId: assignItemId, pid }) => {
+    // Wait for all clear operations
+    await Promise.all(allAssignmentsToClear.map(({ itemId: assignItemId, pid }) =>
       fetch(`${API_URL}/api/session/${sessionId}/assign`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1429,11 +1435,9 @@ const CollaborativeSession = () => {
           is_assigned: false,
           updated_by: currentParticipant?.name
         })
-      }).catch(console.error);
-    });
-
-    // 4. Update mode via API
-    handleItemUpdate(itemId, { mode: newMode });
+      }).catch(console.error)
+    ));
+    lastInteraction.current = Date.now(); // Reset interaction timer
 
     // 5. Check if we have saved assignments for the new mode
     const savedForNewMode = savedModeAssignments[itemId]?.[newMode];
@@ -1446,88 +1450,87 @@ const CollaborativeSession = () => {
       newAssignmentsState[`${itemId}_unit_${i}`] = [];
     }
 
+    // 7. Optimistic UI update FIRST (before API calls for new assignments)
     if (savedForNewMode && (savedForNewMode.parent?.length > 0 || Object.keys(savedForNewMode.units || {}).length > 0)) {
-      // Restore saved assignments
+      // Restore saved assignments to state
       newAssignmentsState[itemId] = savedForNewMode.parent || [];
-
-      // Restore unit assignments if any
       Object.entries(savedForNewMode.units || {}).forEach(([unitId, assigns]) => {
         newAssignmentsState[unitId] = assigns;
       });
+      setPerUnitModeItems(prev => ({ ...prev, [itemId]: savedForNewMode.perUnitMode || false }));
+    } else if (newMode === 'grupal') {
+      const allParticipantIds = session.participants.map(p => p.id);
+      const newShare = itemQty / allParticipantIds.length;
+      newAssignmentsState[itemId] = allParticipantIds.map(pid => ({ participant_id: pid, quantity: newShare }));
+      setPerUnitModeItems(prev => ({ ...prev, [itemId]: false }));
+    } else {
+      newAssignmentsState[itemId] = [];
+      setPerUnitModeItems(prev => ({ ...prev, [itemId]: false }));
+    }
 
-      // Restore perUnitMode state
-      setPerUnitModeItems(prev => ({
-        ...prev,
-        [itemId]: savedForNewMode.perUnitMode || false
-      }));
+    setSession(prev => ({ ...prev, assignments: newAssignmentsState }));
 
-      // Send API calls to restore assignments
+    // 8. Send API calls to persist new assignments (await all)
+    const assignmentPromises = [];
+
+    if (savedForNewMode && (savedForNewMode.parent?.length > 0 || Object.keys(savedForNewMode.units || {}).length > 0)) {
+      // Restore saved assignments via API
       (savedForNewMode.parent || []).forEach(a => {
-        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            item_id: itemId,
-            participant_id: a.participant_id,
-            quantity: a.quantity,
-            is_assigned: true,
-            updated_by: currentParticipant?.name
-          })
-        }).catch(console.error);
-      });
-
-      Object.entries(savedForNewMode.units || {}).forEach(([unitId, assigns]) => {
-        assigns.forEach(a => {
+        assignmentPromises.push(
           fetch(`${API_URL}/api/session/${sessionId}/assign`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              item_id: unitId,
+              item_id: itemId,
               participant_id: a.participant_id,
               quantity: a.quantity,
               is_assigned: true,
               updated_by: currentParticipant?.name
             })
-          }).catch(console.error);
+          }).catch(console.error)
+        );
+      });
+
+      Object.entries(savedForNewMode.units || {}).forEach(([unitId, assigns]) => {
+        assigns.forEach(a => {
+          assignmentPromises.push(
+            fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                item_id: unitId,
+                participant_id: a.participant_id,
+                quantity: a.quantity,
+                is_assigned: true,
+                updated_by: currentParticipant?.name
+              })
+            }).catch(console.error)
+          );
         });
       });
     } else if (newMode === 'grupal') {
-      // No saved grupal assignments - assign all participants
       const allParticipantIds = session.participants.map(p => p.id);
       const newShare = itemQty / allParticipantIds.length;
 
-      newAssignmentsState[itemId] = allParticipantIds.map(pid => ({
-        participant_id: pid,
-        quantity: newShare
-      }));
-
-      // Reset perUnitMode
-      setPerUnitModeItems(prev => ({ ...prev, [itemId]: false }));
-
       allParticipantIds.forEach(pid => {
-        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            item_id: itemId,
-            participant_id: pid,
-            quantity: newShare,
-            is_assigned: true,
-            updated_by: currentParticipant?.name
-          })
-        }).catch(console.error);
+        assignmentPromises.push(
+          fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              item_id: itemId,
+              participant_id: pid,
+              quantity: newShare,
+              is_assigned: true,
+              updated_by: currentParticipant?.name
+            })
+          }).catch(console.error)
+        );
       });
-    } else {
-      // No saved individual assignments - start empty
-      newAssignmentsState[itemId] = [];
-      setPerUnitModeItems(prev => ({ ...prev, [itemId]: false }));
     }
 
-    // 7. Optimistic UI update
-    setSession(prev => ({
-      ...prev,
-      assignments: newAssignmentsState
-    }));
+    await Promise.all(assignmentPromises);
+    lastInteraction.current = Date.now(); // Final reset after all API calls complete
   };
 
   const handleAddNewItem = async () => {
