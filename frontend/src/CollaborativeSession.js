@@ -1815,6 +1815,19 @@ const CollaborativeSession = () => {
                   {(() => {
                     const myItems = [];
                     let mySubtotal = 0;
+
+                    // Pre-scan: detect which items have unit assignments (are in "por unidad" mode)
+                    const itemsWithUnitAssignments = new Set();
+                    Object.keys(session.assignments).forEach(key => {
+                      const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
+                      if (unitMatch) {
+                        const assigns = session.assignments[key] || [];
+                        if (assigns.length > 0) {
+                          itemsWithUnitAssignments.add(unitMatch[1]);
+                        }
+                      }
+                    });
+
                     Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
                       const myAssign = assigns.find(a => a.participant_id === currentParticipant?.id);
                       if (myAssign) {
@@ -1830,14 +1843,23 @@ const CollaborativeSession = () => {
                         } else {
                           item = session.items.find(i => (i.id || i.name) === assignmentKey);
                           itemName = item?.name || 'Item';
+
+                          // Skip parent assignment if item has unit assignments (avoid duplicates)
+                          if (item && item.mode === 'grupal' && itemsWithUnitAssignments.has(assignmentKey)) {
+                            return; // Skip this parent, units will be shown instead
+                          }
                         }
 
                         if (item) {
                           const amount = item.price * (myAssign.quantity || 0);
                           mySubtotal += amount;
                           const splitCount = assigns.length;
-                          const itemQty = isUnitAssignment ? 1 : (item.quantity || 1);
                           const itemMode = item.mode || 'individual';
+                          // For individual items: show participant's consumed quantity
+                          // For grupal/unit: show item quantity or 1 for units
+                          const itemQty = itemMode === 'individual'
+                            ? Math.round(myAssign.quantity || 1)
+                            : (isUnitAssignment ? 1 : (item.quantity || 1));
                           myItems.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment, itemMode });
                         }
                       }
@@ -1930,6 +1952,19 @@ const CollaborativeSession = () => {
                 {(() => {
                   const myItems = [];
                   let mySubtotal = 0;
+
+                  // Pre-scan: detect which items have unit assignments (are in "por unidad" mode)
+                  const itemsWithUnitAssignments = new Set();
+                  Object.keys(session.assignments).forEach(key => {
+                    const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
+                    if (unitMatch) {
+                      const assigns = session.assignments[key] || [];
+                      if (assigns.length > 0) {
+                        itemsWithUnitAssignments.add(unitMatch[1]);
+                      }
+                    }
+                  });
+
                   Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
                     const myAssign = assigns.find(a => a.participant_id === currentParticipant?.id);
                     if (myAssign) {
@@ -1948,16 +1983,23 @@ const CollaborativeSession = () => {
                         // Regular item assignment (parent item or individual)
                         item = session.items.find(i => (i.id || i.name) === assignmentKey);
                         itemName = item?.name || 'Item';
+
+                        // Skip parent assignment if item has unit assignments (avoid duplicates)
+                        if (item && item.mode === 'grupal' && itemsWithUnitAssignments.has(assignmentKey)) {
+                          return; // Skip this parent, units will be shown instead
+                        }
                       }
 
                       if (item) {
                         const amount = item.price * (myAssign.quantity || 0);
                         mySubtotal += amount;
                         const splitCount = assigns.length;
-                        // For unit assignments, itemQty is always 1 (one unit)
-                        // For parent assignments, itemQty is the total quantity
-                        const itemQty = isUnitAssignment ? 1 : (item.quantity || 1);
                         const itemMode = item.mode || 'individual';
+                        // For individual items: show participant's consumed quantity
+                        // For grupal/unit: show item quantity or 1 for units
+                        const itemQty = itemMode === 'individual'
+                          ? Math.round(myAssign.quantity || 1)
+                          : (isUnitAssignment ? 1 : (item.quantity || 1));
                         myItems.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment, itemMode });
                       }
                     }
