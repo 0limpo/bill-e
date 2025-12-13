@@ -134,54 +134,53 @@ class GeminiOCRService:
             import io
             image = PIL.Image.open(io.BytesIO(image_bytes))
 
-            # Prompt estructurado con detección automática de formato de precios
-            prompt = """Analiza esta boleta chilena y extrae los datos en JSON.
+            # Prompt estructurado con análisis previo (chain of thought)
+            prompt = """Eres un experto analizando boletas de restaurantes chilenos. Tu tarea es extraer información precisa.
 
-## PASO 1: Extrae los datos RAW de la boleta
+## FASE 1: ANÁLISIS ESTRUCTURAL (razona internamente)
 
-Para cada item, extrae EXACTAMENTE lo que ves:
-- cantidad: el número antes del nombre (si no hay, es 1)
-- nombre: el nombre del producto
-- precio_mostrado: el número que aparece junto al item (sin modificar)
+Antes de extraer datos, analiza la boleta:
+1. ¿Qué columnas tiene? (cantidad, descripción, precio unitario, precio total línea, etc.)
+2. ¿Hay encabezados de columna que indiquen qué representa cada valor?
+3. El precio junto a cada item, ¿es UNITARIO o es el TOTAL DE LA LÍNEA (cantidad × unitario)?
+4. ¿Dónde está el subtotal REAL (suma de items, SIN propina)?
+5. ¿Hay propina/servicio/tip? ¿Está separada o incluida en algún subtotal?
+6. Si hay múltiples líneas con "subtotal", ¿cuál es el correcto (sin propina)?
 
-También extrae:
-- subtotal: el subtotal SIN propina
-- propina: el monto de propina/tip/servicio (0 si no hay)
-- total: el total final
+## FASE 2: EXTRACCIÓN
 
-## PASO 2: Detecta el formato de precios
+Basándote en tu análisis, extrae la información.
 
-Suma todos los precio_mostrado de los items.
+REGLA CRÍTICA para "precio":
+- "precio" SIEMPRE debe ser el PRECIO UNITARIO de UN item
+- Si la boleta muestra "3 Pan Mechada 35.970" y el 35.970 es el total de los 3:
+  → Calcula: 35970 / 3 = 11990
+  → Retorna: {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990}
+- Si la boleta muestra "3 Pan Mechada 11.990" y el 11.990 es el precio unitario:
+  → Retorna: {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990}
 
-SI suma_precios ≈ subtotal (diferencia < 5%):
-  → Los precios mostrados son TOTALES DE LÍNEA
-  → precio_unitario = precio_mostrado / cantidad
+## VALIDACIÓN (obligatoria)
 
-SI suma_precios ≠ subtotal:
-  → Los precios mostrados son UNITARIOS
-  → precio_unitario = precio_mostrado
+Antes de responder, verifica:
+- Suma de (precio × cantidad) para todos los items ≈ subtotal declarado
+- Si NO cuadra, revisa tu interpretación del precio (¿unitario o total línea?)
+- Subtotal + propina ≈ total
 
-## PASO 3: Genera el JSON
+## FORMATO DE RESPUESTA
 
-IMPORTANTE:
-- "precio" debe ser siempre el PRECIO UNITARIO (de 1 unidad)
-- Números chilenos: punto = miles ($35.970 = 35970)
-- Todos los valores deben ser enteros
+IMPORTANTE sobre números chilenos:
+- Usan PUNTO como separador de miles: $111.793 = 111793
+- Convierte todos los precios a números enteros sin puntos
 
-Ejemplo - Si la boleta muestra:
-  "3 Pan Mechada 35.970" y subtotal = 101.630
-  Suma de precios mostrados ≈ 101.630 → son TOTALES DE LÍNEA
-  precio_unitario = 35970 / 3 = 11990
-  → {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990}
-
-Responde SOLO con JSON válido:
+Responde SOLO con JSON válido (sin explicaciones):
 {
     "total": 111793,
     "subtotal": 101630,
     "propina": 10163,
     "items": [
         {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990},
-        {"nombre": "Coca Cola Zero", "cantidad": 2, "precio": 2000}
+        {"nombre": "Coca Cola Zero", "cantidad": 2, "precio": 2000},
+        {"nombre": "Ensalada", "cantidad": 1, "precio": 6500}
     ]
 }"""
 
