@@ -992,21 +992,40 @@ const CollaborativeSession = () => {
     }
   };
 
-  // Clear all unit assignments and assign all participants to parent item (atomic operation)
+  // Clear all unit assignments and switch to "entre todos" mode (with save/restore)
   const handleClearUnitsAndAssignAll = (itemId, qty) => {
     lastInteraction.current = Date.now();
 
     const item = session.items.find(i => (i.id || i.name) === itemId);
     if (!item) return;
 
-    // 1. Build new state clearing all units and assigning to parent
+    // 1. Save current unit assignments before clearing
+    const currentUnitAssignments = {};
+    for (let i = 0; i < qty; i++) {
+      const unitId = `${itemId}_unit_${i}`;
+      if (session.assignments[unitId] && session.assignments[unitId].length > 0) {
+        currentUnitAssignments[unitId] = [...session.assignments[unitId]];
+      }
+    }
+
+    // Save to ref for later restoration
+    if (!savedModeAssignments.current[itemId]) {
+      savedModeAssignments.current[itemId] = {};
+    }
+    savedModeAssignments.current[itemId].porUnidad = {
+      units: currentUnitAssignments
+    };
+
+    // 2. Check if we have saved "entre todos" assignments to restore
+    const savedEntreTodos = savedModeAssignments.current[itemId]?.entreTodos;
+
+    // 3. Build new state
     const newAssignments = { ...session.assignments };
 
     // Clear all unit assignments
     for (let i = 0; i < qty; i++) {
       const unitId = `${itemId}_unit_${i}`;
       const unitAssigns = newAssignments[unitId] || [];
-      // Send API calls to clear
       unitAssigns.forEach(a => {
         fetch(`${API_URL}/api/session/${sessionId}/assign`, {
           method: 'POST',
@@ -1023,45 +1042,76 @@ const CollaborativeSession = () => {
       newAssignments[unitId] = [];
     }
 
-    // Assign all participants to parent item
-    const allParticipantIds = session.participants.map(p => p.id);
+    // 4. Restore saved "entre todos" or assign all participants
     const itemQty = item.quantity || 1;
-    const newShare = itemQty / allParticipantIds.length;
+    if (savedEntreTodos && savedEntreTodos.parent && savedEntreTodos.parent.length > 0) {
+      // Restore saved parent assignments
+      newAssignments[itemId] = savedEntreTodos.parent;
+      savedEntreTodos.parent.forEach(a => {
+        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: itemId,
+            participant_id: a.participant_id,
+            quantity: a.quantity,
+            is_assigned: true,
+            updated_by: currentParticipant?.name
+          })
+        }).catch(console.error);
+      });
+    } else {
+      // No saved state - assign all participants
+      const allParticipantIds = session.participants.map(p => p.id);
+      const newShare = itemQty / allParticipantIds.length;
+      newAssignments[itemId] = allParticipantIds.map(pid => ({
+        participant_id: pid,
+        quantity: newShare
+      }));
+      allParticipantIds.forEach(pid => {
+        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            item_id: itemId,
+            participant_id: pid,
+            quantity: newShare,
+            is_assigned: true,
+            updated_by: currentParticipant?.name
+          })
+        }).catch(console.error);
+      });
+    }
 
-    newAssignments[itemId] = allParticipantIds.map(pid => ({
-      participant_id: pid,
-      quantity: newShare
-    }));
-
-    // Send API calls for parent assignments
-    allParticipantIds.forEach(pid => {
-      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          item_id: itemId,
-          participant_id: pid,
-          quantity: newShare,
-          is_assigned: true,
-          updated_by: currentParticipant?.name
-        })
-      }).catch(console.error);
-    });
-
-    // Optimistic UI update (atomic)
+    // 5. Optimistic UI update
     setSession(prev => ({
       ...prev,
       assignments: newAssignments
     }));
   };
 
-  // Clear parent item assignments
+  // Clear parent item assignments and switch to "por unidad" mode (with save/restore)
   const handleClearParent = (itemId) => {
     lastInteraction.current = Date.now();
 
-    const currentAssignments = session.assignments[itemId] || [];
+    const item = session.items.find(i => (i.id || i.name) === itemId);
+    if (!item) return;
 
-    // Send API calls to clear
+    const currentAssignments = session.assignments[itemId] || [];
+    const itemQty = item.quantity || 1;
+
+    // 1. Save current parent assignments before clearing
+    if (!savedModeAssignments.current[itemId]) {
+      savedModeAssignments.current[itemId] = {};
+    }
+    savedModeAssignments.current[itemId].entreTodos = {
+      parent: [...currentAssignments]
+    };
+
+    // 2. Check if we have saved "por unidad" assignments to restore
+    const savedPorUnidad = savedModeAssignments.current[itemId]?.porUnidad;
+
+    // 3. Clear parent assignments via API
     currentAssignments.forEach(a => {
       fetch(`${API_URL}/api/session/${sessionId}/assign`, {
         method: 'POST',
@@ -1076,10 +1126,33 @@ const CollaborativeSession = () => {
       }).catch(console.error);
     });
 
-    // Optimistic UI update
+    // 4. Build new state
+    const newAssignments = { ...session.assignments, [itemId]: [] };
+
+    // 5. Restore saved unit assignments if any
+    if (savedPorUnidad && savedPorUnidad.units && Object.keys(savedPorUnidad.units).length > 0) {
+      Object.entries(savedPorUnidad.units).forEach(([unitId, assigns]) => {
+        newAssignments[unitId] = assigns;
+        assigns.forEach(a => {
+          fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              item_id: unitId,
+              participant_id: a.participant_id,
+              quantity: a.quantity,
+              is_assigned: true,
+              updated_by: currentParticipant?.name
+            })
+          }).catch(console.error);
+        });
+      });
+    }
+
+    // 6. Optimistic UI update
     setSession(prev => ({
       ...prev,
-      assignments: { ...prev.assignments, [itemId]: [] }
+      assignments: newAssignments
     }));
   };
 
