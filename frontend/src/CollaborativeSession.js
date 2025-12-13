@@ -1836,16 +1836,17 @@ const CollaborativeSession = () => {
                     if (myAssign) {
                       // Check if this is a unit assignment (format: itemId_unit_N)
                       const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
-                      let item, itemName;
+                      let item, itemName, isUnitAssignment = false;
 
                       if (unitMatch) {
                         // Unit assignment - find parent item
+                        isUnitAssignment = true;
                         const baseItemId = unitMatch[1];
                         const unitNum = parseInt(unitMatch[2]) + 1;
                         item = session.items.find(i => (i.id || i.name) === baseItemId);
                         itemName = item ? `${item.name} (U${unitNum})` : `Unidad ${unitNum}`;
                       } else {
-                        // Regular item assignment
+                        // Regular item assignment (parent item or individual)
                         item = session.items.find(i => (i.id || i.name) === assignmentKey);
                         itemName = item?.name || 'Item';
                       }
@@ -1854,9 +1855,10 @@ const CollaborativeSession = () => {
                         const amount = item.price * (myAssign.quantity || 0);
                         mySubtotal += amount;
                         const splitCount = assigns.length;
-                        const myQty = myAssign.quantity || 0;
-                        const itemQty = item.quantity || 1; // Original item quantity
-                        myItems.push({ name: itemName, amount, splitCount, quantity: myQty, itemQty });
+                        // For unit assignments, itemQty is always 1 (one unit)
+                        // For parent assignments, itemQty is the total quantity
+                        const itemQty = isUnitAssignment ? 1 : (item.quantity || 1);
+                        myItems.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment });
                       }
                     }
                   });
@@ -1876,14 +1878,17 @@ const CollaborativeSession = () => {
                       {myItems.map((item, idx) => (
                         <div key={idx} className="breakdown-row">
                           <span>
-                            {/* Show itemQty and split count for shared items */}
-                            {item.splitCount > 1 ? (
-                              <>
-                                <span className="qty-badge">{item.itemQty}x</span>
-                                <span className="split-badge">/{item.splitCount}</span>
-                              </>
+                            {/* Unit assignments: just show /N (qty is always 1) */}
+                            {/* Parent assignments: show Qx /N */}
+                            {item.isUnitAssignment ? (
+                              // Per-unit: just "/N itemName (UN)"
+                              item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>
                             ) : (
-                              <span className="qty-badge">{item.itemQty}x</span>
+                              // Parent/individual: "Qx /N itemName"
+                              <>
+                                {item.itemQty > 1 && <span className="qty-badge">{item.itemQty}x</span>}
+                                {item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
+                              </>
                             )}
                             {item.name}
                           </span>
