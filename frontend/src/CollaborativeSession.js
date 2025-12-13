@@ -1240,7 +1240,7 @@ const CollaborativeSession = () => {
     text += `\n*Total Mesa: ${formatCurrency(grandTotal)}*`;
     text += `\n\n📱 Ver detalle: https://bill-e.vercel.app/s/${sessionId}`;
     text += `\n\n🤖 *¿Quieres dividir tu cuenta fácil?*`;
-    text += `\nAgrega a Bill-e: https://wa.me/56962590001`;
+    text += `\nAgrega a Bill-e: https://wa.me/15551925783`;
 
     // wa.me works best across mobile and desktop
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
