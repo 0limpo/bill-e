@@ -663,8 +663,9 @@ const CollaborativeSession = () => {
   const [perUnitModeItems, setPerUnitModeItems] = useState({});
 
   // Saved assignments per mode (to restore when switching back)
-  // Structure: { [itemId]: { individual: [...], grupal: [...] } }
-  const [savedModeAssignments, setSavedModeAssignments] = useState({});
+  // Structure: { [itemId]: { individual: {...}, grupal: {...} } }
+  // Using useRef for immediate updates (not dependent on React render cycle)
+  const savedModeAssignments = useRef({});
 
   // Interaction lock to prevent polling race condition
   const lastInteraction = useRef(0);
@@ -1399,24 +1400,24 @@ const CollaborativeSession = () => {
       }
     }
 
-    // 2. Save current mode's assignments (parent + units)
-    setSavedModeAssignments(prev => ({
-      ...prev,
-      [itemId]: {
-        ...prev[itemId],
-        [currentMode]: {
-          parent: currentParentAssignments,
-          units: currentUnitAssignments,
-          perUnitMode: perUnitModeItems[itemId] || false
-        }
-      }
-    }));
+    // 2. Get saved assignments for new mode (useRef is synchronous)
+    const savedForNewMode = savedModeAssignments.current[itemId]?.[newMode];
 
-    // 3. Update mode via API FIRST (critical - must complete before polling)
+    // 3. Save current mode's assignments (parent + units) to ref (immediate update)
+    if (!savedModeAssignments.current[itemId]) {
+      savedModeAssignments.current[itemId] = {};
+    }
+    savedModeAssignments.current[itemId][currentMode] = {
+      parent: currentParentAssignments,
+      units: currentUnitAssignments,
+      perUnitMode: perUnitModeItems[itemId] || false
+    };
+
+    // 4. Update mode via API FIRST (critical - must complete before polling)
     await handleItemUpdate(itemId, { mode: newMode });
     lastInteraction.current = Date.now(); // Reset interaction timer
 
-    // 4. Clear ALL current assignments via API (parent + units)
+    // 5. Clear ALL current assignments via API (parent + units)
     const allAssignmentsToClear = [];
     currentParentAssignments.forEach(a => allAssignmentsToClear.push({ itemId, pid: a.participant_id }));
     Object.entries(currentUnitAssignments).forEach(([unitId, assigns]) => {
@@ -1438,9 +1439,6 @@ const CollaborativeSession = () => {
       }).catch(console.error)
     ));
     lastInteraction.current = Date.now(); // Reset interaction timer
-
-    // 5. Check if we have saved assignments for the new mode
-    const savedForNewMode = savedModeAssignments[itemId]?.[newMode];
 
     // 6. Build new assignments state
     const newAssignmentsState = { ...session.assignments };
