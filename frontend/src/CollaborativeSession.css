@@ -662,6 +662,34 @@ body {
   cursor: default;
 }
 
+/* Syncing spinner */
+.sync-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(0,0,0,0.1);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.item-mode-switch.syncing,
+.grupal-switch.syncing {
+  position: relative;
+}
+
+.item-mode-switch.syncing .mode-option,
+.grupal-switch.syncing .grupal-switch-option {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* --- AVATAR ASSIGNMENT (Modern Grid) --- */
 /* --- CONSUMER SCROLL LIST (Horizontal for both modes) --- */
 .consumer-scroll-list {

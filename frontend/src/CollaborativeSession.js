@@ -439,19 +439,18 @@ const BillItem = ({
         {/* Mode switch & controls - visible for all items, any participant can toggle */}
         {!isEditing && !isFinalized && (
            <div className={`item-mode-switch ${isSyncing ? 'syncing' : ''}`}>
+             {isSyncing && <span className="sync-spinner" />}
              <div
                 className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
                 onClick={() => !isSyncing && onToggleMode(itemId)}
-                style={{ cursor: isSyncing ? 'not-allowed' : 'pointer', opacity: isSyncing ? 0.6 : 1 }}
              >
-               {isSyncing ? '⏳' : ''} Individual
+               Individual
              </div>
              <div
                 className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
                 onClick={() => !isSyncing && onToggleMode(itemId)}
-                style={{ cursor: isSyncing ? 'not-allowed' : 'pointer', opacity: isSyncing ? 0.6 : 1 }}
              >
-               {isSyncing ? '⏳' : ''} Grupal
+               Grupal
              </div>
            </div>
         )}
@@ -466,9 +465,9 @@ const BillItem = ({
             <div className="grupal-options">
               {/* Switch: Entre todos / Por unidad */}
               <div className={`grupal-switch ${isSyncing ? 'syncing' : ''}`}>
+                {isSyncing && <span className="sync-spinner" />}
                 <div
                   className={`grupal-switch-option ${!effectivePerUnitMode ? 'active' : ''}`}
-                  style={{ cursor: isSyncing ? 'not-allowed' : 'pointer', opacity: isSyncing ? 0.6 : 1 }}
                   onClick={() => {
                     if (isSyncing) return;
                     if (effectivePerUnitMode) {
@@ -486,11 +485,10 @@ const BillItem = ({
                     }
                   }}
                 >
-                  {isSyncing ? '⏳ ' : (!effectivePerUnitMode && allAssignedToParent ? '✓ ' : '')}👥 Entre todos
+                  {!effectivePerUnitMode && allAssignedToParent ? '✓ ' : ''}👥 Entre todos
                 </div>
                 <div
                   className={`grupal-switch-option ${effectivePerUnitMode ? 'active' : ''}`}
-                  style={{ cursor: isSyncing ? 'not-allowed' : 'pointer', opacity: isSyncing ? 0.6 : 1 }}
                   onClick={() => {
                     if (isSyncing) return;
                     if (!effectivePerUnitMode) {
@@ -508,7 +506,7 @@ const BillItem = ({
                     }
                   }}
                 >
-                  {isSyncing ? '⏳ ' : ''}Por unidad {isExpanded ? '▲' : '▼'}
+                  Por unidad {isExpanded ? '▲' : '▼'}
                 </div>
               </div>
             </div>
@@ -1304,8 +1302,10 @@ const CollaborativeSession = () => {
   };
 
   // Open participant edit modal
+  // Owner can edit anyone, editors can edit non-owners only
   const handleOpenParticipantEdit = (participant) => {
-    if (!isOwner) return;
+    // Editors cannot edit the host
+    if (!isOwner && participant.role === 'owner') return;
     setEditingParticipant(participant);
     setEditParticipantName(participant.name);
   };
@@ -1893,17 +1893,20 @@ const CollaborativeSession = () => {
            {!isFinalized && (
              <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)} />
            )}
-           {session.participants.map(p => (
+           {session.participants.map(p => {
+              // Owner can edit anyone, editors can edit non-owners only
+              const canEdit = session.status !== 'finalized' && (isOwner || p.role !== 'owner');
+              return (
               <div
                 key={p.id}
-                className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${isOwner ? 'clickable' : ''}`}
-                onClick={() => isOwner && session.status !== 'finalized' && handleOpenParticipantEdit(p)}
+                className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${canEdit ? 'clickable' : ''}`}
+                onClick={() => canEdit && handleOpenParticipantEdit(p)}
               >
                 {p.role === 'owner' && <span className="badge-owner">Host</span>}
                 <Avatar name={p.name} />
                 <span className="participant-name">{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
               </div>
-           ))}
+           );})}
         </div>
       </div>
 

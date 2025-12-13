@@ -3,6 +3,7 @@
 
 import uuid
 import json
+import re
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any
 from enum import Enum
@@ -229,28 +230,43 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
     participant_subtotals = {p["id"]: 0 for p in participants}
     participant_items = {p["id"]: [] for p in participants}
 
-    for item_id, item_assignments in assignments.items():
-        item = items_by_id.get(item_id)
-        if not item:
-            continue
+    for assignment_key, item_assignments in assignments.items():
+        # Check if this is a unit assignment (format: itemId_unit_N)
+        unit_match = re.match(r'^(.+)_unit_(\d+)$', assignment_key)
 
-        item_price = item.get("price", 0)
+        if unit_match:
+            # Unit assignment - find parent item
+            base_item_id = unit_match.group(1)
+            item = items_by_id.get(base_item_id)
+            if not item:
+                continue
+            # Unit price is the item's price (already per unit in frontend)
+            unit_price = item.get("price", 0)
+        else:
+            # Regular item assignment
+            item = items_by_id.get(assignment_key)
+            if not item:
+                continue
+            item_price = item.get("price", 0)
+            item_quantity = item.get("quantity", 1)
+            unit_price = item_price / item_quantity if item_quantity > 0 else item_price
+
         item_quantity = item.get("quantity", 1)
-        price_per_unit = item_price / item_quantity if item_quantity > 0 else item_price
 
         for assignment in item_assignments:
             p_id = assignment["participant_id"]
             qty = assignment.get("quantity", 1)
 
             if p_id in participant_subtotals:
-                amount = price_per_unit * qty
+                amount = unit_price * qty
                 participant_subtotals[p_id] += amount
                 participant_items[p_id].append({
                     "name": item.get("name", "Item"),
                     "quantity": qty,
                     "total_quantity": item_quantity,
                     "amount": amount,
-                    "shared": len(item_assignments) > 1
+                    "shared": len(item_assignments) > 1,
+                    "is_unit": unit_match is not None
                 })
 
     total_subtotal = sum(participant_subtotals.values())
