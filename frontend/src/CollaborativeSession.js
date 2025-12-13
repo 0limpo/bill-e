@@ -438,20 +438,22 @@ const BillItem = ({
 
         {/* Mode switch & controls - visible for all items, any participant can toggle */}
         {!isEditing && !isFinalized && (
-           <div className={`item-mode-switch ${isSyncing ? 'syncing' : ''}`}>
+           <div className="item-mode-switch-container">
+             <div className={`item-mode-switch ${isSyncing ? 'syncing' : ''}`}>
+               <div
+                  className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
+                  onClick={() => !isSyncing && onToggleMode(itemId)}
+               >
+                 Individual
+               </div>
+               <div
+                  className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
+                  onClick={() => !isSyncing && onToggleMode(itemId)}
+               >
+                 Grupal
+               </div>
+             </div>
              {isSyncing && <span className="sync-spinner" />}
-             <div
-                className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
-                onClick={() => !isSyncing && onToggleMode(itemId)}
-             >
-               Individual
-             </div>
-             <div
-                className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
-                onClick={() => !isSyncing && onToggleMode(itemId)}
-             >
-               Grupal
-             </div>
            </div>
         )}
 
@@ -465,7 +467,6 @@ const BillItem = ({
             <div className="grupal-options">
               {/* Switch: Entre todos / Por unidad */}
               <div className={`grupal-switch ${isSyncing ? 'syncing' : ''}`}>
-                {isSyncing && <span className="sync-spinner" />}
                 <div
                   className={`grupal-switch-option ${!effectivePerUnitMode ? 'active' : ''}`}
                   onClick={() => {
@@ -1419,6 +1420,15 @@ const CollaborativeSession = () => {
   const calculateParticipantTotal = (participantId, includesTip = true) => {
     if (!session) return { subtotal: 0, total: 0, tipAmount: 0 };
 
+    // Pre-scan: detect which items have unit assignments (to avoid double-counting)
+    const itemsWithUnitAssignments = new Set();
+    Object.entries(session.assignments).forEach(([key, assigns]) => {
+      const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
+      if (unitMatch && assigns && assigns.length > 0) {
+        itemsWithUnitAssignments.add(unitMatch[1]);
+      }
+    });
+
     let subtotal = 0;
     Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
       const assignment = assigns.find(a => a.participant_id === participantId);
@@ -1435,7 +1445,10 @@ const CollaborativeSession = () => {
             subtotal += item.price * (assignment.quantity || 0);
           }
         } else {
-          // Regular item assignment
+          // Regular item assignment - skip if item has unit assignments (avoid double-counting)
+          if (itemsWithUnitAssignments.has(assignmentKey)) {
+            return; // Skip parent assignment, units are counted separately
+          }
           const item = session.items.find(i => (i.id || i.name) === assignmentKey);
           if (item) {
             // item.price is UNIT PRICE - just multiply by assigned quantity

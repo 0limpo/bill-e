@@ -629,6 +629,13 @@ body {
 }
 
 /* --- TOGGLES & BUTTONS --- */
+.item-mode-switch-container {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .item-mode-switch {
   background: rgba(0,0,0,0.04);
   padding: 2px;

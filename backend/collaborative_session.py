@@ -227,6 +227,13 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
         item_id = item.get("id") or item.get("name")
         items_by_id[item_id] = item
 
+    # Pre-scan: detect which items have unit assignments (to avoid double-counting)
+    items_with_unit_assignments = set()
+    for key, assigns in assignments.items():
+        unit_match = re.match(r'^(.+)_unit_(\d+)$', key)
+        if unit_match and assigns and len(assigns) > 0:
+            items_with_unit_assignments.add(unit_match.group(1))
+
     participant_subtotals = {p["id"]: 0 for p in participants}
     participant_items = {p["id"]: [] for p in participants}
 
@@ -243,7 +250,9 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
             # Unit price is the item's price (already per unit in frontend)
             unit_price = item.get("price", 0)
         else:
-            # Regular item assignment
+            # Regular item assignment - skip if item has unit assignments (avoid double-counting)
+            if assignment_key in items_with_unit_assignments:
+                continue
             item = items_by_id.get(assignment_key)
             if not item:
                 continue
