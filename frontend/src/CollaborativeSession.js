@@ -340,7 +340,9 @@ const BillItem = ({
   onToggleEdit,
   onDeleteItem,
   isExpanded,
-  onToggleExpand
+  onToggleExpand,
+  isPerUnitMode,
+  onSetPerUnitMode
 }) => {
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
@@ -456,26 +458,41 @@ const BillItem = ({
               {/* Switch: Entre todos / Por unidad */}
               <div className="grupal-switch">
                 <div
-                  className={`grupal-switch-option ${!isExpanded ? 'active' : ''}`}
+                  className={`grupal-switch-option ${!isPerUnitMode ? 'active' : ''}`}
                   onClick={() => {
-                    if (isExpanded) {
+                    if (isPerUnitMode) {
                       // Switching from "Por unidad" to "Entre todos"
-                      // Use onClearUnitsAndAssignAll to do it atomically
+                      // Clear unit assignments and assign all to parent
                       onClearUnitsAndAssignAll(itemId, qty);
-                      onToggleExpand(itemId);
+                      onSetPerUnitMode(itemId, false);
+                      // Also collapse if expanded
+                      if (isExpanded) {
+                        onToggleExpand(itemId);
+                      }
                     } else if (!allAssignedToParent) {
                       // Already in "Entre todos" but not all assigned - assign all
                       onGroupAssign(itemId, '__ALL__', true);
                     }
                   }}
                 >
-                  {!isExpanded && allAssignedToParent ? '✓ ' : ''}👥 Entre todos
+                  {!isPerUnitMode && allAssignedToParent ? '✓ ' : ''}👥 Entre todos
                 </div>
                 <div
-                  className={`grupal-switch-option ${isExpanded ? 'active' : ''}`}
+                  className={`grupal-switch-option ${isPerUnitMode ? 'active' : ''}`}
                   onClick={() => {
-                    // Just toggle expand/collapse, preserve all assignments
-                    onToggleExpand(itemId);
+                    if (!isPerUnitMode) {
+                      // Switching to "Por unidad" mode
+                      onSetPerUnitMode(itemId, true);
+                      // Clear parent assignments when switching to per-unit mode
+                      onClearParent(itemId);
+                      // Expand to show units
+                      if (!isExpanded) {
+                        onToggleExpand(itemId);
+                      }
+                    } else {
+                      // Already in per-unit mode - just toggle expand/collapse
+                      onToggleExpand(itemId);
+                    }
                   }}
                 >
                   Por unidad {isExpanded ? '▲' : '▼'}
@@ -633,6 +650,9 @@ const CollaborativeSession = () => {
 
   // Expanded items for grupal tree view (visual only, no backend change)
   const [expandedItems, setExpandedItems] = useState({});
+
+  // Per-unit mode state (independent of expanded/collapsed visual state)
+  const [perUnitModeItems, setPerUnitModeItems] = useState({});
 
   // Interaction lock to prevent polling race condition
   const lastInteraction = useRef(0);
@@ -1690,6 +1710,8 @@ const CollaborativeSession = () => {
                 onDeleteItem={handleDeleteItem}
                 isExpanded={expandedItems[itemId] || false}
                 onToggleExpand={(id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }))}
+                isPerUnitMode={perUnitModeItems[itemId] || false}
+                onSetPerUnitMode={(id, value) => setPerUnitModeItems(prev => ({ ...prev, [id]: value }))}
               />
             </div>
           );
