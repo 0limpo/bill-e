@@ -622,7 +622,7 @@ async def get_my_summary(session_id: str, participant_id: str):
 
 @app.post("/api/session/{session_id}/update-item")
 async def update_item(session_id: str, request: Request):
-    """Owner actualiza un item (nombre, precio, cantidad)."""
+    """Actualiza un item. Owner puede cambiar todo, editores solo el mode."""
     try:
         data = await request.json()
         owner_token = data.get("owner_token")
@@ -634,20 +634,28 @@ async def update_item(session_id: str, request: Request):
         if not session_data:
             raise HTTPException(status_code=404, detail="Sesion no encontrada")
 
-        if not verify_owner(session_data, owner_token):
-            raise HTTPException(status_code=403, detail="No autorizado")
+        is_owner = verify_owner(session_data, owner_token) if owner_token else False
+
+        # Check if trying to update owner-only fields without being owner
+        owner_only_fields = {"name", "price", "quantity"}
+        requested_owner_fields = owner_only_fields & set(updates.keys())
+        if requested_owner_fields and not is_owner:
+            raise HTTPException(status_code=403, detail="Solo el anfitrion puede editar nombre, precio y cantidad")
 
         # Actualizar el item
         for item in session_data["items"]:
             if (item.get("id") or item.get("name")) == item_id:
-                if "name" in updates:
-                    item["name"] = updates["name"]
-                if "price" in updates:
-                    item["price"] = updates["price"]
-                if "quantity" in updates:
-                    item["quantity"] = updates["quantity"]
+                # Owner-only fields
+                if is_owner:
+                    if "name" in updates:
+                        item["name"] = updates["name"]
+                    if "price" in updates:
+                        item["price"] = updates["price"]
+                    if "quantity" in updates:
+                        item["quantity"] = updates["quantity"]
+                # Anyone can change mode (individual/grupal)
                 if "mode" in updates:
-                    item["mode"] = updates["mode"]  # "individual" or "group"
+                    item["mode"] = updates["mode"]
                 break
 
         # CRITICAL: DO NOT recalculate subtotal here!
