@@ -349,7 +349,10 @@ const BillItem = ({
   const isAssignedToMe = itemAssignments.some(a => a.participant_id === currentParticipant?.id);
 
   // Derive perUnitMode from synced assignments (detects unit assignments from other users)
-  const hasUnitAssignments = Object.keys(assignments).some(key => key.startsWith(`${itemId}_unit_`));
+  // Check for actual assignments (non-empty arrays), not just existing keys
+  const hasUnitAssignments = Object.entries(assignments).some(([key, assigns]) =>
+    key.startsWith(`${itemId}_unit_`) && assigns && assigns.length > 0
+  );
   // Use derived state from assignments OR local state for immediate UI feedback
   const effectivePerUnitMode = hasUnitAssignments || isPerUnitMode;
 
