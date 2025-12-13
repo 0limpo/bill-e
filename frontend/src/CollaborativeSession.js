@@ -348,6 +348,11 @@ const BillItem = ({
   const itemAssignments = assignments[itemId] || [];
   const isAssignedToMe = itemAssignments.some(a => a.participant_id === currentParticipant?.id);
 
+  // Derive perUnitMode from synced assignments (detects unit assignments from other users)
+  const hasUnitAssignments = Object.keys(assignments).some(key => key.startsWith(`${itemId}_unit_`));
+  // Use derived state from assignments OR local state for immediate UI feedback
+  const effectivePerUnitMode = hasUnitAssignments || isPerUnitMode;
+
   const totalAssigned = itemAssignments.reduce((sum, a) => sum + (a.quantity || 1), 0);
   const remaining = Math.max(0, (item.quantity || 1) - totalAssigned);
 
@@ -427,20 +432,20 @@ const BillItem = ({
           )}
         </div>
 
-        {/* Mode switch & controls - visible for multi-qty items, only owner can toggle */}
-        {!isEditing && ((qty > 1) || isOwner) && !isFinalized && (
-           <div className={`item-mode-switch ${!isOwner ? 'readonly' : ''}`}>
+        {/* Mode switch & controls - visible for all items, any participant can toggle */}
+        {!isEditing && !isFinalized && (
+           <div className="item-mode-switch">
              <div
                 className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
-                onClick={() => isOwner && onToggleMode(itemId)}
-                style={{ cursor: isOwner ? 'pointer' : 'default' }}
+                onClick={() => onToggleMode(itemId)}
+                style={{ cursor: 'pointer' }}
              >
                Individual
              </div>
              <div
                 className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
-                onClick={() => isOwner && onToggleMode(itemId)}
-                style={{ cursor: isOwner ? 'pointer' : 'default' }}
+                onClick={() => onToggleMode(itemId)}
+                style={{ cursor: 'pointer' }}
              >
                Grupal
              </div>
@@ -458,9 +463,9 @@ const BillItem = ({
               {/* Switch: Entre todos / Por unidad */}
               <div className="grupal-switch">
                 <div
-                  className={`grupal-switch-option ${!isPerUnitMode ? 'active' : ''}`}
+                  className={`grupal-switch-option ${!effectivePerUnitMode ? 'active' : ''}`}
                   onClick={() => {
-                    if (isPerUnitMode) {
+                    if (effectivePerUnitMode) {
                       // Switching from "Por unidad" to "Entre todos"
                       // Clear unit assignments and assign all to parent
                       onClearUnitsAndAssignAll(itemId, qty);
@@ -475,12 +480,12 @@ const BillItem = ({
                     }
                   }}
                 >
-                  {!isPerUnitMode && allAssignedToParent ? '✓ ' : ''}👥 Entre todos
+                  {!effectivePerUnitMode && allAssignedToParent ? '✓ ' : ''}👥 Entre todos
                 </div>
                 <div
-                  className={`grupal-switch-option ${isPerUnitMode ? 'active' : ''}`}
+                  className={`grupal-switch-option ${effectivePerUnitMode ? 'active' : ''}`}
                   onClick={() => {
-                    if (!isPerUnitMode) {
+                    if (!effectivePerUnitMode) {
                       // Switching to "Por unidad" mode
                       onSetPerUnitMode(itemId, true);
                       // Clear parent assignments when switching to per-unit mode
@@ -1902,9 +1907,9 @@ const CollaborativeSession = () => {
                               // Per-unit: just "/N itemName (UN)"
                               item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>
                             ) : (
-                              // Parent/individual: "Qx /N itemName"
+                              // Parent/individual: "Qx /N itemName" - always show qty for individual items
                               <>
-                                {item.itemQty > 1 && <span className="qty-badge">{item.itemQty}x</span>}
+                                <span className="qty-badge">{item.itemQty}x</span>
                                 {item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
                               </>
                             )}
