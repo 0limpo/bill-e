@@ -342,7 +342,8 @@ const BillItem = ({
   isExpanded,
   onToggleExpand,
   isPerUnitMode,
-  onSetPerUnitMode
+  onSetPerUnitMode,
+  isSyncing
 }) => {
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
@@ -437,20 +438,20 @@ const BillItem = ({
 
         {/* Mode switch & controls - visible for all items, any participant can toggle */}
         {!isEditing && !isFinalized && (
-           <div className="item-mode-switch">
+           <div className={`item-mode-switch ${isSyncing ? 'syncing' : ''}`}>
              <div
                 className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
-                onClick={() => onToggleMode(itemId)}
-                style={{ cursor: 'pointer' }}
+                onClick={() => !isSyncing && onToggleMode(itemId)}
+                style={{ cursor: isSyncing ? 'not-allowed' : 'pointer', opacity: isSyncing ? 0.6 : 1 }}
              >
-               Individual
+               {isSyncing ? '⏳' : ''} Individual
              </div>
              <div
                 className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
-                onClick={() => onToggleMode(itemId)}
-                style={{ cursor: 'pointer' }}
+                onClick={() => !isSyncing && onToggleMode(itemId)}
+                style={{ cursor: isSyncing ? 'not-allowed' : 'pointer', opacity: isSyncing ? 0.6 : 1 }}
              >
-               Grupal
+               {isSyncing ? '⏳' : ''} Grupal
              </div>
            </div>
         )}
@@ -464,10 +465,12 @@ const BillItem = ({
           return (
             <div className="grupal-options">
               {/* Switch: Entre todos / Por unidad */}
-              <div className="grupal-switch">
+              <div className={`grupal-switch ${isSyncing ? 'syncing' : ''}`}>
                 <div
                   className={`grupal-switch-option ${!effectivePerUnitMode ? 'active' : ''}`}
+                  style={{ cursor: isSyncing ? 'not-allowed' : 'pointer', opacity: isSyncing ? 0.6 : 1 }}
                   onClick={() => {
+                    if (isSyncing) return;
                     if (effectivePerUnitMode) {
                       // Switching from "Por unidad" to "Entre todos"
                       // Clear unit assignments and assign all to parent
@@ -483,11 +486,13 @@ const BillItem = ({
                     }
                   }}
                 >
-                  {!effectivePerUnitMode && allAssignedToParent ? '✓ ' : ''}👥 Entre todos
+                  {isSyncing ? '⏳ ' : (!effectivePerUnitMode && allAssignedToParent ? '✓ ' : '')}👥 Entre todos
                 </div>
                 <div
                   className={`grupal-switch-option ${effectivePerUnitMode ? 'active' : ''}`}
+                  style={{ cursor: isSyncing ? 'not-allowed' : 'pointer', opacity: isSyncing ? 0.6 : 1 }}
                   onClick={() => {
+                    if (isSyncing) return;
                     if (!effectivePerUnitMode) {
                       // Switching to "Por unidad" mode
                       onSetPerUnitMode(itemId, true);
@@ -503,7 +508,7 @@ const BillItem = ({
                     }
                   }}
                 >
-                  Por unidad {isExpanded ? '▲' : '▼'}
+                  {isSyncing ? '⏳ ' : ''}Por unidad {isExpanded ? '▲' : '▼'}
                 </div>
               </div>
             </div>
@@ -661,6 +666,9 @@ const CollaborativeSession = () => {
 
   // Per-unit mode state (independent of expanded/collapsed visual state)
   const [perUnitModeItems, setPerUnitModeItems] = useState({});
+
+  // Items currently syncing (to block switches during API calls)
+  const [syncingItems, setSyncingItems] = useState(new Set());
 
   // Saved assignments per mode (to restore when switching back)
   // Structure: { [itemId]: { individual: {...}, grupal: {...} } }
@@ -993,167 +1001,205 @@ const CollaborativeSession = () => {
   };
 
   // Clear all unit assignments and switch to "entre todos" mode (with save/restore)
-  const handleClearUnitsAndAssignAll = (itemId, qty) => {
+  const handleClearUnitsAndAssignAll = async (itemId, qty) => {
     lastInteraction.current = Date.now();
 
-    const item = session.items.find(i => (i.id || i.name) === itemId);
-    if (!item) return;
+    // Block this item's switches during sync
+    setSyncingItems(prev => new Set([...prev, itemId]));
 
-    // 1. Save current unit assignments before clearing
-    const currentUnitAssignments = {};
-    for (let i = 0; i < qty; i++) {
-      const unitId = `${itemId}_unit_${i}`;
-      if (session.assignments[unitId] && session.assignments[unitId].length > 0) {
-        currentUnitAssignments[unitId] = [...session.assignments[unitId]];
+    try {
+      const item = session.items.find(i => (i.id || i.name) === itemId);
+      if (!item) return;
+
+      // 1. Save current unit assignments before clearing
+      const currentUnitAssignments = {};
+      for (let i = 0; i < qty; i++) {
+        const unitId = `${itemId}_unit_${i}`;
+        if (session.assignments[unitId] && session.assignments[unitId].length > 0) {
+          currentUnitAssignments[unitId] = [...session.assignments[unitId]];
+        }
       }
+
+      // Save to ref for later restoration
+      if (!savedModeAssignments.current[itemId]) {
+        savedModeAssignments.current[itemId] = {};
+      }
+      savedModeAssignments.current[itemId].porUnidad = {
+        units: currentUnitAssignments
+      };
+
+      // 2. Check if we have saved "entre todos" assignments to restore
+      const savedEntreTodos = savedModeAssignments.current[itemId]?.entreTodos;
+
+      // 3. Build new state and collect API calls
+      const newAssignments = { ...session.assignments };
+      const clearPromises = [];
+      const assignPromises = [];
+
+      // Clear all unit assignments
+      for (let i = 0; i < qty; i++) {
+        const unitId = `${itemId}_unit_${i}`;
+        const unitAssigns = newAssignments[unitId] || [];
+        unitAssigns.forEach(a => {
+          clearPromises.push(
+            fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                item_id: unitId,
+                participant_id: a.participant_id,
+                quantity: 0,
+                is_assigned: false,
+                updated_by: currentParticipant?.name
+              })
+            }).catch(console.error)
+          );
+        });
+        newAssignments[unitId] = [];
+      }
+
+      // 4. Restore saved "entre todos" or assign all participants
+      const itemQty = item.quantity || 1;
+      if (savedEntreTodos && savedEntreTodos.parent && savedEntreTodos.parent.length > 0) {
+        // Restore saved parent assignments
+        newAssignments[itemId] = savedEntreTodos.parent;
+        savedEntreTodos.parent.forEach(a => {
+          assignPromises.push(
+            fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                item_id: itemId,
+                participant_id: a.participant_id,
+                quantity: a.quantity,
+                is_assigned: true,
+                updated_by: currentParticipant?.name
+              })
+            }).catch(console.error)
+          );
+        });
+      } else {
+        // No saved state - assign all participants
+        const allParticipantIds = session.participants.map(p => p.id);
+        const newShare = itemQty / allParticipantIds.length;
+        newAssignments[itemId] = allParticipantIds.map(pid => ({
+          participant_id: pid,
+          quantity: newShare
+        }));
+        allParticipantIds.forEach(pid => {
+          assignPromises.push(
+            fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                item_id: itemId,
+                participant_id: pid,
+                quantity: newShare,
+                is_assigned: true,
+                updated_by: currentParticipant?.name
+              })
+            }).catch(console.error)
+          );
+        });
+      }
+
+      // 5. Optimistic UI update
+      setSession(prev => ({
+        ...prev,
+        assignments: newAssignments
+      }));
+
+      // 6. Wait for all API calls to complete
+      await Promise.all(clearPromises);
+      lastInteraction.current = Date.now();
+      await Promise.all(assignPromises);
+      lastInteraction.current = Date.now();
+    } finally {
+      // Unblock this item's switches
+      setSyncingItems(prev => { const next = new Set(prev); next.delete(itemId); return next; });
     }
+  };
 
-    // Save to ref for later restoration
-    if (!savedModeAssignments.current[itemId]) {
-      savedModeAssignments.current[itemId] = {};
-    }
-    savedModeAssignments.current[itemId].porUnidad = {
-      units: currentUnitAssignments
-    };
+  // Clear parent item assignments and switch to "por unidad" mode (with save/restore)
+  const handleClearParent = async (itemId) => {
+    lastInteraction.current = Date.now();
 
-    // 2. Check if we have saved "entre todos" assignments to restore
-    const savedEntreTodos = savedModeAssignments.current[itemId]?.entreTodos;
+    // Block this item's switches during sync
+    setSyncingItems(prev => new Set([...prev, itemId]));
 
-    // 3. Build new state
-    const newAssignments = { ...session.assignments };
+    try {
+      const item = session.items.find(i => (i.id || i.name) === itemId);
+      if (!item) return;
 
-    // Clear all unit assignments
-    for (let i = 0; i < qty; i++) {
-      const unitId = `${itemId}_unit_${i}`;
-      const unitAssigns = newAssignments[unitId] || [];
-      unitAssigns.forEach(a => {
+      const currentAssignments = session.assignments[itemId] || [];
+
+      // 1. Save current parent assignments before clearing
+      if (!savedModeAssignments.current[itemId]) {
+        savedModeAssignments.current[itemId] = {};
+      }
+      savedModeAssignments.current[itemId].entreTodos = {
+        parent: [...currentAssignments]
+      };
+
+      // 2. Check if we have saved "por unidad" assignments to restore
+      const savedPorUnidad = savedModeAssignments.current[itemId]?.porUnidad;
+
+      // 3. Collect clear API calls
+      const clearPromises = currentAssignments.map(a =>
         fetch(`${API_URL}/api/session/${sessionId}/assign`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            item_id: unitId,
+            item_id: itemId,
             participant_id: a.participant_id,
             quantity: 0,
             is_assigned: false,
             updated_by: currentParticipant?.name
           })
-        }).catch(console.error);
-      });
-      newAssignments[unitId] = [];
-    }
+        }).catch(console.error)
+      );
 
-    // 4. Restore saved "entre todos" or assign all participants
-    const itemQty = item.quantity || 1;
-    if (savedEntreTodos && savedEntreTodos.parent && savedEntreTodos.parent.length > 0) {
-      // Restore saved parent assignments
-      newAssignments[itemId] = savedEntreTodos.parent;
-      savedEntreTodos.parent.forEach(a => {
-        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            item_id: itemId,
-            participant_id: a.participant_id,
-            quantity: a.quantity,
-            is_assigned: true,
-            updated_by: currentParticipant?.name
-          })
-        }).catch(console.error);
-      });
-    } else {
-      // No saved state - assign all participants
-      const allParticipantIds = session.participants.map(p => p.id);
-      const newShare = itemQty / allParticipantIds.length;
-      newAssignments[itemId] = allParticipantIds.map(pid => ({
-        participant_id: pid,
-        quantity: newShare
-      }));
-      allParticipantIds.forEach(pid => {
-        fetch(`${API_URL}/api/session/${sessionId}/assign`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            item_id: itemId,
-            participant_id: pid,
-            quantity: newShare,
-            is_assigned: true,
-            updated_by: currentParticipant?.name
-          })
-        }).catch(console.error);
-      });
-    }
+      // 4. Build new state and collect restore API calls
+      const newAssignments = { ...session.assignments, [itemId]: [] };
+      const restorePromises = [];
 
-    // 5. Optimistic UI update
-    setSession(prev => ({
-      ...prev,
-      assignments: newAssignments
-    }));
-  };
-
-  // Clear parent item assignments and switch to "por unidad" mode (with save/restore)
-  const handleClearParent = (itemId) => {
-    lastInteraction.current = Date.now();
-
-    const item = session.items.find(i => (i.id || i.name) === itemId);
-    if (!item) return;
-
-    const currentAssignments = session.assignments[itemId] || [];
-    const itemQty = item.quantity || 1;
-
-    // 1. Save current parent assignments before clearing
-    if (!savedModeAssignments.current[itemId]) {
-      savedModeAssignments.current[itemId] = {};
-    }
-    savedModeAssignments.current[itemId].entreTodos = {
-      parent: [...currentAssignments]
-    };
-
-    // 2. Check if we have saved "por unidad" assignments to restore
-    const savedPorUnidad = savedModeAssignments.current[itemId]?.porUnidad;
-
-    // 3. Clear parent assignments via API
-    currentAssignments.forEach(a => {
-      fetch(`${API_URL}/api/session/${sessionId}/assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          item_id: itemId,
-          participant_id: a.participant_id,
-          quantity: 0,
-          is_assigned: false,
-          updated_by: currentParticipant?.name
-        })
-      }).catch(console.error);
-    });
-
-    // 4. Build new state
-    const newAssignments = { ...session.assignments, [itemId]: [] };
-
-    // 5. Restore saved unit assignments if any
-    if (savedPorUnidad && savedPorUnidad.units && Object.keys(savedPorUnidad.units).length > 0) {
-      Object.entries(savedPorUnidad.units).forEach(([unitId, assigns]) => {
-        newAssignments[unitId] = assigns;
-        assigns.forEach(a => {
-          fetch(`${API_URL}/api/session/${sessionId}/assign`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              item_id: unitId,
-              participant_id: a.participant_id,
-              quantity: a.quantity,
-              is_assigned: true,
-              updated_by: currentParticipant?.name
-            })
-          }).catch(console.error);
+      // 5. Restore saved unit assignments if any
+      if (savedPorUnidad && savedPorUnidad.units && Object.keys(savedPorUnidad.units).length > 0) {
+        Object.entries(savedPorUnidad.units).forEach(([unitId, assigns]) => {
+          newAssignments[unitId] = assigns;
+          assigns.forEach(a => {
+            restorePromises.push(
+              fetch(`${API_URL}/api/session/${sessionId}/assign`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  item_id: unitId,
+                  participant_id: a.participant_id,
+                  quantity: a.quantity,
+                  is_assigned: true,
+                  updated_by: currentParticipant?.name
+                })
+              }).catch(console.error)
+            );
+          });
         });
-      });
-    }
+      }
 
-    // 6. Optimistic UI update
-    setSession(prev => ({
-      ...prev,
-      assignments: newAssignments
-    }));
+      // 6. Optimistic UI update
+      setSession(prev => ({
+        ...prev,
+        assignments: newAssignments
+      }));
+
+      // 7. Wait for all API calls to complete
+      await Promise.all(clearPromises);
+      lastInteraction.current = Date.now();
+      await Promise.all(restorePromises);
+      lastInteraction.current = Date.now();
+    } finally {
+      // Unblock this item's switches
+      setSyncingItems(prev => { const next = new Set(prev); next.delete(itemId); return next; });
+    }
   };
 
   const handleFinalize = async () => {
@@ -1456,8 +1502,15 @@ const CollaborativeSession = () => {
   const toggleItemMode = async (itemId) => {
     lastInteraction.current = Date.now();
 
-    const item = session.items.find(i => (i.id || i.name) === itemId);
-    if (!item) return;
+    // Block this item's switches during sync
+    setSyncingItems(prev => new Set([...prev, itemId]));
+
+    try {
+      const item = session.items.find(i => (i.id || i.name) === itemId);
+      if (!item) {
+        setSyncingItems(prev => { const next = new Set(prev); next.delete(itemId); return next; });
+        return;
+      }
 
     const currentMode = item?.mode || 'individual';
     const newMode = currentMode === 'grupal' ? 'individual' : 'grupal';
@@ -1602,6 +1655,10 @@ const CollaborativeSession = () => {
 
     await Promise.all(assignmentPromises);
     lastInteraction.current = Date.now(); // Final reset after all API calls complete
+    } finally {
+      // Unblock this item's switches
+      setSyncingItems(prev => { const next = new Set(prev); next.delete(itemId); return next; });
+    }
   };
 
   const handleAddNewItem = async () => {
@@ -1878,6 +1935,7 @@ const CollaborativeSession = () => {
                 onToggleExpand={(id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }))}
                 isPerUnitMode={perUnitModeItems[itemId] || false}
                 onSetPerUnitMode={(id, value) => setPerUnitModeItems(prev => ({ ...prev, [id]: value }))}
+                isSyncing={syncingItems.has(itemId)}
               />
             </div>
           );
