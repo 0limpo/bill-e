@@ -1,0 +1,101 @@
+{
+  "selection": {
+    "whoAreYou": "Wer bist du?",
+    "selectFromList": "Wähle deinen Namen aus der Liste",
+    "notInList": "+ Ich bin nicht in der Liste",
+    "hello": "Hallo, {{name}}",
+    "confirmPhone": "Bestätige deine Telefonnummer um fortzufahren",
+    "phonePlaceholder": "Deine Telefonnummer (erforderlich)",
+    "phoneRequired": "* Telefon erforderlich (min. 8 Ziffern)",
+    "confirmAndEnter": "Bestätigen und Eintreten",
+    "entering": "Eintritt...",
+    "back": "← Zurück",
+    "newParticipant": "Neuer Teilnehmer",
+    "enterDetails": "Gib deine Daten ein um beizutreten",
+    "namePlaceholder": "Dein Name",
+    "joining": "Beitritt...",
+    "joinTable": "Tisch beitreten"
+  },
+  "header": {
+    "host": "Gastgeber",
+    "you": "Du",
+    "addParticipant": "Teilnehmer hinzufügen"
+  },
+  "items": {
+    "consumption": "Verbrauch",
+    "individual": "Einzeln",
+    "grupal": "Gruppe",
+    "allTogether": "Alle zusammen",
+    "perUnit": "Pro Einheit",
+    "unit": "Einheit {{num}}",
+    "qty": "Anz.",
+    "itemName": "Artikelname",
+    "unitPrice": "Stückpreis",
+    "deleteItem": "Artikel löschen",
+    "total": "Gesamt",
+    "perUnitSuffix": "je",
+    "newItem": "Neuer Artikel",
+    "name": "Name",
+    "price": "Preis ($)",
+    "add": "Hinzufügen",
+    "addManualItem": "+ Artikel manuell hinzufügen"
+  },
+  "validation": {
+    "balanced": "Rechnung Ausgeglichen",
+    "reviewTotals": "Summen prüfen",
+    "totalItems": "Artikel Gesamt",
+    "totalAssigned": "Gesamt Zugewiesen",
+    "totalBill": "Rechnung Gesamt",
+    "subtotalItems": "Zwischensumme Artikel",
+    "subtotalBill": "Zwischensumme Rechnung",
+    "subtotalAssigned": "Zwischensumme Zugewiesen",
+    "itemsSum": "Artikelsumme",
+    "missingToAssign": "{{amount}} noch zuzuweisen",
+    "overAssigned": "Um {{amount}} überschritten"
+  },
+  "tip": {
+    "title": "Trinkgeld",
+    "titleWithPercent": "Trinkgeld ({{percent}}%)",
+    "titleFixed": "Trinkgeld (fest)",
+    "percent": "Prozent",
+    "fixed": "Fest"
+  },
+  "totals": {
+    "tableTotal": "Tisch Gesamt",
+    "yourConsumption": "DEIN VERBRAUCH",
+    "subtotal": "Zwischensumme",
+    "tipLabel": "Trinkgeld",
+    "total": "GESAMT",
+    "tapForDetails": "Tippen für Details",
+    "selectItemsAbove": "Artikel oben auswählen"
+  },
+  "finalized": {
+    "billClosed": "Rechnung Geschlossen",
+    "closeBill": "Rechnung Schließen",
+    "reopenTable": "Tisch Wieder Öffnen",
+    "shareWhatsApp": "Per WhatsApp teilen"
+  },
+  "modals": {
+    "confirmClose": "Rechnung schließen? Teilnehmer können dann nicht mehr bearbeiten.",
+    "confirmDelete": "Diesen Artikel löschen?",
+    "confirmReopen": "Tisch zur Bearbeitung wieder öffnen? Summen werden beim erneuten Schließen neu berechnet.",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "delete": "Löschen",
+    "reopen": "Wieder öffnen"
+  },
+  "participant": {
+    "editParticipant": "Teilnehmer bearbeiten",
+    "save": "Speichern",
+    "whatDidTheyOrder": "Was haben sie bestellt?"
+  },
+  "errors": {
+    "sessionNotFound": "Sitzung nicht gefunden oder abgelaufen",
+    "connectionError": "Verbindungsfehler",
+    "createItemError": "Verbindungsfehler beim Erstellen",
+    "invalidPrice": "Bitte einen gültigen Preis über 0 eingeben"
+  },
+  "time": {
+    "timer": "{{time}}"
+  }
+}

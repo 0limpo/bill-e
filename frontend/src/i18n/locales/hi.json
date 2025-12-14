@@ -1,0 +1,101 @@
+{
+  "selection": {
+    "whoAreYou": "आप कौन हैं?",
+    "selectFromList": "सूची से अपना नाम चुनें",
+    "notInList": "+ मैं सूची में नहीं हूं",
+    "hello": "नमस्ते, {{name}}",
+    "confirmPhone": "जारी रखने के लिए अपना फोन पुष्टि करें",
+    "phonePlaceholder": "आपका फोन (आवश्यक)",
+    "phoneRequired": "* फोन आवश्यक है (न्यूनतम 8 अंक)",
+    "confirmAndEnter": "पुष्टि करें और प्रवेश करें",
+    "entering": "प्रवेश हो रहा है...",
+    "back": "← वापस",
+    "newParticipant": "नया प्रतिभागी",
+    "enterDetails": "शामिल होने के लिए अपना विवरण दर्ज करें",
+    "namePlaceholder": "आपका नाम",
+    "joining": "शामिल हो रहा है...",
+    "joinTable": "टेबल से जुड़ें"
+  },
+  "header": {
+    "host": "होस्ट",
+    "you": "आप",
+    "addParticipant": "प्रतिभागी जोड़ें"
+  },
+  "items": {
+    "consumption": "खपत",
+    "individual": "व्यक्तिगत",
+    "grupal": "समूह",
+    "allTogether": "सब एक साथ",
+    "perUnit": "प्रति यूनिट",
+    "unit": "यूनिट {{num}}",
+    "qty": "मात्रा",
+    "itemName": "आइटम का नाम",
+    "unitPrice": "यूनिट मूल्य",
+    "deleteItem": "आइटम हटाएं",
+    "total": "कुल",
+    "perUnitSuffix": "प्रत्येक",
+    "newItem": "नया आइटम",
+    "name": "नाम",
+    "price": "मूल्य ($)",
+    "add": "जोड़ें",
+    "addManualItem": "+ मैन्युअल आइटम जोड़ें"
+  },
+  "validation": {
+    "balanced": "बिल संतुलित",
+    "reviewTotals": "कुल की समीक्षा करें",
+    "totalItems": "कुल आइटम",
+    "totalAssigned": "कुल आवंटित",
+    "totalBill": "कुल बिल",
+    "subtotalItems": "आइटम उप-योग",
+    "subtotalBill": "बिल उप-योग",
+    "subtotalAssigned": "आवंटित उप-योग",
+    "itemsSum": "आइटम योग",
+    "missingToAssign": "{{amount}} आवंटित करना बाकी",
+    "overAssigned": "{{amount}} से अधिक आवंटित"
+  },
+  "tip": {
+    "title": "टिप",
+    "titleWithPercent": "टिप ({{percent}}%)",
+    "titleFixed": "टिप (निश्चित)",
+    "percent": "प्रतिशत",
+    "fixed": "निश्चित"
+  },
+  "totals": {
+    "tableTotal": "टेबल कुल",
+    "yourConsumption": "आपकी खपत",
+    "subtotal": "उप-योग",
+    "tipLabel": "टिप",
+    "total": "कुल",
+    "tapForDetails": "विवरण के लिए टैप करें",
+    "selectItemsAbove": "ऊपर आइटम चुनें"
+  },
+  "finalized": {
+    "billClosed": "बिल बंद",
+    "closeBill": "बिल बंद करें",
+    "reopenTable": "टेबल फिर से खोलें",
+    "shareWhatsApp": "WhatsApp पर साझा करें"
+  },
+  "modals": {
+    "confirmClose": "बिल बंद करें? प्रतिभागी अब संपादित नहीं कर पाएंगे।",
+    "confirmDelete": "इस आइटम को हटाएं?",
+    "confirmReopen": "संपादन के लिए टेबल फिर से खोलें? दोबारा बंद करने पर कुल फिर से गणना की जाएगी।",
+    "cancel": "रद्द करें",
+    "close": "बंद करें",
+    "delete": "हटाएं",
+    "reopen": "फिर से खोलें"
+  },
+  "participant": {
+    "editParticipant": "प्रतिभागी संपादित करें",
+    "save": "सहेजें",
+    "whatDidTheyOrder": "उन्होंने क्या ऑर्डर किया?"
+  },
+  "errors": {
+    "sessionNotFound": "सत्र नहीं मिला या समाप्त हो गया",
+    "connectionError": "कनेक्शन त्रुटि",
+    "createItemError": "आइटम बनाते समय कनेक्शन त्रुटि",
+    "invalidPrice": "कृपया 0 से अधिक वैध मूल्य दर्ज करें"
+  },
+  "time": {
+    "timer": "{{time}}"
+  }
+}

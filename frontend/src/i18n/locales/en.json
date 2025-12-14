@@ -1,0 +1,101 @@
+{
+  "selection": {
+    "whoAreYou": "Who are you?",
+    "selectFromList": "Select your name from the list",
+    "notInList": "+ I'm not in the list",
+    "hello": "Hello, {{name}}",
+    "confirmPhone": "Confirm your phone to continue",
+    "phonePlaceholder": "Your Phone (required)",
+    "phoneRequired": "* Phone required (min. 8 digits)",
+    "confirmAndEnter": "Confirm and Enter",
+    "entering": "Entering...",
+    "back": "← Back",
+    "newParticipant": "New Participant",
+    "enterDetails": "Enter your details to join",
+    "namePlaceholder": "Your Name",
+    "joining": "Joining...",
+    "joinTable": "Join table"
+  },
+  "header": {
+    "host": "Host",
+    "you": "You",
+    "addParticipant": "Add Participant"
+  },
+  "items": {
+    "consumption": "Consumption",
+    "individual": "Individual",
+    "grupal": "Group",
+    "allTogether": "All together",
+    "perUnit": "Per unit",
+    "unit": "Unit {{num}}",
+    "qty": "Qty.",
+    "itemName": "Item Name",
+    "unitPrice": "Unit Price",
+    "deleteItem": "Delete item",
+    "total": "Total",
+    "perUnitSuffix": "each",
+    "newItem": "New Item",
+    "name": "Name",
+    "price": "Price ($)",
+    "add": "Add",
+    "addManualItem": "+ Add Manual Item"
+  },
+  "validation": {
+    "balanced": "Bill Balanced",
+    "reviewTotals": "Review Totals",
+    "totalItems": "Total Items",
+    "totalAssigned": "Total Assigned",
+    "totalBill": "Total Bill",
+    "subtotalItems": "Subtotal Items",
+    "subtotalBill": "Subtotal Bill",
+    "subtotalAssigned": "Subtotal Assigned",
+    "itemsSum": "Items Sum",
+    "missingToAssign": "{{amount}} left to assign",
+    "overAssigned": "Over-assigned by {{amount}}"
+  },
+  "tip": {
+    "title": "Tip",
+    "titleWithPercent": "Tip ({{percent}}%)",
+    "titleFixed": "Tip (fixed)",
+    "percent": "Percentage",
+    "fixed": "Fixed"
+  },
+  "totals": {
+    "tableTotal": "Table Total",
+    "yourConsumption": "YOUR CONSUMPTION",
+    "subtotal": "Subtotal",
+    "tipLabel": "Tip",
+    "total": "TOTAL",
+    "tapForDetails": "Tap for details",
+    "selectItemsAbove": "Select items above"
+  },
+  "finalized": {
+    "billClosed": "Bill Closed",
+    "closeBill": "Close Bill",
+    "reopenTable": "Reopen Table",
+    "shareWhatsApp": "Share via WhatsApp"
+  },
+  "modals": {
+    "confirmClose": "Close the bill? Participants won't be able to edit anymore.",
+    "confirmDelete": "Delete this item?",
+    "confirmReopen": "Reopen the table for editing? Totals will be recalculated when closed again.",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "reopen": "Reopen"
+  },
+  "participant": {
+    "editParticipant": "Edit Participant",
+    "save": "Save",
+    "whatDidTheyOrder": "What did they order?"
+  },
+  "errors": {
+    "sessionNotFound": "Session not found or expired",
+    "connectionError": "Connection error",
+    "createItemError": "Connection error creating item",
+    "invalidPrice": "Please enter a valid price greater than 0"
+  },
+  "time": {
+    "timer": "{{time}}"
+  }
+}

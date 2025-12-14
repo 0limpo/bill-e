@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import './CollaborativeSession.css';
 
 const API_URL = 'https://bill-e-backend-lfwp.onrender.com';
@@ -47,6 +48,7 @@ const Avatar = ({ name, size = 'medium', className = '' }) => (
 
 // Selection Screen - Pick existing participant or create new
 const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoading }) => {
+  const { t } = useTranslation();
   const [showNewForm, setShowNewForm] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [name, setName] = useState('');
@@ -67,31 +69,31 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
           >
             {getInitials(selectedParticipant.name)}
           </div>
-          <h1>Hola, {selectedParticipant.name}</h1>
-          <p>Confirma tu teléfono para continuar</p>
+          <h1>{t('selection.hello', { name: selectedParticipant.name })}</h1>
+          <p>{t('selection.confirmPhone')}</p>
 
           <input
             className={`join-input ${!phoneValid && phone.length > 0 ? 'input-error' : ''}`}
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Tu Teléfono (requerido)"
+            placeholder={t('selection.phonePlaceholder')}
             autoFocus
           />
-          {!phoneValid && <span className="input-hint">* Teléfono requerido (min. 8 dígitos)</span>}
+          {!phoneValid && <span className="input-hint">{t('selection.phoneRequired')}</span>}
 
           <button
             className="btn-main"
             onClick={() => onSelectParticipant(selectedParticipant, phone)}
             disabled={isLoading || !phoneValid}
           >
-            {isLoading ? 'Entrando...' : 'Confirmar y Entrar'}
+            {isLoading ? t('selection.entering') : t('selection.confirmAndEnter')}
           </button>
           <button
             className="btn-secondary"
             onClick={() => { setSelectedParticipant(null); setPhone(''); }}
           >
-            ← Volver
+            {t('selection.back')}
           </button>
         </div>
       </div>
@@ -105,15 +107,15 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
       <div className="join-screen">
         <div className="join-card">
           <div className="join-icon">✨</div>
-          <h1>Nuevo Participante</h1>
-          <p>Ingresa tus datos para unirte</p>
+          <h1>{t('selection.newParticipant')}</h1>
+          <p>{t('selection.enterDetails')}</p>
 
           <input
             className="join-input"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Tu Nombre"
+            placeholder={t('selection.namePlaceholder')}
             autoFocus
           />
           <input
@@ -121,22 +123,22 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="Tu Teléfono (requerido)"
+            placeholder={t('selection.phonePlaceholder')}
           />
-          {!phoneValid && <span className="input-hint">* Teléfono requerido (min. 8 dígitos)</span>}
+          {!phoneValid && <span className="input-hint">{t('selection.phoneRequired')}</span>}
 
           <button
             className="btn-main"
             onClick={() => onCreateNew(name, phone)}
             disabled={isLoading || !name.trim() || !phoneValid}
           >
-            {isLoading ? 'Uniendo...' : 'Unirme a la mesa'}
+            {isLoading ? t('selection.joining') : t('selection.joinTable')}
           </button>
           <button
             className="btn-secondary"
             onClick={() => setShowNewForm(false)}
           >
-            ← Volver
+            {t('selection.back')}
           </button>
         </div>
       </div>
@@ -147,8 +149,8 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
     <div className="join-screen">
       <div className="join-card selection-card">
         <div className="join-icon">👋</div>
-        <h1>¿Quién eres?</h1>
-        <p>Selecciona tu nombre de la lista</p>
+        <h1>{t('selection.whoAreYou')}</h1>
+        <p>{t('selection.selectFromList')}</p>
 
         <div className="selection-grid">
           {editableParticipants.map(p => (
@@ -172,7 +174,7 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
           className="btn-new-participant"
           onClick={() => setShowNewForm(true)}
         >
-          + No estoy en la lista
+          {t('selection.notInList')}
         </button>
       </div>
     </div>
@@ -214,6 +216,7 @@ const EditableInput = ({ type, initialValue, onSave, className, defaultValue = 0
 
 // Validation Dashboard Component (Host Only)
 const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
+  const { t } = useTranslation();
   const [editingSubtotal, setEditingSubtotal] = useState(false);
   const [subtotalInput, setSubtotalInput] = useState(session.subtotal?.toString() || '0');
 
@@ -261,29 +264,29 @@ const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
     <div className={`validation-dashboard ${isBalanced ? 'balanced' : 'warning'}`}>
       <div className="validation-header">
         {isBalanced ? (
-          <span className="validation-status success">✅ Cuenta Cuadrada</span>
+          <span className="validation-status success">✅ {t('validation.balanced')}</span>
         ) : (
-          <span className="validation-status warning">⚠️ Revisar Totales</span>
+          <span className="validation-status warning">⚠️ {t('validation.reviewTotals')}</span>
         )}
       </div>
 
       <div className="validation-metrics">
         <div className="metric">
-          <span className="metric-label">Total Items</span>
+          <span className="metric-label">{t('validation.totalItems')}</span>
           <span className={`metric-value ${itemsMatch ? 'match' : 'mismatch'}`}>
             {formatCurrency(totalItems)}
           </span>
         </div>
 
         <div className="metric">
-          <span className="metric-label">Total Asignado</span>
+          <span className="metric-label">{t('validation.totalAssigned')}</span>
           <span className={`metric-value ${assignedMatch ? 'match' : 'mismatch'}`}>
             {formatCurrency(totalAsignado)}
           </span>
         </div>
 
         <div className="metric editable">
-          <span className="metric-label">Total Boleta</span>
+          <span className="metric-label">{t('validation.totalBill')}</span>
           {editingSubtotal ? (
             <input
               type="number"
@@ -310,12 +313,12 @@ const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
 
       {!assignedMatch && totalAsignado < totalBoleta && (
         <div className="validation-warning">
-          Faltan {formatCurrency(totalBoleta - totalAsignado)} por asignar
+          {t('validation.missingToAssign', { amount: formatCurrency(totalBoleta - totalAsignado) })}
         </div>
       )}
       {!assignedMatch && totalAsignado > totalBoleta && (
         <div className="validation-warning">
-          Sobrepasado por {formatCurrency(totalAsignado - totalBoleta)}
+          {t('validation.overAssigned', { amount: formatCurrency(totalAsignado - totalBoleta) })}
         </div>
       )}
     </div>
@@ -345,6 +348,7 @@ const BillItem = ({
   onSetPerUnitMode,
   isSyncing
 }) => {
+  const { t } = useTranslation();
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
   const isAssignedToMe = itemAssignments.some(a => a.participant_id === currentParticipant?.id);
@@ -381,9 +385,9 @@ const BillItem = ({
             // EDIT MODE - Clean CSS Grid layout
             <div className="item-edit-grid" onClick={(e) => e.stopPropagation()}>
               {/* Row 1: Labels */}
-              <label className="edit-label">Cant.</label>
-              <label className="edit-label">Nombre del Item</label>
-              <label className="edit-label">Precio Unit.</label>
+              <label className="edit-label">{t('items.qty')}</label>
+              <label className="edit-label">{t('items.itemName')}</label>
+              <label className="edit-label">{t('items.unitPrice')}</label>
               <span></span>
 
               {/* Row 2: Inputs */}
@@ -411,14 +415,14 @@ const BillItem = ({
               <button
                 className="btn-trash"
                 onClick={(e) => { e.stopPropagation(); onDeleteItem(itemId); }}
-                title="Eliminar item"
+                title={t('items.deleteItem')}
               >
                 🗑️
               </button>
 
               {/* Row 3: Total helper */}
               <div className="edit-total-row">
-                Total: <strong>{formatCurrency(totalPrice)}</strong>
+                {t('items.total')}: <strong>{formatCurrency(totalPrice)}</strong>
               </div>
             </div>
           ) : (
@@ -429,7 +433,7 @@ const BillItem = ({
               <div className="item-price-col">
                 <span className={`item-price ${canEditItem ? 'editable' : ''}`}>{formatCurrency(totalPrice)}</span>
                 {qty > 1 && (
-                  <span className="item-unit-price">{formatCurrency(unitPrice)} c/u</span>
+                  <span className="item-unit-price">{formatCurrency(unitPrice)} {t('items.perUnitSuffix')}</span>
                 )}
               </div>
             </>
@@ -444,13 +448,13 @@ const BillItem = ({
                   className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
                   onClick={() => !isSyncing && onToggleMode(itemId)}
                >
-                 Individual
+                 {t('items.individual')}
                </div>
                <div
                   className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
                   onClick={() => !isSyncing && onToggleMode(itemId)}
                >
-                 Grupal
+                 {t('items.grupal')}
                </div>
              </div>
              {isSyncing && <span className="sync-spinner" />}
@@ -486,7 +490,7 @@ const BillItem = ({
                     }
                   }}
                 >
-                  {!effectivePerUnitMode && allAssignedToParent ? '✓ ' : ''}👥 Entre todos
+                  {!effectivePerUnitMode && allAssignedToParent ? '✓ ' : ''}👥 {t('items.allTogether')}
                 </div>
                 <div
                   className={`grupal-switch-option ${effectivePerUnitMode ? 'active' : ''}`}
@@ -507,7 +511,7 @@ const BillItem = ({
                     }
                   }}
                 >
-                  Por unidad {isExpanded ? '▲' : '▼'}
+                  {t('items.perUnit')} {isExpanded ? '▲' : '▼'}
                 </div>
               </div>
             </div>
@@ -527,7 +531,7 @@ const BillItem = ({
                 <div key={unitIndex} className="tree-unit">
                   <div className="tree-connector"></div>
                   <div className="tree-unit-content">
-                    <span className="tree-unit-label">Unidad {unitNum}</span>
+                    <span className="tree-unit-label">{t('items.unit', { num: unitNum })}</span>
                     <div className="tree-unit-assignees">
                       {participants.map(p => {
                         // Check THIS unit's assignment (not parent item)
@@ -566,7 +570,7 @@ const BillItem = ({
               const isAssigned = pQty > 0;
               // Any authenticated participant can assign items to anyone
               const canAssign = !isFinalized && currentParticipant;
-              const displayName = p.id === currentParticipant?.id ? 'Yo' : p.name;
+              const displayName = p.id === currentParticipant?.id ? t('header.you') : p.name;
 
               return (
                 <div
@@ -621,7 +625,7 @@ const BillItem = ({
         {/* Warning for Individual mode when items not fully assigned */}
         {itemMode !== 'grupal' && remaining > 0 && totalAssigned > 0 && (
           <div className="grupal-warning">
-            ⚠️ Faltan {remaining} por asignar
+            ⚠️ {t('validation.missingToAssign', { amount: remaining })}
           </div>
         )}
       </div>
@@ -632,6 +636,7 @@ const BillItem = ({
 // --- COMPONENTE PRINCIPAL ---
 
 const CollaborativeSession = () => {
+  const { t } = useTranslation();
   const { id: sessionId } = useParams();
   const [searchParams] = useSearchParams();
   const ownerToken = searchParams.get('owner');
@@ -709,7 +714,7 @@ const CollaborativeSession = () => {
         : `${API_URL}/api/session/${sessionId}/collaborative`;
 
       const response = await fetch(url);
-      if (!response.ok) throw new Error('Sesión no encontrada o expirada');
+      if (!response.ok) throw new Error(t('errors.sessionNotFound'));
 
       const data = await response.json();
       setSession(data);
@@ -1209,7 +1214,7 @@ const CollaborativeSession = () => {
   };
 
   const handleFinalize = async () => {
-    if (!window.confirm('¿Cerrar la cuenta? Los participantes ya no podrán editar.')) return;
+    if (!window.confirm(t('modals.confirmClose'))) return;
     try {
       const res = await fetch(`${API_URL}/api/session/${sessionId}/finalize`, {
         method: 'POST',
@@ -1249,7 +1254,7 @@ const CollaborativeSession = () => {
 
   // Reopen a finalized session
   const handleReopenSession = async () => {
-    if (!window.confirm('¿Reabrir la mesa para editar? Los totales se recalcularán al cerrar de nuevo.')) return;
+    if (!window.confirm(t('modals.confirmReopen'))) return;
 
     lastInteraction.current = Date.now();
 
@@ -1274,7 +1279,7 @@ const CollaborativeSession = () => {
 
   // Delete an item from the session
   const handleDeleteItem = async (itemId) => {
-    if (!window.confirm('¿Eliminar este item?')) return;
+    if (!window.confirm(t('modals.confirmDelete'))) return;
 
     lastInteraction.current = Date.now();
 
@@ -1693,7 +1698,7 @@ const CollaborativeSession = () => {
       return;
     }
     if (isNaN(priceNum) || priceNum <= 0) {
-      alert('Por favor ingresa un precio válido mayor a 0');
+      alert(t('errors.invalidPrice'));
       return;
     }
 
@@ -1747,7 +1752,7 @@ const CollaborativeSession = () => {
         ...prev,
         items: prev.items.filter(i => i.id !== tempId)
       }));
-      alert('Error de conexión al crear item');
+      alert(t('errors.createItemError'));
     } finally {
       setIsCreatingItem(false);
     }
@@ -1802,7 +1807,7 @@ const CollaborativeSession = () => {
         ...prev,
         participants: prev.participants.filter(p => p.id !== tempId)
       }));
-      alert('Error de conexión');
+      alert(t('errors.connectionError'));
     } finally {
       setIsAddingParticipant(false);
     }
@@ -1901,7 +1906,7 @@ const CollaborativeSession = () => {
   return (
     <div className="collaborative-session">
       {/* FLOATING TIMER - Top right corner */}
-      <div className="floating-timer">⏱️ {timeLeft}</div>
+      <div className="floating-timer">{t('time.timer', { time: timeLeft })}</div>
 
       {/* Backdrop for expanded sheet */}
       {isSheetExpanded && !isFinalized && (
@@ -1924,9 +1929,9 @@ const CollaborativeSession = () => {
                 className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${canEdit ? 'clickable' : ''}`}
                 onClick={() => canEdit && handleOpenParticipantEdit(p)}
               >
-                {p.role === 'owner' && <span className="badge-owner">Host</span>}
+                {p.role === 'owner' && <span className="badge-owner">{t('header.host')}</span>}
                 <Avatar name={p.name} />
-                <span className="participant-name">{p.id === currentParticipant?.id ? 'Tú' : p.name}</span>
+                <span className="participant-name">{p.id === currentParticipant?.id ? t('header.you') : p.name}</span>
               </div>
            );})}
         </div>
@@ -1934,7 +1939,7 @@ const CollaborativeSession = () => {
 
       {/* LISTA ITEMS */}
       <div className="items-section">
-        <h3>Consumo</h3>
+        <h3>{t('items.consumption')}</h3>
         {session.items.map((item, idx) => {
           const itemId = item.id || item.name;
           return (
@@ -1968,7 +1973,7 @@ const CollaborativeSession = () => {
         
         {isOwner && (
           <button className="add-item-btn" onClick={() => setShowAddItemModal(true)}>
-            + Agregar Item Manual
+            {t('items.addManualItem')}
           </button>
         )}
       </div>
@@ -1991,7 +1996,7 @@ const CollaborativeSession = () => {
             <div className="sheet-summary-row">
               <div className="sheet-column">
                 <span className="my-total-label finalized-label">
-                  {isOwner ? '🎉 ¡Cuenta Cerrada!' : '🔒 Cuenta Cerrada'}
+                  {isOwner ? `🎉 ${t('finalized.billClosed')}!` : `🔒 ${t('finalized.billClosed')}`}
                 </span>
               </div>
               <span className="my-total-amount">
@@ -2007,9 +2012,9 @@ const CollaborativeSession = () => {
                 <div className="sheet-breakdown">
                   {/* Column Headers */}
                   <div className="sheet-breakdown-header">
-                    <span className="header-name">Nombre</span>
-                    <span className="header-consumo">Subtotal</span>
-                    <span className="header-total">Total</span>
+                    <span className="header-name">{t('items.name')}</span>
+                    <span className="header-consumo">{t('totals.subtotal')}</span>
+                    <span className="header-total">{t('items.total')}</span>
                   </div>
 
                   {session.participants.map(p => {
@@ -2073,7 +2078,7 @@ const CollaborativeSession = () => {
                               {getInitials(p.name)}
                             </span>
                             <span className="sheet-breakdown-name">
-                              {p.id === currentParticipant?.id ? 'Tú' : p.name}
+                              {p.id === currentParticipant?.id ? t('header.you') : p.name}
                             </span>
                           </div>
                           <span className="sheet-breakdown-subtotal">{formatCurrency(subtotal)}</span>
@@ -2098,11 +2103,11 @@ const CollaborativeSession = () => {
                               </div>
                             ))}
                             <div className="breakdown-row subtotal">
-                              <span>Subtotal</span>
+                              <span>{t('totals.subtotal')}</span>
                               <span>{formatCurrency(subtotal)}</span>
                             </div>
                             <div className="breakdown-row tip">
-                              <span>Propina</span>
+                              <span>{t('totals.tipLabel')}</span>
                               <span>{formatCurrency(tipAmount)}</span>
                             </div>
                           </div>
@@ -2112,7 +2117,7 @@ const CollaborativeSession = () => {
                   })}
 
                   <div className="sheet-breakdown-total">
-                    <span>Total Mesa</span>
+                    <span>{t('totals.tableTotal')}</span>
                     <span></span>
                     <span className="sheet-total-amount">{formatCurrency(displayedTotal)}</span>
                   </div>
@@ -2120,11 +2125,11 @@ const CollaborativeSession = () => {
 
                 {/* WhatsApp Share - Only for Host */}
                 <button className="share-btn" onClick={handleShareWhatsapp}>
-                  📱 Compartir por WhatsApp
+                  📱 {t('finalized.shareWhatsApp')}
                 </button>
 
                 <button className="btn-reopen" onClick={handleReopenSession}>
-                  🔓 Reabrir Mesa para Editar
+                  🔓 {t('finalized.reopenTable')}
                 </button>
               </div>
             )}
@@ -2133,7 +2138,7 @@ const CollaborativeSession = () => {
             {!isOwner && (
               <div className="sheet-expanded-content">
                 <div className="participant-breakdown">
-                  <div className="breakdown-title">TU CONSUMO</div>
+                  <div className="breakdown-title">{t('totals.yourConsumption')}</div>
                   {(() => {
                     const myItems = [];
                     let mySubtotal = 0;
@@ -2217,15 +2222,15 @@ const CollaborativeSession = () => {
                         {myItems.length > 0 && (
                           <>
                             <div className="breakdown-row subtotal">
-                              <span>Subtotal</span>
+                              <span>{t('totals.subtotal')}</span>
                               <span>{formatCurrency(mySubtotal)}</span>
                             </div>
                             <div className="breakdown-row tip">
-                              <span>Propina {tipModeLocal === 'percent' ? `(${tipValueLocal}%)` : '(fija)'}</span>
+                              <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
                               <span>{formatCurrency(myTip)}</span>
                             </div>
                             <div className="breakdown-row subtotal">
-                              <span><strong>TOTAL</strong></span>
+                              <span><strong>{t('totals.total')}</strong></span>
                               <span className="my-total-amount">{formatCurrency(mySubtotal + myTip)}</span>
                             </div>
                           </>
@@ -2235,7 +2240,7 @@ const CollaborativeSession = () => {
                   })()}
                 </div>
                 <button className="btn-main" disabled style={{ marginTop: '16px' }}>
-                  🔒 Cuenta Cerrada
+                  🔒 {t('finalized.billClosed')}
                 </button>
               </div>
             )}
@@ -2252,14 +2257,14 @@ const CollaborativeSession = () => {
             >
               <div className="sheet-column">
                 <span className="my-total-label">
-                  {isOwner ? 'Total Mesa' : 'Tu parte'}
+                  {isOwner ? t('totals.tableTotal') : t('totals.total')}
                 </span>
                 {isOwner ? (
                   <small className={`sheet-subtitle ${isBalanced ? 'balanced' : 'warning'}`}>
-                    {isBalanced ? '✓ Neteado' : '⚠️ Revisar subtotales'}
+                    {isBalanced ? `✓ ${t('validation.balanced')}` : `⚠️ ${t('validation.reviewTotals')}`}
                   </small>
                 ) : (
-                  <small className="sheet-subtitle">Toca para ver detalle</small>
+                  <small className="sheet-subtitle">{t('totals.tapForDetails')}</small>
                 )}
               </div>
               <span className="my-total-amount">
@@ -2270,7 +2275,7 @@ const CollaborativeSession = () => {
             {/* EDITOR: Show breakdown only when expanded */}
             {!isOwner && isSheetExpanded && (
               <div className="participant-breakdown">
-                <div className="breakdown-title">TU CONSUMO</div>
+                <div className="breakdown-title">{t('totals.yourConsumption')}</div>
                 {(() => {
                   const myItems = [];
                   let mySubtotal = 0;
@@ -2360,20 +2365,20 @@ const CollaborativeSession = () => {
                         </div>
                       ))}
                       {myItems.length === 0 && (
-                        <div className="breakdown-empty">Selecciona items arriba</div>
+                        <div className="breakdown-empty">{t('totals.selectItemsAbove')}</div>
                       )}
                       {myItems.length > 0 && (
                         <>
                           <div className="breakdown-row subtotal">
-                            <span>Subtotal</span>
+                            <span>{t('totals.subtotal')}</span>
                             <span>{formatCurrency(mySubtotal)}</span>
                           </div>
                           <div className="breakdown-row tip">
-                            <span>Propina {tipModeLocal === 'percent' ? `(${tipValueLocal}%)` : '(fija)'}</span>
+                            <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
                             <span>{formatCurrency(myTip)}</span>
                           </div>
                           <div className="breakdown-row subtotal">
-                            <span><strong>TOTAL</strong></span>
+                            <span><strong>{t('totals.total')}</strong></span>
                             <span className="my-total-amount">{formatCurrency(mySubtotal + myTip)}</span>
                           </div>
                         </>
@@ -2390,7 +2395,7 @@ const CollaborativeSession = () => {
                 <div className={`sheet-validation ${isBalanced ? 'balanced' : 'warning'}`}>
                   <div className="validation-grid">
                     <div className="validation-metric">
-                      <span className="validation-metric-label">Subtotal Boleta</span>
+                      <span className="validation-metric-label">{t('validation.subtotalBill')}</span>
                       <input
                         type="number"
                         className="validation-metric-input"
@@ -2403,13 +2408,13 @@ const CollaborativeSession = () => {
                       />
                     </div>
                     <div className="validation-metric">
-                      <span className="validation-metric-label">Subtotal Items</span>
+                      <span className="validation-metric-label">{t('validation.subtotalItems')}</span>
                       <span className={`validation-metric-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
                         {formatCurrency(totalItems)}
                       </span>
                     </div>
                     <div className="validation-metric">
-                      <span className="validation-metric-label">Subtotal Asignado</span>
+                      <span className="validation-metric-label">{t('validation.subtotalAssigned')}</span>
                       <span className={`validation-metric-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
                         {formatCurrency(totalAsignado)}
                       </span>
@@ -2419,13 +2424,13 @@ const CollaborativeSession = () => {
                   {/* Feedback */}
                   {isBalanced ? (
                     <div className="validation-feedback success">
-                      ✅ Boleta Neteada
+                      ✅ {t('validation.balanced')}
                     </div>
                   ) : (
                     <div className="validation-feedback warning">
                       {totalAsignado < totalBoleta
-                        ? `Faltan ${formatCurrency(totalBoleta - totalAsignado)}`
-                        : `Sobrepasado ${formatCurrency(totalAsignado - totalBoleta)}`
+                        ? t('validation.missingToAssign', { amount: formatCurrency(totalBoleta - totalAsignado) })
+                        : t('validation.overAssigned', { amount: formatCurrency(totalAsignado - totalBoleta) })
                       }
                     </div>
                   )}
@@ -2433,7 +2438,7 @@ const CollaborativeSession = () => {
                   {/* SMART TIP CONTROLS */}
                   <div className="tip-controls" onClick={(e) => e.stopPropagation()}>
                     <div className="tip-header">
-                      <span className="tip-label">Propina</span>
+                      <span className="tip-label">{t('tip.title')}</span>
                       <div className="tip-mode-switch">
                         <button
                           className={`tip-mode-btn ${tipMode === 'percent' ? 'active' : ''}`}
@@ -2479,11 +2484,11 @@ const CollaborativeSession = () => {
             {/* Action Button - Always visible */}
             {isOwner ? (
               <button className="btn-main btn-dark" onClick={handleFinalize}>
-                🔒 Cerrar Cuenta y Cobrar
+                🔒 {t('finalized.closeBill')}
               </button>
             ) : (
               <button className="btn-main" disabled>
-                Esperando al anfitrión...
+                {t('selection.entering')}
               </button>
             )}
           </>
@@ -2494,13 +2499,13 @@ const CollaborativeSession = () => {
       {showAddParticipant && (
         <div className="modal-overlay" onClick={() => setShowAddParticipant(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Agregar Participante</h3>
+            <h3>{t('header.addParticipant')}</h3>
             <input
               className="join-input"
               value={newParticipantName}
               onChange={e => setNewParticipantName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleAddParticipant(); }}
-              placeholder="Nombre"
+              placeholder={t('items.name')}
               autoFocus
             />
             <button
@@ -2508,7 +2513,7 @@ const CollaborativeSession = () => {
               disabled={!newParticipantName.trim() || isAddingParticipant}
               onClick={handleAddParticipant}
             >
-              {isAddingParticipant ? 'Agregando...' : 'Agregar'}
+              {isAddingParticipant ? t('selection.joining') : t('items.add')}
             </button>
           </div>
         </div>
@@ -2517,12 +2522,12 @@ const CollaborativeSession = () => {
       {showAddItemModal && (
         <div className="modal-overlay" onClick={() => !isCreatingItem && setShowAddItemModal(false)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Nuevo Consumo</h3>
+            <h3>{t('items.newItem')}</h3>
             <input
               className="join-input"
               value={newItemName}
               onChange={e => setNewItemName(e.target.value)}
-              placeholder="¿Qué pidieron?"
+              placeholder={t('participant.whatDidTheyOrder')}
               autoFocus
               disabled={isCreatingItem}
             />
@@ -2531,7 +2536,7 @@ const CollaborativeSession = () => {
               type="number"
               value={newItemPrice}
               onChange={e => setNewItemPrice(e.target.value)}
-              placeholder="Precio ($)"
+              placeholder={t('items.price')}
               disabled={isCreatingItem}
             />
             <button
@@ -2539,7 +2544,7 @@ const CollaborativeSession = () => {
               onClick={handleAddNewItem}
               disabled={isCreatingItem}
             >
-              {isCreatingItem ? 'Creando...' : 'Crear Item'}
+              {isCreatingItem ? t('selection.joining') : t('items.add')}
             </button>
           </div>
         </div>
@@ -2549,13 +2554,13 @@ const CollaborativeSession = () => {
       {editingParticipant && (
         <div className="modal-overlay" onClick={() => setEditingParticipant(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <h3>Editar Participante</h3>
+            <h3>{t('participant.editParticipant')}</h3>
             <input
               className="join-input"
               value={editParticipantName}
               onChange={e => setEditParticipantName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSaveParticipantName(); }}
-              placeholder="Nombre"
+              placeholder={t('items.name')}
               autoFocus
             />
             <button
@@ -2563,14 +2568,14 @@ const CollaborativeSession = () => {
               disabled={!editParticipantName.trim() || editParticipantName === editingParticipant.name}
               onClick={handleSaveParticipantName}
             >
-              Guardar Nombre
+              {t('participant.save')}
             </button>
             {editingParticipant.role !== 'owner' && (
               <button
                 className="btn-danger"
                 onClick={handleRemoveParticipant}
               >
-                Eliminar de la mesa
+                {t('modals.delete')}
               </button>
             )}
           </div>

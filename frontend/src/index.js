@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { initGA } from './analytics';
+import './i18n'; // Initialize i18n
 
 // Initialize Google Analytics 4
 initGA();

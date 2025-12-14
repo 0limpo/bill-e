@@ -1,0 +1,101 @@
+{
+  "selection": {
+    "whoAreYou": "Кто вы?",
+    "selectFromList": "Выберите своё имя из списка",
+    "notInList": "+ Меня нет в списке",
+    "hello": "Привет, {{name}}",
+    "confirmPhone": "Подтвердите телефон для продолжения",
+    "phonePlaceholder": "Ваш телефон (обязательно)",
+    "phoneRequired": "* Телефон обязателен (мин. 8 цифр)",
+    "confirmAndEnter": "Подтвердить и Войти",
+    "entering": "Вход...",
+    "back": "← Назад",
+    "newParticipant": "Новый Участник",
+    "enterDetails": "Введите данные для присоединения",
+    "namePlaceholder": "Ваше Имя",
+    "joining": "Присоединение...",
+    "joinTable": "Присоединиться к столу"
+  },
+  "header": {
+    "host": "Хост",
+    "you": "Вы",
+    "addParticipant": "Добавить Участника"
+  },
+  "items": {
+    "consumption": "Потребление",
+    "individual": "Индивидуально",
+    "grupal": "Группа",
+    "allTogether": "Все вместе",
+    "perUnit": "За единицу",
+    "unit": "Единица {{num}}",
+    "qty": "Кол.",
+    "itemName": "Название",
+    "unitPrice": "Цена за ед.",
+    "deleteItem": "Удалить позицию",
+    "total": "Итого",
+    "perUnitSuffix": "за шт.",
+    "newItem": "Новая Позиция",
+    "name": "Название",
+    "price": "Цена ($)",
+    "add": "Добавить",
+    "addManualItem": "+ Добавить Вручную"
+  },
+  "validation": {
+    "balanced": "Счёт Сбалансирован",
+    "reviewTotals": "Проверить Итоги",
+    "totalItems": "Всего Позиций",
+    "totalAssigned": "Всего Назначено",
+    "totalBill": "Общий Счёт",
+    "subtotalItems": "Подытог Позиций",
+    "subtotalBill": "Подытог Счёта",
+    "subtotalAssigned": "Подытог Назначено",
+    "itemsSum": "Сумма Позиций",
+    "missingToAssign": "Осталось назначить {{amount}}",
+    "overAssigned": "Превышено на {{amount}}"
+  },
+  "tip": {
+    "title": "Чаевые",
+    "titleWithPercent": "Чаевые ({{percent}}%)",
+    "titleFixed": "Чаевые (фикс.)",
+    "percent": "Процент",
+    "fixed": "Фиксированные"
+  },
+  "totals": {
+    "tableTotal": "Итого по Столу",
+    "yourConsumption": "ВАШЕ ПОТРЕБЛЕНИЕ",
+    "subtotal": "Подытог",
+    "tipLabel": "Чаевые",
+    "total": "ИТОГО",
+    "tapForDetails": "Нажмите для деталей",
+    "selectItemsAbove": "Выберите позиции выше"
+  },
+  "finalized": {
+    "billClosed": "Счёт Закрыт",
+    "closeBill": "Закрыть Счёт",
+    "reopenTable": "Открыть Стол",
+    "shareWhatsApp": "Поделиться в WhatsApp"
+  },
+  "modals": {
+    "confirmClose": "Закрыть счёт? Участники больше не смогут редактировать.",
+    "confirmDelete": "Удалить эту позицию?",
+    "confirmReopen": "Открыть стол для редактирования? Итоги будут пересчитаны при закрытии.",
+    "cancel": "Отмена",
+    "close": "Закрыть",
+    "delete": "Удалить",
+    "reopen": "Открыть"
+  },
+  "participant": {
+    "editParticipant": "Редактировать Участника",
+    "save": "Сохранить",
+    "whatDidTheyOrder": "Что они заказали?"
+  },
+  "errors": {
+    "sessionNotFound": "Сессия не найдена или истекла",
+    "connectionError": "Ошибка подключения",
+    "createItemError": "Ошибка при создании позиции",
+    "invalidPrice": "Введите корректную цену больше 0"
+  },
+  "time": {
+    "timer": "{{time}}"
+  }
+}

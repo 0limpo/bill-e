@@ -1,0 +1,101 @@
+{
+  "selection": {
+    "whoAreYou": "Quem é você?",
+    "selectFromList": "Selecione seu nome da lista",
+    "notInList": "+ Não estou na lista",
+    "hello": "Olá, {{name}}",
+    "confirmPhone": "Confirme seu telefone para continuar",
+    "phonePlaceholder": "Seu Telefone (obrigatório)",
+    "phoneRequired": "* Telefone obrigatório (mín. 8 dígitos)",
+    "confirmAndEnter": "Confirmar e Entrar",
+    "entering": "Entrando...",
+    "back": "← Voltar",
+    "newParticipant": "Novo Participante",
+    "enterDetails": "Digite seus dados para participar",
+    "namePlaceholder": "Seu Nome",
+    "joining": "Entrando...",
+    "joinTable": "Entrar na mesa"
+  },
+  "header": {
+    "host": "Anfitrião",
+    "you": "Você",
+    "addParticipant": "Adicionar Participante"
+  },
+  "items": {
+    "consumption": "Consumo",
+    "individual": "Individual",
+    "grupal": "Grupo",
+    "allTogether": "Entre todos",
+    "perUnit": "Por unidade",
+    "unit": "Unidade {{num}}",
+    "qty": "Qtd.",
+    "itemName": "Nome do Item",
+    "unitPrice": "Preço Unit.",
+    "deleteItem": "Excluir item",
+    "total": "Total",
+    "perUnitSuffix": "cada",
+    "newItem": "Novo Item",
+    "name": "Nome",
+    "price": "Preço ($)",
+    "add": "Adicionar",
+    "addManualItem": "+ Adicionar Item Manual"
+  },
+  "validation": {
+    "balanced": "Conta Fechada",
+    "reviewTotals": "Revisar Totais",
+    "totalItems": "Total Itens",
+    "totalAssigned": "Total Atribuído",
+    "totalBill": "Total da Conta",
+    "subtotalItems": "Subtotal Itens",
+    "subtotalBill": "Subtotal Conta",
+    "subtotalAssigned": "Subtotal Atribuído",
+    "itemsSum": "Soma Itens",
+    "missingToAssign": "Faltam {{amount}} para atribuir",
+    "overAssigned": "Excedido por {{amount}}"
+  },
+  "tip": {
+    "title": "Gorjeta",
+    "titleWithPercent": "Gorjeta ({{percent}}%)",
+    "titleFixed": "Gorjeta (fixa)",
+    "percent": "Porcentagem",
+    "fixed": "Fixa"
+  },
+  "totals": {
+    "tableTotal": "Total da Mesa",
+    "yourConsumption": "SEU CONSUMO",
+    "subtotal": "Subtotal",
+    "tipLabel": "Gorjeta",
+    "total": "TOTAL",
+    "tapForDetails": "Toque para detalhes",
+    "selectItemsAbove": "Selecione itens acima"
+  },
+  "finalized": {
+    "billClosed": "Conta Fechada",
+    "closeBill": "Fechar Conta",
+    "reopenTable": "Reabrir Mesa",
+    "shareWhatsApp": "Compartilhar via WhatsApp"
+  },
+  "modals": {
+    "confirmClose": "Fechar a conta? Os participantes não poderão mais editar.",
+    "confirmDelete": "Excluir este item?",
+    "confirmReopen": "Reabrir a mesa para edição? Os totais serão recalculados ao fechar novamente.",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "delete": "Excluir",
+    "reopen": "Reabrir"
+  },
+  "participant": {
+    "editParticipant": "Editar Participante",
+    "save": "Salvar",
+    "whatDidTheyOrder": "O que pediram?"
+  },
+  "errors": {
+    "sessionNotFound": "Sessão não encontrada ou expirada",
+    "connectionError": "Erro de conexão",
+    "createItemError": "Erro de conexão ao criar item",
+    "invalidPrice": "Por favor, insira um preço válido maior que 0"
+  },
+  "time": {
+    "timer": "{{time}}"
+  }
+}

@@ -1,0 +1,101 @@
+{
+  "selection": {
+    "whoAreYou": "你是谁？",
+    "selectFromList": "从列表中选择你的名字",
+    "notInList": "+ 我不在列表中",
+    "hello": "你好，{{name}}",
+    "confirmPhone": "确认您的电话以继续",
+    "phonePlaceholder": "您的电话（必填）",
+    "phoneRequired": "* 需要电话（至少8位数）",
+    "confirmAndEnter": "确认并进入",
+    "entering": "正在进入...",
+    "back": "← 返回",
+    "newParticipant": "新参与者",
+    "enterDetails": "输入您的信息以加入",
+    "namePlaceholder": "您的姓名",
+    "joining": "正在加入...",
+    "joinTable": "加入餐桌"
+  },
+  "header": {
+    "host": "主持人",
+    "you": "你",
+    "addParticipant": "添加参与者"
+  },
+  "items": {
+    "consumption": "消费",
+    "individual": "个人",
+    "grupal": "团体",
+    "allTogether": "一起分",
+    "perUnit": "按单位",
+    "unit": "单位 {{num}}",
+    "qty": "数量",
+    "itemName": "商品名称",
+    "unitPrice": "单价",
+    "deleteItem": "删除商品",
+    "total": "总计",
+    "perUnitSuffix": "每个",
+    "newItem": "新商品",
+    "name": "名称",
+    "price": "价格 ($)",
+    "add": "添加",
+    "addManualItem": "+ 手动添加商品"
+  },
+  "validation": {
+    "balanced": "账单已平衡",
+    "reviewTotals": "审查总额",
+    "totalItems": "商品总额",
+    "totalAssigned": "已分配总额",
+    "totalBill": "账单总额",
+    "subtotalItems": "商品小计",
+    "subtotalBill": "账单小计",
+    "subtotalAssigned": "已分配小计",
+    "itemsSum": "商品合计",
+    "missingToAssign": "还有 {{amount}} 未分配",
+    "overAssigned": "超出分配 {{amount}}"
+  },
+  "tip": {
+    "title": "小费",
+    "titleWithPercent": "小费 ({{percent}}%)",
+    "titleFixed": "小费（固定）",
+    "percent": "百分比",
+    "fixed": "固定"
+  },
+  "totals": {
+    "tableTotal": "餐桌总额",
+    "yourConsumption": "你的消费",
+    "subtotal": "小计",
+    "tipLabel": "小费",
+    "total": "总计",
+    "tapForDetails": "点击查看详情",
+    "selectItemsAbove": "在上方选择商品"
+  },
+  "finalized": {
+    "billClosed": "账单已关闭",
+    "closeBill": "关闭账单",
+    "reopenTable": "重新打开餐桌",
+    "shareWhatsApp": "通过WhatsApp分享"
+  },
+  "modals": {
+    "confirmClose": "关闭账单？参与者将无法再编辑。",
+    "confirmDelete": "删除此商品？",
+    "confirmReopen": "重新打开餐桌进行编辑？再次关闭时将重新计算总额。",
+    "cancel": "取消",
+    "close": "关闭",
+    "delete": "删除",
+    "reopen": "重新打开"
+  },
+  "participant": {
+    "editParticipant": "编辑参与者",
+    "save": "保存",
+    "whatDidTheyOrder": "他们点了什么？"
+  },
+  "errors": {
+    "sessionNotFound": "会话未找到或已过期",
+    "connectionError": "连接错误",
+    "createItemError": "创建商品时连接错误",
+    "invalidPrice": "请输入大于0的有效价格"
+  },
+  "time": {
+    "timer": "{{time}}"
+  }
+}

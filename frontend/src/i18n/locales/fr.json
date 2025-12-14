@@ -1,0 +1,101 @@
+{
+  "selection": {
+    "whoAreYou": "Qui êtes-vous ?",
+    "selectFromList": "Sélectionnez votre nom dans la liste",
+    "notInList": "+ Je ne suis pas dans la liste",
+    "hello": "Bonjour, {{name}}",
+    "confirmPhone": "Confirmez votre téléphone pour continuer",
+    "phonePlaceholder": "Votre Téléphone (requis)",
+    "phoneRequired": "* Téléphone requis (min. 8 chiffres)",
+    "confirmAndEnter": "Confirmer et Entrer",
+    "entering": "Entrée en cours...",
+    "back": "← Retour",
+    "newParticipant": "Nouveau Participant",
+    "enterDetails": "Entrez vos informations pour rejoindre",
+    "namePlaceholder": "Votre Nom",
+    "joining": "Connexion...",
+    "joinTable": "Rejoindre la table"
+  },
+  "header": {
+    "host": "Hôte",
+    "you": "Vous",
+    "addParticipant": "Ajouter Participant"
+  },
+  "items": {
+    "consumption": "Consommation",
+    "individual": "Individuel",
+    "grupal": "Groupe",
+    "allTogether": "Tous ensemble",
+    "perUnit": "Par unité",
+    "unit": "Unité {{num}}",
+    "qty": "Qté",
+    "itemName": "Nom de l'article",
+    "unitPrice": "Prix Unit.",
+    "deleteItem": "Supprimer l'article",
+    "total": "Total",
+    "perUnitSuffix": "chacun",
+    "newItem": "Nouvel Article",
+    "name": "Nom",
+    "price": "Prix ($)",
+    "add": "Ajouter",
+    "addManualItem": "+ Ajouter Article Manuel"
+  },
+  "validation": {
+    "balanced": "Addition Équilibrée",
+    "reviewTotals": "Vérifier les Totaux",
+    "totalItems": "Total Articles",
+    "totalAssigned": "Total Attribué",
+    "totalBill": "Total Addition",
+    "subtotalItems": "Sous-total Articles",
+    "subtotalBill": "Sous-total Addition",
+    "subtotalAssigned": "Sous-total Attribué",
+    "itemsSum": "Somme Articles",
+    "missingToAssign": "{{amount}} restant à attribuer",
+    "overAssigned": "Dépassé de {{amount}}"
+  },
+  "tip": {
+    "title": "Pourboire",
+    "titleWithPercent": "Pourboire ({{percent}}%)",
+    "titleFixed": "Pourboire (fixe)",
+    "percent": "Pourcentage",
+    "fixed": "Fixe"
+  },
+  "totals": {
+    "tableTotal": "Total Table",
+    "yourConsumption": "VOTRE CONSOMMATION",
+    "subtotal": "Sous-total",
+    "tipLabel": "Pourboire",
+    "total": "TOTAL",
+    "tapForDetails": "Appuyez pour les détails",
+    "selectItemsAbove": "Sélectionnez les articles ci-dessus"
+  },
+  "finalized": {
+    "billClosed": "Addition Fermée",
+    "closeBill": "Fermer l'Addition",
+    "reopenTable": "Rouvrir la Table",
+    "shareWhatsApp": "Partager via WhatsApp"
+  },
+  "modals": {
+    "confirmClose": "Fermer l'addition ? Les participants ne pourront plus modifier.",
+    "confirmDelete": "Supprimer cet article ?",
+    "confirmReopen": "Rouvrir la table pour modification ? Les totaux seront recalculés à la fermeture.",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "delete": "Supprimer",
+    "reopen": "Rouvrir"
+  },
+  "participant": {
+    "editParticipant": "Modifier Participant",
+    "save": "Enregistrer",
+    "whatDidTheyOrder": "Qu'ont-ils commandé ?"
+  },
+  "errors": {
+    "sessionNotFound": "Session non trouvée ou expirée",
+    "connectionError": "Erreur de connexion",
+    "createItemError": "Erreur de connexion lors de la création",
+    "invalidPrice": "Veuillez entrer un prix valide supérieur à 0"
+  },
+  "time": {
+    "timer": "{{time}}"
+  }
+}
