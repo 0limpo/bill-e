@@ -36,8 +36,8 @@ i18n
     supportedLngs: ['es', 'en', 'pt', 'zh', 'hi', 'fr', 'ru', 'ja', 'de', 'id'],
 
     detection: {
-      order: ['navigator', 'localStorage', 'htmlTag'],
-      caches: ['localStorage']
+      order: ['navigator', 'htmlTag'],
+      caches: []
     },
 
     interpolation: {
