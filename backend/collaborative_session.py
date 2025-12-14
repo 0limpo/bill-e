@@ -49,7 +49,7 @@ def create_collaborative_session(
         "participants": [
             {
                 "id": str(uuid.uuid4())[:8],
-                "name": "Anfitrion",
+                "name": "Host",
                 "phone": owner_phone,
                 "role": ParticipantRole.OWNER.value,
                 "joined_at": datetime.now().isoformat()
