@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "Bill Closed",
+    "billOpen": "Assigning items...",
     "closeBill": "Close Bill",
     "reopenTable": "Reopen Table",
     "shareWhatsApp": "Share on WhatsApp"

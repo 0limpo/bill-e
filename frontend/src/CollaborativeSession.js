@@ -2488,7 +2488,7 @@ const CollaborativeSession = () => {
               </button>
             ) : (
               <button className="btn-main" disabled>
-                {t('selection.entering')}
+                {t('finalized.billOpen')}
               </button>
             )}
           </>

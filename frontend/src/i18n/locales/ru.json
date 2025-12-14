@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "Чек закрыт",
+    "billOpen": "Распределяем...",
     "closeBill": "Закрыть чек",
     "reopenTable": "Открыть снова",
     "shareWhatsApp": "Поделиться в WhatsApp"

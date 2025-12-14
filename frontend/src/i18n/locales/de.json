@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "Rechnung geschlossen",
+    "billOpen": "Zuweisung läuft...",
     "closeBill": "Rechnung schließen",
     "reopenTable": "Tisch wieder öffnen",
     "shareWhatsApp": "Über WhatsApp teilen"

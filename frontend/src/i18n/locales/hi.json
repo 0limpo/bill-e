@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "बिल बंद",
+    "billOpen": "आइटम बाँट रहे हैं...",
     "closeBill": "बिल बंद करें",
     "reopenTable": "टेबल फिर खोलें",
     "shareWhatsApp": "WhatsApp पर शेयर करें"

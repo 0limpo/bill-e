@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "会計を締めました",
+    "billOpen": "割り当て中...",
     "closeBill": "会計を締める",
     "reopenTable": "テーブルを再開",
     "shareWhatsApp": "WhatsAppで共有"

@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "账单已关闭",
+    "billOpen": "分配中...",
     "closeBill": "关闭账单",
     "reopenTable": "重新打开餐桌",
     "shareWhatsApp": "通过 WhatsApp 分享"

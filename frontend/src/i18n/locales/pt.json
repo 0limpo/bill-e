@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "Conta Fechada",
+    "billOpen": "Atribuindo itens...",
     "closeBill": "Fechar Conta",
     "reopenTable": "Reabrir Mesa",
     "shareWhatsApp": "Compartilhar no WhatsApp"

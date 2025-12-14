@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "Addition clôturée",
+    "billOpen": "Attribution en cours...",
     "closeBill": "Clôturer",
     "reopenTable": "Rouvrir la table",
     "shareWhatsApp": "Partager sur WhatsApp"

@@ -71,6 +71,7 @@
   },
   "finalized": {
     "billClosed": "Tagihan Ditutup",
+    "billOpen": "Mengalokasikan...",
     "closeBill": "Tutup Tagihan",
     "reopenTable": "Buka Lagi",
     "shareWhatsApp": "Bagikan via WhatsApp"
