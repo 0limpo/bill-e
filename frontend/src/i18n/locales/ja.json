@@ -1,101 +1,101 @@
 {
   "selection": {
-    "whoAreYou": "どなたですか？",
-    "selectFromList": "リストから名前を選択",
-    "notInList": "+ リストにいません",
+    "whoAreYou": "あなたは誰？",
+    "selectFromList": "リストから名前を選んでね",
+    "notInList": "+ リストにいない",
     "hello": "こんにちは、{{name}}",
-    "confirmPhone": "続行するには電話番号を確認してください",
+    "confirmPhone": "続行するには電話番号を確認してね",
     "phonePlaceholder": "電話番号（必須）",
-    "phoneRequired": "* 電話番号必須（8桁以上）",
+    "phoneRequired": "* 電話番号は必須（8桁以上）",
     "confirmAndEnter": "確認して入る",
-    "entering": "入室中...",
+    "entering": "入っています...",
     "back": "← 戻る",
     "newParticipant": "新しい参加者",
-    "enterDetails": "参加するために情報を入力",
-    "namePlaceholder": "お名前",
+    "enterDetails": "参加するために情報を入力してね",
+    "namePlaceholder": "名前",
     "joining": "参加中...",
     "joinTable": "テーブルに参加"
   },
   "header": {
-    "host": "ホスト",
+    "host": "Host",
     "you": "あなた",
     "addParticipant": "参加者を追加"
   },
   "items": {
-    "consumption": "消費",
+    "consumption": "明細",
     "individual": "個別",
-    "grupal": "グループ",
-    "allTogether": "全員で",
-    "perUnit": "単位ごと",
+    "grupal": "共有",
+    "allTogether": "みんなで",
+    "perUnit": "1つずつ",
     "unit": "ユニット {{num}}",
     "qty": "数量",
-    "itemName": "商品名",
+    "itemName": "品名",
     "unitPrice": "単価",
-    "deleteItem": "商品を削除",
+    "deleteItem": "明細を削除",
     "total": "合計",
     "perUnitSuffix": "各",
-    "newItem": "新しい商品",
+    "newItem": "新しい明細",
     "name": "名前",
-    "price": "価格 ($)",
+    "price": "金額 ($)",
     "add": "追加",
-    "addManualItem": "+ 手動で商品を追加"
+    "addManualItem": "+ 手動で追加"
   },
   "validation": {
-    "balanced": "請求書が一致",
+    "balanced": "合ってるよ",
     "reviewTotals": "合計を確認",
-    "totalItems": "商品合計",
-    "totalAssigned": "割り当て合計",
-    "totalBill": "請求書合計",
-    "subtotalItems": "商品小計",
-    "subtotalBill": "請求書小計",
-    "subtotalAssigned": "割り当て小計",
-    "itemsSum": "商品の合計",
-    "missingToAssign": "あと {{amount}} 割り当て必要",
-    "overAssigned": "{{amount}} 超過割り当て"
+    "totalItems": "明細合計",
+    "totalAssigned": "割当合計",
+    "totalBill": "レシート合計",
+    "subtotalItems": "明細小計",
+    "subtotalBill": "レシート小計",
+    "subtotalAssigned": "割当小計",
+    "itemsSum": "明細の合計",
+    "missingToAssign": "{{amount}} が未割当",
+    "overAssigned": "{{amount}} 超過"
   },
   "tip": {
     "title": "チップ",
-    "titleWithPercent": "チップ ({{percent}}%)",
+    "titleWithPercent": "チップ（{{percent}}%）",
     "titleFixed": "チップ（固定）",
-    "percent": "パーセント",
+    "percent": "％",
     "fixed": "固定"
   },
   "totals": {
     "tableTotal": "テーブル合計",
-    "yourConsumption": "あなたの消費",
+    "yourConsumption": "あなたの合計",
     "subtotal": "小計",
     "tipLabel": "チップ",
     "total": "合計",
-    "tapForDetails": "タップして詳細表示",
-    "selectItemsAbove": "上から商品を選択"
+    "tapForDetails": "タップで詳細",
+    "selectItemsAbove": "上で明細を選んでね"
   },
   "finalized": {
-    "billClosed": "請求書確定",
-    "closeBill": "請求書を閉じる",
+    "billClosed": "会計を締めました",
+    "closeBill": "会計を締める",
     "reopenTable": "テーブルを再開",
     "shareWhatsApp": "WhatsAppで共有"
   },
   "modals": {
-    "confirmClose": "請求書を閉じますか？参加者は編集できなくなります。",
-    "confirmDelete": "この商品を削除しますか？",
-    "confirmReopen": "編集のためにテーブルを再開しますか？再度閉じると合計が再計算されます。",
+    "confirmClose": "会計を締める？参加者は編集できなくなるよ。",
+    "confirmDelete": "この明細を削除する？",
+    "confirmReopen": "編集のために再開する？もう一度締めると合計が再計算されます。",
     "cancel": "キャンセル",
-    "close": "閉じる",
+    "close": "締める",
     "delete": "削除",
     "reopen": "再開"
   },
   "participant": {
     "editParticipant": "参加者を編集",
     "save": "保存",
-    "whatDidTheyOrder": "何を注文しましたか？"
+    "whatDidTheyOrder": "何を頼んだ？"
   },
   "errors": {
     "sessionNotFound": "セッションが見つからないか期限切れです",
     "connectionError": "接続エラー",
-    "createItemError": "商品作成時の接続エラー",
-    "invalidPrice": "0より大きい有効な価格を入力してください"
+    "createItemError": "明細作成で接続エラー",
+    "invalidPrice": "0より大きい有効な金額を入力してね"
   },
   "time": {
-    "timer": "{{time}}"
+    "timer": "⏱️ {{time}}"
   }
 }

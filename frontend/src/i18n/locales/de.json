@@ -4,54 +4,54 @@
     "selectFromList": "Wähle deinen Namen aus der Liste",
     "notInList": "+ Ich bin nicht in der Liste",
     "hello": "Hallo, {{name}}",
-    "confirmPhone": "Bestätige deine Telefonnummer um fortzufahren",
-    "phonePlaceholder": "Deine Telefonnummer (erforderlich)",
+    "confirmPhone": "Bestätige deine Nummer, um fortzufahren",
+    "phonePlaceholder": "Dein Telefon (erforderlich)",
     "phoneRequired": "* Telefon erforderlich (min. 8 Ziffern)",
-    "confirmAndEnter": "Bestätigen und Eintreten",
-    "entering": "Eintritt...",
+    "confirmAndEnter": "Bestätigen & Starten",
+    "entering": "Wird gestartet...",
     "back": "← Zurück",
     "newParticipant": "Neuer Teilnehmer",
-    "enterDetails": "Gib deine Daten ein um beizutreten",
+    "enterDetails": "Gib deine Daten ein, um beizutreten",
     "namePlaceholder": "Dein Name",
-    "joining": "Beitritt...",
-    "joinTable": "Tisch beitreten"
+    "joining": "Trete bei...",
+    "joinTable": "Zum Tisch beitreten"
   },
   "header": {
-    "host": "Gastgeber",
+    "host": "Host",
     "you": "Du",
     "addParticipant": "Teilnehmer hinzufügen"
   },
   "items": {
-    "consumption": "Verbrauch",
+    "consumption": "Verzehr",
     "individual": "Einzeln",
     "grupal": "Gruppe",
     "allTogether": "Alle zusammen",
-    "perUnit": "Pro Einheit",
-    "unit": "Einheit {{num}}",
-    "qty": "Anz.",
+    "perUnit": "Pro Stück",
+    "unit": "Stück {{num}}",
+    "qty": "Menge",
     "itemName": "Artikelname",
     "unitPrice": "Stückpreis",
     "deleteItem": "Artikel löschen",
-    "total": "Gesamt",
-    "perUnitSuffix": "je",
-    "newItem": "Neuer Artikel",
+    "total": "Summe",
+    "perUnitSuffix": "Stk.",
+    "newItem": "Neuer Posten",
     "name": "Name",
     "price": "Preis ($)",
     "add": "Hinzufügen",
     "addManualItem": "+ Artikel manuell hinzufügen"
   },
   "validation": {
-    "balanced": "Rechnung Ausgeglichen",
+    "balanced": "Alles stimmt",
     "reviewTotals": "Summen prüfen",
-    "totalItems": "Artikel Gesamt",
-    "totalAssigned": "Gesamt Zugewiesen",
-    "totalBill": "Rechnung Gesamt",
-    "subtotalItems": "Zwischensumme Artikel",
-    "subtotalBill": "Zwischensumme Rechnung",
-    "subtotalAssigned": "Zwischensumme Zugewiesen",
-    "itemsSum": "Artikelsumme",
-    "missingToAssign": "{{amount}} noch zuzuweisen",
-    "overAssigned": "Um {{amount}} überschritten"
+    "totalItems": "Summe Posten",
+    "totalAssigned": "Summe zugeordnet",
+    "totalBill": "Belegsumme",
+    "subtotalItems": "Zwischensumme Posten",
+    "subtotalBill": "Zwischensumme Beleg",
+    "subtotalAssigned": "Zwischensumme zugeordnet",
+    "itemsSum": "Posten-Summe",
+    "missingToAssign": "{{amount}} noch zuzuordnen",
+    "overAssigned": "{{amount}} zu viel zugeordnet"
   },
   "tip": {
     "title": "Trinkgeld",
@@ -61,24 +61,24 @@
     "fixed": "Fest"
   },
   "totals": {
-    "tableTotal": "Tisch Gesamt",
-    "yourConsumption": "DEIN VERBRAUCH",
+    "tableTotal": "Tischsumme",
+    "yourConsumption": "DEINE SUMME",
     "subtotal": "Zwischensumme",
     "tipLabel": "Trinkgeld",
     "total": "GESAMT",
     "tapForDetails": "Tippen für Details",
-    "selectItemsAbove": "Artikel oben auswählen"
+    "selectItemsAbove": "Oben Posten auswählen"
   },
   "finalized": {
-    "billClosed": "Rechnung Geschlossen",
-    "closeBill": "Rechnung Schließen",
-    "reopenTable": "Tisch Wieder Öffnen",
-    "shareWhatsApp": "Per WhatsApp teilen"
+    "billClosed": "Rechnung geschlossen",
+    "closeBill": "Rechnung schließen",
+    "reopenTable": "Tisch wieder öffnen",
+    "shareWhatsApp": "Über WhatsApp teilen"
   },
   "modals": {
     "confirmClose": "Rechnung schließen? Teilnehmer können dann nicht mehr bearbeiten.",
     "confirmDelete": "Diesen Artikel löschen?",
-    "confirmReopen": "Tisch zur Bearbeitung wieder öffnen? Summen werden beim erneuten Schließen neu berechnet.",
+    "confirmReopen": "Tisch zum Bearbeiten wieder öffnen? Beim erneuten Schließen werden die Summen neu berechnet.",
     "cancel": "Abbrechen",
     "close": "Schließen",
     "delete": "Löschen",
@@ -92,10 +92,10 @@
   "errors": {
     "sessionNotFound": "Sitzung nicht gefunden oder abgelaufen",
     "connectionError": "Verbindungsfehler",
-    "createItemError": "Verbindungsfehler beim Erstellen",
-    "invalidPrice": "Bitte einen gültigen Preis über 0 eingeben"
+    "createItemError": "Verbindungsfehler beim Erstellen des Artikels",
+    "invalidPrice": "Bitte gib einen gültigen Preis größer als 0 ein"
   },
   "time": {
-    "timer": "{{time}}"
+    "timer": "⏱️ {{time}}"
   }
 }

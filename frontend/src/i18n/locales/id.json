@@ -1,68 +1,68 @@
 {
   "selection": {
-    "whoAreYou": "Siapa kamu?",
-    "selectFromList": "Pilih nama dari daftar",
-    "notInList": "+ Saya tidak ada di daftar",
+    "whoAreYou": "Kamu siapa?",
+    "selectFromList": "Pilih namamu dari daftar",
+    "notInList": "+ Namaku tidak ada",
     "hello": "Halo, {{name}}",
-    "confirmPhone": "Konfirmasi telepon untuk melanjutkan",
-    "phonePlaceholder": "Telepon Anda (wajib)",
-    "phoneRequired": "* Telepon wajib (min. 8 digit)",
-    "confirmAndEnter": "Konfirmasi dan Masuk",
+    "confirmPhone": "Konfirmasi nomor HP untuk lanjut",
+    "phonePlaceholder": "Nomor HP (wajib)",
+    "phoneRequired": "* Nomor HP wajib (min. 8 digit)",
+    "confirmAndEnter": "Konfirmasi & Masuk",
     "entering": "Masuk...",
     "back": "← Kembali",
     "newParticipant": "Peserta Baru",
-    "enterDetails": "Masukkan data untuk bergabung",
-    "namePlaceholder": "Nama Anda",
+    "enterDetails": "Isi data untuk bergabung",
+    "namePlaceholder": "Namamu",
     "joining": "Bergabung...",
-    "joinTable": "Gabung meja"
+    "joinTable": "Gabung ke meja"
   },
   "header": {
-    "host": "Tuan Rumah",
-    "you": "Anda",
+    "host": "Host",
+    "you": "Kamu",
     "addParticipant": "Tambah Peserta"
   },
   "items": {
-    "consumption": "Konsumsi",
-    "individual": "Individual",
+    "consumption": "Pesanan",
+    "individual": "Individu",
     "grupal": "Grup",
-    "allTogether": "Bersama-sama",
+    "allTogether": "Bareng-bareng",
     "perUnit": "Per unit",
     "unit": "Unit {{num}}",
     "qty": "Jml",
-    "itemName": "Nama Item",
-    "unitPrice": "Harga Satuan",
+    "itemName": "Nama item",
+    "unitPrice": "Harga unit",
     "deleteItem": "Hapus item",
     "total": "Total",
-    "perUnitSuffix": "masing",
-    "newItem": "Item Baru",
+    "perUnitSuffix": "per",
+    "newItem": "Pesanan Baru",
     "name": "Nama",
     "price": "Harga ($)",
     "add": "Tambah",
     "addManualItem": "+ Tambah Item Manual"
   },
   "validation": {
-    "balanced": "Tagihan Seimbang",
-    "reviewTotals": "Periksa Total",
+    "balanced": "Sudah pas",
+    "reviewTotals": "Cek Total",
     "totalItems": "Total Item",
-    "totalAssigned": "Total Ditetapkan",
-    "totalBill": "Total Tagihan",
+    "totalAssigned": "Total Dialokasikan",
+    "totalBill": "Total Struk",
     "subtotalItems": "Subtotal Item",
-    "subtotalBill": "Subtotal Tagihan",
-    "subtotalAssigned": "Subtotal Ditetapkan",
+    "subtotalBill": "Subtotal Struk",
+    "subtotalAssigned": "Subtotal Dialokasikan",
     "itemsSum": "Jumlah Item",
-    "missingToAssign": "{{amount}} belum ditetapkan",
-    "overAssigned": "Melebihi {{amount}}"
+    "missingToAssign": "Sisa {{amount}} belum dialokasikan",
+    "overAssigned": "Kelebihan {{amount}}"
   },
   "tip": {
     "title": "Tip",
     "titleWithPercent": "Tip ({{percent}}%)",
     "titleFixed": "Tip (tetap)",
-    "percent": "Persentase",
+    "percent": "Persen",
     "fixed": "Tetap"
   },
   "totals": {
     "tableTotal": "Total Meja",
-    "yourConsumption": "KONSUMSI ANDA",
+    "yourConsumption": "TOTAL KAMU",
     "subtotal": "Subtotal",
     "tipLabel": "Tip",
     "total": "TOTAL",
@@ -72,30 +72,30 @@
   "finalized": {
     "billClosed": "Tagihan Ditutup",
     "closeBill": "Tutup Tagihan",
-    "reopenTable": "Buka Kembali Meja",
+    "reopenTable": "Buka Lagi",
     "shareWhatsApp": "Bagikan via WhatsApp"
   },
   "modals": {
     "confirmClose": "Tutup tagihan? Peserta tidak bisa mengedit lagi.",
     "confirmDelete": "Hapus item ini?",
-    "confirmReopen": "Buka meja untuk mengedit? Total akan dihitung ulang saat ditutup lagi.",
+    "confirmReopen": "Buka lagi untuk edit? Total akan dihitung ulang saat ditutup lagi.",
     "cancel": "Batal",
     "close": "Tutup",
     "delete": "Hapus",
-    "reopen": "Buka Kembali"
+    "reopen": "Buka lagi"
   },
   "participant": {
     "editParticipant": "Edit Peserta",
     "save": "Simpan",
-    "whatDidTheyOrder": "Apa yang mereka pesan?"
+    "whatDidTheyOrder": "Mereka pesan apa?"
   },
   "errors": {
     "sessionNotFound": "Sesi tidak ditemukan atau kedaluwarsa",
-    "connectionError": "Kesalahan koneksi",
-    "createItemError": "Kesalahan koneksi saat membuat item",
-    "invalidPrice": "Masukkan harga valid lebih dari 0"
+    "connectionError": "Koneksi bermasalah",
+    "createItemError": "Koneksi bermasalah saat membuat item",
+    "invalidPrice": "Masukkan harga yang valid lebih dari 0"
   },
   "time": {
-    "timer": "{{time}}"
+    "timer": "⏱️ {{time}}"
   }
 }

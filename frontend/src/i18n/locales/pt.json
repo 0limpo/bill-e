@@ -1,8 +1,8 @@
 {
   "selection": {
     "whoAreYou": "Quem é você?",
-    "selectFromList": "Selecione seu nome da lista",
-    "notInList": "+ Não estou na lista",
+    "selectFromList": "Selecione seu nome na lista",
+    "notInList": "+ Meu nome não está na lista",
     "hello": "Olá, {{name}}",
     "confirmPhone": "Confirme seu telefone para continuar",
     "phonePlaceholder": "Seu Telefone (obrigatório)",
@@ -11,13 +11,13 @@
     "entering": "Entrando...",
     "back": "← Voltar",
     "newParticipant": "Novo Participante",
-    "enterDetails": "Digite seus dados para participar",
+    "enterDetails": "Informe seus dados para entrar",
     "namePlaceholder": "Seu Nome",
     "joining": "Entrando...",
     "joinTable": "Entrar na mesa"
   },
   "header": {
-    "host": "Anfitrião",
+    "host": "Host",
     "you": "Você",
     "addParticipant": "Adicionar Participante"
   },
@@ -29,56 +29,56 @@
     "perUnit": "Por unidade",
     "unit": "Unidade {{num}}",
     "qty": "Qtd.",
-    "itemName": "Nome do Item",
-    "unitPrice": "Preço Unit.",
+    "itemName": "Nome do item",
+    "unitPrice": "Preço un.",
     "deleteItem": "Excluir item",
     "total": "Total",
     "perUnitSuffix": "cada",
-    "newItem": "Novo Item",
+    "newItem": "Novo Consumo",
     "name": "Nome",
     "price": "Preço ($)",
     "add": "Adicionar",
-    "addManualItem": "+ Adicionar Item Manual"
+    "addManualItem": "+ Adicionar item manualmente"
   },
   "validation": {
-    "balanced": "Conta Fechada",
+    "balanced": "Conta fechada certinho",
     "reviewTotals": "Revisar Totais",
-    "totalItems": "Total Itens",
+    "totalItems": "Total de Itens",
     "totalAssigned": "Total Atribuído",
     "totalBill": "Total da Conta",
-    "subtotalItems": "Subtotal Itens",
-    "subtotalBill": "Subtotal Conta",
+    "subtotalItems": "Subtotal dos Itens",
+    "subtotalBill": "Subtotal da Conta",
     "subtotalAssigned": "Subtotal Atribuído",
-    "itemsSum": "Soma Itens",
+    "itemsSum": "Soma dos Itens",
     "missingToAssign": "Faltam {{amount}} para atribuir",
-    "overAssigned": "Excedido por {{amount}}"
+    "overAssigned": "Excedeu em {{amount}}"
   },
   "tip": {
     "title": "Gorjeta",
     "titleWithPercent": "Gorjeta ({{percent}}%)",
     "titleFixed": "Gorjeta (fixa)",
-    "percent": "Porcentagem",
+    "percent": "Percentual",
     "fixed": "Fixa"
   },
   "totals": {
     "tableTotal": "Total da Mesa",
-    "yourConsumption": "SEU CONSUMO",
+    "yourConsumption": "SEU TOTAL",
     "subtotal": "Subtotal",
     "tipLabel": "Gorjeta",
     "total": "TOTAL",
-    "tapForDetails": "Toque para detalhes",
+    "tapForDetails": "Toque para ver detalhes",
     "selectItemsAbove": "Selecione itens acima"
   },
   "finalized": {
     "billClosed": "Conta Fechada",
     "closeBill": "Fechar Conta",
     "reopenTable": "Reabrir Mesa",
-    "shareWhatsApp": "Compartilhar via WhatsApp"
+    "shareWhatsApp": "Compartilhar no WhatsApp"
   },
   "modals": {
     "confirmClose": "Fechar a conta? Os participantes não poderão mais editar.",
     "confirmDelete": "Excluir este item?",
-    "confirmReopen": "Reabrir a mesa para edição? Os totais serão recalculados ao fechar novamente.",
+    "confirmReopen": "Reabrir a mesa para editar? Os totais serão recalculados ao fechar de novo.",
     "cancel": "Cancelar",
     "close": "Fechar",
     "delete": "Excluir",
@@ -93,9 +93,9 @@
     "sessionNotFound": "Sessão não encontrada ou expirada",
     "connectionError": "Erro de conexão",
     "createItemError": "Erro de conexão ao criar item",
-    "invalidPrice": "Por favor, insira um preço válido maior que 0"
+    "invalidPrice": "Por favor, informe um preço válido maior que 0"
   },
   "time": {
-    "timer": "{{time}}"
+    "timer": "⏱️ {{time}}"
   }
 }

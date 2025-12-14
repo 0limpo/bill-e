@@ -1,101 +1,101 @@
 {
   "selection": {
-    "whoAreYou": "Кто вы?",
-    "selectFromList": "Выберите своё имя из списка",
+    "whoAreYou": "Кто ты?",
+    "selectFromList": "Выбери своё имя из списка",
     "notInList": "+ Меня нет в списке",
     "hello": "Привет, {{name}}",
-    "confirmPhone": "Подтвердите телефон для продолжения",
-    "phonePlaceholder": "Ваш телефон (обязательно)",
+    "confirmPhone": "Подтверди телефон, чтобы продолжить",
+    "phonePlaceholder": "Твой телефон (обязательно)",
     "phoneRequired": "* Телефон обязателен (мин. 8 цифр)",
-    "confirmAndEnter": "Подтвердить и Войти",
-    "entering": "Вход...",
+    "confirmAndEnter": "Подтвердить и войти",
+    "entering": "Входим...",
     "back": "← Назад",
-    "newParticipant": "Новый Участник",
-    "enterDetails": "Введите данные для присоединения",
-    "namePlaceholder": "Ваше Имя",
-    "joining": "Присоединение...",
+    "newParticipant": "Новый участник",
+    "enterDetails": "Введи данные, чтобы присоединиться",
+    "namePlaceholder": "Твоё имя",
+    "joining": "Подключаем...",
     "joinTable": "Присоединиться к столу"
   },
   "header": {
-    "host": "Хост",
-    "you": "Вы",
-    "addParticipant": "Добавить Участника"
+    "host": "Host",
+    "you": "Ты",
+    "addParticipant": "Добавить участника"
   },
   "items": {
-    "consumption": "Потребление",
-    "individual": "Индивидуально",
-    "grupal": "Группа",
-    "allTogether": "Все вместе",
-    "perUnit": "За единицу",
-    "unit": "Единица {{num}}",
-    "qty": "Кол.",
+    "consumption": "Позиции",
+    "individual": "Лично",
+    "grupal": "Вместе",
+    "allTogether": "На всех",
+    "perUnit": "По штукам",
+    "unit": "Штука {{num}}",
+    "qty": "Кол-во",
     "itemName": "Название",
-    "unitPrice": "Цена за ед.",
+    "unitPrice": "Цена/шт.",
     "deleteItem": "Удалить позицию",
     "total": "Итого",
-    "perUnitSuffix": "за шт.",
-    "newItem": "Новая Позиция",
+    "perUnitSuffix": "шт.",
+    "newItem": "Новая позиция",
     "name": "Название",
     "price": "Цена ($)",
     "add": "Добавить",
-    "addManualItem": "+ Добавить Вручную"
+    "addManualItem": "+ Добавить вручную"
   },
   "validation": {
-    "balanced": "Счёт Сбалансирован",
-    "reviewTotals": "Проверить Итоги",
-    "totalItems": "Всего Позиций",
-    "totalAssigned": "Всего Назначено",
-    "totalBill": "Общий Счёт",
-    "subtotalItems": "Подытог Позиций",
-    "subtotalBill": "Подытог Счёта",
-    "subtotalAssigned": "Подытог Назначено",
-    "itemsSum": "Сумма Позиций",
-    "missingToAssign": "Осталось назначить {{amount}}",
-    "overAssigned": "Превышено на {{amount}}"
+    "balanced": "Всё сходится",
+    "reviewTotals": "Проверить итоги",
+    "totalItems": "Итого по позициям",
+    "totalAssigned": "Итого распределено",
+    "totalBill": "Итого по чеку",
+    "subtotalItems": "Подитог позиций",
+    "subtotalBill": "Подитог чека",
+    "subtotalAssigned": "Подитог распределено",
+    "itemsSum": "Сумма позиций",
+    "missingToAssign": "Осталось распределить {{amount}}",
+    "overAssigned": "Перераспределено на {{amount}}"
   },
   "tip": {
     "title": "Чаевые",
     "titleWithPercent": "Чаевые ({{percent}}%)",
     "titleFixed": "Чаевые (фикс.)",
     "percent": "Процент",
-    "fixed": "Фиксированные"
+    "fixed": "Фикс."
   },
   "totals": {
-    "tableTotal": "Итого по Столу",
-    "yourConsumption": "ВАШЕ ПОТРЕБЛЕНИЕ",
-    "subtotal": "Подытог",
+    "tableTotal": "Итого стол",
+    "yourConsumption": "ТВОЙ ИТОГ",
+    "subtotal": "Подитог",
     "tipLabel": "Чаевые",
     "total": "ИТОГО",
-    "tapForDetails": "Нажмите для деталей",
-    "selectItemsAbove": "Выберите позиции выше"
+    "tapForDetails": "Нажми, чтобы увидеть детали",
+    "selectItemsAbove": "Выбери позиции выше"
   },
   "finalized": {
-    "billClosed": "Счёт Закрыт",
-    "closeBill": "Закрыть Счёт",
-    "reopenTable": "Открыть Стол",
+    "billClosed": "Чек закрыт",
+    "closeBill": "Закрыть чек",
+    "reopenTable": "Открыть снова",
     "shareWhatsApp": "Поделиться в WhatsApp"
   },
   "modals": {
-    "confirmClose": "Закрыть счёт? Участники больше не смогут редактировать.",
+    "confirmClose": "Закрыть чек? Участники больше не смогут редактировать.",
     "confirmDelete": "Удалить эту позицию?",
-    "confirmReopen": "Открыть стол для редактирования? Итоги будут пересчитаны при закрытии.",
+    "confirmReopen": "Открыть снова для редактирования? Итоги пересчитаются при следующем закрытии.",
     "cancel": "Отмена",
     "close": "Закрыть",
     "delete": "Удалить",
     "reopen": "Открыть"
   },
   "participant": {
-    "editParticipant": "Редактировать Участника",
+    "editParticipant": "Редактировать участника",
     "save": "Сохранить",
     "whatDidTheyOrder": "Что они заказали?"
   },
   "errors": {
     "sessionNotFound": "Сессия не найдена или истекла",
-    "connectionError": "Ошибка подключения",
-    "createItemError": "Ошибка при создании позиции",
+    "connectionError": "Ошибка соединения",
+    "createItemError": "Ошибка соединения при создании позиции",
     "invalidPrice": "Введите корректную цену больше 0"
   },
   "time": {
-    "timer": "{{time}}"
+    "timer": "⏱️ {{time}}"
   }
 }

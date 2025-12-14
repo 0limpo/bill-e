@@ -2,100 +2,100 @@
   "selection": {
     "whoAreYou": "आप कौन हैं?",
     "selectFromList": "सूची से अपना नाम चुनें",
-    "notInList": "+ मैं सूची में नहीं हूं",
-    "hello": "नमस्ते, {{name}}",
-    "confirmPhone": "जारी रखने के लिए अपना फोन पुष्टि करें",
-    "phonePlaceholder": "आपका फोन (आवश्यक)",
-    "phoneRequired": "* फोन आवश्यक है (न्यूनतम 8 अंक)",
-    "confirmAndEnter": "पुष्टि करें और प्रवेश करें",
-    "entering": "प्रवेश हो रहा है...",
+    "notInList": "+ मेरा नाम सूची में नहीं है",
+    "hello": "हाय, {{name}}",
+    "confirmPhone": "जारी रखने के लिए अपना फ़ोन कन्फ़र्म करें",
+    "phonePlaceholder": "आपका फ़ोन (ज़रूरी)",
+    "phoneRequired": "* फ़ोन ज़रूरी (कम से कम 8 अंक)",
+    "confirmAndEnter": "कन्फ़र्म करके अंदर जाएँ",
+    "entering": "अंदर जा रहे हैं...",
     "back": "← वापस",
-    "newParticipant": "नया प्रतिभागी",
-    "enterDetails": "शामिल होने के लिए अपना विवरण दर्ज करें",
+    "newParticipant": "नया सहभागी",
+    "enterDetails": "जुड़ने के लिए अपनी जानकारी भरें",
     "namePlaceholder": "आपका नाम",
-    "joining": "शामिल हो रहा है...",
-    "joinTable": "टेबल से जुड़ें"
+    "joining": "जुड़ रहे हैं...",
+    "joinTable": "टेबल में जुड़ें"
   },
   "header": {
-    "host": "होस्ट",
+    "host": "Host",
     "you": "आप",
-    "addParticipant": "प्रतिभागी जोड़ें"
+    "addParticipant": "सहभागी जोड़ें"
   },
   "items": {
-    "consumption": "खपत",
+    "consumption": "आइटम",
     "individual": "व्यक्तिगत",
     "grupal": "समूह",
-    "allTogether": "सब एक साथ",
+    "allTogether": "सब मिलकर",
     "perUnit": "प्रति यूनिट",
     "unit": "यूनिट {{num}}",
     "qty": "मात्रा",
     "itemName": "आइटम का नाम",
-    "unitPrice": "यूनिट मूल्य",
-    "deleteItem": "आइटम हटाएं",
+    "unitPrice": "यूनिट कीमत",
+    "deleteItem": "आइटम हटाएँ",
     "total": "कुल",
-    "perUnitSuffix": "प्रत्येक",
+    "perUnitSuffix": "प्रति",
     "newItem": "नया आइटम",
     "name": "नाम",
-    "price": "मूल्य ($)",
+    "price": "कीमत ($)",
     "add": "जोड़ें",
-    "addManualItem": "+ मैन्युअल आइटम जोड़ें"
+    "addManualItem": "+ आइटम मैन्युअली जोड़ें"
   },
   "validation": {
-    "balanced": "बिल संतुलित",
-    "reviewTotals": "कुल की समीक्षा करें",
+    "balanced": "हिसाब मिल गया",
+    "reviewTotals": "टोटल जाँचें",
     "totalItems": "कुल आइटम",
-    "totalAssigned": "कुल आवंटित",
-    "totalBill": "कुल बिल",
-    "subtotalItems": "आइटम उप-योग",
-    "subtotalBill": "बिल उप-योग",
-    "subtotalAssigned": "आवंटित उप-योग",
+    "totalAssigned": "कुल बाँटा गया",
+    "totalBill": "बिल टोटल",
+    "subtotalItems": "आइटम सबटोटल",
+    "subtotalBill": "बिल सबटोटल",
+    "subtotalAssigned": "बँटा सबटोटल",
     "itemsSum": "आइटम योग",
-    "missingToAssign": "{{amount}} आवंटित करना बाकी",
-    "overAssigned": "{{amount}} से अधिक आवंटित"
+    "missingToAssign": "{{amount}} बाँटना बाकी",
+    "overAssigned": "{{amount}} ज़्यादा बाँट दिया"
   },
   "tip": {
     "title": "टिप",
     "titleWithPercent": "टिप ({{percent}}%)",
-    "titleFixed": "टिप (निश्चित)",
+    "titleFixed": "टिप (फिक्स्ड)",
     "percent": "प्रतिशत",
-    "fixed": "निश्चित"
+    "fixed": "फिक्स्ड"
   },
   "totals": {
-    "tableTotal": "टेबल कुल",
-    "yourConsumption": "आपकी खपत",
-    "subtotal": "उप-योग",
+    "tableTotal": "टेबल टोटल",
+    "yourConsumption": "आपका टोटल",
+    "subtotal": "सबटोटल",
     "tipLabel": "टिप",
-    "total": "कुल",
-    "tapForDetails": "विवरण के लिए टैप करें",
+    "total": "TOTAL",
+    "tapForDetails": "डिटेल देखने के लिए टैप करें",
     "selectItemsAbove": "ऊपर आइटम चुनें"
   },
   "finalized": {
     "billClosed": "बिल बंद",
     "closeBill": "बिल बंद करें",
-    "reopenTable": "टेबल फिर से खोलें",
-    "shareWhatsApp": "WhatsApp पर साझा करें"
+    "reopenTable": "टेबल फिर खोलें",
+    "shareWhatsApp": "WhatsApp पर शेयर करें"
   },
   "modals": {
-    "confirmClose": "बिल बंद करें? प्रतिभागी अब संपादित नहीं कर पाएंगे।",
-    "confirmDelete": "इस आइटम को हटाएं?",
-    "confirmReopen": "संपादन के लिए टेबल फिर से खोलें? दोबारा बंद करने पर कुल फिर से गणना की जाएगी।",
+    "confirmClose": "बिल बंद करें? अब कोई एडिट नहीं कर पाएगा।",
+    "confirmDelete": "यह आइटम हटाएँ?",
+    "confirmReopen": "एडिट के लिए टेबल फिर खोलें? फिर से बंद करने पर टोटल दोबारा निकलेगा।",
     "cancel": "रद्द करें",
     "close": "बंद करें",
-    "delete": "हटाएं",
-    "reopen": "फिर से खोलें"
+    "delete": "हटाएँ",
+    "reopen": "फिर खोलें"
   },
   "participant": {
-    "editParticipant": "प्रतिभागी संपादित करें",
-    "save": "सहेजें",
-    "whatDidTheyOrder": "उन्होंने क्या ऑर्डर किया?"
+    "editParticipant": "सहभागी एडिट करें",
+    "save": "सेव",
+    "whatDidTheyOrder": "उन्होंने क्या मंगाया?"
   },
   "errors": {
-    "sessionNotFound": "सत्र नहीं मिला या समाप्त हो गया",
-    "connectionError": "कनेक्शन त्रुटि",
-    "createItemError": "आइटम बनाते समय कनेक्शन त्रुटि",
-    "invalidPrice": "कृपया 0 से अधिक वैध मूल्य दर्ज करें"
+    "sessionNotFound": "सेशन नहीं मिला या एक्सपायर हो गया",
+    "connectionError": "कनेक्शन एरर",
+    "createItemError": "आइटम बनाते समय कनेक्शन एरर",
+    "invalidPrice": "कृपया 0 से बड़ा वैध दाम डालें"
   },
   "time": {
-    "timer": "{{time}}"
+    "timer": "⏱️ {{time}}"
   }
 }

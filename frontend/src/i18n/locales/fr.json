@@ -1,57 +1,57 @@
 {
   "selection": {
-    "whoAreYou": "Qui êtes-vous ?",
-    "selectFromList": "Sélectionnez votre nom dans la liste",
+    "whoAreYou": "Qui es-tu ?",
+    "selectFromList": "Choisis ton nom dans la liste",
     "notInList": "+ Je ne suis pas dans la liste",
-    "hello": "Bonjour, {{name}}",
-    "confirmPhone": "Confirmez votre téléphone pour continuer",
-    "phonePlaceholder": "Votre Téléphone (requis)",
+    "hello": "Salut, {{name}}",
+    "confirmPhone": "Confirme ton téléphone pour continuer",
+    "phonePlaceholder": "Ton téléphone (obligatoire)",
     "phoneRequired": "* Téléphone requis (min. 8 chiffres)",
-    "confirmAndEnter": "Confirmer et Entrer",
-    "entering": "Entrée en cours...",
+    "confirmAndEnter": "Confirmer et entrer",
+    "entering": "Connexion...",
     "back": "← Retour",
-    "newParticipant": "Nouveau Participant",
-    "enterDetails": "Entrez vos informations pour rejoindre",
-    "namePlaceholder": "Votre Nom",
-    "joining": "Connexion...",
+    "newParticipant": "Nouveau participant",
+    "enterDetails": "Renseigne tes infos pour rejoindre",
+    "namePlaceholder": "Ton nom",
+    "joining": "Rejoindre...",
     "joinTable": "Rejoindre la table"
   },
   "header": {
-    "host": "Hôte",
-    "you": "Vous",
-    "addParticipant": "Ajouter Participant"
+    "host": "Host",
+    "you": "Toi",
+    "addParticipant": "Ajouter un participant"
   },
   "items": {
     "consumption": "Consommation",
     "individual": "Individuel",
     "grupal": "Groupe",
-    "allTogether": "Tous ensemble",
+    "allTogether": "Entre tous",
     "perUnit": "Par unité",
     "unit": "Unité {{num}}",
     "qty": "Qté",
-    "itemName": "Nom de l'article",
-    "unitPrice": "Prix Unit.",
-    "deleteItem": "Supprimer l'article",
+    "itemName": "Nom de l'item",
+    "unitPrice": "Prix un.",
+    "deleteItem": "Supprimer l'item",
     "total": "Total",
-    "perUnitSuffix": "chacun",
-    "newItem": "Nouvel Article",
+    "perUnitSuffix": "ch.",
+    "newItem": "Nouvelle conso",
     "name": "Nom",
     "price": "Prix ($)",
     "add": "Ajouter",
-    "addManualItem": "+ Ajouter Article Manuel"
+    "addManualItem": "+ Ajouter un item manuellement"
   },
   "validation": {
-    "balanced": "Addition Équilibrée",
-    "reviewTotals": "Vérifier les Totaux",
-    "totalItems": "Total Articles",
-    "totalAssigned": "Total Attribué",
-    "totalBill": "Total Addition",
-    "subtotalItems": "Sous-total Articles",
-    "subtotalBill": "Sous-total Addition",
-    "subtotalAssigned": "Sous-total Attribué",
-    "itemsSum": "Somme Articles",
-    "missingToAssign": "{{amount}} restant à attribuer",
-    "overAssigned": "Dépassé de {{amount}}"
+    "balanced": "Le compte est bon",
+    "reviewTotals": "Vérifier les totaux",
+    "totalItems": "Total items",
+    "totalAssigned": "Total attribué",
+    "totalBill": "Total ticket",
+    "subtotalItems": "Sous-total items",
+    "subtotalBill": "Sous-total ticket",
+    "subtotalAssigned": "Sous-total attribué",
+    "itemsSum": "Somme items",
+    "missingToAssign": "Il manque {{amount}} à attribuer",
+    "overAssigned": "Dépassement de {{amount}}"
   },
   "tip": {
     "title": "Pourboire",
@@ -61,41 +61,41 @@
     "fixed": "Fixe"
   },
   "totals": {
-    "tableTotal": "Total Table",
-    "yourConsumption": "VOTRE CONSOMMATION",
+    "tableTotal": "Total table",
+    "yourConsumption": "TON TOTAL",
     "subtotal": "Sous-total",
     "tipLabel": "Pourboire",
     "total": "TOTAL",
-    "tapForDetails": "Appuyez pour les détails",
-    "selectItemsAbove": "Sélectionnez les articles ci-dessus"
+    "tapForDetails": "Appuie pour voir le détail",
+    "selectItemsAbove": "Sélectionne des items au-dessus"
   },
   "finalized": {
-    "billClosed": "Addition Fermée",
-    "closeBill": "Fermer l'Addition",
-    "reopenTable": "Rouvrir la Table",
-    "shareWhatsApp": "Partager via WhatsApp"
+    "billClosed": "Addition clôturée",
+    "closeBill": "Clôturer",
+    "reopenTable": "Rouvrir la table",
+    "shareWhatsApp": "Partager sur WhatsApp"
   },
   "modals": {
-    "confirmClose": "Fermer l'addition ? Les participants ne pourront plus modifier.",
-    "confirmDelete": "Supprimer cet article ?",
-    "confirmReopen": "Rouvrir la table pour modification ? Les totaux seront recalculés à la fermeture.",
+    "confirmClose": "Clôturer l'addition ? Les participants ne pourront plus modifier.",
+    "confirmDelete": "Supprimer cet item ?",
+    "confirmReopen": "Rouvrir pour modifier ? Les totaux seront recalculés à la prochaine clôture.",
     "cancel": "Annuler",
-    "close": "Fermer",
+    "close": "Clôturer",
     "delete": "Supprimer",
     "reopen": "Rouvrir"
   },
   "participant": {
-    "editParticipant": "Modifier Participant",
+    "editParticipant": "Modifier le participant",
     "save": "Enregistrer",
     "whatDidTheyOrder": "Qu'ont-ils commandé ?"
   },
   "errors": {
-    "sessionNotFound": "Session non trouvée ou expirée",
+    "sessionNotFound": "Session introuvable ou expirée",
     "connectionError": "Erreur de connexion",
-    "createItemError": "Erreur de connexion lors de la création",
-    "invalidPrice": "Veuillez entrer un prix valide supérieur à 0"
+    "createItemError": "Erreur de connexion lors de la création de l'item",
+    "invalidPrice": "Merci d'entrer un prix valide supérieur à 0"
   },
   "time": {
-    "timer": "{{time}}"
+    "timer": "⏱️ {{time}}"
   }
 }
