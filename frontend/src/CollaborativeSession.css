@@ -294,6 +294,10 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .grupal-switch-option:hover {
@@ -652,6 +656,10 @@ body {
   cursor: pointer;
   color: var(--text-secondary);
   transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
 }
 
 .mode-option.active {
@@ -1234,6 +1242,11 @@ body {
   background: transparent;
   color: var(--text-secondary);
   transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
 }
 
 .tip-mode-btn.active {
@@ -1772,6 +1785,10 @@ body {
   padding: 6px 16px;
   border-radius: 20px;
   display: inline-block;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .validation-status.success {
