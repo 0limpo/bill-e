@@ -239,8 +239,7 @@ body {
   transition: all 0.2s;
 }
 
-.add-participant-btn::after {
-  content: 'Añadir';
+.add-btn-label {
   font-size: 10px;
   font-weight: 600;
   color: var(--text-secondary);

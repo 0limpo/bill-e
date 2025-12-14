@@ -1918,7 +1918,9 @@ const CollaborativeSession = () => {
         <div className="participants-list">
            {/* Add button first (ghost avatar style) - Anyone can add participants */}
            {!isFinalized && (
-             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)} />
+             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>
+               <span className="add-btn-label">{t('items.add')}</span>
+             </button>
            )}
            {session.participants.map(p => {
               // Owner can edit anyone, editors can edit non-owners only
