@@ -52,9 +52,9 @@ class GeminiOCRService:
             import io
             image = PIL.Image.open(io.BytesIO(image_bytes))
 
-            # Prompt optimizado para boletas chilenas
+            # Prompt genérico para extracción de texto de recibos
             prompt = """
-            Analiza esta imagen de una boleta o cuenta de restaurante chilena.
+            Analiza esta imagen de un recibo o cuenta de restaurante.
 
             Extrae EXACTAMENTE la siguiente información en formato de texto plano:
 
@@ -64,13 +64,11 @@ class GeminiOCRService:
             4. ITEMS: Lista de todos los productos/platos con sus cantidades y precios
 
             IMPORTANTE:
-            - Los precios en Chile usan PUNTO como separador de miles (ejemplo: $12.500)
-            - Mantén los números exactamente como aparecen
-            - Las boletas chilenas muestran: CANTIDAD  NOMBRE_PRODUCTO  PRECIO
-            - PRESERVA las cantidades que aparecen antes de cada producto
+            - Mantén los números exactamente como aparecen en el recibo
+            - Preserva las cantidades que aparecen junto a cada producto
             - Lista cada item en una línea nueva
-            - Formato: cantidad nombre_item - $precio
-            - Ejemplo: "3 Coca Cola - $6.000" (3 unidades)
+            - Formato: cantidad nombre_item - precio
+            - Ejemplo: "3 Coca Cola - 6.000" (3 unidades)
             - Si no hay cantidad visible, no agregues número al inicio
 
             Responde SOLO con el texto extraído, sin explicaciones adicionales.
@@ -134,55 +132,65 @@ class GeminiOCRService:
             import io
             image = PIL.Image.open(io.BytesIO(image_bytes))
 
-            # Prompt estructurado con análisis previo (chain of thought)
-            prompt = """Eres un experto analizando boletas de restaurantes chilenos. Tu tarea es extraer información precisa.
+            # Prompt con protocolo forense para extracción precisa
+            prompt = """Rol: Actúa como un experto forense en auditoría de gastos y OCR.
 
-## FASE 1: ANÁLISIS ESTRUCTURAL (razona internamente)
+Objetivo: Extraer con precisión matemática el Precio Unitario REAL de cada ítem en la imagen adjunta, independientemente del formato del recibo (país, moneda o idioma).
 
-Antes de extraer datos, analiza la boleta:
-1. ¿Qué columnas tiene? (cantidad, descripción, precio unitario, precio total línea, etc.)
-2. ¿Hay encabezados de columna que indiquen qué representa cada valor?
-3. El precio junto a cada item, ¿es UNITARIO o es el TOTAL DE LA LÍNEA (cantidad × unitario)?
-4. ¿Dónde está el subtotal REAL (suma de items, SIN propina)?
-5. ¿Hay propina/servicio/tip? ¿Está separada o incluida en algún subtotal?
-6. Si hay múltiples líneas con "subtotal", ¿cuál es el correcto (sin propina)?
+## PROTOCOLO DE RAZONAMIENTO (Chain of Thought)
 
-## FASE 2: EXTRACCIÓN
+Antes de generar el JSON final, ejecuta internamente estos pasos:
 
-Basándote en tu análisis, extrae la información.
+### 1. Análisis de Formato Numérico
+Detecta el formato de puntuación usado en el recibo:
+- Formato A: punto = miles, coma = decimales (1.000,50)
+- Formato B: coma = miles, punto = decimales (1,000.50)
+- Formato C: sin separador de miles (1000.50 o 1000,50)
+Usa el subtotal/total como referencia para confirmar el formato.
 
-REGLA CRÍTICA para "precio":
-- "precio" SIEMPRE debe ser el PRECIO UNITARIO de UN item
-- Si la boleta muestra "3 Pan Mechada 35.970" y el 35.970 es el total de los 3:
-  → Calcula: 35970 / 3 = 11990
-  → Retorna: {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990}
-- Si la boleta muestra "3 Pan Mechada 11.990" y el 11.990 es el precio unitario:
-  → Retorna: {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990}
+### 2. Escaneo de Cantidades
+Busca ítems donde la cantidad sea mayor a 1 (ej: "2x Coca Cola", "3 Pan", "Qty: 2").
 
-## VALIDACIÓN (obligatoria)
+### 3. Test de Hipótesis de Precio
+Para ítems con cantidad > 1, analiza el precio asociado:
+- Hipótesis A: Si el precio parece bajo/estándar para ese producto → es Precio Unitario
+- Hipótesis B: Si el precio es alto (aprox. N veces el valor estándar) → es Total de Línea
 
-Antes de responder, verifica:
-- Suma de (precio × cantidad) para todos los items ≈ subtotal declarado
-- Si NO cuadra, revisa tu interpretación del precio (¿unitario o total línea?)
-- Subtotal + propina ≈ total
+### 4. Verificación Cruzada (Prueba de la Suma)
+Suma los precios de la columna de precios.
+- SI suma ≈ Subtotal del recibo → son Totales de Línea → DIVIDIR por cantidad
+- SI suma ≠ Subtotal (mucho menor) → son Precios Unitarios → mantener tal cual
+
+### 5. Validación Final
+Calcula: suma_calculada = Σ(precio_unitario × cantidad)
+- Si suma_calculada = subtotal → needs_review: false
+- Si suma_calculada ≈ subtotal (diferencia < 5%) → needs_review: true
+- Si suma_calculada ≠ subtotal (diferencia >= 5%) → needs_review: true, incluir mensaje
+
+## INSTRUCCIONES DE EXTRACCIÓN
+
+- Interpreta los números según el formato detectado en el paso 1
+- Ignora símbolos de moneda ($, €, £, etc.)
+- Si la cantidad no es explícita, asume 1
+- Si el ítem tiene valor 0 o es cortesía, indica 0
+- "precio" SIEMPRE debe ser el precio unitario (de 1 unidad)
 
 ## FORMATO DE RESPUESTA
 
-IMPORTANTE sobre números chilenos:
-- Usan PUNTO como separador de miles: $111.793 = 111793
-- Convierte todos los precios a números enteros sin puntos
-
-Responde SOLO con JSON válido (sin explicaciones):
+Retorna SOLO JSON válido:
 {
-    "total": 111793,
-    "subtotal": 101630,
-    "propina": 10163,
-    "items": [
-        {"nombre": "Pan Mechada", "cantidad": 3, "precio": 11990},
-        {"nombre": "Coca Cola Zero", "cantidad": 2, "precio": 2000},
-        {"nombre": "Ensalada", "cantidad": 1, "precio": 6500}
-    ]
-}"""
+  "needs_review": false,
+  "review_message": null,
+  "subtotal": 101630,
+  "tip": 10163,
+  "total": 111793,
+  "items": [
+    {"nombre": "Hamburguesa", "cantidad": 2, "precio": 8500},
+    {"nombre": "Bebida", "cantidad": 1, "precio": 2500}
+  ]
+}
+
+Si needs_review es true, incluye review_message explicando qué revisar."""
 
             logger.info("🤖 Enviando imagen a Gemini para análisis estructurado...")
             response = self.model.generate_content([prompt, image])
@@ -216,19 +224,28 @@ Responde SOLO con JSON válido (sin explicaciones):
                             'quantity': quantity
                         })
 
+                    # Extraer campos de revisión
+                    needs_review = data.get('needs_review', False)
+                    review_message = data.get('review_message', None)
+
                     result = {
                         'success': True,
                         'total': data.get('total', 0),
                         'subtotal': data.get('subtotal', 0),
-                        'tip': data.get('propina', 0),
+                        'tip': data.get('tip', data.get('propina', 0)),
                         'items': items,
-                        'confidence_score': 95  # Gemini JSON tiene alta confianza
+                        'needs_review': needs_review,
+                        'review_message': review_message,
+                        'confidence_score': 95 if not needs_review else 70
                     }
 
-                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}")
+                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, NeedsReview={needs_review}")
                     for i, it in enumerate(items[:3]):  # Mostrar primeros 3
                         unit_p = it['price'] // it['quantity'] if it['quantity'] > 0 else it['price']
                         logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${unit_p} = ${it['price']} (total línea)")
+
+                    if review_message:
+                        logger.warning(f"⚠️ Review message: {review_message}")
 
                     return result
                 else:
