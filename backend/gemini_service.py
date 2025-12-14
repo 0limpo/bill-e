@@ -211,16 +211,15 @@ Si needs_review es true, incluye review_message explicando qué revisar."""
                 # Validar estructura
                 if 'total' in data and 'items' in data:
                     # Convertir items de Gemini al formato interno
-                    # Gemini retorna precio UNITARIO, convertir a precio total de línea
+                    # Frontend espera price = PRECIO UNITARIO
                     items = []
                     for item in data.get('items', []):
                         unit_price = item.get('precio', 0)
                         quantity = item.get('cantidad', 1)
-                        line_total = unit_price * quantity
 
                         items.append({
                             'name': item.get('nombre', ''),
-                            'price': line_total,  # Precio total de la línea (unitario × cantidad)
+                            'price': unit_price,  # Precio UNITARIO (frontend multiplica por quantity)
                             'quantity': quantity
                         })
 
@@ -241,8 +240,8 @@ Si needs_review es true, incluye review_message explicando qué revisar."""
 
                     logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, NeedsReview={needs_review}")
                     for i, it in enumerate(items[:3]):  # Mostrar primeros 3
-                        unit_p = it['price'] // it['quantity'] if it['quantity'] > 0 else it['price']
-                        logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${unit_p} = ${it['price']} (total línea)")
+                        line_total = it['price'] * it['quantity']
+                        logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total} (total línea)")
 
                     if review_message:
                         logger.warning(f"⚠️ Review message: {review_message}")
