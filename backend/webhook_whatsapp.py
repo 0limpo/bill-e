@@ -29,6 +29,18 @@ except ImportError:
     print("Warning: Analytics not available")
     analytics_available = False
 
+# Importar i18n para WhatsApp
+try:
+    from whatsapp_i18n import (
+        detect_language,
+        get_message,
+        format_collaborative_message_i18n
+    )
+    i18n_available = True
+except ImportError:
+    print("Warning: WhatsApp i18n not available")
+    i18n_available = False
+
 # Importar WhatsApp Analytics
 try:
     from whatsapp_analytics import whatsapp_analytics
@@ -155,27 +167,34 @@ async def handle_webhook(request: Request):
 async def process_image_message(phone_number: str, image_data: dict):
     """Procesa mensaje con imagen (boleta) usando Vision + Gemini en paralelo."""
     try:
+        # Detect language from phone number
+        lang = detect_language(phone_number) if i18n_available else "es"
+
         # Enviar mensaje de procesamiento
+        processing_msg = get_message("processing", lang) if i18n_available else "Estoy procesando tu boleta..."
         await send_whatsapp_message(
             phone_number,
-            "⏳ Estoy procesando tu boleta..."
+            f"⏳ {processing_msg}"
         )
 
         # Obtener ID de la imagen
         media_id = image_data.get('id')
         if not media_id:
-            await send_whatsapp_message(phone_number, "❌ No pude obtener la imagen. Intenta de nuevo.")
+            error_msg = get_message("error_no_image", lang) if i18n_available else "No pude obtener la imagen. Intenta de nuevo."
+            await send_whatsapp_message(phone_number, f"❌ {error_msg}")
             return
 
         # Descargar imagen
         media_url = await get_whatsapp_media_url(media_id)
         if not media_url:
-            await send_whatsapp_message(phone_number, "❌ No pude descargar la imagen.")
+            error_msg = get_message("error_download", lang) if i18n_available else "No pude descargar la imagen."
+            await send_whatsapp_message(phone_number, f"❌ {error_msg}")
             return
 
         image_bytes = await download_whatsapp_media(media_url)
         if not image_bytes:
-            await send_whatsapp_message(phone_number, "❌ Error al descargar la imagen.")
+            error_msg = get_message("error_download", lang) if i18n_available else "Error al descargar la imagen."
+            await send_whatsapp_message(phone_number, f"❌ {error_msg}")
             return
 
         print(f"📥 Imagen descargada: {len(image_bytes)} bytes")
@@ -216,16 +235,29 @@ async def process_image_message(phone_number: str, image_data: dict):
                     raw_text=result.get('raw_text', '')
                 )
 
-                # Formatear mensaje con ambos links
-                message = format_collaborative_message(
-                    total=total,
-                    subtotal=subtotal,
-                    tip=tip,
-                    items_count=len(items),
-                    owner_url=session_result['owner_url'],
-                    editor_url=session_result['editor_url'],
-                    validation=validation
-                )
+                # Formatear mensaje con ambos links (i18n)
+                quality_score = validation.get('quality_score', 0) if validation else 0
+                if i18n_available:
+                    message = format_collaborative_message_i18n(
+                        lang=lang,
+                        total=total,
+                        subtotal=subtotal,
+                        tip=tip,
+                        items_count=len(items),
+                        owner_url=session_result['owner_url'],
+                        editor_url=session_result['editor_url'],
+                        is_verified=(quality_score == 100)
+                    )
+                else:
+                    message = format_collaborative_message(
+                        total=total,
+                        subtotal=subtotal,
+                        tip=tip,
+                        items_count=len(items),
+                        owner_url=session_result['owner_url'],
+                        editor_url=session_result['editor_url'],
+                        validation=validation
+                    )
 
                 print(f"✅ Sesión colaborativa creada: {session_result['session_id']}")
             else:
@@ -244,16 +276,20 @@ async def process_image_message(phone_number: str, image_data: dict):
 
         except Exception as ocr_error:
             print(f"❌ Error en OCR: {str(ocr_error)}")
+            error_msg = get_message("error_ocr", lang, error=str(ocr_error)) if i18n_available else f"Error al procesar la boleta: {str(ocr_error)}\n\nPor favor intenta con una foto más clara."
             await send_whatsapp_message(
                 phone_number,
-                f"❌ Error al procesar la boleta: {str(ocr_error)}\n\nPor favor intenta con una foto más clara."
+                f"❌ {error_msg}"
             )
 
     except Exception as e:
         print(f"❌ Error procesando imagen: {str(e)}")
+        # Note: lang might not be defined if error happened before language detection
+        error_lang = lang if 'lang' in dir() else "es"
+        error_msg = get_message("error_general", error_lang) if i18n_available else "Ocurrió un error. Por favor intenta de nuevo."
         await send_whatsapp_message(
             phone_number,
-            "❌ Ocurrió un error. Por favor intenta de nuevo."
+            f"❌ {error_msg}"
         )
 
 async def get_whatsapp_media_url(media_id: str) -> str:
@@ -570,11 +606,17 @@ def format_collaborative_message(
 # Función mejorada para procesar mensajes de texto
 async def process_text_message(phone_number: str, message: str):
     """Procesar mensajes de texto"""
-    
+
+    # Detect language from phone number
+    lang = detect_language(phone_number) if i18n_available else "es"
     message_lower = message.lower()
-    
-    if any(word in message_lower for word in ["hola", "hello", "hi", "start", "empezar"]):
-        welcome_message = (
+
+    # Keywords for each language
+    hello_words = ["hola", "hello", "hi", "start", "empezar", "oi", "olá", "你好", "नमस्ते", "salut", "bonjour", "привет", "こんにちは", "hallo", "hai"]
+    help_words = ["ayuda", "help", "como", "instructions", "ajuda", "帮助", "मदद", "aide", "помощь", "ヘルプ", "hilfe", "bantuan"]
+
+    if any(word in message_lower for word in hello_words):
+        welcome_message = get_message("welcome", lang) if i18n_available else (
             "🤖 ¡Hola! Soy Bill-e, tu asistente para dividir cuentas.\n\n"
             "📸 **Para empezar:**\n"
             "1️⃣ Toma una foto clara de tu boleta\n"
@@ -582,10 +624,10 @@ async def process_text_message(phone_number: str, message: str):
             "3️⃣ Te crearé un link para dividir automáticamente\n\n"
             "💡 También puedes escribir 'ayuda' para más información."
         )
-        await send_whatsapp_message(phone_number, welcome_message)
-        
-    elif any(word in message_lower for word in ["ayuda", "help", "como", "instructions"]):
-        help_message = (
+        await send_whatsapp_message(phone_number, f"🤖 {welcome_message}")
+
+    elif any(word in message_lower for word in help_words):
+        help_message = get_message("help", lang) if i18n_available else (
             "🆘 **Cómo usar Bill-e:**\n\n"
             "1️⃣ Toma una foto de tu boleta de restaurante\n"
             "2️⃣ Envíamela por WhatsApp\n"
@@ -598,29 +640,31 @@ async def process_text_message(phone_number: str, message: str):
             "• Evita sombras o reflejos\n\n"
             "🚀 **¿Listo?** ¡Envía tu boleta!"
         )
-        await send_whatsapp_message(phone_number, help_message)
-        
+        await send_whatsapp_message(phone_number, f"🆘 {help_message}")
+
     else:
-        default_message = (
+        default_message = get_message("default", lang) if i18n_available else (
             "🤔 Para dividir una cuenta, envíame una foto de tu boleta.\n\n"
             "📸 Solo toma la foto y envíamela - yo haré el resto.\n"
             "💡 Escribe 'ayuda' si necesitas más información."
         )
-        await send_whatsapp_message(phone_number, default_message)
+        await send_whatsapp_message(phone_number, f"🤔 {default_message}")
 
 # Función para procesar documentos (PDFs de boletas)
 async def process_document_message(phone_number: str, document_data: dict):
     """Procesar documentos (como PDFs de boletas)"""
-    
+
+    # Detect language from phone number
+    lang = detect_language(phone_number) if i18n_available else "es"
     document_name = document_data.get("filename", "documento")
-    
-    message = (
+
+    message = get_message("document_received", lang, filename=document_name) if i18n_available else (
         f"📄 Recibí tu documento: {document_name}\n\n"
         "🤖 Por ahora solo puedo procesar imágenes de boletas.\n"
         "📸 ¿Puedes enviarme una foto de la boleta en su lugar?"
     )
-    
-    await send_whatsapp_message(phone_number, message)
+
+    await send_whatsapp_message(phone_number, f"📄 {message}")
 
 # Función para enviar mensajes por WhatsApp (sin cambios)
 async def send_whatsapp_message(phone_number: str, message: str):

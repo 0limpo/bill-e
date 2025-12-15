@@ -9,6 +9,8 @@ import pt from './locales/pt.json';
 import zh from './locales/zh.json';
 import hi from './locales/hi.json';
 import fr from './locales/fr.json';
+import ar from './locales/ar.json';
+import bn from './locales/bn.json';
 import ru from './locales/ru.json';
 import ja from './locales/ja.json';
 import de from './locales/de.json';
@@ -21,6 +23,8 @@ const resources = {
   zh: { translation: zh },
   hi: { translation: hi },
   fr: { translation: fr },
+  ar: { translation: ar },
+  bn: { translation: bn },
   ru: { translation: ru },
   ja: { translation: ja },
   de: { translation: de },
@@ -33,7 +37,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    supportedLngs: ['es', 'en', 'pt', 'zh', 'hi', 'fr', 'ru', 'ja', 'de', 'id'],
+    supportedLngs: ['es', 'en', 'pt', 'zh', 'hi', 'fr', 'ar', 'bn', 'ru', 'ja', 'de', 'id'],
 
     detection: {
       order: ['navigator', 'htmlTag'],

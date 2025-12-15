@@ -1,0 +1,102 @@
+{
+  "selection": {
+    "whoAreYou": "من أنت؟",
+    "selectFromList": "اختر اسمك من القائمة",
+    "notInList": "+ اسمي غير موجود",
+    "hello": "أهلاً، {{name}}",
+    "confirmPhone": "أكد رقم هاتفك للمتابعة",
+    "phonePlaceholder": "رقم الهاتف (مطلوب)",
+    "phoneRequired": "* رقم الهاتف مطلوب (8 أرقام على الأقل)",
+    "confirmAndEnter": "تأكيد ودخول",
+    "entering": "جاري الدخول...",
+    "back": "← رجوع",
+    "newParticipant": "مشارك جديد",
+    "enterDetails": "أدخل بياناتك للانضمام",
+    "namePlaceholder": "اسمك",
+    "joining": "جاري الانضمام...",
+    "joinTable": "انضم للطاولة"
+  },
+  "header": {
+    "host": "المضيف",
+    "you": "أنت",
+    "addParticipant": "إضافة مشارك"
+  },
+  "items": {
+    "consumption": "الطلبات",
+    "individual": "فردي",
+    "grupal": "جماعي",
+    "allTogether": "الكل معاً",
+    "perUnit": "لكل وحدة",
+    "unit": "وحدة {{num}}",
+    "qty": "الكمية",
+    "itemName": "اسم الصنف",
+    "unitPrice": "سعر الوحدة",
+    "deleteItem": "حذف الصنف",
+    "total": "المجموع",
+    "perUnitSuffix": "للوحدة",
+    "newItem": "صنف جديد",
+    "name": "الاسم",
+    "price": "السعر",
+    "add": "إضافة",
+    "addManualItem": "+ إضافة صنف يدوياً"
+  },
+  "validation": {
+    "balanced": "متوازن",
+    "reviewTotals": "راجع المجاميع",
+    "totalItems": "مجموع الأصناف",
+    "totalAssigned": "المجموع الموزع",
+    "totalBill": "مجموع الفاتورة",
+    "subtotalItems": "المجموع الفرعي للأصناف",
+    "subtotalBill": "المجموع الفرعي للفاتورة",
+    "subtotalAssigned": "المجموع الفرعي الموزع",
+    "itemsSum": "مجموع الأصناف",
+    "missingToAssign": "متبقي {{amount}} للتوزيع",
+    "overAssigned": "زيادة {{amount}}"
+  },
+  "tip": {
+    "title": "بقشيش",
+    "titleWithPercent": "بقشيش ({{percent}}%)",
+    "titleFixed": "بقشيش (ثابت)",
+    "percent": "نسبة",
+    "fixed": "ثابت"
+  },
+  "totals": {
+    "tableTotal": "مجموع الطاولة",
+    "yourConsumption": "مجموعك",
+    "subtotal": "المجموع الفرعي",
+    "tipLabel": "بقشيش",
+    "total": "المجموع",
+    "tapForDetails": "اضغط للتفاصيل",
+    "selectItemsAbove": "اختر الأصناف أعلاه"
+  },
+  "finalized": {
+    "billClosed": "الفاتورة مغلقة",
+    "billOpen": "جاري التوزيع...",
+    "closeBill": "إغلاق الفاتورة",
+    "reopenTable": "إعادة فتح الطاولة",
+    "shareWhatsApp": "مشاركة على واتساب"
+  },
+  "modals": {
+    "confirmClose": "إغلاق الفاتورة؟ لن يتمكن المشاركون من التعديل.",
+    "confirmDelete": "حذف هذا الصنف؟",
+    "confirmReopen": "إعادة فتح الطاولة للتعديل؟ سيتم إعادة حساب المجاميع عند الإغلاق.",
+    "cancel": "إلغاء",
+    "close": "إغلاق",
+    "delete": "حذف",
+    "reopen": "إعادة فتح"
+  },
+  "participant": {
+    "editParticipant": "تعديل المشارك",
+    "save": "حفظ",
+    "whatDidTheyOrder": "ماذا طلبوا؟"
+  },
+  "errors": {
+    "sessionNotFound": "الجلسة غير موجودة أو منتهية",
+    "connectionError": "خطأ في الاتصال",
+    "createItemError": "خطأ في الاتصال أثناء إنشاء الصنف",
+    "invalidPrice": "أدخل سعراً صحيحاً أكبر من 0"
+  },
+  "time": {
+    "timer": "⏱️ {{time}}"
+  }
+}

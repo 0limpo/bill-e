@@ -4,12 +4,14 @@
 .env.production
 
 # Google Cloud credentials - NUNCA COMMITEAR
-*.json
 credentials/
 keys/
 secrets/
 backend/*.json
 backend/bill-e-ocr-*.json
+
+# Allow i18n locale files
+!frontend/src/i18n/locales/*.json
 
 # Dependencies
 node_modules/

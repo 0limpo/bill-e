@@ -2404,3 +2404,115 @@ body {
   text-align: left;
   padding-left: 4px;
 }
+
+/* =============================================================================
+   RTL SUPPORT (Arabic)
+   ============================================================================= */
+
+.collaborative-session.rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Flip horizontal layouts */
+.collaborative-session.rtl .participants-list {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .item-row {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .item-info {
+  text-align: right;
+}
+
+.collaborative-session.rtl .item-price {
+  text-align: left;
+}
+
+.collaborative-session.rtl .mode-selector {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .grupal-switch {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .unit-row {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .unit-label {
+  text-align: right;
+}
+
+.collaborative-session.rtl .assignee-chips {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+}
+
+/* Flip arrow icons */
+.collaborative-session.rtl .back-btn {
+  transform: scaleX(-1);
+}
+
+/* Floating timer position */
+.collaborative-session.rtl .floating-timer {
+  right: auto;
+  left: 16px;
+}
+
+/* Input text alignment */
+.collaborative-session.rtl input,
+.collaborative-session.rtl .join-input {
+  text-align: right;
+}
+
+.collaborative-session.rtl .input-hint {
+  text-align: right;
+  padding-left: 0;
+  padding-right: 4px;
+}
+
+/* Breakdown rows */
+.collaborative-session.rtl .breakdown-row {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .breakdown-item-name {
+  text-align: right;
+}
+
+.collaborative-session.rtl .breakdown-item-price {
+  text-align: left;
+}
+
+/* Totals section */
+.collaborative-session.rtl .total-row {
+  flex-direction: row-reverse;
+}
+
+/* Validation section */
+.collaborative-session.rtl .validation-status {
+  flex-direction: row-reverse;
+}
+
+/* Modal alignment */
+.collaborative-session.rtl .modal-content {
+  text-align: right;
+}
+
+.collaborative-session.rtl .modal-actions {
+  flex-direction: row-reverse;
+}
+
+/* Tip section */
+.collaborative-session.rtl .tip-modes {
+  flex-direction: row-reverse;
+}
+
+/* Add participant button label */
+.collaborative-session.rtl .add-btn-label {
+  text-align: center;
+}

@@ -636,7 +636,8 @@ const BillItem = ({
 // --- COMPONENTE PRINCIPAL ---
 
 const CollaborativeSession = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { id: sessionId } = useParams();
   const [searchParams] = useSearchParams();
   const ownerToken = searchParams.get('owner');
@@ -1904,7 +1905,7 @@ const CollaborativeSession = () => {
   const isBalanced = itemsMatch && assignedMatch;
 
   return (
-    <div className="collaborative-session">
+    <div className={`collaborative-session ${isRTL ? 'rtl' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* FLOATING TIMER - Top right corner */}
       <div className="floating-timer">{t('time.timer', { time: timeLeft })}</div>
 
