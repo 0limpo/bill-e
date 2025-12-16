@@ -29,3 +29,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Archive and working files
+_archive/
+contexto/
+gemini-translation-context/
+.claude/
