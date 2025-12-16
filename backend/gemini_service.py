@@ -222,38 +222,38 @@ Donde:
                 if 'total' in data and 'items' in data:
                     # Convertir items de Gemini al formato interno
                     items = []
-                    for item in data.get('items', []):
-                        unit_price = item.get('precio', 0)
-                        quantity = item.get('cantidad', 1)
+                    for item in data.get('items') or []:
+                        unit_price = item.get('precio') or 0
+                        quantity = item.get('cantidad') or 1
                         items.append({
-                            'name': item.get('nombre', ''),
+                            'name': item.get('nombre') or '',
                             'price': unit_price,
                             'quantity': quantity
                         })
 
                     # Convertir charges de Gemini al formato interno
                     charges = []
-                    for i, charge in enumerate(data.get('charges', [])):
+                    for i, charge in enumerate(data.get('charges') or []):
                         charges.append({
                             'id': f"charge_{i}",
-                            'name': charge.get('nombre', ''),
-                            'value': charge.get('valor', 0),
-                            'valueType': charge.get('tipo_valor', 'fixed'),
-                            'isDiscount': charge.get('es_descuento', False),
-                            'distribution': charge.get('distribucion', 'proportional')
+                            'name': charge.get('nombre') or '',
+                            'value': charge.get('valor') or 0,
+                            'valueType': charge.get('tipo_valor') or 'fixed',
+                            'isDiscount': charge.get('es_descuento') or False,
+                            'distribution': charge.get('distribucion') or 'proportional'
                         })
 
-                    needs_review = data.get('needs_review', False)
-                    review_message = data.get('review_message', None)
+                    needs_review = data.get('needs_review') or False
+                    review_message = data.get('review_message')
 
                     result = {
                         'success': True,
-                        'total': data.get('total', 0),
-                        'subtotal': data.get('subtotal', 0),
-                        'tip': data.get('tip', data.get('propina', 0)),
+                        'total': data.get('total') or 0,
+                        'subtotal': data.get('subtotal') or 0,
+                        'tip': data.get('tip') or data.get('propina') or 0,
                         'items': items,
                         'charges': charges,
-                        'price_mode': data.get('price_mode', 'discounted'),
+                        'price_mode': data.get('price_mode') or 'discounted',
                         'needs_review': needs_review,
                         'review_message': review_message,
                         'confidence_score': 95 if not needs_review else 70

@@ -288,8 +288,8 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
                 })
 
     total_subtotal = sum(participant_subtotals.values())
-    total_tip = session_data.get("tip", 0)
-    charges = session_data.get("charges", [])
+    total_tip = session_data.get("tip") or 0
+    charges = session_data.get("charges") or []
     num_participants = len(participants)
 
     results = []
@@ -307,12 +307,12 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
         participant_charges = []
         charges_total = 0
         for charge in charges:
-            charge_id = charge.get("id", "")
-            charge_name = charge.get("name", "")
-            value = charge.get("value", 0)
-            value_type = charge.get("valueType", "fixed")
-            is_discount = charge.get("isDiscount", False)
-            distribution = charge.get("distribution", "proportional")
+            charge_id = charge.get("id") or ""
+            charge_name = charge.get("name") or ""
+            value = charge.get("value") or 0
+            value_type = charge.get("valueType") or "fixed"
+            is_discount = charge.get("isDiscount") or False
+            distribution = charge.get("distribution") or "proportional"
 
             # Calculate charge amount
             if value_type == "percent":
