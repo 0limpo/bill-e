@@ -139,11 +139,19 @@ Objetivo: Extraer con precisión matemática todos los componentes de la boleta.
 
 ## PROTOCOLO DE RAZONAMIENTO (Chain of Thought)
 
-### 1. Análisis de Formato Numérico
+### 1. Análisis de Formato Numérico (MUY IMPORTANTE)
 Detecta el formato de puntuación:
-- Formato A: punto = miles, coma = decimales (1.000,50)
-- Formato B: coma = miles, punto = decimales (1,000.50)
-- Formato C: sin separador de miles (1000.50 o 1000,50)
+- Formato A (EU/LATAM): punto = miles, coma = decimales (1.000,50)
+- Formato B (US): coma = miles, punto = decimales (1,000.50)
+- Formato C (Chile CLP): punto = miles, SIN decimales ($13.990 = 13990 pesos)
+
+**DETECCIÓN DE FORMATO CHILENO:**
+Si ves precios como $13.990, $4.000, $35.970 donde TODOS siguen el patrón X.XXX (número.3dígitos):
+- Es formato CHILENO: el punto es separador de MILES, no hay decimales
+- $13.990 = 13990 pesos (trece mil novecientos noventa)
+- $4.000 = 4000 pesos (cuatro mil)
+- Retorna: decimal_places=0, number_format={"thousands": ".", "decimal": ","}
+- El precio en JSON debe ser el NÚMERO ENTERO: 13990, no 13.99
 
 ### 2. Escaneo de Cantidades
 Busca ítems con cantidad > 1 (ej: "2x Coca Cola", "3 Pan").
@@ -187,30 +195,46 @@ Si "SERVICE $7.40" está listado con los platos y la suma sin él no da el subto
 - "precio" SIEMPRE = precio unitario (de 1 unidad)
 - Ignora símbolos de moneda ($, €, £)
 - Si cantidad no explícita, asume 1
-- PRESERVA DECIMALES: Si la boleta muestra "12.50" o "12,50" con centavos, retorna 12.50 (punto decimal)
-- Todos los números en JSON deben usar PUNTO como decimal (estándar JSON)
+- FORMATO CHILENO: Si detectas formato chileno ($13.990 = 13990), retorna el número ENTERO sin punto
+- OTROS FORMATOS: Si hay centavos reales (USD, EUR), retorna con decimales (12.50)
+- Todos los números en JSON deben ser NUMÉRICOS (no strings)
 
 ## FORMATO DE RESPUESTA
 
-Retorna SOLO JSON válido:
+Retorna SOLO JSON válido.
+
+**Ejemplo formato US (con decimales):**
+{
+  "decimal_places": 2,
+  "number_format": {"thousands": ",", "decimal": "."},
+  "items": [{"nombre": "Burger", "cantidad": 1, "precio": 12.50}],
+  "subtotal": 12.50, "total": 13.50
+}
+
+**Ejemplo formato CHILENO (sin decimales, punto=miles):**
+Si la boleta muestra "$13.990" (trece mil novecientos noventa pesos):
+{
+  "decimal_places": 0,
+  "number_format": {"thousands": ".", "decimal": ","},
+  "items": [{"nombre": "Jarra Sangria", "cantidad": 1, "precio": 13990}],
+  "subtotal": 13990, "total": 13990
+}
+
+**Estructura completa:**
 {
   "needs_review": false,
   "review_message": null,
-  "decimal_places": 2,
-  "number_format": {"thousands": ",", "decimal": "."},
+  "decimal_places": 0,
+  "number_format": {"thousands": ".", "decimal": ","},
   "items": [
-    {"nombre": "Hamburguesa", "cantidad": 2, "precio": 85.00},
-    {"nombre": "Cerveza", "cantidad": 2, "precio": 30.00},
-    {"nombre": "Service", "cantidad": 1, "precio": 7.40}
+    {"nombre": "Jarra Sangria", "cantidad": 1, "precio": 13990},
+    {"nombre": "Pan Mechada", "cantidad": 3, "precio": 35970}
   ],
-  "charges": [
-    {"nombre": "SALES TAX 7%", "valor": 7, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"},
-    {"nombre": "City Tax 2%", "valor": 2, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"}
-  ],
-  "subtotal": 207.40,
+  "charges": [],
+  "subtotal": 121900,
   "tip": 0,
   "has_tip": false,
-  "total": 226.07,
+  "total": 121900,
   "price_mode": "original"
 }
 
