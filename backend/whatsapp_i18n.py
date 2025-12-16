@@ -830,7 +830,8 @@ def format_collaborative_message_i18n(
     items_count: int,
     owner_url: str,
     editor_url: str,
-    is_verified: bool = False
+    is_verified: bool = False,
+    decimal_places: int = 0
 ) -> str:
     """
     Format the collaborative session message in the specified language.
@@ -844,12 +845,19 @@ def format_collaborative_message_i18n(
         owner_url: URL for the host
         editor_url: URL for sharing
         is_verified: Whether totals are verified (quality_score == 100)
+        decimal_places: Number of decimal places for currency (0 for CLP, 2 for USD)
 
     Returns:
         Formatted WhatsApp message
     """
     # Calculate tip percentage
     tip_percent = ((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 0
+
+    # Format currency based on decimal_places
+    def fmt(amount):
+        if decimal_places > 0:
+            return f"${amount:,.{decimal_places}f}"
+        return f"${amount:,.0f}"
 
     # Status emoji and text
     if is_verified:
@@ -864,9 +872,9 @@ def format_collaborative_message_i18n(
 
 {status_emoji} *{status_text}*
 
-💰 {get_message("session_total", lang)}: ${total:,.0f}
-📊 {get_message("session_subtotal", lang)}: ${subtotal:,.0f}
-🎁 {get_message("session_tip", lang)}: ${tip:,.0f} ({tip_percent:.0f}%)
+💰 {get_message("session_total", lang)}: {fmt(total)}
+📊 {get_message("session_subtotal", lang)}: {fmt(subtotal)}
+🎁 {get_message("session_tip", lang)}: {fmt(tip)} ({tip_percent:.0f}%)
 📝 {get_message("session_items", lang)}: {items_count}
 
 ━━━━━━━━━━━━━━━━━━

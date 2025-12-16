@@ -239,6 +239,7 @@ async def process_image_message(phone_number: str, image_data: dict):
 
                 # Formatear mensaje con ambos links (i18n)
                 quality_score = validation.get('quality_score', 0) if validation else 0
+                decimal_places = result.get('decimal_places', 0)
                 if i18n_available:
                     message = format_collaborative_message_i18n(
                         lang=lang,
@@ -248,7 +249,8 @@ async def process_image_message(phone_number: str, image_data: dict):
                         items_count=len(items),
                         owner_url=session_result['owner_url'],
                         editor_url=session_result['editor_url'],
-                        is_verified=(quality_score == 100)
+                        is_verified=(quality_score == 100),
+                        decimal_places=decimal_places
                     )
                 else:
                     message = format_collaborative_message(
