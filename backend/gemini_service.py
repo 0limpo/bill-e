@@ -412,6 +412,9 @@ Donde:
                     # Remover primera línea (```json) y última (```)
                     response_text = '\n'.join(lines[1:-1])
 
+                # Log raw response from Gemini
+                logger.info(f"📄 Gemini RAW response:\n{response_text}")
+
                 # Parsear JSON
                 data = json.loads(response_text)
 
@@ -484,7 +487,7 @@ Donde:
                         }
                     }
 
-                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, Charges={len(charges)}, Decimals={decimal_places}")
+                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Subtotal=${result['subtotal']}, Tip=${result['tip']}, Items={len(items)}, Charges={len(charges)}, Decimals={decimal_places}")
                     for i, it in enumerate(items):
                         line_total = it['price'] * it['quantity']
                         logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total}")
