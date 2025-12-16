@@ -139,18 +139,34 @@ Objetivo: Extraer con precisión matemática todos los componentes de la boleta.
 
 ## PROTOCOLO DE RAZONAMIENTO (Chain of Thought)
 
-### 1. Análisis de Formato Numérico
-Detecta el formato de puntuación:
-- Formato A: punto = miles, coma = decimales (1.000,50)
-- Formato B: coma = miles, punto = decimales (1,000.50)
-- Formato C: sin separador de miles (1000.50 o 1000,50)
+### 1. Análisis de Formato Numérico (CRÍTICO)
+Detecta el formato de puntuación mirando el TOTAL de la boleta:
+- Si total tiene 3 dígitos después del punto (ej: 111.793) → punto = miles, NO hay decimales
+- Si total tiene 2 dígitos después del punto (ej: 111.79) → punto = decimales
+- Si total tiene coma con 2 dígitos (ej: 111,79) → coma = decimales
+
+CLAVE: Monedas SIN centavos (CLP, COP, JPY, etc.) usan punto como MILES:
+- "13.990" = 13990 (trece mil novecientos noventa), NO 13.99
+- "4.000" = 4000 (cuatro mil), NO 4.0
+- "111.793" = 111793 (ciento once mil), NO 111.793
+
+Confirma mirando si los precios de items individuales tienen sentido (una coca cola no cuesta $4)
 
 ### 2. Escaneo de Cantidades
 Busca ítems con cantidad > 1 (ej: "2x Coca Cola", "3 Pan").
 
-### 3. Test de Hipótesis de Precio
-- Si precio bajo → Precio Unitario
-- Si precio alto (N veces valor estándar) → Total de Línea → DIVIDIR
+### 3. Test de Hipótesis de Precio (CRÍTICO)
+La boleta puede mostrar PRECIO UNITARIO o TOTAL DE LÍNEA. Debes retornar siempre PRECIO UNITARIO.
+
+Para cada item con cantidad > 1:
+1. Mira el precio mostrado en la boleta
+2. Calcula: ¿Σ(precios_mostrados) ≈ subtotal?
+   - SI → Los precios mostrados son TOTALES DE LÍNEA → DIVIDE por cantidad
+   - NO → Los precios mostrados son UNITARIOS → usa directo
+
+Ejemplo: "2 Coca Cola ... 4.000" con subtotal cercano a Σ(precios)
+- Si 4.000 es TOTAL DE LÍNEA → precio unitario = 4000/2 = 2000
+- Verifica: Σ(unitario × cantidad) debe ≈ subtotal
 
 ### 4. Identificación de Descuentos
 Busca líneas que RESTAN: "Desc.", "Discount", "-10%", "Promo", "Happy Hour", "2x1", cupones, puntos.
@@ -173,10 +189,16 @@ La regla clave es: ¿DÓNDE aparece la línea en la boleta?
 **VERIFICACIÓN**: Suma de items debe ≈ subtotal de la boleta
 Si "SERVICE $7.40" está listado con los platos y la suma sin él no da el subtotal, entonces es un ITEM.
 
-### 6. Verificación Cruzada
-- Si price_mode="original": Σ(items) - Σ(descuentos) ≈ subtotal
-- Si price_mode="discounted": Σ(items) ≈ subtotal
-- subtotal + Σ(cargos) + propina ≈ total
+### 6. Verificación Cruzada (OBLIGATORIA)
+ANTES de retornar, verifica que la matemática cuadre:
+
+1. Σ(precio_unitario × cantidad) debe ≈ subtotal (tolerancia 2%)
+2. subtotal + cargos + propina ≈ total
+
+Si NO cuadra, revisa:
+- ¿Interpretaste bien el formato numérico? (punto como miles vs decimales)
+- ¿Los precios son unitarios o totales de línea?
+- Ajusta y vuelve a verificar
 
 ### 7. Validación Final
 - Todo cuadra (< 2%) → needs_review: false
@@ -184,11 +206,13 @@ Si "SERVICE $7.40" está listado con los platos y la suma sin él no da el subto
 
 ## INSTRUCCIONES
 
-- "precio" SIEMPRE = precio unitario (de 1 unidad)
+- "precio" SIEMPRE = precio unitario (de 1 unidad). Si la boleta muestra total de línea, DIVIDE.
 - Ignora símbolos de moneda ($, €, £)
 - Si cantidad no explícita, asume 1
-- PRESERVA DECIMALES: Si la boleta muestra "12.50" o "12,50" con centavos, retorna 12.50 (punto decimal)
-- Todos los números en JSON deben usar PUNTO como decimal (estándar JSON)
+- FORMATO NUMÉRICO: Detecta si el punto es separador de miles (3+ dígitos después) o decimal (2 dígitos después)
+  - "13.990" con total "111.793" → punto = miles → retorna 13990, total 111793
+  - "13.99" con total "111.79" → punto = decimal → retorna 13.99, total 111.79
+- Todos los números en JSON deben ser valores numéricos reales (sin separadores de miles)
 
 ## FORMATO DE RESPUESTA
 
