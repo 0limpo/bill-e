@@ -288,24 +288,38 @@ CLAVE: Monedas SIN centavos (CLP, COP, JPY) usan punto como MILES:
 ### 2. Escaneo de Cantidades
 Busca ítems con cantidad > 1 (ej: "2x Coca Cola", "3 Pan").
 
-### 2.5. Deduplicación de Items Similares (IMPORTANTE)
-El OCR puede leer el mismo item con pequeñas variaciones. AGRUPA items que cumplan AMBOS criterios:
-- Nombres 85%+ similares DESPUÉS de normalizar (ver abajo)
-- Precios dentro del 5% de diferencia (ej: $3760 ≈ $3768)
+### 2.5. Lectura RAW + Deduplicación (IMPORTANTE)
+Debes retornar DOS listas:
 
-**Normalización de nombres para comparar**:
-- Ignora sufijos de descuento: "20% de descuento", "20% desc", "descuento", "20%", etc.
-- Ignora puntuación final: puntos, comas, espacios extra
-- "Summer Ale 568cc 20% de descuento" → normaliza a "Summer Ale 568cc"
-- "Summer Ale 568CC" → normaliza a "Summer Ale 568cc"
+**A) raw_items**: EXACTAMENTE lo que ves en la boleta, línea por línea, sin agrupar.
+- Cada línea de la boleta = 1 entrada en raw_items
+- Si ves 15 líneas de "Summer Ale", retorna 15 objetos separados
+- Incluye el texto EXACTO como aparece (con errores de OCR si los hay)
 
-Al agrupar:
-- Suma las cantidades
-- Usa el precio más frecuente
-- Usa el nombre más corto/limpio (sin sufijos de descuento)
+**B) items**: Items agrupados/deduplicados para usar en la app.
+- Agrupa items con nombres 85%+ similares Y precios dentro del 5%
+- Normaliza nombres: ignora "20% de descuento", puntuación, mayúsculas
+- Suma cantidades, usa precio más frecuente, nombre más limpio
 
-Ejemplo: "Summer Ale 568cc 20% de descuento" + 14x "Summer Ale 568cc" a precios $3760-$3768:
-{"nombre": "Summer Ale 568cc", "cantidad": 15, "precio": 3760}
+Ejemplo de boleta con 3 líneas:
+```
+Summer Ale 568cc ... 3.760
+Summer Ale 568CC ... 3.760
+Chelada ... 1.000
+```
+
+Retorna:
+```
+"raw_items": [
+  {"nombre": "Summer Ale 568cc", "precio": 3760},
+  {"nombre": "Summer Ale 568CC", "precio": 3760},
+  {"nombre": "Chelada", "precio": 1000}
+],
+"items": [
+  {"nombre": "Summer Ale 568cc", "cantidad": 2, "precio": 3760},
+  {"nombre": "Chelada", "cantidad": 1, "precio": 1000}
+]
+```
 
 ### 3. Test de Hipótesis de Precio (CRÍTICO)
 La boleta puede mostrar PRECIO UNITARIO o TOTAL DE LÍNEA. Debes retornar siempre PRECIO UNITARIO.
@@ -374,6 +388,13 @@ Retorna SOLO JSON válido:
   "review_message": null,
   "decimal_places": 2,
   "number_format": {"thousands": ",", "decimal": "."},
+  "raw_items": [
+    {"nombre": "Hamburguesa", "precio": 85.00},
+    {"nombre": "Hamburguesa", "precio": 85.00},
+    {"nombre": "Cerveza", "precio": 30.00},
+    {"nombre": "Cerveza", "precio": 30.00},
+    {"nombre": "Service", "precio": 7.40}
+  ],
   "items": [
     {"nombre": "Hamburguesa", "cantidad": 2, "precio": 85.00},
     {"nombre": "Cerveza", "cantidad": 2, "precio": 30.00},
@@ -487,7 +508,15 @@ Donde:
                         }
                     }
 
+                    # Log raw items (line by line as seen in receipt)
+                    raw_items = data.get('raw_items') or []
+                    logger.info(f"📋 RAW items (línea por línea): {len(raw_items)} líneas")
+                    for i, raw in enumerate(raw_items):
+                        logger.info(f"   Línea {i+1}: {raw.get('nombre', '?')} @ ${raw.get('precio', 0)}")
+
+                    # Log grouped items
                     logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Subtotal=${result['subtotal']}, Tip=${result['tip']}, Items={len(items)}, Charges={len(charges)}, Decimals={decimal_places}")
+                    logger.info(f"📦 Items agrupados:")
                     for i, it in enumerate(items):
                         line_total = it['price'] * it['quantity']
                         logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total}")
