@@ -18,13 +18,13 @@ except ImportError as e:
     print(f"Warning: Could not import some modules: {e}")
     redis_client = None
 
-# Importar OCR service (Vision + Gemini paralelo)
+# Importar OCR service (Gemini)
 try:
-    from ocr_enhanced import process_image_parallel
+    from gemini_service import process_image
     ocr_available = True
 except ImportError as e:
     print(f"Warning: OCR service not available: {e}")
-    process_image_parallel = None
+    process_image = None
     ocr_available = False
 
 # Importar Analytics
@@ -203,7 +203,7 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
 
         # Procesar con OCR (Vision + Gemini paralelo)
         try:
-            ocr_result = process_image_parallel(image_bytes)
+            ocr_result = process_image(image_bytes)
 
             if not ocr_result.get('success'):
                 raise HTTPException(status_code=400, detail=ocr_result.get('error', 'Error en OCR'))
@@ -276,7 +276,7 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
 
         # Procesar con OCR (Vision + Gemini paralelo)
         try:
-            ocr_result = process_image_parallel(image_bytes)
+            ocr_result = process_image(image_bytes)
 
             if not ocr_result.get('success'):
                 raise HTTPException(status_code=400, detail=ocr_result.get('error', 'Error en OCR'))

@@ -7,12 +7,12 @@ import httpx
 import redis
 import base64
 
-# Importar OCR service (Vision + Gemini paralelo)
+# Importar OCR service (Gemini)
 try:
-    from ocr_enhanced import process_image_parallel
+    from gemini_service import process_image
 except ImportError:
     print("Warning: OCR service not available")
-    process_image_parallel = None
+    process_image = None
 
 # Importar sesiones colaborativas
 try:
@@ -201,7 +201,7 @@ async def process_image_message(phone_number: str, image_data: dict):
 
         # Procesar con Vision + Gemini en paralelo
         try:
-            result = process_image_parallel(image_bytes)
+            result = process_image(image_bytes)
 
             # Extraer datos
             total = result.get('total', 0)

@@ -304,6 +304,9 @@ Donde:
                     # Get number format from receipt (default to US format if not detected)
                     number_format = data.get('number_format', {'thousands': ',', 'decimal': '.'})
 
+                    # Calculate quality score based on needs_review
+                    quality_score = 100 if not needs_review else 70
+
                     result = {
                         'success': True,
                         'total': data.get('total') or 0,
@@ -317,7 +320,14 @@ Donde:
                         'number_format': number_format,
                         'needs_review': needs_review,
                         'review_message': review_message,
-                        'confidence_score': 95 if not needs_review else 70
+                        'confidence_score': quality_score,
+                        'ocr_source': 'gemini',
+                        # Compatibility with ocr_enhanced validation format
+                        'validation': {
+                            'quality_score': quality_score,
+                            'is_valid': not needs_review,
+                            'quality_level': 'verified' if not needs_review else 'review'
+                        }
                     }
 
                     logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, Charges={len(charges)}, Decimals={decimal_places}")
@@ -349,3 +359,31 @@ Donde:
 
 # Instancia global del servicio
 gemini_service = GeminiOCRService()
+
+
+def process_image(image_bytes: bytes):
+    """
+    Procesa imagen con Gemini OCR.
+    Reemplaza process_image_parallel de ocr_enhanced.py.
+
+    Args:
+        image_bytes: Bytes de la imagen
+
+    Returns:
+        Dict con resultado estructurado o raise Exception si falla
+    """
+    logger.info("🚀 Iniciando procesamiento con Gemini...")
+
+    if not gemini_service.is_available():
+        logger.error("❌ Gemini no disponible")
+        raise Exception("Gemini OCR no disponible")
+
+    result = gemini_service.process_image_structured(image_bytes)
+
+    if not result or not result.get('success'):
+        logger.error("❌ Resultado de Gemini no válido")
+        raise Exception("No se pudo procesar la imagen")
+
+    logger.info(f"✅ OCR completado: {len(result.get('items', []))} items, score: {result['validation']['quality_score']}")
+
+    return result
