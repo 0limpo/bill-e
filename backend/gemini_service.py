@@ -157,8 +157,21 @@ Busca líneas que RESTAN: "Desc.", "Discount", "-10%", "Promo", "Happy Hour", "2
 Determina si aplica a un ítem específico o a toda la cuenta.
 Determina si los precios YA incluyen el descuento o es línea separada.
 
-### 5. Identificación de Cargos
-Busca líneas que SUMAN: IVA, VAT, GST, Tax, Servicio, Service, Cubierto, Cover, Coperto, Recargo, Surcharge.
+### 5. Distinción ITEMS vs CARGOS (MUY IMPORTANTE)
+La regla clave es: ¿DÓNDE aparece la línea en la boleta?
+
+**ES UN ITEM si:**
+- Aparece en la sección de productos/consumo (junto a comida/bebida)
+- Tiene un precio FIJO en dólares/pesos (no porcentaje)
+- Ejemplos que SON ITEMS: "SERVICE $7.40", "Servicio $5.00", "Cover $3.00"
+
+**ES UN CARGO si:**
+- Aparece DESPUÉS del subtotal, en la sección de cálculos finales
+- Es un PORCENTAJE aplicado al subtotal (ej: "Tax 7%", "IVA 19%")
+- Ejemplos: "SALES TAX 7%", "City Tax 2%", "IVA 19%"
+
+**VERIFICACIÓN**: Suma de items debe ≈ subtotal de la boleta
+Si "SERVICE $7.40" está listado con los platos y la suma sin él no da el subtotal, entonces es un ITEM.
 
 ### 6. Verificación Cruzada
 - Si price_mode="original": Σ(items) - Σ(descuentos) ≈ subtotal
@@ -186,16 +199,17 @@ Retorna SOLO JSON válido:
   "decimal_places": 2,
   "items": [
     {"nombre": "Hamburguesa", "cantidad": 2, "precio": 85.00},
-    {"nombre": "Cerveza", "cantidad": 2, "precio": 30.00}
+    {"nombre": "Cerveza", "cantidad": 2, "precio": 30.00},
+    {"nombre": "Service", "cantidad": 1, "precio": 7.40}
   ],
   "charges": [
-    {"nombre": "IVA", "valor": 19, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"},
-    {"nombre": "Cubierto", "valor": 20.00, "tipo_valor": "fixed", "es_descuento": false, "distribucion": "per_person"},
-    {"nombre": "Happy Hour", "valor": 30.00, "tipo_valor": "fixed", "es_descuento": true, "distribucion": "proportional"}
+    {"nombre": "SALES TAX 7%", "valor": 7, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"},
+    {"nombre": "City Tax 2%", "valor": 2, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"}
   ],
-  "subtotal": 170.00,
-  "tip": 17.00,
-  "total": 236.45,
+  "subtotal": 207.40,
+  "tip": 0,
+  "has_tip": false,
+  "total": 226.07,
   "price_mode": "original"
 }
 
@@ -204,7 +218,8 @@ Donde:
 - tipo_valor: "percent" o "fixed"
 - es_descuento: true si resta, false si suma
 - distribucion: "proportional" (según consumo) o "per_person" (igual para todos)
-- price_mode: "original" (precios antes de descuentos) o "discounted" (ya descontados)"""
+- price_mode: "original" (precios antes de descuentos) o "discounted" (ya descontados)
+- has_tip: true SOLO si la boleta muestra explícitamente propina/tip/gratuity, false si no aparece"""
 
             logger.info("🤖 Enviando imagen a Gemini para análisis estructurado...")
             response = self.model.generate_content([prompt, image])
@@ -258,11 +273,16 @@ Donde:
                         ) or (data.get('total') or 0) % 1 != 0
                         decimal_places = 2 if has_decimals else 0
 
+                    # Determine if receipt explicitly shows tip
+                    tip_value = data.get('tip') or data.get('propina') or 0
+                    has_tip = data.get('has_tip', tip_value > 0)  # True if explicitly set or tip > 0
+
                     result = {
                         'success': True,
                         'total': data.get('total') or 0,
                         'subtotal': data.get('subtotal') or 0,
-                        'tip': data.get('tip') or data.get('propina') or 0,
+                        'tip': tip_value,
+                        'has_tip': has_tip,
                         'items': items,
                         'charges': charges,
                         'price_mode': data.get('price_mode') or 'discounted',

@@ -1660,15 +1660,17 @@ const CollaborativeSession = () => {
       chargesTotal += participantCharge;
     });
 
-    // SMART TIP LOGIC
-    const tipMode = session.tip_mode || 'percent';
-    const tipValue = session.tip_value ?? session.tip_percentage ?? 10;
-
+    // SMART TIP LOGIC - Only apply if receipt has tip
     let tipAmount = 0;
-    if (tipMode === 'fixed') {
-      tipAmount = tipValue / numParticipants;
-    } else {
-      tipAmount = subtotal * (tipValue / 100);
+    if (session.has_tip) {
+      const tipMode = session.tip_mode || 'percent';
+      const tipValue = session.tip_value ?? session.tip_percentage ?? 10;
+
+      if (tipMode === 'fixed') {
+        tipAmount = tipValue / numParticipants;
+      } else {
+        tipAmount = subtotal * (tipValue / 100);
+      }
     }
 
     const total = includesTip ? subtotal + chargesTotal + tipAmount : subtotal + chargesTotal;
@@ -2131,17 +2133,19 @@ const CollaborativeSession = () => {
   // Total Boleta = OCR target subtotal (static unless manually changed by Host)
   const totalBoleta = session.subtotal || 0;
 
-  // SMART TIP: Dynamic displayedTotal based on tip_mode
+  // SMART TIP: Dynamic displayedTotal based on tip_mode (only if receipt has tip)
   const currentItemSum = totalItems; // Sum of all items at current prices
   const tipMode = session.tip_mode || 'percent';
   const tipValue = session.tip_value ?? session.tip_percentage ?? 10;
 
-  // Calculate total tip amount based on mode
+  // Calculate total tip amount based on mode - only if has_tip
   let totalTipAmount = 0;
-  if (tipMode === 'fixed') {
-    totalTipAmount = tipValue; // Fixed amount
-  } else {
-    totalTipAmount = currentItemSum * (tipValue / 100); // Percentage
+  if (session.has_tip) {
+    if (tipMode === 'fixed') {
+      totalTipAmount = tipValue; // Fixed amount
+    } else {
+      totalTipAmount = currentItemSum * (tipValue / 100); // Percentage
+    }
   }
   const displayedTotal = currentItemSum + totalTipAmount;
 
@@ -2450,14 +2454,16 @@ const CollaborativeSession = () => {
                         }
                       }
                     });
+                    const numParticipants = session.participants?.length || 1;
                     const tipModeLocal = session.tip_mode || 'percent';
                     const tipValueLocal = session.tip_value ?? session.tip_percentage ?? 10;
-                    const numParticipants = session.participants?.length || 1;
                     let myTip = 0;
-                    if (tipModeLocal === 'fixed') {
-                      myTip = tipValueLocal / numParticipants;
-                    } else {
-                      myTip = mySubtotal * (tipValueLocal / 100);
+                    if (session.has_tip) {
+                      if (tipModeLocal === 'fixed') {
+                        myTip = tipValueLocal / numParticipants;
+                      } else {
+                        myTip = mySubtotal * (tipValueLocal / 100);
+                      }
                     }
 
                     // Calculate charges for finalized editor view
@@ -2779,48 +2785,50 @@ const CollaborativeSession = () => {
                     </div>
                   )}
 
-                  {/* SMART TIP CONTROLS */}
-                  <div className="tip-controls" onClick={(e) => e.stopPropagation()}>
-                    <div className="tip-header">
-                      <span className="tip-label">{t('tip.title')}</span>
-                      <div className="tip-mode-switch">
-                        <button
-                          className={`tip-mode-btn ${tipMode === 'percent' ? 'active' : ''}`}
-                          onClick={() => handleUpdateTip('percent', tipValue)}
-                        >
-                          %
-                        </button>
-                        <button
-                          className={`tip-mode-btn ${tipMode === 'fixed' ? 'active' : ''}`}
-                          onClick={() => handleUpdateTip('fixed', tipValue)}
-                        >
-                          $
-                        </button>
+                  {/* SMART TIP CONTROLS - Only show if receipt has tip */}
+                  {session.has_tip && (
+                    <div className="tip-controls" onClick={(e) => e.stopPropagation()}>
+                      <div className="tip-header">
+                        <span className="tip-label">{t('tip.title')}</span>
+                        <div className="tip-mode-switch">
+                          <button
+                            className={`tip-mode-btn ${tipMode === 'percent' ? 'active' : ''}`}
+                            onClick={() => handleUpdateTip('percent', tipValue)}
+                          >
+                            %
+                          </button>
+                          <button
+                            className={`tip-mode-btn ${tipMode === 'fixed' ? 'active' : ''}`}
+                            onClick={() => handleUpdateTip('fixed', tipValue)}
+                          >
+                            $
+                          </button>
+                        </div>
+                      </div>
+                      <div className="tip-input-row">
+                        <input
+                          type="number"
+                          className="tip-input"
+                          value={tipValue || ''}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            handleUpdateTip(tipMode, val);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.target.blur();
+                            }
+                          }}
+                        />
+                        <span className="tip-helper">
+                          {tipMode === 'percent'
+                            ? `= ${fmt(totalTipAmount)}`
+                            : `÷ ${session.participants?.length || 1} = ${fmt(totalTipAmount / (session.participants?.length || 1))}/pers`
+                          }
+                        </span>
                       </div>
                     </div>
-                    <div className="tip-input-row">
-                      <input
-                        type="number"
-                        className="tip-input"
-                        value={tipValue || ''}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          handleUpdateTip(tipMode, val);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.target.blur();
-                          }
-                        }}
-                      />
-                      <span className="tip-helper">
-                        {tipMode === 'percent'
-                          ? `= ${fmt(totalTipAmount)}`
-                          : `÷ ${session.participants?.length || 1} = ${fmt(totalTipAmount / (session.participants?.length || 1))}/pers`
-                        }
-                      </span>
-                    </div>
-                  </div>
+                  )}
 
                   {/* CHARGES SECTION (Taxes, Discounts, etc.) */}
                   <div className="charges-section" onClick={(e) => e.stopPropagation()}>

@@ -441,6 +441,7 @@ async def get_collaborative_session(session_id: str, owner: str = None):
             "tip_percentage": session_data.get("tip_percentage", 10),
             "tip_mode": session_data.get("tip_mode", "percent"),  # "percent" or "fixed"
             "tip_value": session_data.get("tip_value", 10.0),  # Default 10%
+            "has_tip": session_data.get("has_tip", False),  # True only if receipt shows tip
             "decimal_places": session_data.get("decimal_places", 0),  # 0 for CLP, 2 for USD
             "expires_at": session_data["expires_at"],
             "last_updated": session_data.get("last_updated"),
@@ -601,6 +602,7 @@ async def poll_session(session_id: str, last_update: str = None):
             "tip_mode": session_data.get("tip_mode", "percent"),
             "tip_value": session_data.get("tip_value", 10.0),
             "tip_percentage": session_data.get("tip_percentage", 10),
+            "has_tip": session_data.get("has_tip", False),  # True only if receipt shows tip
             "charges": session_data.get("charges", []),  # Include charges for sync
             "decimal_places": session_data.get("decimal_places", 0),  # Include for currency formatting
             "last_updated": current_update,
