@@ -232,7 +232,8 @@ async def process_image_message(phone_number: str, image_data: dict):
                     total=total,
                     subtotal=subtotal,
                     tip=tip,
-                    raw_text=result.get('raw_text', '')
+                    raw_text=result.get('raw_text', ''),
+                    charges=result.get('charges', [])
                 )
 
                 # Formatear mensaje con ambos links (i18n)

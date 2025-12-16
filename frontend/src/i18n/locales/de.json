@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "Gebühren & Rabatte",
+    "addCharge": "Hinzufügen",
+    "editCharge": "Gebühr bearbeiten",
+    "namePlaceholder": "Name (z.B. MwSt, Service)",
+    "type": "Typ",
+    "add": "Addiert",
+    "discount": "Rabatt",
+    "distribution": "Aufteilung",
+    "proportional": "Nach Verbrauch",
+    "perPerson": "Gleichmäßig",
+    "proportionalShort": "proportional",
+    "perPersonShort": "gleich",
+    "save": "Speichern",
+    "delete": "Löschen"
   }
 }

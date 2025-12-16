@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "Frais et Remises",
+    "addCharge": "Ajouter",
+    "editCharge": "Modifier le frais",
+    "namePlaceholder": "Nom (ex: TVA, Service)",
+    "type": "Type",
+    "add": "Ajoute",
+    "discount": "Remise",
+    "distribution": "Répartition",
+    "proportional": "Par consommation",
+    "perPerson": "Parts égales",
+    "proportionalShort": "proportionnel",
+    "perPersonShort": "égal",
+    "save": "Enregistrer",
+    "delete": "Supprimer"
   }
 }

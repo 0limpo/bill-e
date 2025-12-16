@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "চার্জ ও ছাড়",
+    "addCharge": "যোগ করুন",
+    "editCharge": "চার্জ সম্পাদনা",
+    "namePlaceholder": "নাম (যেমন: ট্যাক্স, সার্ভিস)",
+    "type": "ধরন",
+    "add": "যোগ হয়",
+    "discount": "ছাড়",
+    "distribution": "ভাগ",
+    "proportional": "খরচ অনুযায়ী",
+    "perPerson": "সমান ভাগ",
+    "proportionalShort": "অনুপাতে",
+    "perPersonShort": "সমান",
+    "save": "সংরক্ষণ",
+    "delete": "মুছুন"
   }
 }

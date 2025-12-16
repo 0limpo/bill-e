@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "Charges & Discounts",
+    "addCharge": "Add",
+    "editCharge": "Edit Charge",
+    "namePlaceholder": "Name (e.g., Tax, Service)",
+    "type": "Type",
+    "add": "Adds",
+    "discount": "Discount",
+    "distribution": "Split",
+    "proportional": "By consumption",
+    "perPerson": "Equal split",
+    "proportionalShort": "proportional",
+    "perPersonShort": "equal",
+    "save": "Save",
+    "delete": "Delete"
   }
 }

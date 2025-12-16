@@ -23,7 +23,8 @@ def create_collaborative_session(
     total: float,
     subtotal: float,
     tip: float,
-    raw_text: str = ""
+    raw_text: str = "",
+    charges: List[Dict] = None
 ) -> Dict[str, Any]:
     session_id = str(uuid.uuid4())[:8]
     owner_token = str(uuid.uuid4())
@@ -33,6 +34,13 @@ def create_collaborative_session(
         if 'id' not in item:
             item['id'] = f"item_{i}"
 
+    # Asegurar que cada charge tenga un ID
+    if charges is None:
+        charges = []
+    for i, charge in enumerate(charges):
+        if 'id' not in charge:
+            charge['id'] = f"charge_{i}"
+
     session_data = {
         "session_id": session_id,
         "owner_token": owner_token,
@@ -41,6 +49,7 @@ def create_collaborative_session(
         "created_at": datetime.now().isoformat(),
         "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
         "items": items,
+        "charges": charges,
         "total": total,
         "subtotal": subtotal,
         "tip": tip,
@@ -280,19 +289,59 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
 
     total_subtotal = sum(participant_subtotals.values())
     total_tip = session_data.get("tip", 0)
+    charges = session_data.get("charges", [])
+    num_participants = len(participants)
 
     results = []
     for participant in participants:
         p_id = participant["id"]
         subtotal = participant_subtotals.get(p_id, 0)
 
+        # Calculate ratio for proportional distribution
         if total_subtotal > 0:
-            tip_ratio = subtotal / total_subtotal
+            ratio = subtotal / total_subtotal
         else:
-            tip_ratio = 1 / len(participants) if participants else 0
+            ratio = 1 / num_participants if num_participants > 0 else 0
 
-        tip = total_tip * tip_ratio
-        total = subtotal + tip
+        # Calculate charges for this participant
+        participant_charges = []
+        charges_total = 0
+        for charge in charges:
+            charge_id = charge.get("id", "")
+            charge_name = charge.get("name", "")
+            value = charge.get("value", 0)
+            value_type = charge.get("valueType", "fixed")
+            is_discount = charge.get("isDiscount", False)
+            distribution = charge.get("distribution", "proportional")
+
+            # Calculate charge amount
+            if value_type == "percent":
+                charge_amount = total_subtotal * (value / 100)
+            else:
+                charge_amount = value
+
+            # Apply distribution
+            if distribution == "per_person":
+                participant_charge = charge_amount / num_participants if num_participants > 0 else 0
+            else:
+                participant_charge = charge_amount * ratio
+
+            # Apply sign (discount = negative)
+            if is_discount:
+                participant_charge = -participant_charge
+
+            participant_charges.append({
+                "id": charge_id,
+                "name": charge_name,
+                "amount": round(participant_charge)
+            })
+            charges_total += participant_charge
+
+        # Calculate tip
+        tip = total_tip * ratio
+
+        # Total = subtotal + charges + tip
+        total = subtotal + charges_total + tip
 
         results.append({
             "participant_id": p_id,
@@ -300,6 +349,8 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
             "phone": participant["phone"],
             "role": participant["role"],
             "subtotal": round(subtotal),
+            "charges": participant_charges,
+            "charges_total": round(charges_total),
             "tip": round(tip),
             "total": round(total),
             "items": participant_items.get(p_id, [])

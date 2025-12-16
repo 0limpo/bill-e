@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "追加料金と割引",
+    "addCharge": "追加",
+    "editCharge": "料金を編集",
+    "namePlaceholder": "名前（例：税、サービス）",
+    "type": "タイプ",
+    "add": "加算",
+    "discount": "割引",
+    "distribution": "分配方法",
+    "proportional": "消費額に応じて",
+    "perPerson": "均等割り",
+    "proportionalShort": "比例",
+    "perPersonShort": "均等",
+    "save": "保存",
+    "delete": "削除"
   }
 }

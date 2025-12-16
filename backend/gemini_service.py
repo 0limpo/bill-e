@@ -135,45 +135,45 @@ class GeminiOCRService:
             # Prompt con protocolo forense para extracción precisa
             prompt = """Rol: Actúa como un experto forense en auditoría de gastos y OCR.
 
-Objetivo: Extraer con precisión matemática el Precio Unitario REAL de cada ítem en la imagen adjunta, independientemente del formato del recibo (país, moneda o idioma).
+Objetivo: Extraer con precisión matemática todos los componentes de la boleta.
 
 ## PROTOCOLO DE RAZONAMIENTO (Chain of Thought)
 
-Antes de generar el JSON final, ejecuta internamente estos pasos:
-
 ### 1. Análisis de Formato Numérico
-Detecta el formato de puntuación usado en el recibo:
+Detecta el formato de puntuación:
 - Formato A: punto = miles, coma = decimales (1.000,50)
 - Formato B: coma = miles, punto = decimales (1,000.50)
 - Formato C: sin separador de miles (1000.50 o 1000,50)
-Usa el subtotal/total como referencia para confirmar el formato.
 
 ### 2. Escaneo de Cantidades
-Busca ítems donde la cantidad sea mayor a 1 (ej: "2x Coca Cola", "3 Pan", "Qty: 2").
+Busca ítems con cantidad > 1 (ej: "2x Coca Cola", "3 Pan").
 
 ### 3. Test de Hipótesis de Precio
-Para ítems con cantidad > 1, analiza el precio asociado:
-- Hipótesis A: Si el precio parece bajo/estándar para ese producto → es Precio Unitario
-- Hipótesis B: Si el precio es alto (aprox. N veces el valor estándar) → es Total de Línea
+- Si precio bajo → Precio Unitario
+- Si precio alto (N veces valor estándar) → Total de Línea → DIVIDIR
 
-### 4. Verificación Cruzada (Prueba de la Suma)
-Suma los precios de la columna de precios.
-- SI suma ≈ Subtotal del recibo → son Totales de Línea → DIVIDIR por cantidad
-- SI suma ≠ Subtotal (mucho menor) → son Precios Unitarios → mantener tal cual
+### 4. Identificación de Descuentos
+Busca líneas que RESTAN: "Desc.", "Discount", "-10%", "Promo", "Happy Hour", "2x1", cupones, puntos.
+Determina si aplica a un ítem específico o a toda la cuenta.
+Determina si los precios YA incluyen el descuento o es línea separada.
 
-### 5. Validación Final
-Calcula: suma_calculada = Σ(precio_unitario × cantidad)
-- Si suma_calculada = subtotal → needs_review: false
-- Si suma_calculada ≈ subtotal (diferencia < 5%) → needs_review: true
-- Si suma_calculada ≠ subtotal (diferencia >= 5%) → needs_review: true, incluir mensaje
+### 5. Identificación de Cargos
+Busca líneas que SUMAN: IVA, VAT, GST, Tax, Servicio, Service, Cubierto, Cover, Coperto, Recargo, Surcharge.
 
-## INSTRUCCIONES DE EXTRACCIÓN
+### 6. Verificación Cruzada
+- Si price_mode="original": Σ(items) - Σ(descuentos) ≈ subtotal
+- Si price_mode="discounted": Σ(items) ≈ subtotal
+- subtotal + Σ(cargos) + propina ≈ total
 
-- Interpreta los números según el formato detectado en el paso 1
-- Ignora símbolos de moneda ($, €, £, etc.)
-- Si la cantidad no es explícita, asume 1
-- Si el ítem tiene valor 0 o es cortesía, indica 0
-- "precio" SIEMPRE debe ser el precio unitario (de 1 unidad)
+### 7. Validación Final
+- Todo cuadra (< 2%) → needs_review: false
+- Diferencia > 2% → needs_review: true + mensaje
+
+## INSTRUCCIONES
+
+- "precio" SIEMPRE = precio unitario (de 1 unidad)
+- Ignora símbolos de moneda ($, €, £)
+- Si cantidad no explícita, asume 1
 
 ## FORMATO DE RESPUESTA
 
@@ -181,16 +181,26 @@ Retorna SOLO JSON válido:
 {
   "needs_review": false,
   "review_message": null,
-  "subtotal": 101630,
-  "tip": 10163,
-  "total": 111793,
   "items": [
     {"nombre": "Hamburguesa", "cantidad": 2, "precio": 8500},
-    {"nombre": "Bebida", "cantidad": 1, "precio": 2500}
-  ]
+    {"nombre": "Cerveza", "cantidad": 2, "precio": 3000}
+  ],
+  "charges": [
+    {"nombre": "IVA", "valor": 19, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"},
+    {"nombre": "Cubierto", "valor": 2000, "tipo_valor": "fixed", "es_descuento": false, "distribucion": "per_person"},
+    {"nombre": "Happy Hour", "valor": 3000, "tipo_valor": "fixed", "es_descuento": true, "distribucion": "proportional"}
+  ],
+  "subtotal": 17000,
+  "tip": 1700,
+  "total": 23645,
+  "price_mode": "original"
 }
 
-Si needs_review es true, incluye review_message explicando qué revisar."""
+Donde:
+- tipo_valor: "percent" o "fixed"
+- es_descuento: true si resta, false si suma
+- distribucion: "proportional" (según consumo) o "per_person" (igual para todos)
+- price_mode: "original" (precios antes de descuentos) o "discounted" (ya descontados)"""
 
             logger.info("🤖 Enviando imagen a Gemini para análisis estructurado...")
             response = self.model.generate_content([prompt, image])
@@ -211,19 +221,28 @@ Si needs_review es true, incluye review_message explicando qué revisar."""
                 # Validar estructura
                 if 'total' in data and 'items' in data:
                     # Convertir items de Gemini al formato interno
-                    # Frontend espera price = PRECIO UNITARIO
                     items = []
                     for item in data.get('items', []):
                         unit_price = item.get('precio', 0)
                         quantity = item.get('cantidad', 1)
-
                         items.append({
                             'name': item.get('nombre', ''),
-                            'price': unit_price,  # Precio UNITARIO (frontend multiplica por quantity)
+                            'price': unit_price,
                             'quantity': quantity
                         })
 
-                    # Extraer campos de revisión
+                    # Convertir charges de Gemini al formato interno
+                    charges = []
+                    for i, charge in enumerate(data.get('charges', [])):
+                        charges.append({
+                            'id': f"charge_{i}",
+                            'name': charge.get('nombre', ''),
+                            'value': charge.get('valor', 0),
+                            'valueType': charge.get('tipo_valor', 'fixed'),
+                            'isDiscount': charge.get('es_descuento', False),
+                            'distribution': charge.get('distribucion', 'proportional')
+                        })
+
                     needs_review = data.get('needs_review', False)
                     review_message = data.get('review_message', None)
 
@@ -233,18 +252,20 @@ Si needs_review es true, incluye review_message explicando qué revisar."""
                         'subtotal': data.get('subtotal', 0),
                         'tip': data.get('tip', data.get('propina', 0)),
                         'items': items,
+                        'charges': charges,
+                        'price_mode': data.get('price_mode', 'discounted'),
                         'needs_review': needs_review,
                         'review_message': review_message,
                         'confidence_score': 95 if not needs_review else 70
                     }
 
-                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, NeedsReview={needs_review}")
-                    for i, it in enumerate(items[:3]):  # Mostrar primeros 3
+                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, Charges={len(charges)}")
+                    for i, it in enumerate(items[:3]):
                         line_total = it['price'] * it['quantity']
-                        logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total} (total línea)")
-
-                    if review_message:
-                        logger.warning(f"⚠️ Review message: {review_message}")
+                        logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total}")
+                    for ch in charges:
+                        sign = "-" if ch['isDiscount'] else "+"
+                        logger.info(f"   Charge: {sign}{ch['name']} ({ch['value']} {ch['valueType']})")
 
                     return result
                 else:

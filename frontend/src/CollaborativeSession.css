@@ -2516,3 +2516,205 @@ body {
 .collaborative-session.rtl .add-btn-label {
   text-align: center;
 }
+
+/* =============================================================================
+   CHARGES SECTION (Taxes, Discounts, Service Charges)
+   ============================================================================= */
+
+.charges-section {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(99, 102, 241, 0.05);
+  border-radius: 12px;
+  border: 1px dashed rgba(99, 102, 241, 0.3);
+}
+
+.charges-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.charges-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+}
+
+.add-charge-btn {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-charge-btn:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.charges-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.charge-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+}
+
+.charge-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--primary);
+}
+
+.charge-item.discount {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.charge-item.discount:hover {
+  border-color: var(--danger);
+}
+
+.charge-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.charge-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.charge-item.discount .charge-value {
+  color: var(--danger);
+}
+
+.charge-dist {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.05);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* --- CHARGE MODAL STYLES --- */
+.charge-modal {
+  max-width: 380px;
+}
+
+.charge-value-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.charge-value-input {
+  flex: 1;
+}
+
+.charge-type-switch {
+  display: flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.charge-type-btn {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.charge-type-btn.active {
+  background: var(--primary);
+  color: white;
+}
+
+.charge-option-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 8px 0;
+}
+
+.charge-option-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.charge-toggle-switch {
+  display: flex;
+  gap: 2px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 3px;
+  border-radius: 8px;
+}
+
+.charge-toggle-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.charge-toggle-btn.active {
+  background: var(--success);
+  color: white;
+}
+
+.charge-toggle-btn.discount.active {
+  background: var(--danger);
+  color: white;
+}
+
+/* RTL Support for charges */
+.collaborative-session.rtl .charges-header {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .charge-item {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .charge-value-row {
+  flex-direction: row-reverse;
+}
+
+.collaborative-session.rtl .charge-option-row {
+  flex-direction: row-reverse;
+}

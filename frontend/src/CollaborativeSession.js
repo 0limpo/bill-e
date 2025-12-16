@@ -214,6 +214,123 @@ const EditableInput = ({ type, initialValue, onSave, className, defaultValue = 0
   );
 };
 
+// Charge Modal Component (Host Only)
+const ChargeModal = ({ charge, onSave, onClose, onDelete }) => {
+  const { t } = useTranslation();
+  const [name, setName] = useState(charge?.name || '');
+  const [value, setValue] = useState(charge?.value?.toString() || '');
+  const [valueType, setValueType] = useState(charge?.valueType || 'fixed');
+  const [isDiscount, setIsDiscount] = useState(charge?.isDiscount || false);
+  const [distribution, setDistribution] = useState(charge?.distribution || 'proportional');
+
+  const handleSave = () => {
+    if (!name.trim() || !value) return;
+    onSave({
+      id: charge?.id || `charge_${Date.now()}`,
+      name: name.trim(),
+      value: parseFloat(value) || 0,
+      valueType,
+      isDiscount,
+      distribution
+    });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content charge-modal" onClick={e => e.stopPropagation()}>
+        <h3>{charge ? t('charges.editCharge') : t('charges.addCharge')}</h3>
+
+        {/* Name input */}
+        <input
+          className="join-input"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder={t('charges.namePlaceholder')}
+          autoFocus
+        />
+
+        {/* Value and Type row */}
+        <div className="charge-value-row">
+          <input
+            className="join-input charge-value-input"
+            type="number"
+            value={value}
+            onChange={e => setValue(e.target.value)}
+            placeholder="0"
+          />
+          <div className="charge-type-switch">
+            <button
+              className={`charge-type-btn ${valueType === 'fixed' ? 'active' : ''}`}
+              onClick={() => setValueType('fixed')}
+            >
+              $
+            </button>
+            <button
+              className={`charge-type-btn ${valueType === 'percent' ? 'active' : ''}`}
+              onClick={() => setValueType('percent')}
+            >
+              %
+            </button>
+          </div>
+        </div>
+
+        {/* Sum or Discount toggle */}
+        <div className="charge-option-row">
+          <span className="charge-option-label">{t('charges.type')}</span>
+          <div className="charge-toggle-switch">
+            <button
+              className={`charge-toggle-btn ${!isDiscount ? 'active' : ''}`}
+              onClick={() => setIsDiscount(false)}
+            >
+              {t('charges.add')}
+            </button>
+            <button
+              className={`charge-toggle-btn discount ${isDiscount ? 'active' : ''}`}
+              onClick={() => setIsDiscount(true)}
+            >
+              {t('charges.discount')}
+            </button>
+          </div>
+        </div>
+
+        {/* Distribution toggle */}
+        <div className="charge-option-row">
+          <span className="charge-option-label">{t('charges.distribution')}</span>
+          <div className="charge-toggle-switch">
+            <button
+              className={`charge-toggle-btn ${distribution === 'proportional' ? 'active' : ''}`}
+              onClick={() => setDistribution('proportional')}
+            >
+              {t('charges.proportional')}
+            </button>
+            <button
+              className={`charge-toggle-btn ${distribution === 'per_person' ? 'active' : ''}`}
+              onClick={() => setDistribution('per_person')}
+            >
+              {t('charges.perPerson')}
+            </button>
+          </div>
+        </div>
+
+        {/* Action buttons */}
+        <button
+          className="btn-main"
+          onClick={handleSave}
+          disabled={!name.trim() || !value}
+        >
+          {t('charges.save')}
+        </button>
+
+        {charge && onDelete && (
+          <button className="btn-danger" onClick={() => onDelete(charge.id)}>
+            {t('charges.delete')}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // Validation Dashboard Component (Host Only)
 const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
   const { t } = useTranslation();
@@ -678,6 +795,10 @@ const CollaborativeSession = () => {
   // Expanded participants in finalized view (for host to see breakdown)
   const [expandedParticipants, setExpandedParticipants] = useState({});
 
+  // Charge modal state
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [editingCharge, setEditingCharge] = useState(null); // null = new, object = editing
+
   // Saved assignments per mode (to restore when switching back)
   // Structure: { [itemId]: { individual: {...}, grupal: {...} } }
   // Using useRef for immediate updates (not dependent on React render cycle)
@@ -760,7 +881,9 @@ const CollaborativeSession = () => {
               // Sync tip settings
               tip_mode: data.tip_mode ?? prev.tip_mode,
               tip_value: data.tip_value ?? prev.tip_value,
-              tip_percentage: data.tip_percentage ?? prev.tip_percentage
+              tip_percentage: data.tip_percentage ?? prev.tip_percentage,
+              // Sync charges
+              charges: data.charges ?? prev.charges
             }));
             setLastUpdate(data.last_updated);
           }
@@ -1432,8 +1555,11 @@ const CollaborativeSession = () => {
   // This ensures Host sees the same math as Editor when items are edited
   // Supports SMART TIP: percent mode (proportional) or fixed mode (equal split)
   // Also supports unit-level assignments (itemId_unit_N format)
+  // Also supports charges (taxes, discounts, etc.)
   const calculateParticipantTotal = (participantId, includesTip = true) => {
-    if (!session) return { subtotal: 0, total: 0, tipAmount: 0 };
+    if (!session) return { subtotal: 0, total: 0, tipAmount: 0, chargesTotal: 0, charges: [] };
+
+    const numParticipants = session.participants?.length || 1;
 
     // Pre-scan: detect which items have unit assignments (to avoid double-counting)
     const itemsWithUnitAssignments = new Set();
@@ -1444,52 +1570,99 @@ const CollaborativeSession = () => {
       }
     });
 
+    // Calculate subtotal from items
     let subtotal = 0;
     Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
       const assignment = assigns.find(a => a.participant_id === participantId);
       if (assignment) {
-        // Check if this is a unit assignment (format: itemId_unit_N)
         const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
 
         if (unitMatch) {
-          // Unit assignment - find parent item by base itemId
           const baseItemId = unitMatch[1];
           const item = session.items.find(i => (i.id || i.name) === baseItemId);
           if (item) {
-            // Each unit is worth 1 * unitPrice, split by quantity assigned
             subtotal += item.price * (assignment.quantity || 0);
           }
         } else {
-          // Regular item assignment - skip if item has unit assignments (avoid double-counting)
           if (itemsWithUnitAssignments.has(assignmentKey)) {
-            return; // Skip parent assignment, units are counted separately
+            return;
           }
           const item = session.items.find(i => (i.id || i.name) === assignmentKey);
           if (item) {
-            // item.price is UNIT PRICE - just multiply by assigned quantity
             subtotal += item.price * (assignment.quantity || 0);
           }
         }
       }
     });
 
+    // Calculate total subtotal for all participants (for ratio calculation)
+    let totalSubtotal = 0;
+    session.participants?.forEach(p => {
+      Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
+        const assignment = assigns.find(a => a.participant_id === p.id);
+        if (assignment) {
+          const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
+          if (unitMatch) {
+            const baseItemId = unitMatch[1];
+            const item = session.items.find(i => (i.id || i.name) === baseItemId);
+            if (item) totalSubtotal += item.price * (assignment.quantity || 0);
+          } else if (!itemsWithUnitAssignments.has(assignmentKey)) {
+            const item = session.items.find(i => (i.id || i.name) === assignmentKey);
+            if (item) totalSubtotal += item.price * (assignment.quantity || 0);
+          }
+        }
+      });
+    });
+
+    // Calculate ratio for proportional distribution
+    const ratio = totalSubtotal > 0 ? subtotal / totalSubtotal : 1 / numParticipants;
+
+    // Calculate charges for this participant
+    const sessionCharges = session.charges || [];
+    let chargesTotal = 0;
+    const participantCharges = [];
+
+    sessionCharges.forEach(charge => {
+      const value = charge.value || 0;
+      const valueType = charge.valueType || 'fixed';
+      const isDiscount = charge.isDiscount || false;
+      const distribution = charge.distribution || 'proportional';
+
+      // Calculate base charge amount
+      let chargeAmount = valueType === 'percent' ? totalSubtotal * (value / 100) : value;
+
+      // Apply distribution
+      let participantCharge = distribution === 'per_person'
+        ? chargeAmount / numParticipants
+        : chargeAmount * ratio;
+
+      // Apply sign (discount = negative)
+      if (isDiscount) {
+        participantCharge = -participantCharge;
+      }
+
+      participantCharges.push({
+        id: charge.id,
+        name: charge.name,
+        amount: participantCharge
+      });
+      chargesTotal += participantCharge;
+    });
+
     // SMART TIP LOGIC
     const tipMode = session.tip_mode || 'percent';
     const tipValue = session.tip_value ?? session.tip_percentage ?? 10;
-    const numParticipants = session.participants?.length || 1;
 
     let tipAmount = 0;
     if (tipMode === 'fixed') {
-      // Fixed amount split equally among all participants
       tipAmount = tipValue / numParticipants;
     } else {
-      // Percent mode - proportional to consumption
       tipAmount = subtotal * (tipValue / 100);
     }
 
-    const total = includesTip ? subtotal + tipAmount : subtotal;
+    const total = includesTip ? subtotal + chargesTotal + tipAmount : subtotal + chargesTotal;
 
-    return { subtotal, total, tipAmount };
+    return { subtotal, total, tipAmount, chargesTotal, charges: participantCharges };
   };
 
   // Handle tip update (mode + value)
@@ -1518,6 +1691,68 @@ const CollaborativeSession = () => {
       });
     } catch (err) {
       console.error('Error updating tip:', err);
+    }
+  };
+
+  // Handle save charge (add or edit)
+  const handleSaveCharge = async (chargeData) => {
+    lastInteraction.current = Date.now();
+    const currentCharges = session.charges || [];
+    let newCharges;
+
+    const existingIdx = currentCharges.findIndex(c => c.id === chargeData.id);
+    if (existingIdx >= 0) {
+      // Edit existing
+      newCharges = [...currentCharges];
+      newCharges[existingIdx] = chargeData;
+    } else {
+      // Add new
+      newCharges = [...currentCharges, chargeData];
+    }
+
+    // Optimistic update
+    setSession(prev => ({ ...prev, charges: newCharges }));
+    setShowChargeModal(false);
+    setEditingCharge(null);
+
+    // Persist to backend
+    try {
+      await fetch(`${API_URL}/api/session/${sessionId}/update-totals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          owner_token: ownerToken,
+          charges: newCharges
+        })
+      });
+    } catch (err) {
+      console.error('Error saving charge:', err);
+    }
+  };
+
+  // Handle delete charge
+  const handleDeleteCharge = async (chargeId) => {
+    lastInteraction.current = Date.now();
+    const currentCharges = session.charges || [];
+    const newCharges = currentCharges.filter(c => c.id !== chargeId);
+
+    // Optimistic update
+    setSession(prev => ({ ...prev, charges: newCharges }));
+    setShowChargeModal(false);
+    setEditingCharge(null);
+
+    // Persist to backend
+    try {
+      await fetch(`${API_URL}/api/session/${sessionId}/update-totals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          owner_token: ownerToken,
+          charges: newCharges
+        })
+      });
+    } catch (err) {
+      console.error('Error deleting charge:', err);
     }
   };
 
@@ -2480,6 +2715,47 @@ const CollaborativeSession = () => {
                       </span>
                     </div>
                   </div>
+
+                  {/* CHARGES SECTION (Taxes, Discounts, etc.) */}
+                  <div className="charges-section" onClick={(e) => e.stopPropagation()}>
+                    <div className="charges-header">
+                      <span className="charges-label">{t('charges.title')}</span>
+                      <button
+                        className="add-charge-btn"
+                        onClick={() => {
+                          setEditingCharge(null);
+                          setShowChargeModal(true);
+                        }}
+                      >
+                        + {t('charges.addCharge')}
+                      </button>
+                    </div>
+
+                    {/* List of charges */}
+                    {(session.charges || []).length > 0 && (
+                      <div className="charges-list">
+                        {(session.charges || []).map(charge => (
+                          <div
+                            key={charge.id}
+                            className={`charge-item ${charge.isDiscount ? 'discount' : ''}`}
+                            onClick={() => {
+                              setEditingCharge(charge);
+                              setShowChargeModal(true);
+                            }}
+                          >
+                            <span className="charge-name">{charge.name}</span>
+                            <span className="charge-value">
+                              {charge.isDiscount ? '-' : '+'}
+                              {charge.valueType === 'percent' ? `${charge.value}%` : formatCurrency(charge.value)}
+                            </span>
+                            <span className="charge-dist">
+                              {charge.distribution === 'per_person' ? t('charges.perPersonShort') : t('charges.proportionalShort')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -2497,6 +2773,19 @@ const CollaborativeSession = () => {
           </>
         )}
       </div>
+
+      {/* CHARGE MODAL */}
+      {showChargeModal && (
+        <ChargeModal
+          charge={editingCharge}
+          onSave={handleSaveCharge}
+          onClose={() => {
+            setShowChargeModal(false);
+            setEditingCharge(null);
+          }}
+          onDelete={editingCharge ? handleDeleteCharge : null}
+        />
+      )}
 
       {/* MODAL AGREGAR PARTICIPANTE (Simple) */}
       {showAddParticipant && (

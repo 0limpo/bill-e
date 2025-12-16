@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "费用与折扣",
+    "addCharge": "添加",
+    "editCharge": "编辑费用",
+    "namePlaceholder": "名称（如：税、服务费）",
+    "type": "类型",
+    "add": "增加",
+    "discount": "折扣",
+    "distribution": "分摊方式",
+    "proportional": "按消费比例",
+    "perPerson": "平均分摊",
+    "proportionalShort": "比例",
+    "perPersonShort": "平均",
+    "save": "保存",
+    "delete": "删除"
   }
 }

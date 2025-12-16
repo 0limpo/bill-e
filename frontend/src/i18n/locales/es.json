@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "Cargos y Descuentos",
+    "addCharge": "Agregar",
+    "editCharge": "Editar Cargo",
+    "namePlaceholder": "Nombre (ej: IVA, Servicio)",
+    "type": "Tipo",
+    "add": "Suma",
+    "discount": "Descuento",
+    "distribution": "División",
+    "proportional": "Por consumo",
+    "perPerson": "Partes iguales",
+    "proportionalShort": "proporcional",
+    "perPersonShort": "igual",
+    "save": "Guardar",
+    "delete": "Eliminar"
   }
 }

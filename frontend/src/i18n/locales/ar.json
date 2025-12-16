@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "رسوم وخصومات",
+    "addCharge": "إضافة",
+    "editCharge": "تعديل الرسوم",
+    "namePlaceholder": "الاسم (مثل: ضريبة، خدمة)",
+    "type": "النوع",
+    "add": "يضيف",
+    "discount": "خصم",
+    "distribution": "التوزيع",
+    "proportional": "حسب الاستهلاك",
+    "perPerson": "بالتساوي",
+    "proportionalShort": "نسبي",
+    "perPersonShort": "متساوي",
+    "save": "حفظ",
+    "delete": "حذف"
   }
 }

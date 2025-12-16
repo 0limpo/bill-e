@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "शुल्क और छूट",
+    "addCharge": "जोड़ें",
+    "editCharge": "शुल्क संपादित करें",
+    "namePlaceholder": "नाम (जैसे: टैक्स, सेवा)",
+    "type": "प्रकार",
+    "add": "जोड़ता है",
+    "discount": "छूट",
+    "distribution": "वितरण",
+    "proportional": "खपत के अनुसार",
+    "perPerson": "बराबर बांटें",
+    "proportionalShort": "अनुपात",
+    "perPersonShort": "बराबर",
+    "save": "सहेजें",
+    "delete": "हटाएं"
   }
 }

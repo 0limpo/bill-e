@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "Taxas e Descontos",
+    "addCharge": "Adicionar",
+    "editCharge": "Editar Taxa",
+    "namePlaceholder": "Nome (ex: IVA, Serviço)",
+    "type": "Tipo",
+    "add": "Adiciona",
+    "discount": "Desconto",
+    "distribution": "Divisão",
+    "proportional": "Por consumo",
+    "perPerson": "Partes iguais",
+    "proportionalShort": "proporcional",
+    "perPersonShort": "igual",
+    "save": "Salvar",
+    "delete": "Excluir"
   }
 }

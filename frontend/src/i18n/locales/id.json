@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "Biaya & Diskon",
+    "addCharge": "Tambah",
+    "editCharge": "Edit Biaya",
+    "namePlaceholder": "Nama (cth: Pajak, Layanan)",
+    "type": "Tipe",
+    "add": "Menambah",
+    "discount": "Diskon",
+    "distribution": "Pembagian",
+    "proportional": "Sesuai konsumsi",
+    "perPerson": "Bagi rata",
+    "proportionalShort": "proporsional",
+    "perPersonShort": "rata",
+    "save": "Simpan",
+    "delete": "Hapus"
   }
 }

@@ -597,6 +597,7 @@ async def poll_session(session_id: str, last_update: str = None):
             "tip_mode": session_data.get("tip_mode", "percent"),
             "tip_value": session_data.get("tip_value", 10.0),
             "tip_percentage": session_data.get("tip_percentage", 10),
+            "charges": session_data.get("charges", []),  # Include charges for sync
             "last_updated": current_update,
             "last_updated_by": session_data.get("last_updated_by", "")
         }
@@ -886,6 +887,9 @@ async def update_totals(session_id: str, request: Request):
             session_data["tip_value"] = data["tip_value"]
         if "tip_percentage" in data:
             session_data["tip_percentage"] = data["tip_percentage"]
+        # Charges (taxes, discounts, service charges, etc.)
+        if "charges" in data:
+            session_data["charges"] = data["charges"]
 
         session_data["last_updated"] = datetime.now().isoformat()
         session_data["last_updated_by"] = "owner"

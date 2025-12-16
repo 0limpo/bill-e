@@ -98,5 +98,21 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
+  },
+  "charges": {
+    "title": "Сборы и Скидки",
+    "addCharge": "Добавить",
+    "editCharge": "Редактировать сбор",
+    "namePlaceholder": "Название (напр.: НДС, Обслуживание)",
+    "type": "Тип",
+    "add": "Добавляет",
+    "discount": "Скидка",
+    "distribution": "Распределение",
+    "proportional": "По потреблению",
+    "perPerson": "Поровну",
+    "proportionalShort": "пропорц.",
+    "perPersonShort": "поровну",
+    "save": "Сохранить",
+    "delete": "Удалить"
   }
 }
