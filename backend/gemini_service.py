@@ -7,12 +7,130 @@ import os
 import base64
 import json
 import logging
-from typing import Dict, Any, Optional
+import re
+from typing import Dict, Any, Optional, List
+from difflib import SequenceMatcher
 import google.generativeai as genai
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# DEDUPLICATION FUNCTIONS
+# ============================================================
+
+def similar(a: str, b: str) -> float:
+    """
+    Calcula similitud entre dos strings usando SequenceMatcher.
+    Retorna un valor entre 0 (diferentes) y 1 (idénticos).
+    """
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
+def normalize_item_name(name: str) -> str:
+    """
+    Normaliza nombre de item para comparación.
+    Remueve puntos, comas, guiones y espacios extra.
+    """
+    # Convertir a minúsculas
+    normalized = name.lower()
+    # Remover puntos, comas, guiones al final
+    normalized = re.sub(r'[.,\-)\s]+$', '', normalized)
+    # Remover múltiples espacios
+    normalized = re.sub(r'\s+', ' ', normalized)
+    # Remover espacios al inicio/fin
+    normalized = normalized.strip()
+    return normalized
+
+
+def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float = 0.85) -> List[Dict[str, Any]]:
+    """
+    Detecta y consolida items duplicados con normalización agresiva.
+
+    Args:
+        items: Lista de items extraídos
+        similarity_threshold: Umbral de similitud (0.85 = 85% similar)
+
+    Returns:
+        Lista de items deduplicados
+    """
+    if not items:
+        return []
+
+    # Normalizar nombres primero
+    for item in items:
+        item['normalized_name'] = normalize_item_name(item['name'])
+
+    logger.info(f"🔍 Deduplicando {len(items)} items...")
+
+    deduplicated = []
+    processed_indices = set()
+
+    for i, item in enumerate(items):
+        if i in processed_indices:
+            continue
+
+        # Iniciar grupo con este item
+        group = [item]
+        processed_indices.add(i)
+
+        # Buscar items similares
+        for j, other_item in enumerate(items[i+1:], start=i+1):
+            if j in processed_indices:
+                continue
+
+            # CRITERIO 1: Nombres normalizados idénticos
+            exact_match = item['normalized_name'] == other_item['normalized_name']
+
+            # CRITERIO 2: Similitud alta de nombres normalizados
+            name_similarity = similar(item['normalized_name'], other_item['normalized_name'])
+
+            # CRITERIO 3: Precios similares (tolerancia 5%)
+            max_price = max(item['price'], other_item['price'])
+            price_diff_percent = abs(item['price'] - other_item['price']) / max_price if max_price > 0 else 0
+            similar_price = price_diff_percent < 0.05
+
+            # Si nombres exactos O (muy similares Y precio similar)
+            if exact_match or (name_similarity >= similarity_threshold and similar_price):
+                group.append(other_item)
+                processed_indices.add(j)
+                logger.info(f"🔗 Agrupando: '{item['name']}' + '{other_item['name']}' (sim: {name_similarity:.2f})")
+
+        # Consolidar el grupo
+        if len(group) == 1:
+            result_item = {
+                **item,
+                'quantity': item.get('quantity', 1),
+            }
+            # Remove normalized_name from output
+            result_item.pop('normalized_name', None)
+            deduplicated.append(result_item)
+        else:
+            # Tomar el nombre más limpio (el más corto sin caracteres raros)
+            names_by_length = sorted([g['name'] for g in group], key=lambda x: (len(x), x.count('.')))
+            cleanest_name = names_by_length[0]
+
+            # Sumar cantidades
+            total_quantity = sum(g.get('quantity', 1) for g in group)
+
+            # Precio: usar el más común
+            prices = [g['price'] for g in group]
+            most_common_price = max(set(prices), key=prices.count)
+
+            consolidated = {
+                'name': cleanest_name,
+                'price': most_common_price,
+                'quantity': total_quantity,
+            }
+
+            deduplicated.append(consolidated)
+            logger.info(f"✅ Consolidados {len(group)} items → '{cleanest_name}' x{total_quantity} @ ${most_common_price}")
+
+    logger.info(f"✅ Deduplicación: {len(items)} → {len(deduplicated)} items")
+
+    return deduplicated
 
 class GeminiOCRService:
     def __init__(self):
@@ -384,6 +502,11 @@ def process_image(image_bytes: bytes):
         logger.error("❌ Resultado de Gemini no válido")
         raise Exception("No se pudo procesar la imagen")
 
-    logger.info(f"✅ OCR completado: {len(result.get('items', []))} items, score: {result['validation']['quality_score']}")
+    # Deduplicate similar items (e.g., "Chelada" appearing multiple times)
+    original_items = result.get('items', [])
+    deduplicated_items = deduplicate_items(original_items)
+    result['items'] = deduplicated_items
+
+    logger.info(f"✅ OCR completado: {len(deduplicated_items)} items, score: {result['validation']['quality_score']}")
 
     return result
