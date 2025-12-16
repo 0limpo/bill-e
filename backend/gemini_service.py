@@ -150,8 +150,6 @@ CLAVE: Monedas SIN centavos (CLP, COP, JPY, etc.) usan punto como MILES:
 - "4.000" = 4000 (cuatro mil), NO 4.0
 - "111.793" = 111793 (ciento once mil), NO 111.793
 
-Confirma mirando si los precios de items individuales tienen sentido (una coca cola no cuesta $4)
-
 ### 2. Escaneo de Cantidades
 Busca ítems con cantidad > 1 (ej: "2x Coca Cola", "3 Pan").
 
