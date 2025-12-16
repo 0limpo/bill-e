@@ -2718,3 +2718,17 @@ body {
 .collaborative-session.rtl .charge-option-row {
   flex-direction: row-reverse;
 }
+
+/* Breakdown charge rows */
+.breakdown-row.charge {
+  color: var(--success);
+  font-size: 13px;
+}
+
+.breakdown-row.charge.discount {
+  color: var(--danger);
+}
+
+.breakdown-row.charge span:last-child {
+  font-weight: 600;
+}

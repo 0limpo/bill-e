@@ -2256,7 +2256,7 @@ const CollaborativeSession = () => {
                   </div>
 
                   {session.participants.map(p => {
-                    const { subtotal, total, tipAmount } = calculateParticipantTotal(p.id, true);
+                    const { subtotal, total, tipAmount, chargesTotal, charges: pCharges } = calculateParticipantTotal(p.id, true);
                     const isExpanded = expandedParticipants[p.id];
 
                     // Generate breakdown items for this participant
@@ -2344,10 +2344,19 @@ const CollaborativeSession = () => {
                               <span>{t('totals.subtotal')}</span>
                               <span>{formatCurrency(subtotal)}</span>
                             </div>
-                            <div className="breakdown-row tip">
-                              <span>{t('totals.tipLabel')}</span>
-                              <span>{formatCurrency(tipAmount)}</span>
-                            </div>
+                            {/* Show charges (only if non-zero) */}
+                            {pCharges.filter(c => Math.abs(c.amount) > 0).map(charge => (
+                              <div key={charge.id} className={`breakdown-row charge ${charge.amount < 0 ? 'discount' : ''}`}>
+                                <span>{charge.name}</span>
+                                <span>{charge.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(charge.amount))}</span>
+                              </div>
+                            ))}
+                            {tipAmount > 0 && (
+                              <div className="breakdown-row tip">
+                                <span>{t('totals.tipLabel')}</span>
+                                <span>{formatCurrency(tipAmount)}</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -2439,6 +2448,37 @@ const CollaborativeSession = () => {
                       myTip = mySubtotal * (tipValueLocal / 100);
                     }
 
+                    // Calculate charges for finalized editor view
+                    const sessionChargesFinalized = session.charges || [];
+                    let myChargesTotalFinalized = 0;
+                    const myChargesFinalized = [];
+                    let totalSubtotalAllFinalized = 0;
+                    session.participants?.forEach(p => {
+                      Object.entries(session.assignments).forEach(([key, assigns]) => {
+                        const assign = assigns.find(a => a.participant_id === p.id);
+                        if (assign) {
+                          const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
+                          const itemId = unitMatch ? unitMatch[1] : key;
+                          const item = session.items.find(i => (i.id || i.name) === itemId);
+                          if (item) totalSubtotalAllFinalized += item.price * (assign.quantity || 0);
+                        }
+                      });
+                    });
+                    const myRatioFinalized = totalSubtotalAllFinalized > 0 ? mySubtotal / totalSubtotalAllFinalized : 1 / numParticipants;
+                    sessionChargesFinalized.forEach(charge => {
+                      const value = charge.value || 0;
+                      const valueType = charge.valueType || 'fixed';
+                      const isDiscount = charge.isDiscount || false;
+                      const distribution = charge.distribution || 'proportional';
+                      let chargeAmount = valueType === 'percent' ? totalSubtotalAllFinalized * (value / 100) : value;
+                      let myCharge = distribution === 'per_person' ? chargeAmount / numParticipants : chargeAmount * myRatioFinalized;
+                      if (isDiscount) myCharge = -myCharge;
+                      if (Math.abs(myCharge) > 0) {
+                        myChargesFinalized.push({ id: charge.id, name: charge.name, amount: myCharge, isDiscount });
+                        myChargesTotalFinalized += myCharge;
+                      }
+                    });
+
                     return (
                       <>
                         {myItems.map((item, idx) => (
@@ -2463,13 +2503,22 @@ const CollaborativeSession = () => {
                               <span>{t('totals.subtotal')}</span>
                               <span>{formatCurrency(mySubtotal)}</span>
                             </div>
-                            <div className="breakdown-row tip">
-                              <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
-                              <span>{formatCurrency(myTip)}</span>
-                            </div>
+                            {/* Show charges (only if non-zero) */}
+                            {myChargesFinalized.map(charge => (
+                              <div key={charge.id} className={`breakdown-row charge ${charge.isDiscount ? 'discount' : ''}`}>
+                                <span>{charge.name}</span>
+                                <span>{charge.isDiscount ? '-' : '+'}{formatCurrency(Math.abs(charge.amount))}</span>
+                              </div>
+                            ))}
+                            {myTip > 0 && (
+                              <div className="breakdown-row tip">
+                                <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
+                                <span>{formatCurrency(myTip)}</span>
+                              </div>
+                            )}
                             <div className="breakdown-row subtotal">
                               <span><strong>{t('totals.total')}</strong></span>
-                              <span className="my-total-amount">{formatCurrency(mySubtotal + myTip)}</span>
+                              <span className="my-total-amount">{formatCurrency(mySubtotal + myChargesTotalFinalized + myTip)}</span>
                             </div>
                           </>
                         )}
@@ -2580,6 +2629,42 @@ const CollaborativeSession = () => {
                     myTip = mySubtotal * (tipValueLocal / 100);
                   }
 
+                  // Calculate charges for editor
+                  const sessionCharges = session.charges || [];
+                  let myChargesTotal = 0;
+                  const myCharges = [];
+
+                  // Calculate total subtotal for ratio (needed for proportional distribution)
+                  let totalSubtotalAll = 0;
+                  session.participants?.forEach(p => {
+                    Object.entries(session.assignments).forEach(([key, assigns]) => {
+                      const assign = assigns.find(a => a.participant_id === p.id);
+                      if (assign) {
+                        const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
+                        const itemId = unitMatch ? unitMatch[1] : key;
+                        const item = session.items.find(i => (i.id || i.name) === itemId);
+                        if (item) totalSubtotalAll += item.price * (assign.quantity || 0);
+                      }
+                    });
+                  });
+                  const myRatio = totalSubtotalAll > 0 ? mySubtotal / totalSubtotalAll : 1 / numParticipants;
+
+                  sessionCharges.forEach(charge => {
+                    const value = charge.value || 0;
+                    const valueType = charge.valueType || 'fixed';
+                    const isDiscount = charge.isDiscount || false;
+                    const distribution = charge.distribution || 'proportional';
+
+                    let chargeAmount = valueType === 'percent' ? totalSubtotalAll * (value / 100) : value;
+                    let myCharge = distribution === 'per_person' ? chargeAmount / numParticipants : chargeAmount * myRatio;
+                    if (isDiscount) myCharge = -myCharge;
+
+                    if (Math.abs(myCharge) > 0) {
+                      myCharges.push({ id: charge.id, name: charge.name, amount: myCharge, isDiscount });
+                      myChargesTotal += myCharge;
+                    }
+                  });
+
                   return (
                     <>
                       {myItems.map((item, idx) => (
@@ -2611,13 +2696,22 @@ const CollaborativeSession = () => {
                             <span>{t('totals.subtotal')}</span>
                             <span>{formatCurrency(mySubtotal)}</span>
                           </div>
-                          <div className="breakdown-row tip">
-                            <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
-                            <span>{formatCurrency(myTip)}</span>
-                          </div>
+                          {/* Show charges (only if non-zero) */}
+                          {myCharges.map(charge => (
+                            <div key={charge.id} className={`breakdown-row charge ${charge.isDiscount ? 'discount' : ''}`}>
+                              <span>{charge.name}</span>
+                              <span>{charge.isDiscount ? '-' : '+'}{formatCurrency(Math.abs(charge.amount))}</span>
+                            </div>
+                          ))}
+                          {myTip > 0 && (
+                            <div className="breakdown-row tip">
+                              <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
+                              <span>{formatCurrency(myTip)}</span>
+                            </div>
+                          )}
                           <div className="breakdown-row subtotal">
                             <span><strong>{t('totals.total')}</strong></span>
-                            <span className="my-total-amount">{formatCurrency(mySubtotal + myTip)}</span>
+                            <span className="my-total-amount">{formatCurrency(mySubtotal + myChargesTotal + myTip)}</span>
                           </div>
                         </>
                       )}
