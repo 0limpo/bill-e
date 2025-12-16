@@ -1,14 +1,10 @@
 """
-Sistema mejorado de OCR con procesamiento paralelo Vision + Gemini,
-validación de totales y deduplicación inteligente de items.
+Sistema de OCR usando Gemini con validación de totales y deduplicación inteligente de items.
 """
 
 import logging
-import asyncio
-from typing import Dict, Any, List, Optional, Tuple
-from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, Any, List, Optional
 from difflib import SequenceMatcher
-from ocr_service import ocr_service as vision_service
 from gemini_service import gemini_service
 
 logger = logging.getLogger(__name__)
@@ -290,178 +286,57 @@ def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared
 
 def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
     """
-    Procesa imagen con Vision y Gemini EN PARALELO.
-    Compara resultados y elige el mejor.
+    Procesa imagen con Gemini OCR.
 
     Args:
         image_bytes: Bytes de la imagen
 
     Returns:
-        Mejor resultado con validación
+        Resultado con validación y deduplicación
     """
-    logger.info("🚀 Iniciando procesamiento paralelo Vision + Gemini...")
+    logger.info("🚀 Iniciando procesamiento con Gemini...")
 
-    results = {'vision': None, 'gemini': None}
+    # Procesar con Gemini
+    if not gemini_service.is_available():
+        logger.error("❌ Gemini no disponible")
+        raise Exception("Gemini OCR no disponible")
 
-    def process_with_vision():
-        try:
-            text = vision_service.process_image(image_bytes)
-            parsed = vision_service.parse_receipt_text(text)
-            results['vision'] = parsed
-            logger.info("✅ Vision completado")
-        except Exception as e:
-            logger.error(f"❌ Vision falló: {str(e)}")
+    gemini_result = gemini_service.process_image_structured(image_bytes)
 
-    def process_with_gemini():
-        try:
-            if gemini_service.is_available():
-                # Usar extracción estructurada JSON (no texto plano)
-                structured_result = gemini_service.process_image_structured(image_bytes)
-                results['gemini'] = structured_result
-                logger.info("✅ Gemini completado")
-        except Exception as e:
-            logger.error(f"❌ Gemini falló: {str(e)}")
+    if not is_valid_result(gemini_result):
+        logger.error("❌ Resultado de Gemini no válido")
+        raise Exception("No se pudo procesar la imagen")
 
-    # Ejecutar ambos en paralelo
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        # future_vision = executor.submit(process_with_vision)  # DISABLED: Testing Gemini-only
-        future_gemini = executor.submit(process_with_gemini)
+    logger.info("✅ Gemini completado")
 
-        # Esperar ambos
-        # future_vision.result()  # DISABLED: Testing Gemini-only
-        future_gemini.result()
-
-    # Evaluar resultados
-    vision_result = results.get('vision')
-    gemini_result = results.get('gemini')
-
-    # Validar resultados y elegir el mejor
-    if is_valid_result(vision_result) and not is_valid_result(gemini_result):
-        logger.info("📊 Usando resultado de Vision (Gemini no válido o no disponible)")
-        chosen_result = vision_result
-        chosen_source = 'vision'
-    elif is_valid_result(gemini_result) and not is_valid_result(vision_result):
-        logger.info("📊 Usando resultado de Gemini (Vision no válido)")
-        chosen_result = gemini_result
-        chosen_source = 'gemini'
-    elif is_valid_result(vision_result) and is_valid_result(gemini_result):
-        # Ambos válidos - elegir el mejor
-        logger.info("📊 Ambos resultados válidos, comparando calidad...")
-
-        vision_items_count = len(vision_result.get('items', []))
-        gemini_items_count = len(gemini_result.get('items', []))
-        vision_confidence = vision_result.get('confidence_score', 0)
-        gemini_confidence = gemini_result.get('confidence_score', 0)
-
-        logger.info(f"   Vision: {vision_items_count} items, confianza: {vision_confidence}")
-        logger.info(f"   Gemini: {gemini_items_count} items, confianza: {gemini_confidence}")
-
-        # NUEVO: Calcular coherencia de totales (diferencia porcentual)
-        def calcular_coherencia(result):
-            """
-            Calcula qué tan coherente es el resultado (total vs subtotal+tip).
-            Retorna diferencia porcentual: 0% = perfecto, 100% = totalmente incoherente.
-            """
-            if not result or 'total' not in result:
-                return 100  # Máxima diferencia si no hay datos
-            total = result.get('total', 0)
-            subtotal = result.get('subtotal', 0)
-            tip = result.get('tip', 0)
-            if total == 0:
-                return 100
-            # Diferencia entre total declarado y (subtotal + tip)
-            expected = subtotal + tip
-            diff_percent = abs(total - expected) / total * 100
-            return diff_percent
-
-        vision_coherencia = calcular_coherencia(vision_result)
-        gemini_coherencia = calcular_coherencia(gemini_result)
-
-        logger.info(f"   Vision coherencia: {vision_coherencia:.1f}% diferencia")
-        logger.info(f"   Gemini coherencia: {gemini_coherencia:.1f}% diferencia")
-
-        # CRITERIO CRÍTICO 1: NUNCA elegir resultado con 0 items si el otro tiene items
-        if vision_items_count == 0 and gemini_items_count > 0:
-            logger.info("📊 Eligiendo Gemini (Vision tiene 0 items)")
-            chosen_result = gemini_result
-            chosen_source = 'gemini'
-        elif gemini_items_count == 0 and vision_items_count > 0:
-            logger.info("📊 Eligiendo Vision (Gemini tiene 0 items)")
-            chosen_result = vision_result
-            chosen_source = 'vision'
-
-        # CRITERIO CRÍTICO 2: Priorizar coherencia de totales
-        # Si uno tiene diferencia MUY alta (>50%) y el otro baja (<30%), elegir el coherente
-        elif vision_coherencia > 50 and gemini_coherencia < 30:
-            logger.info(f"📊 Eligiendo Gemini (Vision incoherente: {vision_coherencia:.1f}% vs {gemini_coherencia:.1f}%)")
-            chosen_result = gemini_result
-            chosen_source = 'gemini'
-        elif gemini_coherencia > 50 and vision_coherencia < 30:
-            logger.info(f"📊 Eligiendo Vision (Gemini incoherente: {gemini_coherencia:.1f}% vs {vision_coherencia:.1f}%)")
-            chosen_result = vision_result
-            chosen_source = 'vision'
-
-        # CRITERIO 3: Si hay diferencia significativa en coherencia (>20%), elegir el más coherente
-        elif vision_coherencia < gemini_coherencia - 20:
-            logger.info(f"📊 Eligiendo Vision (más coherente: {vision_coherencia:.1f}% vs {gemini_coherencia:.1f}%)")
-            chosen_result = vision_result
-            chosen_source = 'vision'
-        elif gemini_coherencia < vision_coherencia - 20:
-            logger.info(f"📊 Eligiendo Gemini (más coherente: {gemini_coherencia:.1f}% vs {vision_coherencia:.1f}%)")
-            chosen_result = gemini_result
-            chosen_source = 'gemini'
-
-        # CRITERIO 4: Si coherencia similar, usar confianza e items (criterio original)
-        elif gemini_confidence > vision_confidence:
-            logger.info(f"📊 Eligiendo Gemini (mayor confianza: {gemini_confidence} vs {vision_confidence})")
-            chosen_result = gemini_result
-            chosen_source = 'gemini'
-        elif vision_confidence > gemini_confidence:
-            logger.info(f"📊 Eligiendo Vision (mayor confianza: {vision_confidence} vs {gemini_confidence})")
-            chosen_result = vision_result
-            chosen_source = 'vision'
-        elif gemini_items_count > vision_items_count:
-            logger.info(f"📊 Eligiendo Gemini (más items: {gemini_items_count} vs {vision_items_count})")
-            chosen_result = gemini_result
-            chosen_source = 'gemini'
-        else:
-            logger.info(f"📊 Eligiendo Vision (más items o empate: {vision_items_count} vs {gemini_items_count})")
-            chosen_result = vision_result
-            chosen_source = 'vision'
-    else:
-        # Ninguno válido
-        logger.error("❌ Ningún resultado válido de OCR")
-        raise Exception("Ambos OCR fallaron - no se pudo procesar la imagen")
-
-    # PASO 1: Deduplicar items similares
-    original_items = chosen_result.get('items', [])
+    # Deduplicar items similares
+    original_items = gemini_result.get('items', [])
 
     logger.info(f"📊 Items ANTES de deduplicar: {len(original_items)}")
-    for i, item in enumerate(original_items[:5]):  # Primeros 5
+    for i, item in enumerate(original_items[:5]):
         logger.info(f"  {i}: '{item.get('name')}' x{item.get('quantity', 1)} = ${item.get('price')}")
 
     deduplicated_items = deduplicate_items(original_items)
 
     logger.info(f"📊 Items DESPUÉS de deduplicar: {len(deduplicated_items)}")
-    for i, item in enumerate(deduplicated_items[:5]):  # Primeros 5
+    for i, item in enumerate(deduplicated_items[:5]):
         dups = item.get('duplicates_found', 0)
         logger.info(f"  {i}: '{item.get('name')}' x{item.get('quantity', 1)} = ${item.get('price')} (dups: {dups})")
 
-    # PASO 2: Validar totales
+    # Validar totales
     validation = validate_totals(
         items=deduplicated_items,
-        declared_total=chosen_result.get('total', 0),
-        declared_subtotal=chosen_result.get('subtotal'),
-        declared_tip=chosen_result.get('tip')
+        declared_total=gemini_result.get('total', 0),
+        declared_subtotal=gemini_result.get('subtotal'),
+        declared_tip=gemini_result.get('tip')
     )
 
-    # Resultado final mejorado
+    # Resultado final
     enhanced_result = {
-        **chosen_result,
+        **gemini_result,
         'items': deduplicated_items,
         'validation': validation,
-        'ocr_source': chosen_source,
-        'both_results_available': vision_result is not None and gemini_result is not None
+        'ocr_source': 'gemini'
     }
 
     return enhanced_result
