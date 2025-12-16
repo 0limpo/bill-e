@@ -1617,25 +1617,39 @@ body {
   color: var(--primary);
 }
 
-/* WhatsApp Share Button */
+/* Share Buttons Container */
+.share-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 .share-btn {
-  width: 100%;
+  flex: 1;
   background: #25D366;
   color: white;
   border: none;
-  padding: 16px;
-  border-radius: 16px;
-  font-size: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
   transition: all 0.2s;
-  margin-bottom: 8px;
+}
+
+.share-btn.whatsapp {
+  background: #25D366;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+.share-btn.copy {
+  background: #6366f1;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
 .share-btn:active {
   transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(37, 211, 102, 0.3);
 }
 
 .sheet-summary-row {

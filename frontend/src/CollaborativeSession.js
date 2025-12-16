@@ -1377,9 +1377,9 @@ const CollaborativeSession = () => {
     } catch (err) { alert('Error al finalizar'); }
   };
 
-  // WhatsApp Share - Uses LOCAL calculations for accurate numbers
-  const handleShareWhatsapp = () => {
-    if (!session?.participants) return;
+  // Generate share text - Used by both WhatsApp and Copy functions
+  const generateShareText = () => {
+    if (!session?.participants) return '';
 
     let text = `🧾 *Resumen Bill-e*\n\n`;
 
@@ -1396,9 +1396,29 @@ const CollaborativeSession = () => {
     text += `\n\n🤖 *¿Quieres dividir tu cuenta fácil?*`;
     text += `\nAgrega a Bill-e: https://wa.me/15551925783`;
 
-    // wa.me works best across mobile and desktop
+    return text;
+  };
+
+  // WhatsApp Share
+  const handleShareWhatsapp = () => {
+    const text = generateShareText();
+    if (!text) return;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(whatsappUrl, '_blank');
+  };
+
+  // Copy to clipboard - For sharing via other apps (Telegram, etc.)
+  const [copied, setCopied] = useState(false);
+  const handleCopyShare = async () => {
+    const text = generateShareText();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Error copying:', err);
+    }
   };
 
   // Reopen a finalized session
@@ -2401,10 +2421,15 @@ const CollaborativeSession = () => {
                   </div>
                 </div>
 
-                {/* WhatsApp Share - Only for Host */}
-                <button className="share-btn" onClick={handleShareWhatsapp}>
-                  📱 {t('finalized.shareWhatsApp')}
-                </button>
+                {/* Share buttons - Only for Host */}
+                <div className="share-buttons">
+                  <button className="share-btn whatsapp" onClick={handleShareWhatsapp}>
+                    📱 WhatsApp
+                  </button>
+                  <button className="share-btn copy" onClick={handleCopyShare}>
+                    {copied ? '✓ Copiado' : '📋 Copiar'}
+                  </button>
+                </div>
 
                 <button className="btn-reopen" onClick={handleReopenSession}>
                   🔓 {t('finalized.reopenTable')}
