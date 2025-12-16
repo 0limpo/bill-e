@@ -24,7 +24,8 @@ def create_collaborative_session(
     subtotal: float,
     tip: float,
     raw_text: str = "",
-    charges: List[Dict] = None
+    charges: List[Dict] = None,
+    decimal_places: int = 0
 ) -> Dict[str, Any]:
     session_id = str(uuid.uuid4())[:8]
     owner_token = str(uuid.uuid4())
@@ -54,6 +55,7 @@ def create_collaborative_session(
         "subtotal": subtotal,
         "tip": tip or 0,
         "tip_percentage": round(((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 10),
+        "decimal_places": decimal_places,
         "raw_text": raw_text,
         "participants": [
             {

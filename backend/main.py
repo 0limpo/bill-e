@@ -412,7 +412,9 @@ async def create_collaborative_session_endpoint(request: Request):
             total=data.get("total", 0),
             subtotal=data.get("subtotal", 0),
             tip=data.get("tip", 0),
-            raw_text=data.get("raw_text", "")
+            raw_text=data.get("raw_text", ""),
+            charges=data.get("charges", []),
+            decimal_places=data.get("decimal_places", 0)
         )
         return result
     except Exception as e:

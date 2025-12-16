@@ -10,7 +10,12 @@ import './CollaborativeSession.css';
 const API_URL = 'https://bill-e-backend-lfwp.onrender.com';
 
 // --- UTILS (Helpers visuales) ---
-const formatCurrency = (amount) => `$${Math.round(amount).toLocaleString('es-CL')}`;
+const formatCurrency = (amount, decimals = 0) => {
+  if (decimals > 0) {
+    return `$${Number(amount).toLocaleString('es-CL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  }
+  return `$${Math.round(amount).toLocaleString('es-CL')}`;
+};
 
 const getAvatarColor = (name) => {
   const colors = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#d946ef', '#f43f5e'];
@@ -332,8 +337,9 @@ const ChargeModal = ({ charge, onSave, onClose, onDelete }) => {
 };
 
 // Validation Dashboard Component (Host Only)
-const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
+const ValidationDashboard = ({ session, onUpdateSubtotal, decimalPlaces = 0 }) => {
   const { t } = useTranslation();
+  const fmt = (amount) => formatCurrency(amount, decimalPlaces);
   const [editingSubtotal, setEditingSubtotal] = useState(false);
   const [subtotalInput, setSubtotalInput] = useState(session.subtotal?.toString() || '0');
 
@@ -391,14 +397,14 @@ const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
         <div className="metric">
           <span className="metric-label">{t('validation.totalItems')}</span>
           <span className={`metric-value ${itemsMatch ? 'match' : 'mismatch'}`}>
-            {formatCurrency(totalItems)}
+            {fmt(totalItems)}
           </span>
         </div>
 
         <div className="metric">
           <span className="metric-label">{t('validation.totalAssigned')}</span>
           <span className={`metric-value ${assignedMatch ? 'match' : 'mismatch'}`}>
-            {formatCurrency(totalAsignado)}
+            {fmt(totalAsignado)}
           </span>
         </div>
 
@@ -422,7 +428,7 @@ const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
                 setEditingSubtotal(true);
               }}
             >
-              {formatCurrency(totalBoleta)} ✏️
+              {fmt(totalBoleta)} ✏️
             </span>
           )}
         </div>
@@ -430,12 +436,12 @@ const ValidationDashboard = ({ session, onUpdateSubtotal }) => {
 
       {!assignedMatch && totalAsignado < totalBoleta && (
         <div className="validation-warning">
-          {t('validation.missingToAssign', { amount: formatCurrency(totalBoleta - totalAsignado) })}
+          {t('validation.missingToAssign', { amount: fmt(totalBoleta - totalAsignado) })}
         </div>
       )}
       {!assignedMatch && totalAsignado > totalBoleta && (
         <div className="validation-warning">
-          {t('validation.overAssigned', { amount: formatCurrency(totalAsignado - totalBoleta) })}
+          {t('validation.overAssigned', { amount: fmt(totalAsignado - totalBoleta) })}
         </div>
       )}
     </div>
@@ -463,9 +469,11 @@ const BillItem = ({
   onToggleExpand,
   isPerUnitMode,
   onSetPerUnitMode,
-  isSyncing
+  isSyncing,
+  decimalPlaces = 0
 }) => {
   const { t } = useTranslation();
+  const fmt = (amount) => formatCurrency(amount, decimalPlaces);
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
   const isAssignedToMe = itemAssignments.some(a => a.participant_id === currentParticipant?.id);
@@ -539,7 +547,7 @@ const BillItem = ({
 
               {/* Row 3: Total helper */}
               <div className="edit-total-row">
-                {t('items.total')}: <strong>{formatCurrency(totalPrice)}</strong>
+                {t('items.total')}: <strong>{fmt(totalPrice)}</strong>
               </div>
             </div>
           ) : (
@@ -548,9 +556,9 @@ const BillItem = ({
               <span className="item-qty-badge">{qty}x</span>
               <span className={`item-name ${canEditItem ? 'editable' : ''}`}>{item.name}</span>
               <div className="item-price-col">
-                <span className={`item-price ${canEditItem ? 'editable' : ''}`}>{formatCurrency(totalPrice)}</span>
+                <span className={`item-price ${canEditItem ? 'editable' : ''}`}>{fmt(totalPrice)}</span>
                 {qty > 1 && (
-                  <span className="item-unit-price">{formatCurrency(unitPrice)} {t('items.perUnitSuffix')}</span>
+                  <span className="item-unit-price">{fmt(unitPrice)} {t('items.perUnitSuffix')}</span>
                 )}
               </div>
             </>
@@ -809,6 +817,9 @@ const CollaborativeSession = () => {
 
   // Touch tracking for swipe gesture on bottom sheet
   const touchStartY = useRef(0);
+
+  // Currency formatter with session's decimal places
+  const fmt = (amount) => formatCurrency(amount, session?.decimal_places || 0);
 
   // Swipe handlers for bottom sheet
   const handleTouchStart = (e) => {
@@ -1362,11 +1373,11 @@ const CollaborativeSession = () => {
     let grandTotal = 0;
     session.participants.forEach(p => {
       const { total } = calculateParticipantTotal(p.id, true);
-      text += `• ${p.name}: ${formatCurrency(total)}\n`;
+      text += `• ${p.name}: ${fmt(total)}\n`;
       grandTotal += total;
     });
 
-    text += `\n*Total Mesa: ${formatCurrency(grandTotal)}*`;
+    text += `\n*Total Mesa: ${fmt(grandTotal)}*`;
     text += `\n\n📱 Ver detalle: https://bill-e.vercel.app/s/${sessionId}`;
     text += `\n\n🤖 *¿Quieres dividir tu cuenta fácil?*`;
     text += `\nAgrega a Bill-e: https://wa.me/15551925783`;
@@ -2204,6 +2215,7 @@ const CollaborativeSession = () => {
                 isPerUnitMode={perUnitModeItems[itemId] || false}
                 onSetPerUnitMode={(id, value) => setPerUnitModeItems(prev => ({ ...prev, [id]: value }))}
                 isSyncing={syncingItems.has(itemId)}
+                decimalPlaces={session?.decimal_places || 0}
               />
             </div>
           );
@@ -2239,7 +2251,7 @@ const CollaborativeSession = () => {
               </div>
               <span className="my-total-amount">
                 {/* Use local calc to avoid NaN - displayedTotal for Host, getMyTotal for Editor */}
-                {formatCurrency(isOwner ? displayedTotal : getMyTotal())}
+                {fmt(isOwner ? displayedTotal : getMyTotal())}
               </span>
             </div>
 
@@ -2319,8 +2331,8 @@ const CollaborativeSession = () => {
                               {p.id === currentParticipant?.id ? t('header.you') : p.name}
                             </span>
                           </div>
-                          <span className="sheet-breakdown-subtotal">{formatCurrency(subtotal)}</span>
-                          <span className="sheet-breakdown-amount">{formatCurrency(total)}</span>
+                          <span className="sheet-breakdown-subtotal">{fmt(subtotal)}</span>
+                          <span className="sheet-breakdown-amount">{fmt(total)}</span>
                         </div>
                         {isExpanded && (
                           <div className="participant-breakdown host-view">
@@ -2337,24 +2349,24 @@ const CollaborativeSession = () => {
                                   )}
                                   {item.name}
                                 </span>
-                                <span>{formatCurrency(item.amount)}</span>
+                                <span>{fmt(item.amount)}</span>
                               </div>
                             ))}
                             <div className="breakdown-row subtotal">
                               <span>{t('totals.subtotal')}</span>
-                              <span>{formatCurrency(subtotal)}</span>
+                              <span>{fmt(subtotal)}</span>
                             </div>
                             {/* Show charges (only if non-zero) */}
                             {pCharges.filter(c => Math.abs(c.amount) > 0).map(charge => (
                               <div key={charge.id} className={`breakdown-row charge ${charge.amount < 0 ? 'discount' : ''}`}>
                                 <span>{charge.name}</span>
-                                <span>{charge.amount < 0 ? '-' : '+'}{formatCurrency(Math.abs(charge.amount))}</span>
+                                <span>{charge.amount < 0 ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
                               </div>
                             ))}
                             {tipAmount > 0 && (
                               <div className="breakdown-row tip">
                                 <span>{t('totals.tipLabel')}</span>
-                                <span>{formatCurrency(tipAmount)}</span>
+                                <span>{fmt(tipAmount)}</span>
                               </div>
                             )}
                           </div>
@@ -2366,7 +2378,7 @@ const CollaborativeSession = () => {
                   <div className="sheet-breakdown-total">
                     <span>{t('totals.tableTotal')}</span>
                     <span></span>
-                    <span className="sheet-total-amount">{formatCurrency(displayedTotal)}</span>
+                    <span className="sheet-total-amount">{fmt(displayedTotal)}</span>
                   </div>
                 </div>
 
@@ -2494,31 +2506,31 @@ const CollaborativeSession = () => {
                               )}
                               {item.name}
                             </span>
-                            <span>{formatCurrency(item.amount)}</span>
+                            <span>{fmt(item.amount)}</span>
                           </div>
                         ))}
                         {myItems.length > 0 && (
                           <>
                             <div className="breakdown-row subtotal">
                               <span>{t('totals.subtotal')}</span>
-                              <span>{formatCurrency(mySubtotal)}</span>
+                              <span>{fmt(mySubtotal)}</span>
                             </div>
                             {/* Show charges (only if non-zero) */}
                             {myChargesFinalized.map(charge => (
                               <div key={charge.id} className={`breakdown-row charge ${charge.isDiscount ? 'discount' : ''}`}>
                                 <span>{charge.name}</span>
-                                <span>{charge.isDiscount ? '-' : '+'}{formatCurrency(Math.abs(charge.amount))}</span>
+                                <span>{charge.isDiscount ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
                               </div>
                             ))}
                             {myTip > 0 && (
                               <div className="breakdown-row tip">
                                 <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
-                                <span>{formatCurrency(myTip)}</span>
+                                <span>{fmt(myTip)}</span>
                               </div>
                             )}
                             <div className="breakdown-row subtotal">
                               <span><strong>{t('totals.total')}</strong></span>
-                              <span className="my-total-amount">{formatCurrency(mySubtotal + myChargesTotalFinalized + myTip)}</span>
+                              <span className="my-total-amount">{fmt(mySubtotal + myChargesTotalFinalized + myTip)}</span>
                             </div>
                           </>
                         )}
@@ -2555,7 +2567,7 @@ const CollaborativeSession = () => {
                 )}
               </div>
               <span className="my-total-amount">
-                {formatCurrency(isOwner ? displayedTotal : getMyTotal())}
+                {fmt(isOwner ? displayedTotal : getMyTotal())}
               </span>
             </div>
 
@@ -2684,7 +2696,7 @@ const CollaborativeSession = () => {
                             )}
                             {item.name}
                           </span>
-                          <span>{formatCurrency(item.amount)}</span>
+                          <span>{fmt(item.amount)}</span>
                         </div>
                       ))}
                       {myItems.length === 0 && (
@@ -2694,24 +2706,24 @@ const CollaborativeSession = () => {
                         <>
                           <div className="breakdown-row subtotal">
                             <span>{t('totals.subtotal')}</span>
-                            <span>{formatCurrency(mySubtotal)}</span>
+                            <span>{fmt(mySubtotal)}</span>
                           </div>
                           {/* Show charges (only if non-zero) */}
                           {myCharges.map(charge => (
                             <div key={charge.id} className={`breakdown-row charge ${charge.isDiscount ? 'discount' : ''}`}>
                               <span>{charge.name}</span>
-                              <span>{charge.isDiscount ? '-' : '+'}{formatCurrency(Math.abs(charge.amount))}</span>
+                              <span>{charge.isDiscount ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
                             </div>
                           ))}
                           {myTip > 0 && (
                             <div className="breakdown-row tip">
                               <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
-                              <span>{formatCurrency(myTip)}</span>
+                              <span>{fmt(myTip)}</span>
                             </div>
                           )}
                           <div className="breakdown-row subtotal">
                             <span><strong>{t('totals.total')}</strong></span>
-                            <span className="my-total-amount">{formatCurrency(mySubtotal + myChargesTotal + myTip)}</span>
+                            <span className="my-total-amount">{fmt(mySubtotal + myChargesTotal + myTip)}</span>
                           </div>
                         </>
                       )}
@@ -2742,13 +2754,13 @@ const CollaborativeSession = () => {
                     <div className="validation-metric">
                       <span className="validation-metric-label">{t('validation.subtotalItems')}</span>
                       <span className={`validation-metric-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
-                        {formatCurrency(totalItems)}
+                        {fmt(totalItems)}
                       </span>
                     </div>
                     <div className="validation-metric">
                       <span className="validation-metric-label">{t('validation.subtotalAssigned')}</span>
                       <span className={`validation-metric-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
-                        {formatCurrency(totalAsignado)}
+                        {fmt(totalAsignado)}
                       </span>
                     </div>
                   </div>
@@ -2761,8 +2773,8 @@ const CollaborativeSession = () => {
                   ) : (
                     <div className="validation-feedback warning">
                       {totalAsignado < totalBoleta
-                        ? t('validation.missingToAssign', { amount: formatCurrency(totalBoleta - totalAsignado) })
-                        : t('validation.overAssigned', { amount: formatCurrency(totalAsignado - totalBoleta) })
+                        ? t('validation.missingToAssign', { amount: fmt(totalBoleta - totalAsignado) })
+                        : t('validation.overAssigned', { amount: fmt(totalAsignado - totalBoleta) })
                       }
                     </div>
                   )}
@@ -2803,8 +2815,8 @@ const CollaborativeSession = () => {
                       />
                       <span className="tip-helper">
                         {tipMode === 'percent'
-                          ? `= ${formatCurrency(totalTipAmount)}`
-                          : `÷ ${session.participants?.length || 1} = ${formatCurrency(totalTipAmount / (session.participants?.length || 1))}/pers`
+                          ? `= ${fmt(totalTipAmount)}`
+                          : `÷ ${session.participants?.length || 1} = ${fmt(totalTipAmount / (session.participants?.length || 1))}/pers`
                         }
                       </span>
                     </div>
@@ -2840,7 +2852,7 @@ const CollaborativeSession = () => {
                             <span className="charge-name">{charge.name}</span>
                             <span className="charge-value">
                               {charge.isDiscount ? '-' : '+'}
-                              {charge.valueType === 'percent' ? `${charge.value}%` : formatCurrency(charge.value)}
+                              {charge.valueType === 'percent' ? `${charge.value}%` : fmt(charge.value)}
                             </span>
                             <span className="charge-dist">
                               {charge.distribution === 'per_person' ? t('charges.perPersonShort') : t('charges.proportionalShort')}

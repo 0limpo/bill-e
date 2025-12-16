@@ -174,6 +174,8 @@ Busca líneas que SUMAN: IVA, VAT, GST, Tax, Servicio, Service, Cubierto, Cover,
 - "precio" SIEMPRE = precio unitario (de 1 unidad)
 - Ignora símbolos de moneda ($, €, £)
 - Si cantidad no explícita, asume 1
+- PRESERVA DECIMALES: Si la boleta muestra "12.50" o "12,50" con centavos, retorna 12.50 (punto decimal)
+- Todos los números en JSON deben usar PUNTO como decimal (estándar JSON)
 
 ## FORMATO DE RESPUESTA
 
@@ -181,22 +183,24 @@ Retorna SOLO JSON válido:
 {
   "needs_review": false,
   "review_message": null,
+  "decimal_places": 2,
   "items": [
-    {"nombre": "Hamburguesa", "cantidad": 2, "precio": 8500},
-    {"nombre": "Cerveza", "cantidad": 2, "precio": 3000}
+    {"nombre": "Hamburguesa", "cantidad": 2, "precio": 85.00},
+    {"nombre": "Cerveza", "cantidad": 2, "precio": 30.00}
   ],
   "charges": [
     {"nombre": "IVA", "valor": 19, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"},
-    {"nombre": "Cubierto", "valor": 2000, "tipo_valor": "fixed", "es_descuento": false, "distribucion": "per_person"},
-    {"nombre": "Happy Hour", "valor": 3000, "tipo_valor": "fixed", "es_descuento": true, "distribucion": "proportional"}
+    {"nombre": "Cubierto", "valor": 20.00, "tipo_valor": "fixed", "es_descuento": false, "distribucion": "per_person"},
+    {"nombre": "Happy Hour", "valor": 30.00, "tipo_valor": "fixed", "es_descuento": true, "distribucion": "proportional"}
   ],
-  "subtotal": 17000,
-  "tip": 1700,
-  "total": 23645,
+  "subtotal": 170.00,
+  "tip": 17.00,
+  "total": 236.45,
   "price_mode": "original"
 }
 
 Donde:
+- decimal_places: 0 si no hay decimales (ej: Chile CLP), 2 si hay centavos (ej: USD, EUR, MXN)
 - tipo_valor: "percent" o "fixed"
 - es_descuento: true si resta, false si suma
 - distribucion: "proportional" (según consumo) o "per_person" (igual para todos)
@@ -245,6 +249,14 @@ Donde:
 
                     needs_review = data.get('needs_review') or False
                     review_message = data.get('review_message')
+                    decimal_places = data.get('decimal_places')
+                    # Auto-detect decimal_places if not provided
+                    if decimal_places is None:
+                        # Check if any price has decimals
+                        has_decimals = any(
+                            (it['price'] % 1) != 0 for it in items
+                        ) or (data.get('total') or 0) % 1 != 0
+                        decimal_places = 2 if has_decimals else 0
 
                     result = {
                         'success': True,
@@ -254,12 +266,13 @@ Donde:
                         'items': items,
                         'charges': charges,
                         'price_mode': data.get('price_mode') or 'discounted',
+                        'decimal_places': decimal_places,
                         'needs_review': needs_review,
                         'review_message': review_message,
                         'confidence_score': 95 if not needs_review else 70
                     }
 
-                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, Charges={len(charges)}")
+                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, Charges={len(charges)}, Decimals={decimal_places}")
                     for i, it in enumerate(items[:3]):
                         line_total = it['price'] * it['quantity']
                         logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total}")
