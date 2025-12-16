@@ -32,10 +32,20 @@ def similar(a: str, b: str) -> float:
 def normalize_item_name(name: str) -> str:
     """
     Normaliza nombre de item para comparación.
-    Remueve puntos, comas, guiones y espacios extra.
+    Remueve puntos, comas, guiones, espacios extra y sufijos de descuento.
     """
     # Convertir a minúsculas
     normalized = name.lower()
+    # Remover sufijos de descuento comunes
+    discount_patterns = [
+        r'\s*\d+%\s*de\s*descuento\s*$',  # "20% de descuento"
+        r'\s*\d+x\s*de\s*descuento\s*$',   # "20x de descuento" (typo común)
+        r'\s*\d+%\s*desc\.?\s*$',           # "20% desc" or "20% desc."
+        r'\s*descuento\s*$',                # "descuento"
+        r',?\s*\d+%\s*$',                   # ", 20%" or " 20%"
+    ]
+    for pattern in discount_patterns:
+        normalized = re.sub(pattern, '', normalized, flags=re.IGNORECASE)
     # Remover puntos, comas, guiones al final
     normalized = re.sub(r'[.,\-)\s]+$', '', normalized)
     # Remover múltiples espacios
@@ -257,32 +267,45 @@ Objetivo: Extraer con precisión matemática todos los componentes de la boleta.
 
 ## PROTOCOLO DE RAZONAMIENTO (Chain of Thought)
 
-### 1. Análisis de Formato Numérico (CRÍTICO)
+### 1. Análisis de Formato Numérico (CRÍTICO - LEE CON ATENCIÓN)
 Detecta el formato de puntuación mirando el TOTAL de la boleta:
-- Si total tiene 3 dígitos después del punto (ej: 111.793) → punto = miles, NO hay decimales
-- Si total tiene 2 dígitos después del punto (ej: 111.79) → punto = decimales
-- Si total tiene coma con 2 dígitos (ej: 111,79) → coma = decimales
+- Si total tiene 3+ dígitos después del punto (ej: 206.118) → punto = MILES, decimal_places = 0
+- Si total tiene exactamente 2 dígitos después del punto (ej: 111.79) → punto = decimales, decimal_places = 2
 
-CLAVE: Monedas SIN centavos (CLP, COP, JPY, etc.) usan punto como MILES:
-- "13.990" = 13990 (trece mil novecientos noventa), NO 13.99
+**TEST OBLIGATORIO**: Cuenta los dígitos después del último punto en el TOTAL.
+- "206.118" tiene 3 dígitos después → punto es MILES → total = 206118, decimal_places = 0
+- "3.760" tiene 3 dígitos después → punto es MILES → precio = 3760, NO 3.76
+- "111.79" tiene 2 dígitos después → punto es DECIMAL → total = 111.79
+
+**ERROR COMÚN A EVITAR**: NO retornes "3.76" cuando la boleta dice "3.760".
+Si ves "3.760" y el total es "206.118", entonces 3.760 = 3760 (tres mil setecientos sesenta).
+
+CLAVE: Monedas SIN centavos (CLP, COP, JPY) usan punto como MILES:
+- "13.990" = 13990 (trece mil), NO 13.99
 - "4.000" = 4000 (cuatro mil), NO 4.0
-- "111.793" = 111793 (ciento once mil), NO 111.793
+- "206.118" = 206118 (doscientos seis mil), NO 206.118
 
 ### 2. Escaneo de Cantidades
 Busca ítems con cantidad > 1 (ej: "2x Coca Cola", "3 Pan").
 
 ### 2.5. Deduplicación de Items Similares (IMPORTANTE)
 El OCR puede leer el mismo item con pequeñas variaciones. AGRUPA items que cumplan AMBOS criterios:
-- Nombres 85%+ similares (ej: "Summer Ale" ≈ "Summer Ale." ≈ "Summer  Ale")
+- Nombres 85%+ similares DESPUÉS de normalizar (ver abajo)
 - Precios dentro del 5% de diferencia (ej: $3760 ≈ $3768)
+
+**Normalización de nombres para comparar**:
+- Ignora sufijos de descuento: "20% de descuento", "20% desc", "descuento", "20%", etc.
+- Ignora puntuación final: puntos, comas, espacios extra
+- "Summer Ale 568cc 20% de descuento" → normaliza a "Summer Ale 568cc"
+- "Summer Ale 568CC" → normaliza a "Summer Ale 568cc"
 
 Al agrupar:
 - Suma las cantidades
 - Usa el precio más frecuente
-- Usa el nombre más limpio (sin puntos/espacios extra al final)
+- Usa el nombre más corto/limpio (sin sufijos de descuento)
 
-Ejemplo: Si ves 15 líneas de "Summer Ale" a precios entre $3.760-$3.768, agrúpalas como:
-{"nombre": "Summer Ale", "cantidad": 15, "precio": 3760}
+Ejemplo: "Summer Ale 568cc 20% de descuento" + 14x "Summer Ale 568cc" a precios $3760-$3768:
+{"nombre": "Summer Ale 568cc", "cantidad": 15, "precio": 3760}
 
 ### 3. Test de Hipótesis de Precio (CRÍTICO)
 La boleta puede mostrar PRECIO UNITARIO o TOTAL DE LÍNEA. Debes retornar siempre PRECIO UNITARIO.
