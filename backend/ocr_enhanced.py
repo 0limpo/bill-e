@@ -142,65 +142,6 @@ def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float =
 
     return deduplicated
 
-def normalize_prices_to_unit(items: List[Dict[str, Any]], declared_subtotal: Optional[float] = None) -> List[Dict[str, Any]]:
-    """
-    Detecta si los precios son LINE TOTALS o UNIT PRICES y normaliza a UNIT PRICES.
-
-    Muchas boletas muestran el total de línea (qty * unit_price) en lugar del precio unitario.
-    Ej: "3 Pan Mechada ... 35.970" donde 35.970 es el total, no el unitario.
-
-    Esta función detecta cuál interpretación cuadra mejor con el subtotal declarado
-    y normaliza los precios a unitarios si es necesario.
-    """
-    if not items or not declared_subtotal or declared_subtotal <= 0:
-        return items
-
-    # Calcular suma asumiendo que prices son LINE TOTALS (no multiplicar)
-    sum_as_line_totals = sum(item.get('price', 0) for item in items)
-
-    # Calcular suma asumiendo que prices son UNIT PRICES (multiplicar por qty)
-    sum_as_unit_prices = sum(
-        item.get('price', 0) * item.get('quantity', 1)
-        for item in items
-    )
-
-    # Calcular diferencias porcentuales con el subtotal declarado
-    diff_line_totals = abs(sum_as_line_totals - declared_subtotal) / declared_subtotal if declared_subtotal else float('inf')
-    diff_unit_prices = abs(sum_as_unit_prices - declared_subtotal) / declared_subtotal if declared_subtotal else float('inf')
-
-    logger.info(f"🔍 Detectando tipo de precio:")
-    logger.info(f"   Suma como LINE TOTALS: ${sum_as_line_totals:.2f} (diff: {diff_line_totals*100:.1f}%)")
-    logger.info(f"   Suma como UNIT PRICES: ${sum_as_unit_prices:.2f} (diff: {diff_unit_prices*100:.1f}%)")
-    logger.info(f"   Subtotal declarado: ${declared_subtotal:.2f}")
-
-    # Si ambos son similares (< 5% diferencia), preferir UNIT PRICES (no modificar)
-    # Si LINE TOTALS cuadra significativamente mejor, normalizar
-    tolerance = 0.05  # 5%
-
-    if diff_line_totals < tolerance and diff_unit_prices >= tolerance:
-        # Los precios son LINE TOTALS, necesitamos dividir por quantity
-        logger.info(f"✅ Precios detectados como LINE TOTALS - normalizando a unitarios")
-
-        normalized_items = []
-        for item in items:
-            qty = item.get('quantity', 1)
-            line_total = item.get('price', 0)
-
-            if qty > 1 and line_total > 0:
-                unit_price = line_total / qty
-                logger.info(f"   {item.get('name')}: ${line_total} / {qty} = ${unit_price:.2f} c/u")
-                normalized_item = {**item, 'price': unit_price}
-            else:
-                normalized_item = item
-
-            normalized_items.append(normalized_item)
-
-        return normalized_items
-    else:
-        logger.info(f"✅ Precios detectados como UNIT PRICES - sin cambios")
-        return items
-
-
 def validate_totals(items: List[Dict[str, Any]], declared_total: float, declared_subtotal: Optional[float] = None, declared_tip: Optional[float] = None) -> Dict[str, Any]:
     """
     Valida totales con más detalle y calcula indicadores de calidad.
@@ -382,13 +323,9 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
         dups = item.get('duplicates_found', 0)
         logger.info(f"  {i}: '{item.get('name')}' x{item.get('quantity', 1)} = ${item.get('price')} (dups: {dups})")
 
-    # Normalizar precios: detectar si son LINE TOTALS y convertir a UNIT PRICES
-    declared_subtotal = gemini_result.get('subtotal')
-    normalized_items = normalize_prices_to_unit(deduplicated_items, declared_subtotal)
-
     # Validar totales
     validation = validate_totals(
-        items=normalized_items,
+        items=deduplicated_items,
         declared_total=gemini_result.get('total', 0),
         declared_subtotal=gemini_result.get('subtotal'),
         declared_tip=gemini_result.get('tip')
@@ -397,7 +334,7 @@ def process_image_parallel(image_bytes: bytes) -> Dict[str, Any]:
     # Resultado final
     enhanced_result = {
         **gemini_result,
-        'items': normalized_items,
+        'items': deduplicated_items,
         'validation': validation,
         'ocr_source': 'gemini'
     }
