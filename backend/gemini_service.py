@@ -197,6 +197,7 @@ Retorna SOLO JSON válido:
   "needs_review": false,
   "review_message": null,
   "decimal_places": 2,
+  "number_format": {"thousands": ",", "decimal": "."},
   "items": [
     {"nombre": "Hamburguesa", "cantidad": 2, "precio": 85.00},
     {"nombre": "Cerveza", "cantidad": 2, "precio": 30.00},
@@ -215,6 +216,7 @@ Retorna SOLO JSON válido:
 
 Donde:
 - decimal_places: 0 si no hay decimales (ej: Chile CLP), 2 si hay centavos (ej: USD, EUR, MXN)
+- number_format: formato numérico EXACTO de la boleta. thousands="," y decimal="." para formato US (1,000.50). thousands="." y decimal="," para formato EU/LATAM (1.000,50). thousands="" si no hay separador de miles.
 - tipo_valor: "percent" o "fixed"
 - es_descuento: true si resta, false si suma
 - distribucion: "proportional" (según consumo) o "per_person" (igual para todos)
@@ -277,6 +279,9 @@ Donde:
                     tip_value = data.get('tip') or data.get('propina') or 0
                     has_tip = data.get('has_tip', tip_value > 0)  # True if explicitly set or tip > 0
 
+                    # Get number format from receipt (default to US format if not detected)
+                    number_format = data.get('number_format', {'thousands': ',', 'decimal': '.'})
+
                     result = {
                         'success': True,
                         'total': data.get('total') or 0,
@@ -287,6 +292,7 @@ Donde:
                         'charges': charges,
                         'price_mode': data.get('price_mode') or 'discounted',
                         'decimal_places': decimal_places,
+                        'number_format': number_format,
                         'needs_review': needs_review,
                         'review_message': review_message,
                         'confidence_score': 95 if not needs_review else 70

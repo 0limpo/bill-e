@@ -10,11 +10,22 @@ import './CollaborativeSession.css';
 const API_URL = 'https://bill-e-backend-lfwp.onrender.com';
 
 // --- UTILS (Helpers visuales) ---
-const formatCurrency = (amount, decimals = 0) => {
-  if (decimals > 0) {
-    return `$${Number(amount).toLocaleString('es-CL', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+const formatCurrency = (amount, decimals = 0, numberFormat = null) => {
+  // Use custom number format from receipt, or default to US format
+  const fmt = numberFormat || { thousands: ',', decimal: '.' };
+  const num = decimals > 0 ? Number(amount).toFixed(decimals) : Math.round(amount).toString();
+
+  // Split into integer and decimal parts
+  const [intPart, decPart] = num.split('.');
+
+  // Add thousands separator
+  const intWithSep = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, fmt.thousands);
+
+  // Combine with decimal separator if needed
+  if (decPart !== undefined) {
+    return `$${intWithSep}${fmt.decimal}${decPart}`;
   }
-  return `$${Math.round(amount).toLocaleString('es-CL')}`;
+  return `$${intWithSep}`;
 };
 
 const getAvatarColor = (name) => {
@@ -337,9 +348,9 @@ const ChargeModal = ({ charge, onSave, onClose, onDelete }) => {
 };
 
 // Validation Dashboard Component (Host Only)
-const ValidationDashboard = ({ session, onUpdateSubtotal, decimalPlaces = 0 }) => {
+const ValidationDashboard = ({ session, onUpdateSubtotal, decimalPlaces = 0, numberFormat = null }) => {
   const { t } = useTranslation();
-  const fmt = (amount) => formatCurrency(amount, decimalPlaces);
+  const fmt = (amount) => formatCurrency(amount, decimalPlaces, numberFormat);
   const [editingSubtotal, setEditingSubtotal] = useState(false);
   const [subtotalInput, setSubtotalInput] = useState(session.subtotal?.toString() || '0');
 
@@ -470,10 +481,11 @@ const BillItem = ({
   isPerUnitMode,
   onSetPerUnitMode,
   isSyncing,
-  decimalPlaces = 0
+  decimalPlaces = 0,
+  numberFormat = null
 }) => {
   const { t } = useTranslation();
-  const fmt = (amount) => formatCurrency(amount, decimalPlaces);
+  const fmt = (amount) => formatCurrency(amount, decimalPlaces, numberFormat);
   const itemId = item.id || item.name;
   const itemAssignments = assignments[itemId] || [];
   const isAssignedToMe = itemAssignments.some(a => a.participant_id === currentParticipant?.id);
@@ -818,8 +830,8 @@ const CollaborativeSession = () => {
   // Touch tracking for swipe gesture on bottom sheet
   const touchStartY = useRef(0);
 
-  // Currency formatter with session's decimal places
-  const fmt = (amount) => formatCurrency(amount, session?.decimal_places || 0);
+  // Currency formatter with session's decimal places and number format
+  const fmt = (amount) => formatCurrency(amount, session?.decimal_places || 0, session?.number_format);
 
   // Swipe handlers for bottom sheet
   const handleTouchStart = (e) => {
@@ -893,8 +905,10 @@ const CollaborativeSession = () => {
               tip_mode: data.tip_mode ?? prev.tip_mode,
               tip_value: data.tip_value ?? prev.tip_value,
               tip_percentage: data.tip_percentage ?? prev.tip_percentage,
-              // Sync charges
-              charges: data.charges ?? prev.charges
+              has_tip: data.has_tip ?? prev.has_tip,
+              // Sync charges and formatting
+              charges: data.charges ?? prev.charges,
+              number_format: data.number_format ?? prev.number_format
             }));
             setLastUpdate(data.last_updated);
           }
@@ -2220,6 +2234,7 @@ const CollaborativeSession = () => {
                 onSetPerUnitMode={(id, value) => setPerUnitModeItems(prev => ({ ...prev, [id]: value }))}
                 isSyncing={syncingItems.has(itemId)}
                 decimalPlaces={session?.decimal_places || 0}
+                numberFormat={session?.number_format}
               />
             </div>
           );

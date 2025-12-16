@@ -235,7 +235,8 @@ async def process_image_message(phone_number: str, image_data: dict):
                     raw_text=result.get('raw_text', ''),
                     charges=result.get('charges', []),
                     decimal_places=result.get('decimal_places', 0),
-                    has_tip=result.get('has_tip', False)
+                    has_tip=result.get('has_tip', False),
+                    number_format=result.get('number_format', {'thousands': ',', 'decimal': '.'})
                 )
 
                 # Formatear mensaje con ambos links (i18n)
