@@ -321,7 +321,7 @@ Donde:
                     }
 
                     logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Items={len(items)}, Charges={len(charges)}, Decimals={decimal_places}")
-                    for i, it in enumerate(items[:3]):
+                    for i, it in enumerate(items):
                         line_total = it['price'] * it['quantity']
                         logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total}")
                     for ch in charges:
