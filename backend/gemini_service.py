@@ -271,6 +271,19 @@ CLAVE: Monedas SIN centavos (CLP, COP, JPY, etc.) usan punto como MILES:
 ### 2. Escaneo de Cantidades
 Busca ítems con cantidad > 1 (ej: "2x Coca Cola", "3 Pan").
 
+### 2.5. Deduplicación de Items Similares (IMPORTANTE)
+El OCR puede leer el mismo item con pequeñas variaciones. AGRUPA items que cumplan AMBOS criterios:
+- Nombres 85%+ similares (ej: "Summer Ale" ≈ "Summer Ale." ≈ "Summer  Ale")
+- Precios dentro del 5% de diferencia (ej: $3760 ≈ $3768)
+
+Al agrupar:
+- Suma las cantidades
+- Usa el precio más frecuente
+- Usa el nombre más limpio (sin puntos/espacios extra al final)
+
+Ejemplo: Si ves 15 líneas de "Summer Ale" a precios entre $3.760-$3.768, agrúpalas como:
+{"nombre": "Summer Ale", "cantidad": 15, "precio": 3760}
+
 ### 3. Test de Hipótesis de Precio (CRÍTICO)
 La boleta puede mostrar PRECIO UNITARIO o TOTAL DE LÍNEA. Debes retornar siempre PRECIO UNITARIO.
 
