@@ -831,7 +831,8 @@ def format_collaborative_message_i18n(
     owner_url: str,
     editor_url: str,
     is_verified: bool = False,
-    decimal_places: int = 0
+    decimal_places: int = 0,
+    number_format: dict = None
 ) -> str:
     """
     Format the collaborative session message in the specified language.
@@ -846,6 +847,7 @@ def format_collaborative_message_i18n(
         editor_url: URL for sharing
         is_verified: Whether totals are verified (quality_score == 100)
         decimal_places: Number of decimal places for currency (0 for CLP, 2 for USD)
+        number_format: Dict with 'thousands' and 'decimal' separators
 
     Returns:
         Formatted WhatsApp message
@@ -853,11 +855,22 @@ def format_collaborative_message_i18n(
     # Calculate tip percentage
     tip_percent = ((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 0
 
-    # Format currency based on decimal_places
+    # Get separators from number_format (default to US format)
+    fmt_config = number_format or {'thousands': ',', 'decimal': '.'}
+    thousands_sep = fmt_config.get('thousands', ',')
+    decimal_sep = fmt_config.get('decimal', '.')
+
+    # Format currency using the receipt's number format
     def fmt(amount):
         if decimal_places > 0:
-            return f"${amount:,.{decimal_places}f}"
-        return f"${amount:,.0f}"
+            num_str = f"{amount:,.{decimal_places}f}"
+        else:
+            num_str = f"{amount:,.0f}"
+        # Replace separators to match receipt format
+        # First replace comma with placeholder, then dot, then placeholder
+        num_str = num_str.replace(',', 'THOUSANDS').replace('.', 'DECIMAL')
+        num_str = num_str.replace('THOUSANDS', thousands_sep).replace('DECIMAL', decimal_sep)
+        return f"${num_str}"
 
     # Status emoji and text
     if is_verified:
