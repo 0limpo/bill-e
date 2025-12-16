@@ -467,8 +467,8 @@ def format_success_message_simple(ocr_result: dict, session_id: str) -> str:
     if subtotal > 0:
         message += f"💵 Subtotal: ${subtotal:,}\n"
 
-    if tip > 0:
-        tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
+    if tip and tip > 0:
+        tip_percent = (tip / subtotal * 100) if subtotal and subtotal > 0 else 0
         message += f"🎁 Propina: ${tip:,} ({tip_percent:.0f}%)\n"
 
     message += f"📝 Items: {len(items)}\n\n"
@@ -517,7 +517,7 @@ def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> s
     quality_score = validation.get('quality_score', 0)
 
     # Calcular porcentaje de propina
-    tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
+    tip_percent = ((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 0
 
     # URL del frontend
     frontend_url = os.getenv('FRONTEND_URL', 'https://bill-e.vercel.app')
@@ -565,7 +565,7 @@ def format_collaborative_message(
     Incluye 2 links: owner (para el anfitrión) y editor (para compartir).
     """
     # Calcular porcentaje de propina
-    tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
+    tip_percent = ((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 0
 
     # Quality score para verificación
     quality_score = validation.get('quality_score', 0) if validation else 0

@@ -849,7 +849,7 @@ def format_collaborative_message_i18n(
         Formatted WhatsApp message
     """
     # Calculate tip percentage
-    tip_percent = (tip / subtotal * 100) if subtotal > 0 else 0
+    tip_percent = ((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 0
 
     # Status emoji and text
     if is_verified:

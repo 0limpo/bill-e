@@ -52,8 +52,8 @@ def create_collaborative_session(
         "charges": charges,
         "total": total,
         "subtotal": subtotal,
-        "tip": tip,
-        "tip_percentage": round((tip / subtotal * 100) if subtotal > 0 else 10),
+        "tip": tip or 0,
+        "tip_percentage": round(((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 10),
         "raw_text": raw_text,
         "participants": [
             {
