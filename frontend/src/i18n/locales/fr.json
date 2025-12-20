@@ -119,5 +119,16 @@
     "fixedPerPersonDesc": "Chaque personne paie ce montant",
     "save": "Enregistrer",
     "delete": "Supprimer"
+  },
+  "steps": {
+    "verify": "Vérifier",
+    "assign": "Attribuer",
+    "share": "Partager",
+    "verifyTitle": "Vérifie le scan",
+    "verifySubtitle": "Vérifie les items, quantités et prix",
+    "assignTitle": "Qui a commandé quoi ?",
+    "assignSubtitle": "Attribue chaque item à qui l'a consommé",
+    "continue": "Continuer",
+    "back": "Retour"
   }
 }

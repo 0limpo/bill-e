@@ -356,6 +356,37 @@ const ChargeModal = ({ charge, onSave, onClose, onDelete }) => {
   );
 };
 
+// Step Indicator Component (Host Flow)
+const StepIndicator = ({ currentStep, onStepClick }) => {
+  const { t } = useTranslation();
+  const steps = [
+    { num: 1, label: t('steps.verify') },
+    { num: 2, label: t('steps.assign') },
+    { num: 3, label: t('steps.share') }
+  ];
+
+  return (
+    <div className="step-indicator">
+      {steps.map((step, idx) => (
+        <React.Fragment key={step.num}>
+          <div
+            className={`step ${currentStep === step.num ? 'active' : ''} ${currentStep > step.num ? 'completed' : ''}`}
+            onClick={() => currentStep > step.num && onStepClick(step.num)}
+          >
+            <div className="step-circle">
+              {currentStep > step.num ? '✓' : step.num}
+            </div>
+            <span className="step-label">{step.label}</span>
+          </div>
+          {idx < steps.length - 1 && (
+            <div className={`step-line ${currentStep > step.num ? 'completed' : ''}`} />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
 // Validation Dashboard Component (Host Only)
 const ValidationDashboard = ({ session, onUpdateSubtotal, decimalPlaces = 0, numberFormat = null }) => {
   const { t } = useTranslation();
@@ -491,7 +522,8 @@ const BillItem = ({
   onSetPerUnitMode,
   isSyncing,
   decimalPlaces = 0,
-  numberFormat = null
+  numberFormat = null,
+  hideAssignments = false
 }) => {
   const { t } = useTranslation();
   const fmt = (amount) => formatCurrency(amount, decimalPlaces, numberFormat);
@@ -587,7 +619,8 @@ const BillItem = ({
         </div>
 
         {/* Mode switch & controls - visible for all items, any participant can toggle */}
-        {!isEditing && !isFinalized && (
+        {/* Hidden in verify step (Step 1) for host */}
+        {!isEditing && !isFinalized && !hideAssignments && (
            <div className="item-mode-switch-container">
              <div className={`item-mode-switch ${isSyncing ? 'syncing' : ''}`}>
                <div
@@ -608,7 +641,8 @@ const BillItem = ({
         )}
 
         {/* Grupal options for items with qty > 1 */}
-        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (() => {
+        {/* Hidden in verify step (Step 1) for host */}
+        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && !hideAssignments && (() => {
           // Check if all participants are assigned to parent item
           const allAssignedToParent = participants.length > 0 &&
             participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
@@ -665,7 +699,8 @@ const BillItem = ({
         })()}
 
         {/* EXPANDED TREE VIEW - Per-unit independent assignments */}
-        {isExpanded && itemMode === 'grupal' && qty > 1 ? (
+        {/* Hidden in verify step (Step 1) for host */}
+        {!hideAssignments && isExpanded && itemMode === 'grupal' && qty > 1 ? (
           <div className="expanded-tree">
             {Array.from({ length: qty }, (_, unitIndex) => {
               const unitNum = unitIndex + 1;
@@ -704,10 +739,10 @@ const BillItem = ({
               );
             })}
           </div>
-        ) : itemMode === 'grupal' && qty > 1 ? (
+        ) : !hideAssignments && itemMode === 'grupal' && qty > 1 ? (
           /* COLLAPSED GRUPAL VIEW - "Entre todos" mode: no extra UI needed, switch handles it */
           null
-        ) : (
+        ) : !hideAssignments ? (
           /* HORIZONTAL SCROLL LIST - Normal view (individual mode or grupal qty=1) */
           <div className="consumer-scroll-list">
             {participants.map(p => {
@@ -766,10 +801,11 @@ const BillItem = ({
               );
             })}
           </div>
-        )}
+        ) : null}
 
         {/* Warning for Individual mode when items not fully assigned */}
-        {itemMode !== 'grupal' && remaining > 0 && totalAssigned > 0 && (
+        {/* Hidden in verify step (Step 1) for host */}
+        {!hideAssignments && itemMode !== 'grupal' && remaining > 0 && totalAssigned > 0 && (
           <div className="grupal-warning">
             ⚠️ {t('validation.missingToAssign', { amount: remaining })}
           </div>
@@ -827,6 +863,9 @@ const CollaborativeSession = () => {
   // Charge modal state
   const [showChargeModal, setShowChargeModal] = useState(false);
   const [editingCharge, setEditingCharge] = useState(null); // null = new, object = editing
+
+  // Host step flow: 1 = verify receipt, 2 = assign consumptions, 3 = finalized
+  const [hostStep, setHostStep] = useState(1);
 
   // Saved assignments per mode (to restore when switching back)
   // Structure: { [itemId]: { individual: {...}, grupal: {...} } }
@@ -2174,47 +2213,79 @@ const CollaborativeSession = () => {
   const assignedMatch = Math.abs(totalAsignado - totalBoleta) < 1;
   const isBalanced = itemsMatch && assignedMatch;
 
+  // Auto-advance to step 3 when finalized
+  const effectiveStep = isFinalized ? 3 : hostStep;
+
   return (
     <div className={`collaborative-session ${isRTL ? 'rtl' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* FLOATING TIMER - Top right corner */}
       <div className="floating-timer">{t('time.timer', { time: timeLeft })}</div>
+
+      {/* STEP INDICATOR - Host only, not finalized */}
+      {isOwner && !isFinalized && (
+        <StepIndicator
+          currentStep={effectiveStep}
+          onStepClick={(step) => setHostStep(step)}
+        />
+      )}
 
       {/* Backdrop for expanded sheet */}
       {isSheetExpanded && !isFinalized && (
         <div className="sheet-backdrop" onClick={() => setIsSheetExpanded(false)} />
       )}
 
-      {/* LISTA PARTICIPANTES - Right at the top */}
-      <div className="participants-section">
-        <div className="participants-list">
-           {/* Add button first (ghost avatar style) - Anyone can add participants */}
-           {!isFinalized && (
-             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>
-               <span className="add-btn-label">{t('items.add')}</span>
-             </button>
-           )}
-           {session.participants.map(p => {
-              // Owner can edit anyone, editors can edit non-owners only
-              const canEdit = session.status !== 'finalized' && (isOwner || p.role !== 'owner');
-              return (
-              <div
-                key={p.id}
-                className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${canEdit ? 'clickable' : ''}`}
-                onClick={() => canEdit && handleOpenParticipantEdit(p)}
-              >
-                {p.role === 'owner' && <span className="badge-owner">{t('header.host')}</span>}
-                <Avatar name={p.name} />
-                <span className="participant-name">{p.id === currentParticipant?.id ? t('header.you') : p.name}</span>
-              </div>
-           );})}
+      {/* LISTA PARTICIPANTES - Only in Step 2 for host, always for editors */}
+      {(!isOwner || effectiveStep >= 2) && (
+        <div className="participants-section">
+          <div className="participants-list">
+             {/* Add button first (ghost avatar style) - Anyone can add participants */}
+             {!isFinalized && (
+               <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>
+                 <span className="add-btn-label">{t('items.add')}</span>
+               </button>
+             )}
+             {session.participants.map(p => {
+                // Owner can edit anyone, editors can edit non-owners only
+                const canEdit = session.status !== 'finalized' && (isOwner || p.role !== 'owner');
+                return (
+                <div
+                  key={p.id}
+                  className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${canEdit ? 'clickable' : ''}`}
+                  onClick={() => canEdit && handleOpenParticipantEdit(p)}
+                >
+                  {p.role === 'owner' && <span className="badge-owner">{t('header.host')}</span>}
+                  <Avatar name={p.name} />
+                  <span className="participant-name">{p.id === currentParticipant?.id ? t('header.you') : p.name}</span>
+                </div>
+             );})}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* LISTA ITEMS */}
       <div className="items-section">
-        <h3>{t('items.consumption')}</h3>
+        {/* Step 1: Title for verification */}
+        {isOwner && effectiveStep === 1 && (
+          <div className="step-header">
+            <h3>{t('steps.verifyTitle')}</h3>
+            <p className="step-subtitle">{t('steps.verifySubtitle')}</p>
+          </div>
+        )}
+        {/* Step 2: Title for assignment */}
+        {isOwner && effectiveStep === 2 && (
+          <div className="step-header">
+            <h3>{t('steps.assignTitle')}</h3>
+            <p className="step-subtitle">{t('steps.assignSubtitle')}</p>
+          </div>
+        )}
+        {/* Editors see normal title */}
+        {!isOwner && <h3>{t('items.consumption')}</h3>}
+
         {session.items.map((item, idx) => {
           const itemId = item.id || item.name;
+          // Step 1: Host verifies items (can edit, no assignments shown)
+          // Step 2: Host assigns (can't edit, assignments shown)
+          const isVerifyStep = isOwner && effectiveStep === 1;
           return (
             <div key={itemId || idx} className="item-wrapper">
               <BillItem
@@ -2241,12 +2312,14 @@ const CollaborativeSession = () => {
                 isSyncing={syncingItems.has(itemId)}
                 decimalPlaces={session?.decimal_places || 0}
                 numberFormat={session?.number_format}
+                hideAssignments={isVerifyStep}
               />
             </div>
           );
         })}
-        
-        {isOwner && (
+
+        {/* Add item button - only in Step 1 for host */}
+        {isOwner && effectiveStep === 1 && (
           <button className="add-item-btn" onClick={() => setShowAddItemModal(true)}>
             {t('items.addManualItem')}
           </button>
@@ -2254,12 +2327,12 @@ const CollaborativeSession = () => {
       </div>
 
       {/* BOTTOM SHEET (Interactive Expandable with Swipe) */}
-      {/* All users can expand/collapse - starts collapsed, tap to see details */}
-      <div className={`bottom-sheet ${isSheetExpanded || isFinalized ? 'expanded' : ''}`}>
-        {/* Visual Handle - Swipe/Click to toggle for ALL users */}
+      {/* Step 1 for host: always expanded. Others: expandable */}
+      <div className={`bottom-sheet ${isSheetExpanded || isFinalized || (isOwner && effectiveStep === 1) ? 'expanded' : ''}`}>
+        {/* Visual Handle - Swipe/Click to toggle for ALL users (except Step 1 for host) */}
         <div
           className="sheet-handle"
-          onClick={() => !isFinalized && setIsSheetExpanded(!isSheetExpanded)}
+          onClick={() => !isFinalized && !(isOwner && effectiveStep === 1) && setIsSheetExpanded(!isSheetExpanded)}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         />
@@ -2728,10 +2801,10 @@ const CollaborativeSession = () => {
               </div>
             )}
 
-            {/* Owner Expanded: Validation Dashboard (only when expanded) */}
-            {isOwner && isSheetExpanded && (
+            {/* Owner Step 1: Validation + Charges (always visible in Step 1) */}
+            {isOwner && effectiveStep === 1 && (
               <div className="sheet-expanded-content">
-                <div className={`sheet-validation ${isBalanced ? 'balanced' : 'warning'}`}>
+                <div className={`sheet-validation ${itemsMatch ? 'balanced' : 'warning'}`}>
                   <div className="validation-grid">
                     <div className="validation-metric">
                       <span className="validation-metric-label">{t('validation.subtotalBill')}</span>
@@ -2748,35 +2821,24 @@ const CollaborativeSession = () => {
                     </div>
                     <div className="validation-metric">
                       <span className="validation-metric-label">{t('validation.subtotalItems')}</span>
-                      <span className={`validation-metric-value ${Math.abs(totalItems - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
+                      <span className={`validation-metric-value ${itemsMatch ? 'match' : 'mismatch'}`}>
                         {fmt(totalItems)}
-                      </span>
-                    </div>
-                    <div className="validation-metric">
-                      <span className="validation-metric-label">{t('validation.subtotalAssigned')}</span>
-                      <span className={`validation-metric-value ${Math.abs(totalAsignado - totalBoleta) < 1 ? 'match' : 'mismatch'}`}>
-                        {fmt(totalAsignado)}
                       </span>
                     </div>
                   </div>
 
-                  {/* Feedback */}
-                  {isBalanced ? (
+                  {/* Feedback for Step 1 */}
+                  {itemsMatch ? (
                     <div className="validation-feedback success">
                       ✅ {t('validation.balanced')}
                     </div>
                   ) : (
                     <div className="validation-feedback warning">
-                      {totalAsignado < totalBoleta
-                        ? t('validation.missingToAssign', { amount: fmt(totalBoleta - totalAsignado) })
-                        : t('validation.overAssigned', { amount: fmt(totalAsignado - totalBoleta) })
-                      }
+                      ⚠️ {t('validation.reviewTotals')}
                     </div>
                   )}
 
-                  {/* Tip is now managed as a charge in the charges section */}
-
-                  {/* CHARGES SECTION (Taxes, Discounts, etc.) */}
+                  {/* CHARGES SECTION (Taxes, Discounts, etc.) - Editable in Step 1 */}
                   <div className="charges-section" onClick={(e) => e.stopPropagation()}>
                     <div className="charges-header">
                       <span className="charges-label">{t('charges.title')}</span>
@@ -2824,11 +2886,66 @@ const CollaborativeSession = () => {
               </div>
             )}
 
-            {/* Action Button - Always visible */}
+            {/* Owner Step 2: Assignment progress (when expanded) */}
+            {isOwner && effectiveStep === 2 && isSheetExpanded && (
+              <div className="sheet-expanded-content">
+                <div className={`sheet-validation ${assignedMatch ? 'balanced' : 'warning'}`}>
+                  <div className="validation-grid">
+                    <div className="validation-metric">
+                      <span className="validation-metric-label">{t('validation.subtotalBill')}</span>
+                      <span className="validation-metric-value">{fmt(totalBoleta)}</span>
+                    </div>
+                    <div className="validation-metric">
+                      <span className="validation-metric-label">{t('validation.subtotalAssigned')}</span>
+                      <span className={`validation-metric-value ${assignedMatch ? 'match' : 'mismatch'}`}>
+                        {fmt(totalAsignado)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Assignment progress bar */}
+                  <div className="assignment-progress">
+                    <div
+                      className="assignment-progress-bar"
+                      style={{ width: `${Math.min(100, (totalAsignado / totalBoleta) * 100)}%` }}
+                    />
+                  </div>
+
+                  {/* Feedback for Step 2 */}
+                  {assignedMatch ? (
+                    <div className="validation-feedback success">
+                      ✅ {t('validation.balanced')}
+                    </div>
+                  ) : (
+                    <div className="validation-feedback warning">
+                      {totalAsignado < totalBoleta
+                        ? t('validation.missingToAssign', { amount: fmt(totalBoleta - totalAsignado) })
+                        : t('validation.overAssigned', { amount: fmt(totalAsignado - totalBoleta) })
+                      }
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
             {isOwner ? (
-              <button className="btn-main btn-dark" onClick={handleFinalize}>
-                🔒 {t('finalized.closeBill')}
-              </button>
+              effectiveStep === 1 ? (
+                /* Step 1: Continue button */
+                <button className="btn-main btn-primary" onClick={() => setHostStep(2)}>
+                  {t('steps.continue')} →
+                </button>
+              ) : (
+                /* Step 2: Back and Close Bill buttons */
+                <div className="step-buttons">
+                  <button className="btn-secondary" onClick={() => setHostStep(1)}>
+                    ← {t('steps.back')}
+                  </button>
+                  <button className="btn-main btn-dark" onClick={handleFinalize}>
+                    🔒 {t('finalized.closeBill')}
+                  </button>
+                </div>
+              )
             ) : (
               <button className="btn-main" disabled>
                 {t('finalized.billOpen')}

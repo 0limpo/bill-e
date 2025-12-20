@@ -119,5 +119,16 @@
     "fixedPerPersonDesc": "每人支付此金额",
     "save": "保存",
     "delete": "删除"
+  },
+  "steps": {
+    "verify": "验证",
+    "assign": "分配",
+    "share": "分享",
+    "verifyTitle": "验证扫描结果",
+    "verifySubtitle": "检查项目、数量和价格",
+    "assignTitle": "谁点了什么？",
+    "assignSubtitle": "将每个项目分配给消费者",
+    "continue": "继续",
+    "back": "返回"
   }
 }

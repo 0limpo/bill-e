@@ -99,6 +99,17 @@
   "time": {
     "timer": "⏱️ {{time}}"
   },
+  "steps": {
+    "verify": "Verificar",
+    "assign": "Asignar",
+    "share": "Compartir",
+    "verifyTitle": "Verifica el escaneo",
+    "verifySubtitle": "Revisa items, cantidades y precios",
+    "assignTitle": "¿Quién pidió qué?",
+    "assignSubtitle": "Asigna cada item a quien lo consumió",
+    "continue": "Continuar",
+    "back": "Volver"
+  },
   "charges": {
     "title": "Cargos y Descuentos",
     "addCharge": "Agregar",

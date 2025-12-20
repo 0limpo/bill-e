@@ -119,5 +119,16 @@
     "fixedPerPersonDesc": "প্রতিজন এই পরিমাণ দেয়",
     "save": "সংরক্ষণ",
     "delete": "মুছুন"
+  },
+  "steps": {
+    "verify": "যাচাই",
+    "assign": "বরাদ্দ",
+    "share": "শেয়ার",
+    "verifyTitle": "স্ক্যান যাচাই করো",
+    "verifySubtitle": "আইটেম, পরিমাণ এবং দাম চেক করো",
+    "assignTitle": "কে কী অর্ডার করেছে?",
+    "assignSubtitle": "প্রতিটি আইটেম যে খেয়েছে তাকে বরাদ্দ করো",
+    "continue": "এগিয়ে যাও",
+    "back": "ফিরে যাও"
   }
 }

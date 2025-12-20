@@ -119,5 +119,16 @@
     "fixedPerPersonDesc": "हर व्यक्ति यह राशि देता है",
     "save": "सहेजें",
     "delete": "हटाएं"
+  },
+  "steps": {
+    "verify": "जाँचें",
+    "assign": "आवंटित",
+    "share": "साझा करें",
+    "verifyTitle": "स्कैन जाँचें",
+    "verifySubtitle": "आइटम, मात्रा और कीमतें जाँचें",
+    "assignTitle": "किसने क्या मंगाया?",
+    "assignSubtitle": "हर आइटम को उसके उपभोक्ता को आवंटित करें",
+    "continue": "आगे बढ़ें",
+    "back": "वापस"
   }
 }

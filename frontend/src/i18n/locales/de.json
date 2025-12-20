@@ -119,5 +119,16 @@
     "fixedPerPersonDesc": "Jede Person zahlt diesen Betrag",
     "save": "Speichern",
     "delete": "Löschen"
+  },
+  "steps": {
+    "verify": "Prüfen",
+    "assign": "Zuweisen",
+    "share": "Teilen",
+    "verifyTitle": "Scan überprüfen",
+    "verifySubtitle": "Artikel, Mengen und Preise prüfen",
+    "assignTitle": "Wer hat was bestellt?",
+    "assignSubtitle": "Weise jeden Artikel dem Verbraucher zu",
+    "continue": "Weiter",
+    "back": "Zurück"
   }
 }

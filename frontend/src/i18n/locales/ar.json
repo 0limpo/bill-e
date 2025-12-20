@@ -119,5 +119,16 @@
     "fixedPerPersonDesc": "كل شخص يدفع هذا المبلغ",
     "save": "حفظ",
     "delete": "حذف"
+  },
+  "steps": {
+    "verify": "تحقق",
+    "assign": "تعيين",
+    "share": "مشاركة",
+    "verifyTitle": "تحقق من المسح",
+    "verifySubtitle": "راجع الأصناف والكميات والأسعار",
+    "assignTitle": "من طلب ماذا؟",
+    "assignSubtitle": "عيّن كل صنف لمن استهلكه",
+    "continue": "متابعة",
+    "back": "رجوع"
   }
 }

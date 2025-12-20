@@ -119,5 +119,16 @@
     "fixedPerPersonDesc": "Setiap orang bayar jumlah ini",
     "save": "Simpan",
     "delete": "Hapus"
+  },
+  "steps": {
+    "verify": "Verifikasi",
+    "assign": "Alokasi",
+    "share": "Bagikan",
+    "verifyTitle": "Verifikasi scan",
+    "verifySubtitle": "Cek item, jumlah, dan harga",
+    "assignTitle": "Siapa pesan apa?",
+    "assignSubtitle": "Alokasikan tiap item ke yang mengonsumsi",
+    "continue": "Lanjut",
+    "back": "Kembali"
   }
 }

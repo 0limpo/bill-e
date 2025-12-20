@@ -119,5 +119,16 @@
     "fixedPerPersonDesc": "各自がこの金額を支払う",
     "save": "保存",
     "delete": "削除"
+  },
+  "steps": {
+    "verify": "確認",
+    "assign": "割当",
+    "share": "共有",
+    "verifyTitle": "スキャン結果を確認",
+    "verifySubtitle": "明細、数量、価格を確認してね",
+    "assignTitle": "誰が何を頼んだ？",
+    "assignSubtitle": "各明細を消費者に割り当てて",
+    "continue": "続ける",
+    "back": "戻る"
   }
 }
