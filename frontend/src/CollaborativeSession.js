@@ -2181,7 +2181,21 @@ const CollaborativeSession = () => {
       totalTipAmount = currentItemSum * (tipValue / 100); // Percentage
     }
   }
-  const displayedTotal = currentItemSum + totalTipAmount;
+
+  // Calculate total charges (taxes, service fees, discounts)
+  let totalChargesAmount = 0;
+  (session.charges || []).forEach(charge => {
+    const value = charge.value || 0;
+    const valueType = charge.valueType || 'fixed';
+    const isDiscount = charge.isDiscount || false;
+    let chargeAmount = valueType === 'percent'
+      ? currentItemSum * (value / 100)
+      : value;
+    if (isDiscount) chargeAmount = -chargeAmount;
+    totalChargesAmount += chargeAmount;
+  });
+
+  const displayedTotal = currentItemSum + totalTipAmount + totalChargesAmount;
 
   // Check if totals are balanced (within $1 tolerance)
   const itemsMatch = Math.abs(totalItems - totalBoleta) < 1;
