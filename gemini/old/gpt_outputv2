@@ -1,0 +1,286 @@
+{
+  "processing": {
+    "en": "Processing your receipt...",
+    "pt": "Processando sua nota...",
+    "zh": "正在处理你的小票...",
+    "hi": "तुम्हारी रसीद प्रोसेस कर रहा हूं...",
+    "fr": "Je traite ton addition...",
+    "ar": "جاري معالجة الإيصال...",
+    "bn": "তোমার রসিদ প্রসেস করছি...",
+    "ru": "Обрабатываю чек...",
+    "ja": "レシートを処理中...",
+    "de": "Ich verarbeite deinen Beleg...",
+    "id": "Sedang memproses strukmu..."
+  },
+
+  "error_no_image": {
+    "en": "I couldnt get the image. Try again.",
+    "pt": "Nao consegui pegar a imagem. Tente de novo.",
+    "zh": "我没能获取图片，请再试一次。",
+    "hi": "मैं इमेज नहीं पा सका। फिर से कोशिश करो।",
+    "fr": "Je n ai pas pu obtenir l image. Essaie encore.",
+    "ar": "لم أتمكن من الحصول على الصورة. حاول مرة اخرى.",
+    "bn": "আমি ছবিটা নিতে পারিনি। আবার চেষ্টা করো।",
+    "ru": "Не удалось получить изображение. Попробуй еще раз.",
+    "ja": "画像を取得できなかったよ。もう一度試してね。",
+    "de": "Ich konnte das Bild nicht laden. Versuch es nochmal.",
+    "id": "Aku tidak bisa mengambil gambarnya. Coba lagi."
+  },
+
+  "error_download": {
+    "en": "I couldnt download the image.",
+    "pt": "Nao consegui baixar a imagem.",
+    "zh": "无法下载图片。",
+    "hi": "मैं इमेज डाउनलोड नहीं कर पाया।",
+    "fr": "Je n ai pas pu telecharger l image.",
+    "ar": "لم أتمكن من تنزيل الصورة.",
+    "bn": "আমি ছবিটা ডাউনলোড করতে পারিনি।",
+    "ru": "Не удалось скачать изображение.",
+    "ja": "画像をダウンロードできなかった。",
+    "de": "Ich konnte das Bild nicht herunterladen.",
+    "id": "Aku tidak bisa mengunduh gambarnya."
+  },
+
+  "error_ocr": {
+    "en": "Error processing the receipt: {error}\n\nPlease try with a clearer photo.",
+    "pt": "Erro ao processar a nota: {error}\n\nTente enviar uma foto mais clara.",
+    "zh": "处理小票时出错：{error}\n\n请试着发送一张更清晰的照片。",
+    "hi": "रसीद प्रोसेस करने में error आया: {error}\n\nकृपया साफ फोटो भेजो।",
+    "fr": "Erreur lors du traitement de l addition : {error}\n\nEssaie avec une photo plus nette.",
+    "ar": "حدث خطأ اثناء معالجة الإيصال: {error}\n\nحاول ارسال صورة اوضح.",
+    "bn": "রসিদ প্রসেস করতে সমস্যা হয়েছে: {error}\n\nআরও পরিষ্কার ছবি পাঠাও।",
+    "ru": "Ошибка при обработке чека: {error}\n\nПопробуй сделать фото покачественнее.",
+    "ja": "レシート処理中にエラーが出たよ: {error}\n\nもっとはっきりした写真で試してね。",
+    "de": "Fehler beim Verarbeiten des Belegs: {error}\n\nBitte versuch es mit einem klareren Foto.",
+    "id": "Terjadi error saat memproses struk: {error}\n\nCoba kirim foto yang lebih jelas."
+  },
+
+  "error_general": {
+    "en": "Something went wrong. Please try again.",
+    "pt": "Algo deu errado. Tente novamente.",
+    "zh": "出了点问题，请再试一次。",
+    "hi": "कुछ गड़बड़ हो गई। फिर से कोशिश करो।",
+    "fr": "Une erreur est survenue. Essaie encore.",
+    "ar": "حدث خطأ. حاول مرة اخرى.",
+    "bn": "কিছু একটা ভুল হয়েছে। আবার চেষ্টা করো।",
+    "ru": "Что то пошло не так. Попробуй еще раз.",
+    "ja": "エラーが起きたよ。もう一度試してね。",
+    "de": "Etwas ist schiefgelaufen. Versuch es nochmal.",
+    "id": "Terjadi kesalahan. Coba lagi."
+  },
+
+  "welcome": {
+    "en": "Hey! Im Bill-e, your helper to split the bill.\n\n*To get started:*\n1. Take a clear photo of your receipt\n2. Send it here\n3. I will create a link to split it automatically\n\nType 'help' for more info.",
+    "pt": "Oi! Sou o Bill-e, seu ajudante para dividir a conta.\n\n*Para começar:*\n1. Tire uma foto clara da nota\n2. Envie aqui no chat\n3. Vou criar um link para dividir automaticamente\n\nDigite 'ajuda' para mais info.",
+    "zh": "你好！我是 Bill-e，帮你分账的助手。\n\n*开始吧：*\n1. 拍一张清晰的小票照片\n2. 发到这里\n3. 我会生成一个分账链接\n\n输入“帮助”了解更多。",
+    "hi": "हाय! मैं Bill-e हूं, बिल बांटने में मदद करता हूं。\n\n*शुरू करने के लिए:*\n1. रसीद की साफ फोटो लो\n2. यहां भेजो\n3. मैं अपने आप लिंक बना दूंगा\n\nऔर जानने के लिए 'help' लिखो।",
+    "fr": "Salut ! Je suis Bill-e, ton assistant pour partager l addition.\n\n*Pour commencer :*\n1. Prends une photo nette de l addition\n2. Envoie la ici\n3. Je creerai un lien pour partager automatiquement\n\nEcris 'aide' pour plus d infos.",
+    "ar": "اهلا! انا Bill-e، اساعدك في تقسيم الحساب.\n\n*للبدء:*\n1. التقط صورة واضحة للإيصال\n2. ارسلها هنا\n3. سأنشئ رابطا لتقسيم الحساب تلقائيا\n\nاكتب 'مساعدة' للمزيد.",
+    "bn": "হাই! আমি Bill-e, বিল ভাগ করার সহকারী।\n\n*শুরু করতে:*\n1. রসিদের পরিষ্কার ছবি তোলো\n2. এখানে পাঠাও\n3. আমি নিজে থেকেই লিংক বানিয়ে দেব\n\nআরও জানতে 'help' লিখো।",
+    "ru": "Привет! Я Bill-e, помогу разделить счет.\n\n*Как начать:*\n1. Сделай четкое фото чека\n2. Отправь его сюда\n3. Я создам ссылку для разделения\n\nНапиши 'help' для подробностей.",
+    "ja": "こんにちは！Bill-eだよ。割り勘を手伝うよ。\n\n*使い方：*\n1. レシートをはっきり撮る\n2. ここに送る\n3. 自動で分けるリンクを作るよ\n\n詳しくは「help」と入力してね。",
+    "de": "Hi! Ich bin Bill-e und helfe dir beim Rechnung teilen.\n\n*So gehts:*\n1. Mach ein klares Foto vom Beleg\n2. Schick es hierher\n3. Ich erstelle einen Link zum Aufteilen\n\nSchreib 'help' für mehr Infos.",
+    "id": "Hai! Aku Bill-e, bantu kamu bagi tagihan.\n\n*Cara mulai:*\n1. Foto struk dengan jelas\n2. Kirim ke chat ini\n3. Aku buatkan link untuk membagi otomatis\n\nKetik 'help' untuk info lebih lanjut."
+  },
+
+  "help": {
+    "en": "*How to use Bill-e:*\n\n1. Take a photo of your restaurant receipt\n2. Send it by WhatsApp\n3. I will read items and prices automatically\n4. You will get a link to split the bill\n5. Share the link with your friends\n\n*Tips for best results:*\n- Good lighting\n- Prices and names clearly visible\n- Avoid shadows or glare\n\nReady? Send your receipt!",
+    "pt": "*Como usar o Bill-e:*\n\n1. Tire uma foto da nota do restaurante\n2. Envie pelo WhatsApp\n3. Vou ler itens e preços automaticamente\n4. Receba um link para dividir a conta\n5. Compartilhe com seus amigos\n\n*Dicas:*\n- Boa iluminacao\n- Precos e nomes visiveis\n- Evite sombras\n\nPronto? Envie a nota!",
+    "zh": "*如何使用 Bill-e：*\n\n1. 拍餐厅小票照片\n2. 通过 WhatsApp 发送\n3. 我会自动识别项目和价格\n4. 生成分账链接\n5. 分享给朋友\n\n*小提示：*\n- 光线要好\n- 名称和价格清晰\n- 避免阴影\n\n准备好了吗？发小票吧！",
+    "hi": "*Bill-e कैसे इस्तेमाल करें:*\n\n1. रेस्टोरेंट की रसीद की फोटो लो\n2. WhatsApp पर भेजो\n3. मैं आइटम और दाम अपने आप पढ़ूंगा\n4. तुम्हें बिल बांटने का लिंक मिलेगा\n5. लिंक दोस्तों को भेजो\n\n*Tips:*\n- अच्छी रोशनी\n- दाम साफ दिखें\n- छाया न हो\n\nतैयार हो? भेजो!",
+    "fr": "*Comment utiliser Bill-e :*\n\n1. Prends une photo de l addition\n2. Envoie la sur WhatsApp\n3. Je lis les items et prix automatiquement\n4. Tu recois un lien pour partager\n5. Partage le avec tes amis\n\n*Astuces :*\n- Bonne lumiere\n- Prix bien visibles\n- Pas d ombres\n\nPret ? Envoie la photo !",
+    "ar": "*كيفية استخدام Bill-e:*\n\n1. التقط صورة لإيصال المطعم\n2. ارسلها عبر WhatsApp\n3. سأقرأ العناصر والاسعار تلقائيا\n4. ستحصل على رابط لتقسيم الحساب\n5. شارك الرابط مع اصدقائك\n\n*نصائح:*\n- اضاءة جيدة\n- الاسعار واضحة\n- بدون ظلال\n\nجاهز؟ ارسل الصورة!",
+    "bn": "*Bill-e কীভাবে ব্যবহার করবেন:*\n\n1. রেস্টুরেন্টের রসিদের ছবি তুলুন\n2. WhatsApp এ পাঠান\n3. আমি নিজে থেকেই আইটেম আর দাম পড়ব\n4. বিল ভাগ করার লিংক পাবেন\n5. বন্ধুদের পাঠান\n\n*টিপস:*\n- ভালো আলো\n- দাম পরিষ্কার\n- ছায়া এড়িয়ে চলুন\n\nরেডি? পাঠান!",
+    "ru": "*Как пользоваться Bill-e:*\n\n1. Сфотографируй чек\n2. Отправь в WhatsApp\n3. Я автоматически распознаю позиции и цены\n4. Получишь ссылку для разделения\n5. Поделись с друзьями\n\n*Советы:*\n- Хороший свет\n- Четкие цены\n- Без теней\n\nГотов? Отправляй!",
+    "ja": "*Bill-eの使い方：*\n\n1. レストランのレシートを撮影\n2. WhatsAppで送信\n3. 明細と金額を自動で読み取るよ\n4. 割り勘リンクを作る\n5. 友達に共有\n\n*コツ：*\n- 明るく撮る\n- 金額がはっきり\n- 影を避ける\n\n準備OK？送ってね！",
+    "de": "*So nutzt du Bill-e:*\n\n1. Foto vom Restaurantbeleg machen\n2. Per WhatsApp senden\n3. Ich lese Posten und Preise automatisch\n4. Du bekommst einen Link zum Teilen\n5. Mit Freunden teilen\n\n*Tipps:*\n- Gute Beleuchtung\n- Preise gut sichtbar\n- Keine Schatten\n\nBereit? Schick den Beleg!",
+    "id": "*Cara pakai Bill-e:*\n\n1. Foto struk restoran\n2. Kirim lewat WhatsApp\n3. Aku baca item dan harga otomatis\n4. Dapat link untuk membagi tagihan\n5. Bagikan ke teman\n\n*Tips:*\n- Pencahayaan bagus\n- Harga terlihat jelas\n- Hindari bayangan\n\nSiap? Kirim struknya!"
+  },
+
+  "default": {
+    "en": "To split a bill, send me a photo of your receipt.\n\nJust take the photo and send it here.\nType 'help' if you need more info.",
+    "pt": "Para dividir a conta, envie uma foto da nota.\n\nSo tirar a foto e mandar aqui.\nDigite 'ajuda' se precisar.",
+    "zh": "要分账的话，请发一张小票照片。\n\n拍照发送就好，我来处理。\n需要帮助请输入“帮助”。",
+    "hi": "बिल बांटने के लिए रसीद की फोटो भेजो。\n\nबस फोटो भेजो, बाकी मैं करूंगा。\nजरूरत हो तो 'help' लिखो।",
+    "fr": "Pour partager une addition, envoie moi une photo.\n\nPrends la photo et envoie la ici.\nEcris 'aide' si besoin.",
+    "ar": "لتقسيم الحساب، ارسل صورة للإيصال.\n\nفقط التقط الصورة وارسِلها.\nاكتب 'مساعدة' اذا احتجت.",
+    "bn": "বিল ভাগ করতে রসিদের ছবি পাঠাও।\n\nছবি তুলে পাঠাও, বাকিটা আমি করব।\nদরকার হলে 'help' লেখো।",
+    "ru": "Чтобы разделить счет, пришли фото чека.\n\nПросто отправь фото сюда.\nНапиши 'help' если нужна помощь.",
+    "ja": "割り勘するにはレシートの写真を送ってね。\n\n写真を送るだけでOK。\n必要なら「help」と入力してね。",
+    "de": "Um die Rechnung zu teilen, schick mir ein Foto vom Beleg.\n\nEinfach Foto senden.\nSchreib 'help' wenn du Hilfe brauchst.",
+    "id": "Untuk membagi tagihan, kirim foto struknya.\n\nCukup kirim fotonya saja.\nKetik 'help' jika perlu bantuan."
+  },
+
+  "document_received": {
+    "en": "I got your document: {filename}\n\nRight now I can only process receipt images.\nCan you send a photo instead?",
+    "pt": "Recebi seu documento: {filename}\n\nPor enquanto so consigo processar imagens.\nPode enviar uma foto da nota?",
+    "zh": "我收到了你的文件：{filename}\n\n目前只能处理小票图片。\n可以发一张照片吗？",
+    "hi": "मुझे तुम्हारा डॉक्यूमेंट मिला: {filename}\n\nअभी मैं सिर्फ रसीद की फोटो प्रोसेस कर सकता हूं।\nक्या फोटो भेज सकते हो?",
+    "fr": "J ai recu ton document : {filename}\n\nPour l instant je traite seulement des images.\nPeux tu envoyer une photo ?",
+    "ar": "استلمت المستند: {filename}\n\nحاليا يمكنني معالجة صور الايصالات فقط.\nهل يمكنك ارسال صورة؟",
+    "bn": "তোমার ডকুমেন্ট পেয়েছি: {filename}\n\nএখন শুধু রসিদের ছবি প্রসেস করতে পারি।\nএকটা ছবি পাঠাতে পারবে?",
+    "ru": "Я получил документ: {filename}\n\nПока могу обрабатывать только изображения чеков.\nМожешь прислать фото?",
+    "ja": "ドキュメントを受け取ったよ: {filename}\n\n今はレシート画像だけ処理できるよ。\n写真を送ってくれる？",
+    "de": "Ich habe dein Dokument erhalten: {filename}\n\nAktuell kann ich nur Belegfotos verarbeiten.\nKannst du ein Foto schicken?",
+    "id": "Aku menerima dokumenmu: {filename}\n\nSaat ini aku hanya bisa memproses gambar struk.\nBisa kirim fotonya?"
+  },
+
+  "labels": {
+    "session_verified": {
+      "en": "Totals verified",
+      "pt": "Totais verificados",
+      "zh": "金额已确认",
+      "hi": "टोटल कन्फर्म",
+      "fr": "Totaux verifies",
+      "ar": "تم التحقق من الاجمالي",
+      "bn": "মোট যাচাই হয়েছে",
+      "ru": "Итоги проверены",
+      "ja": "合計確認済み",
+      "de": "Summen geprueft",
+      "id": "Total terverifikasi"
+    },
+    "session_review": {
+      "en": "Review totals",
+      "pt": "Revisar totais",
+      "zh": "检查金额",
+      "hi": "टोटल देखें",
+      "fr": "Verifier totaux",
+      "ar": "مراجعة الاجمالي",
+      "bn": "মোট দেখুন",
+      "ru": "Проверить итоги",
+      "ja": "合計を見る",
+      "de": "Summen pruefen",
+      "id": "Cek total"
+    },
+    "session_total": {
+      "en": "Total",
+      "pt": "Total",
+      "zh": "总计",
+      "hi": "कुल",
+      "fr": "Total",
+      "ar": "الاجمالي",
+      "bn": "মোট",
+      "ru": "Итого",
+      "ja": "合計",
+      "de": "Gesamt",
+      "id": "Total"
+    },
+    "session_subtotal": {
+      "en": "Subtotal",
+      "pt": "Subtotal",
+      "zh": "小计",
+      "hi": "सबटोटल",
+      "fr": "Sous total",
+      "ar": "المجموع الفرعي",
+      "bn": "সাবটোটাল",
+      "ru": "Промежуточно",
+      "ja": "小計",
+      "de": "Zwischensumme",
+      "id": "Subtotal"
+    },
+    "session_tip": {
+      "en": "Tip",
+      "pt": "Gorjeta",
+      "zh": "小费",
+      "hi": "टिप",
+      "fr": "Pourboire",
+      "ar": "بقشيش",
+      "bn": "টিপ",
+      "ru": "Чаевые",
+      "ja": "チップ",
+      "de": "Trinkgeld",
+      "id": "Tip"
+    },
+    "session_items": {
+      "en": "Items",
+      "pt": "Itens",
+      "zh": "项目",
+      "hi": "आइटम",
+      "fr": "Items",
+      "ar": "عناصر",
+      "bn": "আইটেম",
+      "ru": "Позиции",
+      "ja": "明細",
+      "de": "Posten",
+      "id": "Item"
+    },
+    "session_host_link": {
+      "en": "Your host link (save it)",
+      "pt": "Seu link de anfitriao (guarde)",
+      "zh": "你的主持人链接（保存）",
+      "hi": "तुम्हारा होस्ट लिंक (सेव करो)",
+      "fr": "Ton lien hote (garde le)",
+      "ar": "رابط المضيف الخاص بك (احفظه)",
+      "bn": "তোমার হোস্ট লিংক (সংরক্ষণ করো)",
+      "ru": "Твоя ссылка хоста (сохрани)",
+      "ja": "ホスト用リンク（保存してね）",
+      "de": "Dein Host Link (speichern)",
+      "id": "Link host kamu (simpan)"
+    },
+    "session_host_instruction": {
+      "en": "Use this link to see totals and close the bill",
+      "pt": "Use este link para ver os totais e finalizar",
+      "zh": "用这个链接查看金额并完成结账",
+      "hi": "इस लिंक से टोटल देखो और बिल बंद करो",
+      "fr": "Utilise ce lien pour voir les totaux et cloturer",
+      "ar": "استخدم هذا الرابط لرؤية الاجمالي وانهاء الحساب",
+      "bn": "এই লিংক দিয়ে মোট দেখো আর শেষ করো",
+      "ru": "По этой ссылке смотри итоги и закрывай чек",
+      "ja": "このリンクで合計を見て締めるよ",
+      "de": "Mit diesem Link Summen sehen und schliessen",
+      "id": "Pakai link ini untuk lihat total dan tutup"
+    },
+    "session_share_link": {
+      "en": "Link to share with friends",
+      "pt": "Link para compartilhar com amigos",
+      "zh": "分享给朋友的链接",
+      "hi": "दोस्तों के लिए लिंक",
+      "fr": "Lien a partager",
+      "ar": "رابط للمشاركة مع الاصدقاء",
+      "bn": "বন্ধুদের পাঠানোর লিংক",
+      "ru": "Ссылка для друзей",
+      "ja": "友達に共有するリンク",
+      "de": "Link zum Teilen",
+      "id": "Link untuk dibagikan"
+    },
+    "session_share_instruction": {
+      "en": "Copy and send this link to the group",
+      "pt": "Copie e envie este link no grupo",
+      "zh": "复制并发送到群里",
+      "hi": "इस लिंक को कॉपी करके ग्रुप में भेजो",
+      "fr": "Copie et envoie ce lien au groupe",
+      "ar": "انسخ الرابط وارسله للمجموعة",
+      "bn": "লিংক কপি করে গ্রুপে পাঠাও",
+      "ru": "Скопируй и отправь в чат",
+      "ja": "コピーしてグループに送ってね",
+      "de": "Link kopieren und in die Gruppe senden",
+      "id": "Salin dan kirim ke grup"
+    },
+    "session_expires": {
+      "en": "Session expires in 24 hours",
+      "pt": "Sessao expira em 24 horas",
+      "zh": "会话24小时后过期",
+      "hi": "सेशन 24 घंटे में खत्म होगा",
+      "fr": "La session expire dans 24h",
+      "ar": "تنتهي الجلسة خلال 24 ساعة",
+      "bn": "সেশন ২৪ ঘন্টায় শেষ হবে",
+      "ru": "Сессия истекает через 24 часа",
+      "ja": "24時間でセッション終了",
+      "de": "Sitzung laeuft in 24 Std ab",
+      "id": "Sesi berakhir dalam 24 jam"
+    },
+    "receipt_processed": {
+      "en": "Receipt processed!",
+      "pt": "Nota processada!",
+      "zh": "小票已处理！",
+      "hi": "रसीद प्रोसेस हो गई!",
+      "fr": "Addition traitee !",
+      "ar": "تمت معالجة الايصال!",
+      "bn": "রসিদ প্রসেস হয়েছে!",
+      "ru": "Чек обработан!",
+      "ja": "処理完了！",
+      "de": "Beleg verarbeitet!",
+      "id": "Struk diproses!"
+    }
+  }
+}

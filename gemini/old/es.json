@@ -98,26 +98,5 @@
   },
   "time": {
     "timer": "⏱️ {{time}}"
-  },
-  "charges": {
-    "title": "Cargos y Descuentos",
-    "addCharge": "Agregar",
-    "editCharge": "Editar Cargo",
-    "namePlaceholder": "Nombre (ej: IVA, Servicio)",
-    "type": "Tipo",
-    "add": "Suma",
-    "discount": "Descuento",
-    "distribution": "División",
-    "proportional": "% consumo",
-    "perPerson": "÷ personas",
-    "fixedPerPerson": "× persona",
-    "proportionalShort": "proporcional",
-    "perPersonShort": "igual",
-    "fixedPerPersonShort": "c/u",
-    "proportionalDesc": "Se divide según lo que consumió cada uno",
-    "perPersonDesc": "El total se divide entre todos por igual",
-    "fixedPerPersonDesc": "Cada persona paga este monto",
-    "save": "Guardar",
-    "delete": "Eliminar"
   }
 }

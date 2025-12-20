@@ -1,0 +1,257 @@
+=== ar_frontend.json ===
+{
+  "selection": {
+    "whoAreYou": "من انت؟",
+    "selectFromList": "اختر اسمك من القائمة",
+    "notInList": "+ لست في القائمة",
+    "hello": "اهلا، {{name}}",
+    "confirmPhone": "اكد رقم هاتفك للمتابعة",
+    "phonePlaceholder": "رقم هاتفك (مطلوب)",
+    "phoneRequired": "* رقم الهاتف مطلوب (8 ارقام على الاقل)",
+    "confirmAndEnter": "تاكيد والدخول",
+    "entering": "جاري الدخول...",
+    "back": "← رجوع",
+    "newParticipant": "مشارك جديد",
+    "enterDetails": "ادخل بياناتك للانضمام",
+    "namePlaceholder": "اسمك",
+    "joining": "جاري الانضمام...",
+    "joinTable": "الانضمام الى الطاولة"
+  },
+  "header": {
+    "host": "المضيف",
+    "you": "انت",
+    "addParticipant": "اضافة مشارك"
+  },
+  "items": {
+    "consumption": "الطلبات",
+    "individual": "فردي",
+    "grupal": "مشترك",
+    "allTogether": "بين الجميع",
+    "perUnit": "لكل وحدة",
+    "unit": "وحدة {{num}}",
+    "qty": "الكمية",
+    "itemName": "اسم الصنف",
+    "unitPrice": "سعر الوحدة",
+    "deleteItem": "حذف الصنف",
+    "total": "الاجمالي",
+    "perUnitSuffix": "لكل واحد",
+    "newItem": "طلب جديد",
+    "name": "الاسم",
+    "price": "السعر ($)",
+    "add": "اضافة",
+    "addManualItem": "+ اضافة صنف يدوي"
+  },
+  "validation": {
+    "balanced": "الحساب مضبوط",
+    "reviewTotals": "مراجعة الاجماليات",
+    "totalItems": "اجمالي الاصناف",
+    "totalAssigned": "اجمالي الموزع",
+    "totalBill": "اجمالي الفاتورة",
+    "subtotalItems": "مجموع الاصناف",
+    "subtotalBill": "مجموع الفاتورة",
+    "subtotalAssigned": "مجموع الموزع",
+    "itemsSum": "مجموع الاصناف",
+    "missingToAssign": "متبقي {{amount}} للتوزيع",
+    "overAssigned": "تم تجاوز {{amount}}"
+  },
+  "tip": {
+    "title": "بقشيش",
+    "titleWithPercent": "بقشيش ({{percent}}%)",
+    "titleFixed": "بقشيش (ثابت)",
+    "percent": "نسبة",
+    "fixed": "ثابت"
+  },
+  "totals": {
+    "tableTotal": "اجمالي الطاولة",
+    "yourConsumption": "اجمالك",
+    "subtotal": "المجموع",
+    "tipLabel": "بقشيش",
+    "total": "الاجمالي",
+    "tapForDetails": "اضغط لعرض التفاصيل",
+    "selectItemsAbove": "اختر الاصناف في الاعلى"
+  },
+  "finalized": {
+    "billClosed": "تم اغلاق الحساب",
+    "billOpen": "جاري توزيع الاصناف...",
+    "closeBill": "اغلاق الحساب",
+    "reopenTable": "اعادة فتح الطاولة",
+    "shareWhatsApp": "مشاركة عبر واتساب"
+  },
+  "modals": {
+    "confirmClose": "اغلاق الحساب؟ لن يتمكن المشاركون من التعديل.",
+    "confirmDelete": "حذف هذا الصنف؟",
+    "confirmReopen": "اعادة فتح الطاولة للتعديل؟ سيتم اعادة الحساب عند الاغلاق.",
+    "cancel": "الغاء",
+    "close": "اغلاق",
+    "delete": "حذف",
+    "reopen": "اعادة فتح"
+  },
+  "participant": {
+    "editParticipant": "تعديل المشارك",
+    "save": "حفظ",
+    "whatDidTheyOrder": "ماذا طلبوا؟"
+  },
+  "errors": {
+    "sessionNotFound": "الجلسة غير موجودة او منتهية",
+    "connectionError": "خطا في الاتصال",
+    "createItemError": "خطا في الاتصال عند اضافة الصنف",
+    "invalidPrice": "ادخل سعرا صحيحا اكبر من 0"
+  },
+  "time": {
+    "timer": "⏱️ {{time}}"
+  }
+}
+
+=== ar_whatsapp.json ===
+{
+  "processing": "جاري معالجة الفاتورة...",
+  "error_no_image": "لم استطع الحصول على الصورة. حاول مرة اخرى.",
+  "error_download": "لم استطع تنزيل الصورة.",
+  "error_ocr": "حدث خطا اثناء معالجة الفاتورة: {error}\n\nحاول ارسال صورة اوضح.",
+  "error_general": "حدث خطا. حاول مرة اخرى.",
+  "welcome": "اهلا! انا Bill-e، اساعدك في تقسيم الحساب.\n\n*للبدء:*\n1. التقط صورة واضحة للفاتورة\n2. ارسلها هنا\n3. سأنشئ رابطا لتقسيم الحساب تلقائيا\n\nاكتب 'help' للمزيد.",
+  "help": "*كيفية استخدام Bill-e:*\n\n1. التقط صورة لفاتورة المطعم\n2. ارسلها عبر واتساب\n3. سأعالج الاصناف والاسعار تلقائيا\n4. ستحصل على رابط لتقسيم الحساب\n5. شارك الرابط مع اصدقائك\n\n*نصائح:*\n- اضاءة جيدة\n- الاسعار والاسماء واضحة\n- تجنب الظلال\n\nجاهز؟ ارسل الفاتورة!",
+  "default": "لتقسيم الحساب، ارسل صورة للفاتورة.\n\nفقط التقط الصورة وارسِلها.\nاكتب 'help' اذا احتجت.",
+  "document_received": "استلمت المستند: {filename}\n\nحاليا يمكنني معالجة الصور فقط.\nهل يمكنك ارسال صورة؟",
+  "receipt_processed": "تمت معالجة الفاتورة!",
+  "session_verified": "تم التحقق من الاجماليات",
+  "session_review": "مراجعة الاجماليات",
+  "session_total": "الاجمالي",
+  "session_subtotal": "المجموع",
+  "session_tip": "بقشيش",
+  "session_items": "الاصناف",
+  "session_host_link": "رابط المضيف الخاص بك (احفظه)",
+  "session_host_instruction": "استخدم هذا الرابط لرؤية الاجماليات واغلاق الحساب",
+  "session_share_link": "رابط للمشاركة مع الاصدقاء",
+  "session_share_instruction": "انسخ الرابط وارسله للمجموعة",
+  "session_expires": "تنتهي الجلسة خلال 24 ساعة"
+}
+
+=== bn_frontend.json ===
+{
+  "selection": {
+    "whoAreYou": "তুমি কে?",
+    "selectFromList": "তালিকা থেকে তোমার নাম বেছে নাও",
+    "notInList": "+ আমি তালিকায় নেই",
+    "hello": "হাই, {{name}}",
+    "confirmPhone": "চালিয়ে যেতে ফোন নম্বর নিশ্চিত করো",
+    "phonePlaceholder": "তোমার ফোন (আবশ্যক)",
+    "phoneRequired": "* ফোন নম্বর দরকার (কমপক্ষে 8 সংখ্যা)",
+    "confirmAndEnter": "নিশ্চিত করে ঢুকো",
+    "entering": "ঢুকছে...",
+    "back": "← ফিরে যাও",
+    "newParticipant": "নতুন অংশগ্রহণকারী",
+    "enterDetails": "যোগ দিতে তথ্য দাও",
+    "namePlaceholder": "তোমার নাম",
+    "joining": "যোগ হচ্ছে...",
+    "joinTable": "টেবিলে যোগ দাও"
+  },
+  "header": {
+    "host": "হোস্ট",
+    "you": "তুমি",
+    "addParticipant": "অংশগ্রহণকারী যোগ করো"
+  },
+  "items": {
+    "consumption": "আইটেম",
+    "individual": "ব্যক্তিগত",
+    "grupal": "গ্রুপ",
+    "allTogether": "সবাই মিলে",
+    "perUnit": "প্রতি ইউনিট",
+    "unit": "ইউনিট {{num}}",
+    "qty": "পরিমাণ",
+    "itemName": "আইটেমের নাম",
+    "unitPrice": "ইউনিট দাম",
+    "deleteItem": "আইটেম মুছুন",
+    "total": "মোট",
+    "perUnitSuffix": "প্রতি",
+    "newItem": "নতুন আইটেম",
+    "name": "নাম",
+    "price": "দাম ($)",
+    "add": "যোগ করো",
+    "addManualItem": "+ হাতে আইটেম যোগ করো"
+  },
+  "validation": {
+    "balanced": "হিসাব ঠিক আছে",
+    "reviewTotals": "মোট যাচাই করো",
+    "totalItems": "মোট আইটেম",
+    "totalAssigned": "মোট বরাদ্দ",
+    "totalBill": "বিলের মোট",
+    "subtotalItems": "আইটেম সাবটোটাল",
+    "subtotalBill": "বিল সাবটোটাল",
+    "subtotalAssigned": "বরাদ্দ সাবটোটাল",
+    "itemsSum": "আইটেম যোগফল",
+    "missingToAssign": "{{amount}} এখনো বাকি",
+    "overAssigned": "{{amount}} বেশি হয়ে গেছে"
+  },
+  "tip": {
+    "title": "টিপ",
+    "titleWithPercent": "টিপ ({{percent}}%)",
+    "titleFixed": "টিপ (নির্দিষ্ট)",
+    "percent": "শতাংশ",
+    "fixed": "নির্দিষ্ট"
+  },
+  "totals": {
+    "tableTotal": "টেবিল মোট",
+    "yourConsumption": "তোমার মোট",
+    "subtotal": "সাবটোটাল",
+    "tipLabel": "টিপ",
+    "total": "মোট",
+    "tapForDetails": "বিস্তারিত দেখতে চাপ দাও",
+    "selectItemsAbove": "উপরে আইটেম বেছে নাও"
+  },
+  "finalized": {
+    "billClosed": "বিল বন্ধ",
+    "billOpen": "আইটেম বাছাই হচ্ছে...",
+    "closeBill": "বিল বন্ধ করো",
+    "reopenTable": "টেবিল আবার খোলো",
+    "shareWhatsApp": "WhatsApp এ শেয়ার করো"
+  },
+  "modals": {
+    "confirmClose": "বিল বন্ধ করবে? এরপর আর পরিবর্তন করা যাবে না।",
+    "confirmDelete": "এই আইটেম মুছবে?",
+    "confirmReopen": "আবার খুলে এডিট করবে? পরে আবার হিসাব হবে।",
+    "cancel": "বাতিল",
+    "close": "বন্ধ",
+    "delete": "মুছুন",
+    "reopen": "আবার খোলো"
+  },
+  "participant": {
+    "editParticipant": "অংশগ্রহণকারী সম্পাদনা",
+    "save": "সংরক্ষণ",
+    "whatDidTheyOrder": "ওরা কী নিয়েছে?"
+  },
+  "errors": {
+    "sessionNotFound": "সেশন পাওয়া যায়নি বা শেষ হয়ে গেছে",
+    "connectionError": "কানেকশন সমস্যা",
+    "createItemError": "আইটেম যোগ করতে সমস্যা",
+    "invalidPrice": "0 এর বেশি সঠিক দাম দাও"
+  },
+  "time": {
+    "timer": "⏱️ {{time}}"
+  }
+}
+
+=== bn_whatsapp.json ===
+{
+  "processing": "তোমার রসিদ প্রসেস করছি...",
+  "error_no_image": "ছবিটা পাওয়া যায়নি। আবার চেষ্টা করো।",
+  "error_download": "ছবিটা ডাউনলোড করা যায়নি।",
+  "error_ocr": "রসিদ প্রসেস করতে সমস্যা হয়েছে: {error}\n\nআরও পরিষ্কার ছবি পাঠাও।",
+  "error_general": "কিছু একটা ভুল হয়েছে। আবার চেষ্টা করো।",
+  "welcome": "হাই! আমি Bill-e, বিল ভাগ করার সহকারী।\n\n*শুরু করতে:*\n1. রসিদের পরিষ্কার ছবি তোলো\n2. এখানে পাঠাও\n3. আমি নিজে থেকেই ভাগ করার লিংক বানাবো\n\nআরও জানতে 'help' লিখো।",
+  "help": "*Bill-e কীভাবে ব্যবহার করবে:*\n\n1. রেস্টুরেন্টের রসিদের ছবি তোলো\n2. WhatsApp এ পাঠাও\n3. আমি আইটেম আর দাম নিজে থেকেই পড়ব\n4. বিল ভাগ করার লিংক দেবো\n5. বন্ধুদের সাথে শেয়ার করো\n\n*টিপস:*\n- ভালো আলো\n- দাম আর নাম পরিষ্কার\n- ছায়া এড়িয়ে চলো\n\nরেডি? রসিদ পাঠাও!",
+  "default": "বিল ভাগ করতে রসিদের ছবি পাঠাও।\n\nশুধু ছবি পাঠাও, বাকিটা আমি করব।\nদরকার হলে 'help' লেখো।",
+  "document_received": "তোমার ডকুমেন্ট পেয়েছি: {filename}\n\nএখন শুধু রসিদের ছবি প্রসেস করতে পারি।\nএকটা ছবি পাঠাবে?",
+  "receipt_processed": "রসিদ প্রসেস হয়েছে!",
+  "session_verified": "মোট যাচাই হয়েছে",
+  "session_review": "মোট যাচাই করো",
+  "session_total": "মোট",
+  "session_subtotal": "সাবটোটাল",
+  "session_tip": "টিপ",
+  "session_items": "আইটেম",
+  "session_host_link": "তোমার হোস্ট লিংক (সংরক্ষণ করো)",
+  "session_host_instruction": "এই লিংক দিয়ে মোট দেখো আর বিল বন্ধ করো",
+  "session_share_link": "বন্ধুদের সাথে শেয়ার করার লিংক",
+  "session_share_instruction": "লিংক কপি করে গ্রুপে পাঠাও",
+  "session_expires": "সেশন 24 ঘন্টার মধ্যে শেষ হবে"
+}

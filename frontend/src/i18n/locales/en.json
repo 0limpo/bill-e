@@ -108,10 +108,15 @@
     "add": "Adds",
     "discount": "Discount",
     "distribution": "Split",
-    "proportional": "By consumption",
-    "perPerson": "Equal split",
+    "proportional": "% consumed",
+    "perPerson": "÷ people",
+    "fixedPerPerson": "× person",
     "proportionalShort": "proportional",
     "perPersonShort": "equal",
+    "fixedPerPersonShort": "each",
+    "proportionalDesc": "Split based on what each person consumed",
+    "perPersonDesc": "Total divided equally among everyone",
+    "fixedPerPersonDesc": "Each person pays this amount",
     "save": "Save",
     "delete": "Delete"
   }

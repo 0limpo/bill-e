@@ -309,21 +309,30 @@ const ChargeModal = ({ charge, onSave, onClose, onDelete }) => {
           </div>
         </div>
 
-        {/* Distribution toggle */}
+        {/* Distribution toggle - 3 options */}
         <div className="charge-option-row">
           <span className="charge-option-label">{t('charges.distribution')}</span>
-          <div className="charge-toggle-switch">
+          <div className="charge-toggle-switch three-options">
             <button
               className={`charge-toggle-btn ${distribution === 'proportional' ? 'active' : ''}`}
               onClick={() => setDistribution('proportional')}
+              title={t('charges.proportionalDesc')}
             >
               {t('charges.proportional')}
             </button>
             <button
               className={`charge-toggle-btn ${distribution === 'per_person' ? 'active' : ''}`}
               onClick={() => setDistribution('per_person')}
+              title={t('charges.perPersonDesc')}
             >
               {t('charges.perPerson')}
+            </button>
+            <button
+              className={`charge-toggle-btn ${distribution === 'fixed_per_person' ? 'active' : ''}`}
+              onClick={() => setDistribution('fixed_per_person')}
+              title={t('charges.fixedPerPersonDesc')}
+            >
+              {t('charges.fixedPerPerson')}
             </button>
           </div>
         </div>
@@ -1675,10 +1684,18 @@ const CollaborativeSession = () => {
       // Calculate base charge amount
       let chargeAmount = valueType === 'percent' ? totalSubtotal * (value / 100) : value;
 
-      // Apply distribution
-      let participantCharge = distribution === 'per_person'
-        ? chargeAmount / numParticipants
-        : chargeAmount * ratio;
+      // Apply distribution:
+      // - proportional: based on consumption ratio
+      // - per_person: total divided equally among participants
+      // - fixed_per_person: each person pays the full amount
+      let participantCharge;
+      if (distribution === 'fixed_per_person') {
+        participantCharge = chargeAmount; // Each person pays full amount
+      } else if (distribution === 'per_person') {
+        participantCharge = chargeAmount / numParticipants; // Divided equally
+      } else {
+        participantCharge = chargeAmount * ratio; // Proportional to consumption
+      }
 
       // Apply sign (discount = negative)
       if (isDiscount) {
@@ -2129,14 +2146,23 @@ const CollaborativeSession = () => {
   const currentItemSum = totalItems; // Sum of all items at current prices
 
   // Calculate total charges (taxes, service fees, discounts, tips)
+  const numParticipants = session.participants?.length || 1;
   let totalChargesAmount = 0;
   (session.charges || []).forEach(charge => {
     const value = charge.value || 0;
     const valueType = charge.valueType || 'fixed';
     const isDiscount = charge.isDiscount || false;
+    const distribution = charge.distribution || 'proportional';
+
     let chargeAmount = valueType === 'percent'
       ? currentItemSum * (value / 100)
       : value;
+
+    // For fixed_per_person, multiply by number of participants for total
+    if (distribution === 'fixed_per_person') {
+      chargeAmount = chargeAmount * numParticipants;
+    }
+
     if (isDiscount) chargeAmount = -chargeAmount;
     totalChargesAmount += chargeAmount;
   });
@@ -2783,7 +2809,11 @@ const CollaborativeSession = () => {
                               {charge.valueType === 'percent' ? `${charge.value}%` : fmt(charge.value)}
                             </span>
                             <span className="charge-dist">
-                              {charge.distribution === 'per_person' ? t('charges.perPersonShort') : t('charges.proportionalShort')}
+                              {charge.distribution === 'fixed_per_person'
+                                ? t('charges.fixedPerPersonShort')
+                                : charge.distribution === 'per_person'
+                                  ? t('charges.perPersonShort')
+                                  : t('charges.proportionalShort')}
                             </span>
                           </div>
                         ))}

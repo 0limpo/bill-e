@@ -2716,6 +2716,12 @@ body {
   color: white;
 }
 
+/* Three-option toggle (smaller buttons) */
+.charge-toggle-switch.three-options .charge-toggle-btn {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
 /* RTL Support for charges */
 .collaborative-session.rtl .charges-header {
   flex-direction: row-reverse;

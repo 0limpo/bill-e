@@ -1,0 +1,911 @@
+{
+  "en": {
+    "selection": {
+      "whoAreYou": "Who are you?",
+      "selectFromList": "Select your name from the list",
+      "notInList": "+ I'm not on the list",
+      "hello": "Hi, {{name}}",
+      "confirmPhone": "Confirm your phone to continue",
+      "phonePlaceholder": "Your Phone (required)",
+      "phoneRequired": "* Phone required (min. 8 digits)",
+      "confirmAndEnter": "Confirm & Enter",
+      "entering": "Entering...",
+      "back": "← Back",
+      "newParticipant": "New Participant",
+      "enterDetails": "Enter your details to join",
+      "namePlaceholder": "Your Name",
+      "joining": "Joining...",
+      "joinTable": "Join the table"
+    },
+    "header": {
+      "host": "Host",
+      "you": "You",
+      "addParticipant": "Add Participant"
+    },
+    "items": {
+      "consumption": "Items",
+      "individual": "Individual",
+      "grupal": "Group",
+      "allTogether": "All together",
+      "perUnit": "Per unit",
+      "unit": "Unit {{num}}",
+      "qty": "Qty",
+      "itemName": "Item name",
+      "unitPrice": "Unit price",
+      "deleteItem": "Delete item",
+      "total": "Total",
+      "perUnitSuffix": "ea",
+      "newItem": "New Item",
+      "name": "Name",
+      "price": "Price ($)",
+      "add": "Add",
+      "addManualItem": "+ Add Item Manually"
+    },
+    "validation": {
+      "balanced": "All Balanced",
+      "reviewTotals": "Review Totals",
+      "totalItems": "Total Items",
+      "totalAssigned": "Total Assigned",
+      "totalBill": "Receipt Total",
+      "subtotalItems": "Items Subtotal",
+      "subtotalBill": "Receipt Subtotal",
+      "subtotalAssigned": "Assigned Subtotal",
+      "itemsSum": "Items Sum",
+      "missingToAssign": "{{amount}} left to assign",
+      "overAssigned": "Over by {{amount}}"
+    },
+    "tip": {
+      "title": "Tip",
+      "titleWithPercent": "Tip ({{percent}}%)",
+      "titleFixed": "Tip (fixed)",
+      "percent": "Percent",
+      "fixed": "Fixed"
+    },
+    "totals": {
+      "tableTotal": "Table Total",
+      "yourConsumption": "YOUR TOTAL",
+      "subtotal": "Subtotal",
+      "tipLabel": "Tip",
+      "total": "TOTAL",
+      "tapForDetails": "Tap to see details",
+      "selectItemsAbove": "Select items above"
+    },
+    "finalized": {
+      "billClosed": "Bill Closed",
+      "closeBill": "Close Bill",
+      "reopenTable": "Reopen Table",
+      "shareWhatsApp": "Share on WhatsApp"
+    },
+    "modals": {
+      "confirmClose": "Close the bill? Participants won’t be able to edit anymore.",
+      "confirmDelete": "Delete this item?",
+      "confirmReopen": "Reopen the table to edit? Totals will be recalculated when you close again.",
+      "cancel": "Cancel",
+      "close": "Close",
+      "delete": "Delete",
+      "reopen": "Reopen"
+    },
+    "participant": {
+      "editParticipant": "Edit Participant",
+      "save": "Save",
+      "whatDidTheyOrder": "What did they order?"
+    },
+    "errors": {
+      "sessionNotFound": "Session not found or expired",
+      "connectionError": "Connection error",
+      "createItemError": "Connection error while creating item",
+      "invalidPrice": "Please enter a valid price greater than 0"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  },
+  "pt": {
+    "selection": {
+      "whoAreYou": "Quem é você?",
+      "selectFromList": "Selecione seu nome na lista",
+      "notInList": "+ Meu nome não está na lista",
+      "hello": "Olá, {{name}}",
+      "confirmPhone": "Confirme seu telefone para continuar",
+      "phonePlaceholder": "Seu Telefone (obrigatório)",
+      "phoneRequired": "* Telefone obrigatório (mín. 8 dígitos)",
+      "confirmAndEnter": "Confirmar e Entrar",
+      "entering": "Entrando...",
+      "back": "← Voltar",
+      "newParticipant": "Novo Participante",
+      "enterDetails": "Informe seus dados para entrar",
+      "namePlaceholder": "Seu Nome",
+      "joining": "Entrando...",
+      "joinTable": "Entrar na mesa"
+    },
+    "header": {
+      "host": "Host",
+      "you": "Você",
+      "addParticipant": "Adicionar Participante"
+    },
+    "items": {
+      "consumption": "Consumo",
+      "individual": "Individual",
+      "grupal": "Grupo",
+      "allTogether": "Entre todos",
+      "perUnit": "Por unidade",
+      "unit": "Unidade {{num}}",
+      "qty": "Qtd.",
+      "itemName": "Nome do item",
+      "unitPrice": "Preço un.",
+      "deleteItem": "Excluir item",
+      "total": "Total",
+      "perUnitSuffix": "cada",
+      "newItem": "Novo Consumo",
+      "name": "Nome",
+      "price": "Preço ($)",
+      "add": "Adicionar",
+      "addManualItem": "+ Adicionar item manualmente"
+    },
+    "validation": {
+      "balanced": "Conta fechada certinho",
+      "reviewTotals": "Revisar Totais",
+      "totalItems": "Total de Itens",
+      "totalAssigned": "Total Atribuído",
+      "totalBill": "Total da Conta",
+      "subtotalItems": "Subtotal dos Itens",
+      "subtotalBill": "Subtotal da Conta",
+      "subtotalAssigned": "Subtotal Atribuído",
+      "itemsSum": "Soma dos Itens",
+      "missingToAssign": "Faltam {{amount}} para atribuir",
+      "overAssigned": "Excedeu em {{amount}}"
+    },
+    "tip": {
+      "title": "Gorjeta",
+      "titleWithPercent": "Gorjeta ({{percent}}%)",
+      "titleFixed": "Gorjeta (fixa)",
+      "percent": "Percentual",
+      "fixed": "Fixa"
+    },
+    "totals": {
+      "tableTotal": "Total da Mesa",
+      "yourConsumption": "SEU TOTAL",
+      "subtotal": "Subtotal",
+      "tipLabel": "Gorjeta",
+      "total": "TOTAL",
+      "tapForDetails": "Toque para ver detalhes",
+      "selectItemsAbove": "Selecione itens acima"
+    },
+    "finalized": {
+      "billClosed": "Conta Fechada",
+      "closeBill": "Fechar Conta",
+      "reopenTable": "Reabrir Mesa",
+      "shareWhatsApp": "Compartilhar no WhatsApp"
+    },
+    "modals": {
+      "confirmClose": "Fechar a conta? Os participantes não poderão mais editar.",
+      "confirmDelete": "Excluir este item?",
+      "confirmReopen": "Reabrir a mesa para editar? Os totais serão recalculados ao fechar de novo.",
+      "cancel": "Cancelar",
+      "close": "Fechar",
+      "delete": "Excluir",
+      "reopen": "Reabrir"
+    },
+    "participant": {
+      "editParticipant": "Editar Participante",
+      "save": "Salvar",
+      "whatDidTheyOrder": "O que pediram?"
+    },
+    "errors": {
+      "sessionNotFound": "Sessão não encontrada ou expirada",
+      "connectionError": "Erro de conexão",
+      "createItemError": "Erro de conexão ao criar item",
+      "invalidPrice": "Por favor, informe um preço válido maior que 0"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  },
+  "zh": {
+    "selection": {
+      "whoAreYou": "你是谁？",
+      "selectFromList": "从列表中选择你的名字",
+      "notInList": "+ 列表里没有我",
+      "hello": "你好，{{name}}",
+      "confirmPhone": "确认你的手机号以继续",
+      "phonePlaceholder": "你的手机号（必填）",
+      "phoneRequired": "* 必填手机号（至少 8 位）",
+      "confirmAndEnter": "确认并进入",
+      "entering": "正在进入...",
+      "back": "← 返回",
+      "newParticipant": "新参与者",
+      "enterDetails": "填写信息以加入",
+      "namePlaceholder": "你的名字",
+      "joining": "正在加入...",
+      "joinTable": "加入餐桌"
+    },
+    "header": {
+      "host": "房主",
+      "you": "你",
+      "addParticipant": "添加参与者"
+    },
+    "items": {
+      "consumption": "消费",
+      "individual": "个人",
+      "grupal": "多人",
+      "allTogether": "大家平分",
+      "perUnit": "按份分配",
+      "unit": "第 {{num}} 份",
+      "qty": "数量",
+      "itemName": "项目名称",
+      "unitPrice": "单价",
+      "deleteItem": "删除项目",
+      "total": "合计",
+      "perUnitSuffix": "每份",
+      "newItem": "新增消费",
+      "name": "名称",
+      "price": "价格 ($)",
+      "add": "添加",
+      "addManualItem": "+ 手动添加项目"
+    },
+    "validation": {
+      "balanced": "账单已对齐",
+      "reviewTotals": "检查合计",
+      "totalItems": "项目合计",
+      "totalAssigned": "已分配合计",
+      "totalBill": "小票总计",
+      "subtotalItems": "项目小计",
+      "subtotalBill": "小票小计",
+      "subtotalAssigned": "已分配小计",
+      "itemsSum": "项目总和",
+      "missingToAssign": "还差 {{amount}} 未分配",
+      "overAssigned": "超出 {{amount}}"
+    },
+    "tip": {
+      "title": "小费",
+      "titleWithPercent": "小费（{{percent}}%）",
+      "titleFixed": "小费（固定）",
+      "percent": "百分比",
+      "fixed": "固定"
+    },
+    "totals": {
+      "tableTotal": "全桌合计",
+      "yourConsumption": "你的合计",
+      "subtotal": "小计",
+      "tipLabel": "小费",
+      "total": "总计",
+      "tapForDetails": "点击查看明细",
+      "selectItemsAbove": "在上方选择项目"
+    },
+    "finalized": {
+      "billClosed": "账单已关闭",
+      "closeBill": "关闭账单",
+      "reopenTable": "重新打开餐桌",
+      "shareWhatsApp": "通过 WhatsApp 分享"
+    },
+    "modals": {
+      "confirmClose": "关闭账单？参与者将无法再编辑。",
+      "confirmDelete": "删除该项目？",
+      "confirmReopen": "重新打开以编辑？再次关闭时将重新计算合计。",
+      "cancel": "取消",
+      "close": "关闭",
+      "delete": "删除",
+      "reopen": "重新打开"
+    },
+    "participant": {
+      "editParticipant": "编辑参与者",
+      "save": "保存",
+      "whatDidTheyOrder": "他们点了什么？"
+    },
+    "errors": {
+      "sessionNotFound": "会话不存在或已过期",
+      "connectionError": "连接错误",
+      "createItemError": "创建项目时连接错误",
+      "invalidPrice": "请输入大于 0 的有效价格"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  },
+  "hi": {
+    "selection": {
+      "whoAreYou": "आप कौन हैं?",
+      "selectFromList": "सूची से अपना नाम चुनें",
+      "notInList": "+ मेरा नाम सूची में नहीं है",
+      "hello": "हाय, {{name}}",
+      "confirmPhone": "जारी रखने के लिए अपना फ़ोन कन्फ़र्म करें",
+      "phonePlaceholder": "आपका फ़ोन (ज़रूरी)",
+      "phoneRequired": "* फ़ोन ज़रूरी (कम से कम 8 अंक)",
+      "confirmAndEnter": "कन्फ़र्म करके अंदर जाएँ",
+      "entering": "अंदर जा रहे हैं...",
+      "back": "← वापस",
+      "newParticipant": "नया सहभागी",
+      "enterDetails": "जुड़ने के लिए अपनी जानकारी भरें",
+      "namePlaceholder": "आपका नाम",
+      "joining": "जुड़ रहे हैं...",
+      "joinTable": "टेबल में जुड़ें"
+    },
+    "header": {
+      "host": "Host",
+      "you": "आप",
+      "addParticipant": "सहभागी जोड़ें"
+    },
+    "items": {
+      "consumption": "आइटम",
+      "individual": "व्यक्तिगत",
+      "grupal": "समूह",
+      "allTogether": "सब मिलकर",
+      "perUnit": "प्रति यूनिट",
+      "unit": "यूनिट {{num}}",
+      "qty": "मात्रा",
+      "itemName": "आइटम का नाम",
+      "unitPrice": "यूनिट कीमत",
+      "deleteItem": "आइटम हटाएँ",
+      "total": "कुल",
+      "perUnitSuffix": "प्रति",
+      "newItem": "नया आइटम",
+      "name": "नाम",
+      "price": "कीमत ($)",
+      "add": "जोड़ें",
+      "addManualItem": "+ आइटम मैन्युअली जोड़ें"
+    },
+    "validation": {
+      "balanced": "हिसाब मिल गया",
+      "reviewTotals": "टोटल जाँचें",
+      "totalItems": "कुल आइटम",
+      "totalAssigned": "कुल बाँटा गया",
+      "totalBill": "बिल टोटल",
+      "subtotalItems": "आइटम सबटोटल",
+      "subtotalBill": "बिल सबटोटल",
+      "subtotalAssigned": "बँटा सबटोटल",
+      "itemsSum": "आइटम योग",
+      "missingToAssign": "{{amount}} बाँटना बाकी",
+      "overAssigned": "{{amount}} ज़्यादा बाँट दिया"
+    },
+    "tip": {
+      "title": "टिप",
+      "titleWithPercent": "टिप ({{percent}}%)",
+      "titleFixed": "टिप (फिक्स्ड)",
+      "percent": "प्रतिशत",
+      "fixed": "फिक्स्ड"
+    },
+    "totals": {
+      "tableTotal": "टेबल टोटल",
+      "yourConsumption": "आपका टोटल",
+      "subtotal": "सबटोटल",
+      "tipLabel": "टिप",
+      "total": "TOTAL",
+      "tapForDetails": "डिटेल देखने के लिए टैप करें",
+      "selectItemsAbove": "ऊपर आइटम चुनें"
+    },
+    "finalized": {
+      "billClosed": "बिल बंद",
+      "closeBill": "बिल बंद करें",
+      "reopenTable": "टेबल फिर खोलें",
+      "shareWhatsApp": "WhatsApp पर शेयर करें"
+    },
+    "modals": {
+      "confirmClose": "बिल बंद करें? अब कोई एडिट नहीं कर पाएगा।",
+      "confirmDelete": "यह आइटम हटाएँ?",
+      "confirmReopen": "एडिट के लिए टेबल फिर खोलें? फिर से बंद करने पर टोटल दोबारा निकलेगा।",
+      "cancel": "रद्द करें",
+      "close": "बंद करें",
+      "delete": "हटाएँ",
+      "reopen": "फिर खोलें"
+    },
+    "participant": {
+      "editParticipant": "सहभागी एडिट करें",
+      "save": "सेव",
+      "whatDidTheyOrder": "उन्होंने क्या मंगाया?"
+    },
+    "errors": {
+      "sessionNotFound": "सेशन नहीं मिला या एक्सपायर हो गया",
+      "connectionError": "कनेक्शन एरर",
+      "createItemError": "आइटम बनाते समय कनेक्शन एरर",
+      "invalidPrice": "कृपया 0 से बड़ा वैध दाम डालें"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  },
+  "fr": {
+    "selection": {
+      "whoAreYou": "Qui es-tu ?",
+      "selectFromList": "Choisis ton nom dans la liste",
+      "notInList": "+ Je ne suis pas dans la liste",
+      "hello": "Salut, {{name}}",
+      "confirmPhone": "Confirme ton téléphone pour continuer",
+      "phonePlaceholder": "Ton téléphone (obligatoire)",
+      "phoneRequired": "* Téléphone requis (min. 8 chiffres)",
+      "confirmAndEnter": "Confirmer et entrer",
+      "entering": "Connexion...",
+      "back": "← Retour",
+      "newParticipant": "Nouveau participant",
+      "enterDetails": "Renseigne tes infos pour rejoindre",
+      "namePlaceholder": "Ton nom",
+      "joining": "Rejoindre...",
+      "joinTable": "Rejoindre la table"
+    },
+    "header": {
+      "host": "Host",
+      "you": "Toi",
+      "addParticipant": "Ajouter un participant"
+    },
+    "items": {
+      "consumption": "Consommation",
+      "individual": "Individuel",
+      "grupal": "Groupe",
+      "allTogether": "Entre tous",
+      "perUnit": "Par unité",
+      "unit": "Unité {{num}}",
+      "qty": "Qté",
+      "itemName": "Nom de l’item",
+      "unitPrice": "Prix un.",
+      "deleteItem": "Supprimer l’item",
+      "total": "Total",
+      "perUnitSuffix": "ch.",
+      "newItem": "Nouvelle conso",
+      "name": "Nom",
+      "price": "Prix ($)",
+      "add": "Ajouter",
+      "addManualItem": "+ Ajouter un item manuellement"
+    },
+    "validation": {
+      "balanced": "Tout est OK",
+      "reviewTotals": "Vérifier les totaux",
+      "totalItems": "Total items",
+      "totalAssigned": "Total attribué",
+      "totalBill": "Total ticket",
+      "subtotalItems": "Sous-total items",
+      "subtotalBill": "Sous-total ticket",
+      "subtotalAssigned": "Sous-total attribué",
+      "itemsSum": "Somme items",
+      "missingToAssign": "Il manque {{amount}} à attribuer",
+      "overAssigned": "Dépassement de {{amount}}"
+    },
+    "tip": {
+      "title": "Pourboire",
+      "titleWithPercent": "Pourboire ({{percent}}%)",
+      "titleFixed": "Pourboire (fixe)",
+      "percent": "Pourcentage",
+      "fixed": "Fixe"
+    },
+    "totals": {
+      "tableTotal": "Total table",
+      "yourConsumption": "TON TOTAL",
+      "subtotal": "Sous-total",
+      "tipLabel": "Pourboire",
+      "total": "TOTAL",
+      "tapForDetails": "Appuie pour voir le détail",
+      "selectItemsAbove": "Sélectionne des items au-dessus"
+    },
+    "finalized": {
+      "billClosed": "Addition clôturée",
+      "closeBill": "Clôturer",
+      "reopenTable": "Rouvrir la table",
+      "shareWhatsApp": "Partager sur WhatsApp"
+    },
+    "modals": {
+      "confirmClose": "Clôturer l’addition ? Les participants ne pourront plus modifier.",
+      "confirmDelete": "Supprimer cet item ?",
+      "confirmReopen": "Rouvrir pour modifier ? Les totaux seront recalculés à la prochaine clôture.",
+      "cancel": "Annuler",
+      "close": "Clôturer",
+      "delete": "Supprimer",
+      "reopen": "Rouvrir"
+    },
+    "participant": {
+      "editParticipant": "Modifier le participant",
+      "save": "Enregistrer",
+      "whatDidTheyOrder": "Qu’ont-ils commandé ?"
+    },
+    "errors": {
+      "sessionNotFound": "Session introuvable ou expirée",
+      "connectionError": "Erreur de connexion",
+      "createItemError": "Erreur de connexion lors de la création de l’item",
+      "invalidPrice": "Merci d’entrer un prix valide supérieur à 0"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  },
+  "ru": {
+    "selection": {
+      "whoAreYou": "Кто ты?",
+      "selectFromList": "Выбери своё имя из списка",
+      "notInList": "+ Меня нет в списке",
+      "hello": "Привет, {{name}}",
+      "confirmPhone": "Подтверди телефон, чтобы продолжить",
+      "phonePlaceholder": "Твой телефон (обязательно)",
+      "phoneRequired": "* Телефон обязателен (мин. 8 цифр)",
+      "confirmAndEnter": "Подтвердить и войти",
+      "entering": "Входим...",
+      "back": "← Назад",
+      "newParticipant": "Новый участник",
+      "enterDetails": "Введи данные, чтобы присоединиться",
+      "namePlaceholder": "Твоё имя",
+      "joining": "Подключаем...",
+      "joinTable": "Присоединиться к столу"
+    },
+    "header": {
+      "host": "Host",
+      "you": "Ты",
+      "addParticipant": "Добавить участника"
+    },
+    "items": {
+      "consumption": "Позиции",
+      "individual": "Лично",
+      "grupal": "Вместе",
+      "allTogether": "На всех",
+      "perUnit": "По штукам",
+      "unit": "Штука {{num}}",
+      "qty": "Кол-во",
+      "itemName": "Название",
+      "unitPrice": "Цена/шт.",
+      "deleteItem": "Удалить позицию",
+      "total": "Итого",
+      "perUnitSuffix": "шт.",
+      "newItem": "Новая позиция",
+      "name": "Название",
+      "price": "Цена ($)",
+      "add": "Добавить",
+      "addManualItem": "+ Добавить вручную"
+    },
+    "validation": {
+      "balanced": "Всё сходится",
+      "reviewTotals": "Проверить итоги",
+      "totalItems": "Итого по позициям",
+      "totalAssigned": "Итого распределено",
+      "totalBill": "Итого по чеку",
+      "subtotalItems": "Подитог позиций",
+      "subtotalBill": "Подитог чека",
+      "subtotalAssigned": "Подитог распределено",
+      "itemsSum": "Сумма позиций",
+      "missingToAssign": "Осталось распределить {{amount}}",
+      "overAssigned": "Перераспределено на {{amount}}"
+    },
+    "tip": {
+      "title": "Чаевые",
+      "titleWithPercent": "Чаевые ({{percent}}%)",
+      "titleFixed": "Чаевые (фикс.)",
+      "percent": "Процент",
+      "fixed": "Фикс."
+    },
+    "totals": {
+      "tableTotal": "Итого стол",
+      "yourConsumption": "ТВОЙ ИТОГ",
+      "subtotal": "Подитог",
+      "tipLabel": "Чаевые",
+      "total": "ИТОГО",
+      "tapForDetails": "Нажми, чтобы увидеть детали",
+      "selectItemsAbove": "Выбери позиции выше"
+    },
+    "finalized": {
+      "billClosed": "Чек закрыт",
+      "closeBill": "Закрыть чек",
+      "reopenTable": "Открыть снова",
+      "shareWhatsApp": "Поделиться в WhatsApp"
+    },
+    "modals": {
+      "confirmClose": "Закрыть чек? Участники больше не смогут редактировать.",
+      "confirmDelete": "Удалить эту позицию?",
+      "confirmReopen": "Открыть снова для редактирования? Итоги пересчитаются при следующем закрытии.",
+      "cancel": "Отмена",
+      "close": "Закрыть",
+      "delete": "Удалить",
+      "reopen": "Открыть"
+    },
+    "participant": {
+      "editParticipant": "Редактировать участника",
+      "save": "Сохранить",
+      "whatDidTheyOrder": "Что они заказали?"
+    },
+    "errors": {
+      "sessionNotFound": "Сессия не найдена или истекла",
+      "connectionError": "Ошибка соединения",
+      "createItemError": "Ошибка соединения при создании позиции",
+      "invalidPrice": "Введите корректную цену больше 0"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  },
+  "ja": {
+    "selection": {
+      "whoAreYou": "あなたは誰？",
+      "selectFromList": "リストから名前を選んでね",
+      "notInList": "+ リストにいない",
+      "hello": "こんにちは、{{name}}",
+      "confirmPhone": "続行するには電話番号を確認してね",
+      "phonePlaceholder": "電話番号（必須）",
+      "phoneRequired": "* 電話番号は必須（8桁以上）",
+      "confirmAndEnter": "確認して入る",
+      "entering": "入っています...",
+      "back": "← 戻る",
+      "newParticipant": "新しい参加者",
+      "enterDetails": "参加するために情報を入力してね",
+      "namePlaceholder": "名前",
+      "joining": "参加中...",
+      "joinTable": "テーブルに参加"
+    },
+    "header": {
+      "host": "Host",
+      "you": "あなた",
+      "addParticipant": "参加者を追加"
+    },
+    "items": {
+      "consumption": "明細",
+      "individual": "個別",
+      "grupal": "共有",
+      "allTogether": "みんなで",
+      "perUnit": "1つずつ",
+      "unit": "ユニット {{num}}",
+      "qty": "数量",
+      "itemName": "品名",
+      "unitPrice": "単価",
+      "deleteItem": "明細を削除",
+      "total": "合計",
+      "perUnitSuffix": "各",
+      "newItem": "新しい明細",
+      "name": "名前",
+      "price": "金額 ($)",
+      "add": "追加",
+      "addManualItem": "+ 手動で追加"
+    },
+    "validation": {
+      "balanced": "合ってるよ",
+      "reviewTotals": "合計を確認",
+      "totalItems": "明細合計",
+      "totalAssigned": "割当合計",
+      "totalBill": "レシート合計",
+      "subtotalItems": "明細小計",
+      "subtotalBill": "レシート小計",
+      "subtotalAssigned": "割当小計",
+      "itemsSum": "明細の合計",
+      "missingToAssign": "{{amount}} が未割当",
+      "overAssigned": "{{amount}} 超過"
+    },
+    "tip": {
+      "title": "チップ",
+      "titleWithPercent": "チップ（{{percent}}%）",
+      "titleFixed": "チップ（固定）",
+      "percent": "％",
+      "fixed": "固定"
+    },
+    "totals": {
+      "tableTotal": "テーブル合計",
+      "yourConsumption": "あなたの合計",
+      "subtotal": "小計",
+      "tipLabel": "チップ",
+      "total": "合計",
+      "tapForDetails": "タップで詳細",
+      "selectItemsAbove": "上で明細を選んでね"
+    },
+    "finalized": {
+      "billClosed": "会計を締めました",
+      "closeBill": "会計を締める",
+      "reopenTable": "テーブルを再開",
+      "shareWhatsApp": "WhatsAppで共有"
+    },
+    "modals": {
+      "confirmClose": "会計を締める？参加者は編集できなくなるよ。",
+      "confirmDelete": "この明細を削除する？",
+      "confirmReopen": "編集のために再開する？もう一度締めると合計が再計算されます。",
+      "cancel": "キャンセル",
+      "close": "締める",
+      "delete": "削除",
+      "reopen": "再開"
+    },
+    "participant": {
+      "editParticipant": "参加者を編集",
+      "save": "保存",
+      "whatDidTheyOrder": "何を頼んだ？"
+    },
+    "errors": {
+      "sessionNotFound": "セッションが見つからないか期限切れです",
+      "connectionError": "接続エラー",
+      "createItemError": "明細作成で接続エラー",
+      "invalidPrice": "0より大きい有効な金額を入力してね"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  },
+  "de": {
+    "selection": {
+      "whoAreYou": "Wer bist du?",
+      "selectFromList": "Wähle deinen Namen aus der Liste",
+      "notInList": "+ Ich bin nicht in der Liste",
+      "hello": "Hallo, {{name}}",
+      "confirmPhone": "Bestätige deine Nummer, um fortzufahren",
+      "phonePlaceholder": "Dein Telefon (erforderlich)",
+      "phoneRequired": "* Telefon erforderlich (min. 8 Ziffern)",
+      "confirmAndEnter": "Bestätigen & Starten",
+      "entering": "Wird gestartet...",
+      "back": "← Zurück",
+      "newParticipant": "Neuer Teilnehmer",
+      "enterDetails": "Gib deine Daten ein, um beizutreten",
+      "namePlaceholder": "Dein Name",
+      "joining": "Trete bei...",
+      "joinTable": "Zum Tisch beitreten"
+    },
+    "header": {
+      "host": "Host",
+      "you": "Du",
+      "addParticipant": "Teilnehmer hinzufügen"
+    },
+    "items": {
+      "consumption": "Verzehr",
+      "individual": "Einzeln",
+      "grupal": "Gruppe",
+      "allTogether": "Alle zusammen",
+      "perUnit": "Pro Stück",
+      "unit": "Stück {{num}}",
+      "qty": "Menge",
+      "itemName": "Artikelname",
+      "unitPrice": "Stückpreis",
+      "deleteItem": "Artikel löschen",
+      "total": "Summe",
+      "perUnitSuffix": "Stk.",
+      "newItem": "Neuer Posten",
+      "name": "Name",
+      "price": "Preis ($)",
+      "add": "Hinzufügen",
+      "addManualItem": "+ Artikel manuell hinzufügen"
+    },
+    "validation": {
+      "balanced": "Alles stimmt",
+      "reviewTotals": "Summen prüfen",
+      "totalItems": "Summe Posten",
+      "totalAssigned": "Summe zugeordnet",
+      "totalBill": "Belegsumme",
+      "subtotalItems": "Zwischensumme Posten",
+      "subtotalBill": "Zwischensumme Beleg",
+      "subtotalAssigned": "Zwischensumme zugeordnet",
+      "itemsSum": "Posten-Summe",
+      "missingToAssign": "{{amount}} noch zuzuordnen",
+      "overAssigned": "{{amount}} zu viel zugeordnet"
+    },
+    "tip": {
+      "title": "Trinkgeld",
+      "titleWithPercent": "Trinkgeld ({{percent}}%)",
+      "titleFixed": "Trinkgeld (fest)",
+      "percent": "Prozent",
+      "fixed": "Fest"
+    },
+    "totals": {
+      "tableTotal": "Tischsumme",
+      "yourConsumption": "DEINE SUMME",
+      "subtotal": "Zwischensumme",
+      "tipLabel": "Trinkgeld",
+      "total": "GESAMT",
+      "tapForDetails": "Tippen für Details",
+      "selectItemsAbove": "Oben Posten auswählen"
+    },
+    "finalized": {
+      "billClosed": "Rechnung geschlossen",
+      "closeBill": "Rechnung schließen",
+      "reopenTable": "Tisch wieder öffnen",
+      "shareWhatsApp": "Über WhatsApp teilen"
+    },
+    "modals": {
+      "confirmClose": "Rechnung schließen? Teilnehmer können dann nicht mehr bearbeiten.",
+      "confirmDelete": "Diesen Artikel löschen?",
+      "confirmReopen": "Tisch zum Bearbeiten wieder öffnen? Beim erneuten Schließen werden die Summen neu berechnet.",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "delete": "Löschen",
+      "reopen": "Wieder öffnen"
+    },
+    "participant": {
+      "editParticipant": "Teilnehmer bearbeiten",
+      "save": "Speichern",
+      "whatDidTheyOrder": "Was haben sie bestellt?"
+    },
+    "errors": {
+      "sessionNotFound": "Sitzung nicht gefunden oder abgelaufen",
+      "connectionError": "Verbindungsfehler",
+      "createItemError": "Verbindungsfehler beim Erstellen des Artikels",
+      "invalidPrice": "Bitte gib einen gültigen Preis größer als 0 ein"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  },
+  "id": {
+    "selection": {
+      "whoAreYou": "Kamu siapa?",
+      "selectFromList": "Pilih namamu dari daftar",
+      "notInList": "+ Namaku tidak ada",
+      "hello": "Halo, {{name}}",
+      "confirmPhone": "Konfirmasi nomor HP untuk lanjut",
+      "phonePlaceholder": "Nomor HP (wajib)",
+      "phoneRequired": "* Nomor HP wajib (min. 8 digit)",
+      "confirmAndEnter": "Konfirmasi & Masuk",
+      "entering": "Masuk...",
+      "back": "← Kembali",
+      "newParticipant": "Peserta Baru",
+      "enterDetails": "Isi data untuk bergabung",
+      "namePlaceholder": "Namamu",
+      "joining": "Bergabung...",
+      "joinTable": "Gabung ke meja"
+    },
+    "header": {
+      "host": "Host",
+      "you": "Kamu",
+      "addParticipant": "Tambah Peserta"
+    },
+    "items": {
+      "consumption": "Pesanan",
+      "individual": "Individu",
+      "grupal": "Grup",
+      "allTogether": "Bareng-bareng",
+      "perUnit": "Per unit",
+      "unit": "Unit {{num}}",
+      "qty": "Jml",
+      "itemName": "Nama item",
+      "unitPrice": "Harga unit",
+      "deleteItem": "Hapus item",
+      "total": "Total",
+      "perUnitSuffix": "per",
+      "newItem": "Pesanan Baru",
+      "name": "Nama",
+      "price": "Harga ($)",
+      "add": "Tambah",
+      "addManualItem": "+ Tambah Item Manual"
+    },
+    "validation": {
+      "balanced": "Sudah pas",
+      "reviewTotals": "Cek Total",
+      "totalItems": "Total Item",
+      "totalAssigned": "Total Dialokasikan",
+      "totalBill": "Total Struk",
+      "subtotalItems": "Subtotal Item",
+      "subtotalBill": "Subtotal Struk",
+      "subtotalAssigned": "Subtotal Dialokasikan",
+      "itemsSum": "Jumlah Item",
+      "missingToAssign": "Sisa {{amount}} belum dialokasikan",
+      "overAssigned": "Kelebihan {{amount}}"
+    },
+    "tip": {
+      "title": "Tip",
+      "titleWithPercent": "Tip ({{percent}}%)",
+      "titleFixed": "Tip (tetap)",
+      "percent": "Persen",
+      "fixed": "Tetap"
+    },
+    "totals": {
+      "tableTotal": "Total Meja",
+      "yourConsumption": "TOTAL KAMU",
+      "subtotal": "Subtotal",
+      "tipLabel": "Tip",
+      "total": "TOTAL",
+      "tapForDetails": "Ketuk untuk detail",
+      "selectItemsAbove": "Pilih item di atas"
+    },
+    "finalized": {
+      "billClosed": "Tagihan Ditutup",
+      "closeBill": "Tutup Tagihan",
+      "reopenTable": "Buka Lagi",
+      "shareWhatsApp": "Bagikan via WhatsApp"
+    },
+    "modals": {
+      "confirmClose": "Tutup tagihan? Peserta tidak bisa mengedit lagi.",
+      "confirmDelete": "Hapus item ini?",
+      "confirmReopen": "Buka lagi untuk edit? Total akan dihitung ulang saat ditutup lagi.",
+      "cancel": "Batal",
+      "close": "Tutup",
+      "delete": "Hapus",
+      "reopen": "Buka lagi"
+    },
+    "participant": {
+      "editParticipant": "Edit Peserta",
+      "save": "Simpan",
+      "whatDidTheyOrder": "Mereka pesan apa?"
+    },
+    "errors": {
+      "sessionNotFound": "Sesi tidak ditemukan atau kedaluwarsa",
+      "connectionError": "Koneksi bermasalah",
+      "createItemError": "Koneksi bermasalah saat membuat item",
+      "invalidPrice": "Masukkan harga yang valid lebih dari 0"
+    },
+    "time": {
+      "timer": "⏱️ {{time}}"
+    }
+  }
+}
