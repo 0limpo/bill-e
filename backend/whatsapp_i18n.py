@@ -856,9 +856,10 @@ def format_collaborative_message_i18n(
     tip_percent = ((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 0
 
     # Get separators from number_format (default to US format)
+    # Use 'or' to handle None values inside the dict
     fmt_config = number_format or {'thousands': ',', 'decimal': '.'}
-    thousands_sep = fmt_config.get('thousands', ',')
-    decimal_sep = fmt_config.get('decimal', '.')
+    thousands_sep = fmt_config.get('thousands') or ','
+    decimal_sep = fmt_config.get('decimal') or '.'
 
     # Format currency using the receipt's number format
     def fmt(amount):

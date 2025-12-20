@@ -480,7 +480,12 @@ Donde:
                     has_tip = data.get('has_tip', tip_value > 0)  # True if explicitly set or tip > 0
 
                     # Get number format from receipt (default to US format if not detected)
-                    number_format = data.get('number_format', {'thousands': ',', 'decimal': '.'})
+                    # Sanitize null values that Gemini might return
+                    raw_number_format = data.get('number_format') or {}
+                    number_format = {
+                        'thousands': raw_number_format.get('thousands') or ',',
+                        'decimal': raw_number_format.get('decimal') or '.'
+                    }
 
                     # Calculate quality score based on needs_review
                     quality_score = 100 if not needs_review else 70
