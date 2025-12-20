@@ -326,9 +326,8 @@ Retorna SOLO el JSON, sin explicaciones."""
                         })
 
                     # Convertir cargos de Gemini al formato interno
-                    # Extraer propina si viene como cargo
+                    # Propina se maneja SOLO como cargo (no como campo separado)
                     charges = []
-                    tip_value = 0
                     tip_keywords = ['propina', 'tip', 'gratuity', 'gratificación']
 
                     for i, cargo in enumerate(data.get('cargos') or data.get('charges') or []):
@@ -338,16 +337,8 @@ Retorna SOLO el JSON, sin explicaciones."""
                         tipo = cargo.get('tipo') or cargo.get('tipo_valor') or 'fixed'
                         es_descuento = cargo.get('es_descuento') or False
 
-                        # Detectar si es propina
+                        # Detectar si es propina (para distribución per_person)
                         is_tip = any(kw in nombre.lower() for kw in tip_keywords)
-
-                        if is_tip and not es_descuento:
-                            # Calcular valor de propina
-                            subtotal = data.get('subtotal') or 0
-                            if tipo == 'percent' and subtotal > 0:
-                                tip_value = round(subtotal * valor / 100)
-                            else:
-                                tip_value = valor
 
                         # Inferir distribución: propina = per_person, otros = proportional
                         distribution = 'per_person' if is_tip else 'proportional'
@@ -414,9 +405,6 @@ Retorna SOLO el JSON, sin explicaciones."""
                     ) or (total % 1) != 0
                     decimal_places = 2 if has_decimals else 0
 
-                    # Determinar has_tip
-                    has_tip = tip_value > 0
-
                     # Formato numérico por defecto (chileno)
                     number_format = {'thousands': '.', 'decimal': ','}
 
@@ -427,8 +415,8 @@ Retorna SOLO el JSON, sin explicaciones."""
                         'success': True,
                         'total': total,
                         'subtotal': subtotal,
-                        'tip': tip_value,
-                        'has_tip': has_tip,
+                        'tip': 0,  # Propina ahora se maneja solo en charges
+                        'has_tip': False,  # Desactivado - propina está en charges
                         'items': items,
                         'charges': charges,
                         'price_mode': 'original',
@@ -446,7 +434,7 @@ Retorna SOLO el JSON, sin explicaciones."""
                     }
 
                     # Log items
-                    logger.info(f"✅ Gemini extrajo: Total=${total}, Subtotal=${subtotal}, Tip=${tip_value}, Items={len(items)}, Charges={len(charges)}")
+                    logger.info(f"✅ Gemini extrajo: Total=${total}, Subtotal=${subtotal}, Items={len(items)}, Charges={len(charges)}")
                     logger.info(f"📦 Items:")
                     for i, it in enumerate(items):
                         line_total = it['price'] * it['quantity']

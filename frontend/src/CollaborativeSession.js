@@ -1386,7 +1386,7 @@ const CollaborativeSession = () => {
     // Use local calculateParticipantTotal instead of session.totals
     let grandTotal = 0;
     session.participants.forEach(p => {
-      const { total } = calculateParticipantTotal(p.id, true);
+      const { total } = calculateParticipantTotal(p.id);
       text += `• ${p.name}: ${fmt(total)}\n`;
       grandTotal += total;
     });
@@ -1598,11 +1598,10 @@ const CollaborativeSession = () => {
   };
   // Calculate participant total dynamically from local state (not backend totals)
   // This ensures Host sees the same math as Editor when items are edited
-  // Supports SMART TIP: percent mode (proportional) or fixed mode (equal split)
-  // Also supports unit-level assignments (itemId_unit_N format)
-  // Also supports charges (taxes, discounts, etc.)
-  const calculateParticipantTotal = (participantId, includesTip = true) => {
-    if (!session) return { subtotal: 0, total: 0, tipAmount: 0, chargesTotal: 0, charges: [] };
+  // Supports unit-level assignments (itemId_unit_N format)
+  // Supports charges (taxes, discounts, tips - all handled as charges)
+  const calculateParticipantTotal = (participantId) => {
+    if (!session) return { subtotal: 0, total: 0, chargesTotal: 0, charges: [] };
 
     const numParticipants = session.participants?.length || 1;
 
@@ -1694,51 +1693,10 @@ const CollaborativeSession = () => {
       chargesTotal += participantCharge;
     });
 
-    // SMART TIP LOGIC - Only apply if receipt has tip
-    let tipAmount = 0;
-    if (session.has_tip) {
-      const tipMode = session.tip_mode || 'percent';
-      const tipValue = session.tip_value ?? session.tip_percentage ?? 10;
+    // Total = subtotal + charges (tip is now included in charges)
+    const total = subtotal + chargesTotal;
 
-      if (tipMode === 'fixed') {
-        tipAmount = tipValue / numParticipants;
-      } else {
-        tipAmount = subtotal * (tipValue / 100);
-      }
-    }
-
-    const total = includesTip ? subtotal + chargesTotal + tipAmount : subtotal + chargesTotal;
-
-    return { subtotal, total, tipAmount, chargesTotal, charges: participantCharges };
-  };
-
-  // Handle tip update (mode + value)
-  const handleUpdateTip = async (mode, value) => {
-    lastInteraction.current = Date.now();
-
-    // Optimistic update
-    setSession(prev => ({
-      ...prev,
-      tip_mode: mode,
-      tip_value: value,
-      tip_percentage: mode === 'percent' ? value : prev.tip_percentage
-    }));
-
-    // Persist to backend
-    try {
-      await fetch(`${API_URL}/api/session/${sessionId}/update-totals`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          owner_token: ownerToken,
-          tip_mode: mode,
-          tip_value: value,
-          tip_percentage: mode === 'percent' ? value : session.tip_percentage
-        })
-      });
-    } catch (err) {
-      console.error('Error updating tip:', err);
-    }
+    return { subtotal, total, chargesTotal, charges: participantCharges };
   };
 
   // Handle save charge (add or edit)
@@ -1806,7 +1764,7 @@ const CollaborativeSession = () => {
   // Cálculo de totales locales
   const getMyTotal = () => {
     if (!session || !currentParticipant) return 0;
-    return calculateParticipantTotal(currentParticipant.id, true).total;
+    return calculateParticipantTotal(currentParticipant.id).total;
   };
 
   const toggleItemMode = async (itemId) => {
@@ -2167,22 +2125,10 @@ const CollaborativeSession = () => {
   // Total Boleta = OCR target subtotal (static unless manually changed by Host)
   const totalBoleta = session.subtotal || 0;
 
-  // SMART TIP: Dynamic displayedTotal based on tip_mode (only if receipt has tip)
+  // Calculate displayedTotal: items + charges (tip is now included in charges)
   const currentItemSum = totalItems; // Sum of all items at current prices
-  const tipMode = session.tip_mode || 'percent';
-  const tipValue = session.tip_value ?? session.tip_percentage ?? 10;
 
-  // Calculate total tip amount based on mode - only if has_tip
-  let totalTipAmount = 0;
-  if (session.has_tip) {
-    if (tipMode === 'fixed') {
-      totalTipAmount = tipValue; // Fixed amount
-    } else {
-      totalTipAmount = currentItemSum * (tipValue / 100); // Percentage
-    }
-  }
-
-  // Calculate total charges (taxes, service fees, discounts)
+  // Calculate total charges (taxes, service fees, discounts, tips)
   let totalChargesAmount = 0;
   (session.charges || []).forEach(charge => {
     const value = charge.value || 0;
@@ -2195,7 +2141,7 @@ const CollaborativeSession = () => {
     totalChargesAmount += chargeAmount;
   });
 
-  const displayedTotal = currentItemSum + totalTipAmount + totalChargesAmount;
+  const displayedTotal = currentItemSum + totalChargesAmount;
 
   // Check if totals are balanced (within $1 tolerance)
   const itemsMatch = Math.abs(totalItems - totalBoleta) < 1;
@@ -2321,7 +2267,7 @@ const CollaborativeSession = () => {
                   </div>
 
                   {session.participants.map(p => {
-                    const { subtotal, total, tipAmount, chargesTotal, charges: pCharges } = calculateParticipantTotal(p.id, true);
+                    const { subtotal, total, chargesTotal, charges: pCharges } = calculateParticipantTotal(p.id);
                     const isExpanded = expandedParticipants[p.id];
 
                     // Generate breakdown items for this participant
@@ -2416,12 +2362,6 @@ const CollaborativeSession = () => {
                                 <span>{charge.amount < 0 ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
                               </div>
                             ))}
-                            {tipAmount > 0 && (
-                              <div className="breakdown-row tip">
-                                <span>{t('totals.tipLabel')}</span>
-                                <span>{fmt(tipAmount)}</span>
-                              </div>
-                            )}
                           </div>
                         )}
                       </div>
@@ -2509,18 +2449,8 @@ const CollaborativeSession = () => {
                       }
                     });
                     const numParticipants = session.participants?.length || 1;
-                    const tipModeLocal = session.tip_mode || 'percent';
-                    const tipValueLocal = session.tip_value ?? session.tip_percentage ?? 10;
-                    let myTip = 0;
-                    if (session.has_tip) {
-                      if (tipModeLocal === 'fixed') {
-                        myTip = tipValueLocal / numParticipants;
-                      } else {
-                        myTip = mySubtotal * (tipValueLocal / 100);
-                      }
-                    }
 
-                    // Calculate charges for finalized editor view
+                    // Calculate charges for finalized editor view (tip is now included in charges)
                     const sessionChargesFinalized = session.charges || [];
                     let myChargesTotalFinalized = 0;
                     const myChargesFinalized = [];
@@ -2575,22 +2505,16 @@ const CollaborativeSession = () => {
                               <span>{t('totals.subtotal')}</span>
                               <span>{fmt(mySubtotal)}</span>
                             </div>
-                            {/* Show charges (only if non-zero) */}
+                            {/* Show charges (only if non-zero) - tip is now included in charges */}
                             {myChargesFinalized.map(charge => (
                               <div key={charge.id} className={`breakdown-row charge ${charge.isDiscount ? 'discount' : ''}`}>
                                 <span>{charge.name}</span>
                                 <span>{charge.isDiscount ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
                               </div>
                             ))}
-                            {myTip > 0 && (
-                              <div className="breakdown-row tip">
-                                <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
-                                <span>{fmt(myTip)}</span>
-                              </div>
-                            )}
                             <div className="breakdown-row subtotal">
                               <span><strong>{t('totals.total')}</strong></span>
-                              <span className="my-total-amount">{fmt(mySubtotal + myChargesTotalFinalized + myTip)}</span>
+                              <span className="my-total-amount">{fmt(mySubtotal + myChargesTotalFinalized)}</span>
                             </div>
                           </>
                         )}
@@ -2690,18 +2614,9 @@ const CollaborativeSession = () => {
                       }
                     }
                   });
-                  // Use smart tip calculation
-                  const tipModeLocal = session.tip_mode || 'percent';
-                  const tipValueLocal = session.tip_value ?? session.tip_percentage ?? 10;
                   const numParticipants = session.participants?.length || 1;
-                  let myTip = 0;
-                  if (tipModeLocal === 'fixed') {
-                    myTip = tipValueLocal / numParticipants;
-                  } else {
-                    myTip = mySubtotal * (tipValueLocal / 100);
-                  }
 
-                  // Calculate charges for editor
+                  // Calculate charges for editor (tip is now included in charges)
                   const sessionCharges = session.charges || [];
                   let myChargesTotal = 0;
                   const myCharges = [];
@@ -2768,22 +2683,16 @@ const CollaborativeSession = () => {
                             <span>{t('totals.subtotal')}</span>
                             <span>{fmt(mySubtotal)}</span>
                           </div>
-                          {/* Show charges (only if non-zero) */}
+                          {/* Show charges (only if non-zero) - tip is now included in charges */}
                           {myCharges.map(charge => (
                             <div key={charge.id} className={`breakdown-row charge ${charge.isDiscount ? 'discount' : ''}`}>
                               <span>{charge.name}</span>
                               <span>{charge.isDiscount ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
                             </div>
                           ))}
-                          {myTip > 0 && (
-                            <div className="breakdown-row tip">
-                              <span>{tipModeLocal === 'percent' ? t('tip.titleWithPercent', { percent: tipValueLocal }) : t('tip.titleFixed')}</span>
-                              <span>{fmt(myTip)}</span>
-                            </div>
-                          )}
                           <div className="breakdown-row subtotal">
                             <span><strong>{t('totals.total')}</strong></span>
-                            <span className="my-total-amount">{fmt(mySubtotal + myChargesTotal + myTip)}</span>
+                            <span className="my-total-amount">{fmt(mySubtotal + myChargesTotal)}</span>
                           </div>
                         </>
                       )}
@@ -2839,50 +2748,7 @@ const CollaborativeSession = () => {
                     </div>
                   )}
 
-                  {/* SMART TIP CONTROLS - Only show if receipt has tip */}
-                  {session.has_tip && (
-                    <div className="tip-controls" onClick={(e) => e.stopPropagation()}>
-                      <div className="tip-header">
-                        <span className="tip-label">{t('tip.title')}</span>
-                        <div className="tip-mode-switch">
-                          <button
-                            className={`tip-mode-btn ${tipMode === 'percent' ? 'active' : ''}`}
-                            onClick={() => handleUpdateTip('percent', tipValue)}
-                          >
-                            %
-                          </button>
-                          <button
-                            className={`tip-mode-btn ${tipMode === 'fixed' ? 'active' : ''}`}
-                            onClick={() => handleUpdateTip('fixed', tipValue)}
-                          >
-                            $
-                          </button>
-                        </div>
-                      </div>
-                      <div className="tip-input-row">
-                        <input
-                          type="number"
-                          className="tip-input"
-                          value={tipValue || ''}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            handleUpdateTip(tipMode, val);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              e.target.blur();
-                            }
-                          }}
-                        />
-                        <span className="tip-helper">
-                          {tipMode === 'percent'
-                            ? `= ${fmt(totalTipAmount)}`
-                            : `÷ ${session.participants?.length || 1} = ${fmt(totalTipAmount / (session.participants?.length || 1))}/pers`
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  {/* Tip is now managed as a charge in the charges section */}
 
                   {/* CHARGES SECTION (Taxes, Discounts, etc.) */}
                   <div className="charges-section" onClick={(e) => e.stopPropagation()}>
