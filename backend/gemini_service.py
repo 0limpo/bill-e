@@ -260,32 +260,30 @@ class GeminiOCRService:
             import io
             image = PIL.Image.open(io.BytesIO(image_bytes))
 
-            # Prompt simplificado - extracción de datos con número de línea, validación en Python
-            prompt = """Extrae los datos de esta boleta y retorna JSON.
-IMPORTANTE: incluye el número de línea donde aparece cada elemento en la boleta.
+            # Prompt simplificado - extracción de datos, validación en Python
+            prompt = """Extrae los datos de esta boleta y retorna JSON:
 
 {
   "items": [
-    {"nombre": "Coca Cola", "cantidad": 2, "precio_unitario": 4000, "linea": 1},
-    {"nombre": "SERVICE", "cantidad": 1, "precio_unitario": 500, "linea": 4}
+    {"nombre": "Coca Cola", "cantidad": 2, "precio_unitario": 4000}
   ],
   "cargos": [
-    {"nombre": "IVA 19%", "tipo": "percent", "valor": 19, "es_descuento": false, "linea": 7}
+    {"nombre": "Propina 10%", "tipo": "percent", "valor": 10, "es_descuento": false}
   ],
-  "subtotal": {"valor": 50000, "linea": 5},
-  "total": {"valor": 55000, "linea": 8}
+  "subtotal": 50000,
+  "total": 55000
 }
 
 DEFINICIONES:
-- items: cada línea de la boleta que tiene cantidad y precio (comida, bebida, servicios, cargos de servicio)
+- items: productos consumidos (comida, bebida, servicios)
 - precio_unitario: precio de UNA unidad. Si la boleta muestra total de línea, divide por cantidad
-- cargos: impuestos y porcentajes que aparecen DESPUÉS del subtotal:
+- cargos: todo lo que suma o resta al subtotal DESPUÉS de los items:
+  * Propinas (tip, gratuity, propina sugerida)
   * Impuestos (IVA, tax, sales tax)
-  * Propinas porcentuales (tip 10%, gratuity)
   * Descuentos (promo, happy hour, cupón)
-- tipo: "percent" si es porcentaje, "fixed" si es monto fijo
+  * Recargos (service charge, cover)
+- tipo: "percent" si es porcentaje del subtotal, "fixed" si es monto fijo
 - es_descuento: true si resta, false si suma
-- linea: número de línea en la boleta (1, 2, 3...)
 
 FORMATO NUMÉRICO:
 - Números SIN separadores de miles: 13990, no 13.990
@@ -315,126 +313,57 @@ Retorna SOLO el JSON, sin explicaciones."""
 
                 # Validar estructura mínima
                 if 'total' in data and 'items' in data:
-                    # === EXTRAER SUBTOTAL Y TOTAL CON LÍNEAS ===
-                    subtotal_data = data.get('subtotal') or {}
-                    total_data = data.get('total') or {}
-
-                    # Soportar formato nuevo (objeto con valor y linea) y legacy (número)
-                    if isinstance(subtotal_data, dict):
-                        subtotal = subtotal_data.get('valor') or 0
-                        subtotal_line = subtotal_data.get('linea') or 999
-                    else:
-                        subtotal = subtotal_data or 0
-                        subtotal_line = 999
-
-                    if isinstance(total_data, dict):
-                        total = total_data.get('valor') or 0
-                        total_line = total_data.get('linea') or 999
-                    else:
-                        total = total_data or 0
-                        total_line = 999
-
-                    logger.info(f"📍 Líneas detectadas: subtotal={subtotal_line}, total={total_line}")
-
-                    # === EXTRAER TODOS LOS ITEMS Y CARGOS CON LÍNEAS ===
-                    all_items_raw = []
+                    # Convertir items de Gemini al formato interno
+                    items = []
                     for item in data.get('items') or []:
+                        # Soportar tanto 'precio_unitario' (nuevo) como 'precio' (legacy)
                         unit_price = item.get('precio_unitario') or item.get('precio') or 0
                         quantity = item.get('cantidad') or 1
-                        line = item.get('linea') or 0
-                        all_items_raw.append({
+                        items.append({
                             'name': item.get('nombre') or '',
                             'price': unit_price,
-                            'quantity': quantity,
-                            'line': line,
-                            'source': 'item'
+                            'quantity': quantity
                         })
 
-                    all_charges_raw = []
-                    for cargo in data.get('cargos') or data.get('charges') or []:
-                        nombre = cargo.get('nombre') or ''
-                        valor = cargo.get('valor') or 0
-                        tipo = cargo.get('tipo') or cargo.get('tipo_valor') or 'fixed'
-                        es_descuento = cargo.get('es_descuento') or False
-                        line = cargo.get('linea') or 999
-                        all_charges_raw.append({
-                            'name': nombre,
-                            'value': valor,
-                            'type': tipo,
-                            'is_discount': es_descuento,
-                            'line': line,
-                            'source': 'charge'
-                        })
-
-                    # === RECLASIFICAR POR POSICIÓN DE LÍNEA ===
-                    # Todo lo que está ANTES del subtotal → item de consumo
-                    # Todo lo que está DESPUÉS del subtotal → cargo
-                    items = []
+                    # Convertir cargos de Gemini al formato interno
+                    # Extraer propina si viene como cargo
                     charges = []
                     tip_value = 0
                     tip_keywords = ['propina', 'tip', 'gratuity', 'gratificación']
 
-                    # Procesar items: si están antes del subtotal, son consumo
-                    for item in all_items_raw:
-                        if item['line'] < subtotal_line:
-                            items.append({
-                                'name': item['name'],
-                                'price': item['price'],
-                                'quantity': item['quantity']
-                            })
-                            logger.info(f"   ✓ Item (línea {item['line']} < {subtotal_line}): {item['name']}")
-                        else:
-                            # Item después del subtotal → tratar como cargo fixed
-                            logger.info(f"   → Item convertido a cargo (línea {item['line']} >= {subtotal_line}): {item['name']}")
-                            all_charges_raw.append({
-                                'name': item['name'],
-                                'value': item['price'] * item['quantity'],
-                                'type': 'fixed',
-                                'is_discount': False,
-                                'line': item['line'],
-                                'source': 'item_as_charge'
-                            })
-
-                    # Procesar cargos
-                    charge_index = 0
-                    for cargo in sorted(all_charges_raw, key=lambda x: x['line']):
-                        nombre = cargo['name']
-                        valor = cargo['value']
-                        tipo = cargo['type']
-                        es_descuento = cargo['is_discount']
-
-                        # Si el cargo está ANTES del subtotal, convertirlo a item
-                        if cargo['line'] < subtotal_line and cargo['source'] == 'charge':
-                            logger.info(f"   → Cargo convertido a item (línea {cargo['line']} < {subtotal_line}): {nombre}")
-                            items.append({
-                                'name': nombre,
-                                'price': valor,
-                                'quantity': 1
-                            })
-                            continue
+                    for i, cargo in enumerate(data.get('cargos') or data.get('charges') or []):
+                        nombre = cargo.get('nombre') or ''
+                        valor = cargo.get('valor') or 0
+                        # Soportar 'tipo' (nuevo) y 'tipo_valor' (legacy)
+                        tipo = cargo.get('tipo') or cargo.get('tipo_valor') or 'fixed'
+                        es_descuento = cargo.get('es_descuento') or False
 
                         # Detectar si es propina
                         is_tip = any(kw in nombre.lower() for kw in tip_keywords)
 
                         if is_tip and not es_descuento:
+                            # Calcular valor de propina
+                            subtotal = data.get('subtotal') or 0
                             if tipo == 'percent' and subtotal > 0:
                                 tip_value = round(subtotal * valor / 100)
                             else:
                                 tip_value = valor
 
+                        # Inferir distribución: propina = per_person, otros = proportional
                         distribution = 'per_person' if is_tip else 'proportional'
 
                         charges.append({
-                            'id': f"charge_{charge_index}",
+                            'id': f"charge_{i}",
                             'name': nombre,
                             'value': valor,
                             'valueType': tipo,
                             'isDiscount': es_descuento,
                             'distribution': distribution
                         })
-                        charge_index += 1
 
                     # === VALIDACIÓN POST-OCR ===
+                    subtotal = data.get('subtotal') or 0
+                    total = data.get('total') or 0
 
                     # Calcular suma de items
                     items_sum = sum(it['price'] * it['quantity'] for it in items)
