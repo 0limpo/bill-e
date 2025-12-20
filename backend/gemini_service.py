@@ -260,165 +260,37 @@ class GeminiOCRService:
             import io
             image = PIL.Image.open(io.BytesIO(image_bytes))
 
-            # Prompt con protocolo forense para extracción precisa
-            prompt = """Rol: Actúa como un experto forense en auditoría de gastos y OCR.
+            # Prompt simplificado - extracción de datos, validación en Python
+            prompt = """Extrae los datos de esta boleta y retorna JSON:
 
-Objetivo: Extraer con precisión matemática todos los componentes de la boleta.
-
-## PROTOCOLO DE RAZONAMIENTO (Chain of Thought)
-
-### 1. Análisis de Formato Numérico (CRÍTICO - LEE CON ATENCIÓN)
-Detecta el formato de puntuación mirando el TOTAL de la boleta:
-- Si total tiene 3+ dígitos después del punto (ej: 206.118) → punto = MILES, decimal_places = 0
-- Si total tiene exactamente 2 dígitos después del punto (ej: 111.79) → punto = decimales, decimal_places = 2
-
-**TEST OBLIGATORIO**: Cuenta los dígitos después del último punto en el TOTAL.
-- "206.118" tiene 3 dígitos después → punto es MILES → total = 206118, decimal_places = 0
-- "3.760" tiene 3 dígitos después → punto es MILES → precio = 3760, NO 3.76
-- "111.79" tiene 2 dígitos después → punto es DECIMAL → total = 111.79
-
-**ERROR COMÚN A EVITAR**: NO retornes "3.76" cuando la boleta dice "3.760".
-Si ves "3.760" y el total es "206.118", entonces 3.760 = 3760 (tres mil setecientos sesenta).
-
-CLAVE: Monedas SIN centavos (CLP, COP, JPY) usan punto como MILES:
-- "13.990" = 13990 (trece mil), NO 13.99
-- "4.000" = 4000 (cuatro mil), NO 4.0
-- "206.118" = 206118 (doscientos seis mil), NO 206.118
-
-### 2. Escaneo de Cantidades
-Busca ítems con cantidad > 1 (ej: "2x Coca Cola", "3 Pan").
-
-### 2.5. Lectura RAW + Deduplicación (IMPORTANTE)
-Debes retornar DOS listas:
-
-**A) raw_items**: EXACTAMENTE lo que ves en la boleta, línea por línea, sin agrupar.
-- Cada línea de la boleta = 1 entrada en raw_items
-- Si ves 15 líneas de "Summer Ale", retorna 15 objetos separados
-- Incluye el texto EXACTO como aparece (con errores de OCR si los hay)
-
-**B) items**: Items agrupados/deduplicados para usar en la app.
-- Agrupa items con nombres 85%+ similares Y precios dentro del 5%
-- Normaliza nombres: ignora "20% de descuento", puntuación, mayúsculas
-- Suma cantidades, usa precio más frecuente, nombre más limpio
-
-Ejemplo de boleta con 3 líneas:
-```
-Summer Ale 568cc ... 3.760
-Summer Ale 568CC ... 3.760
-Chelada ... 1.000
-```
-
-Retorna:
-```
-"raw_items": [
-  {"nombre": "Summer Ale 568cc", "precio": 3760},
-  {"nombre": "Summer Ale 568CC", "precio": 3760},
-  {"nombre": "Chelada", "precio": 1000}
-],
-"items": [
-  {"nombre": "Summer Ale 568cc", "cantidad": 2, "precio": 3760},
-  {"nombre": "Chelada", "cantidad": 1, "precio": 1000}
-]
-```
-
-### 3. Test de Hipótesis de Precio (CRÍTICO)
-La boleta puede mostrar PRECIO UNITARIO o TOTAL DE LÍNEA. Debes retornar siempre PRECIO UNITARIO.
-
-Para cada item con cantidad > 1:
-1. Mira el precio mostrado en la boleta
-2. Calcula: ¿Σ(precios_mostrados) ≈ subtotal?
-   - SI → Los precios mostrados son TOTALES DE LÍNEA → DIVIDE por cantidad
-   - NO → Los precios mostrados son UNITARIOS → usa directo
-
-Ejemplo: "2 Coca Cola ... 4.000" con subtotal cercano a Σ(precios)
-- Si 4.000 es TOTAL DE LÍNEA → precio unitario = 4000/2 = 2000
-- Verifica: Σ(unitario × cantidad) debe ≈ subtotal
-
-### 4. Identificación de Descuentos
-Busca líneas que RESTAN: "Desc.", "Discount", "-10%", "Promo", "Happy Hour", "2x1", cupones, puntos.
-Determina si aplica a un ítem específico o a toda la cuenta.
-Determina si los precios YA incluyen el descuento o es línea separada.
-
-### 5. Distinción ITEMS vs CARGOS (MUY IMPORTANTE)
-La regla clave es: ¿DÓNDE aparece la línea en la boleta?
-
-**ES UN ITEM si:**
-- Aparece en la sección de productos/consumo (junto a comida/bebida)
-- Tiene un precio FIJO en dólares/pesos (no porcentaje)
-- Ejemplos que SON ITEMS: "SERVICE $7.40", "Servicio $5.00", "Cover $3.00"
-
-**ES UN CARGO si:**
-- Aparece DESPUÉS del subtotal, en la sección de cálculos finales
-- Es un PORCENTAJE aplicado al subtotal (ej: "Tax 7%", "IVA 19%")
-- Ejemplos: "SALES TAX 7%", "City Tax 2%", "IVA 19%"
-
-**VERIFICACIÓN**: Suma de items debe ≈ subtotal de la boleta
-Si "SERVICE $7.40" está listado con los platos y la suma sin él no da el subtotal, entonces es un ITEM.
-
-### 6. Verificación Cruzada (OBLIGATORIA)
-ANTES de retornar, verifica que la matemática cuadre:
-
-1. Σ(precio_unitario × cantidad) debe ≈ subtotal (tolerancia 2%)
-2. subtotal + cargos + propina ≈ total
-
-Si NO cuadra, revisa:
-- ¿Interpretaste bien el formato numérico? (punto como miles vs decimales)
-- ¿Los precios son unitarios o totales de línea?
-- Ajusta y vuelve a verificar
-
-### 7. Validación Final
-- Todo cuadra (< 2%) → needs_review: false
-- Diferencia > 2% → needs_review: true + mensaje
-
-## INSTRUCCIONES
-
-- "precio" SIEMPRE = precio unitario (de 1 unidad). Si la boleta muestra total de línea, DIVIDE.
-- Ignora símbolos de moneda ($, €, £)
-- Si cantidad no explícita, asume 1
-- FORMATO NUMÉRICO: Detecta si el punto es separador de miles (3+ dígitos después) o decimal (2 dígitos después)
-  - "13.990" con total "111.793" → punto = miles → retorna 13990, total 111793
-  - "13.99" con total "111.79" → punto = decimal → retorna 13.99, total 111.79
-- Todos los números en JSON deben ser valores numéricos reales (sin separadores de miles)
-
-## FORMATO DE RESPUESTA
-
-Retorna SOLO JSON válido:
 {
-  "needs_review": false,
-  "review_message": null,
-  "decimal_places": 2,
-  "number_format": {"thousands": ",", "decimal": "."},
-  "raw_items": [
-    {"nombre": "Hamburguesa", "precio": 85.00},
-    {"nombre": "Hamburguesa", "precio": 85.00},
-    {"nombre": "Cerveza", "precio": 30.00},
-    {"nombre": "Cerveza", "precio": 30.00},
-    {"nombre": "Service", "precio": 7.40}
-  ],
   "items": [
-    {"nombre": "Hamburguesa", "cantidad": 2, "precio": 85.00},
-    {"nombre": "Cerveza", "cantidad": 2, "precio": 30.00},
-    {"nombre": "Service", "cantidad": 1, "precio": 7.40}
+    {"nombre": "Coca Cola", "cantidad": 2, "precio_unitario": 4000}
   ],
-  "charges": [
-    {"nombre": "SALES TAX 7%", "valor": 7, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"},
-    {"nombre": "City Tax 2%", "valor": 2, "tipo_valor": "percent", "es_descuento": false, "distribucion": "proportional"}
+  "cargos": [
+    {"nombre": "Propina 10%", "tipo": "percent", "valor": 10, "es_descuento": false}
   ],
-  "subtotal": 207.40,
-  "tip": 0,
-  "has_tip": false,
-  "total": 226.07,
-  "price_mode": "original"
+  "subtotal": 50000,
+  "total": 55000
 }
 
-Donde:
-- decimal_places: 0 si no hay decimales (ej: Chile CLP), 2 si hay centavos (ej: USD, EUR, MXN)
-- number_format: formato numérico EXACTO de la boleta. thousands="," y decimal="." para formato US (1,000.50). thousands="." y decimal="," para formato EU/LATAM (1.000,50). thousands="" si no hay separador de miles.
-- tipo_valor: "percent" o "fixed"
+DEFINICIONES:
+- items: productos consumidos (comida, bebida, servicios)
+- precio_unitario: precio de UNA unidad. Si la boleta muestra total de línea, divide por cantidad
+- cargos: todo lo que suma o resta al subtotal DESPUÉS de los items:
+  * Propinas (tip, gratuity, propina sugerida)
+  * Impuestos (IVA, tax, sales tax)
+  * Descuentos (promo, happy hour, cupón)
+  * Recargos (service charge, cover)
+- tipo: "percent" si es porcentaje del subtotal, "fixed" si es monto fijo
 - es_descuento: true si resta, false si suma
-- distribucion: "proportional" (según consumo) o "per_person" (igual para todos)
-- price_mode: "original" (precios antes de descuentos) o "discounted" (ya descontados)
-- has_tip: true SOLO si la boleta muestra explícitamente propina/tip/gratuity, false si no aparece"""
+
+FORMATO NUMÉRICO:
+- Números SIN separadores de miles: 13990, no 13.990
+- Si el total tiene 3+ dígitos después del punto (ej: 111.793), el punto es separador de miles → 111793
+- Si el total tiene 2 dígitos después del punto (ej: 111.79), el punto es decimal → 111.79
+
+Retorna SOLO el JSON, sin explicaciones."""
 
             logger.info("🤖 Enviando imagen a Gemini para análisis estructurado...")
             response = self.model.generate_content([prompt, image])
@@ -439,12 +311,13 @@ Donde:
                 # Parsear JSON
                 data = json.loads(response_text)
 
-                # Validar estructura
+                # Validar estructura mínima
                 if 'total' in data and 'items' in data:
                     # Convertir items de Gemini al formato interno
                     items = []
                     for item in data.get('items') or []:
-                        unit_price = item.get('precio') or 0
+                        # Soportar tanto 'precio_unitario' (nuevo) como 'precio' (legacy)
+                        unit_price = item.get('precio_unitario') or item.get('precio') or 0
                         quantity = item.get('cantidad') or 1
                         items.append({
                             'name': item.get('nombre') or '',
@@ -452,60 +325,119 @@ Donde:
                             'quantity': quantity
                         })
 
-                    # Convertir charges de Gemini al formato interno
+                    # Convertir cargos de Gemini al formato interno
+                    # Extraer propina si viene como cargo
                     charges = []
-                    for i, charge in enumerate(data.get('charges') or []):
+                    tip_value = 0
+                    tip_keywords = ['propina', 'tip', 'gratuity', 'gratificación']
+
+                    for i, cargo in enumerate(data.get('cargos') or data.get('charges') or []):
+                        nombre = cargo.get('nombre') or ''
+                        valor = cargo.get('valor') or 0
+                        # Soportar 'tipo' (nuevo) y 'tipo_valor' (legacy)
+                        tipo = cargo.get('tipo') or cargo.get('tipo_valor') or 'fixed'
+                        es_descuento = cargo.get('es_descuento') or False
+
+                        # Detectar si es propina
+                        is_tip = any(kw in nombre.lower() for kw in tip_keywords)
+
+                        if is_tip and not es_descuento:
+                            # Calcular valor de propina
+                            subtotal = data.get('subtotal') or 0
+                            if tipo == 'percent' and subtotal > 0:
+                                tip_value = round(subtotal * valor / 100)
+                            else:
+                                tip_value = valor
+
+                        # Inferir distribución: propina = per_person, otros = proportional
+                        distribution = 'per_person' if is_tip else 'proportional'
+
                         charges.append({
                             'id': f"charge_{i}",
-                            'name': charge.get('nombre') or '',
-                            'value': charge.get('valor') or 0,
-                            'valueType': charge.get('tipo_valor') or 'fixed',
-                            'isDiscount': charge.get('es_descuento') or False,
-                            'distribution': charge.get('distribucion') or 'proportional'
+                            'name': nombre,
+                            'value': valor,
+                            'valueType': tipo,
+                            'isDiscount': es_descuento,
+                            'distribution': distribution
                         })
 
-                    needs_review = data.get('needs_review') or False
-                    review_message = data.get('review_message')
-                    decimal_places = data.get('decimal_places')
-                    # Auto-detect decimal_places if not provided
-                    if decimal_places is None:
-                        # Check if any price has decimals
-                        has_decimals = any(
-                            (it['price'] % 1) != 0 for it in items
-                        ) or (data.get('total') or 0) % 1 != 0
-                        decimal_places = 2 if has_decimals else 0
+                    # === VALIDACIÓN POST-OCR ===
+                    subtotal = data.get('subtotal') or 0
+                    total = data.get('total') or 0
 
-                    # Determine if receipt explicitly shows tip
-                    tip_value = data.get('tip') or data.get('propina') or 0
-                    has_tip = data.get('has_tip', tip_value > 0)  # True if explicitly set or tip > 0
+                    # Calcular suma de items
+                    items_sum = sum(it['price'] * it['quantity'] for it in items)
 
-                    # Get number format from receipt (default to US format if not detected)
-                    # Sanitize null values that Gemini might return
-                    raw_number_format = data.get('number_format') or {}
-                    number_format = {
-                        'thousands': raw_number_format.get('thousands') or ',',
-                        'decimal': raw_number_format.get('decimal') or '.'
-                    }
+                    # Verificar si suma de items ≈ subtotal (tolerancia 2%)
+                    tolerance = 0.02
+                    diff_ratio = abs(items_sum - subtotal) / subtotal if subtotal > 0 else 0
 
-                    # Calculate quality score based on needs_review
+                    needs_review = False
+                    review_message = None
+
+                    if diff_ratio > tolerance and subtotal > 0:
+                        # Intentar corregir: quizás los precios son totales de línea
+                        # Para items con cantidad > 1, probar dividir
+                        corrected_items = []
+                        for it in items:
+                            if it['quantity'] > 1:
+                                # Probar si dividir el precio hace que cuadre mejor
+                                corrected_items.append({
+                                    'name': it['name'],
+                                    'price': it['price'] / it['quantity'],
+                                    'quantity': it['quantity']
+                                })
+                            else:
+                                corrected_items.append(it)
+
+                        corrected_sum = sum(it['price'] * it['quantity'] for it in corrected_items)
+                        corrected_diff = abs(corrected_sum - subtotal) / subtotal if subtotal > 0 else 0
+
+                        if corrected_diff < diff_ratio:
+                            # La corrección mejoró, usar items corregidos
+                            logger.info(f"🔧 Corrección aplicada: precios eran totales de línea")
+                            logger.info(f"   Antes: Σitems=${items_sum}, Subtotal=${subtotal}, Diff={diff_ratio*100:.1f}%")
+                            logger.info(f"   Después: Σitems=${corrected_sum}, Diff={corrected_diff*100:.1f}%")
+                            items = corrected_items
+                            items_sum = corrected_sum
+                            diff_ratio = corrected_diff
+
+                        # Si aún no cuadra, marcar para revisión
+                        if diff_ratio > tolerance:
+                            needs_review = True
+                            review_message = f"Suma de items (${items_sum}) difiere del subtotal (${subtotal}) en {diff_ratio*100:.1f}%"
+                            logger.warning(f"⚠️ {review_message}")
+
+                    # Calcular decimal_places basado en si hay decimales
+                    has_decimals = any(
+                        (it['price'] % 1) != 0 for it in items
+                    ) or (total % 1) != 0
+                    decimal_places = 2 if has_decimals else 0
+
+                    # Determinar has_tip
+                    has_tip = tip_value > 0
+
+                    # Formato numérico por defecto (chileno)
+                    number_format = {'thousands': '.', 'decimal': ','}
+
+                    # Quality score basado en validación
                     quality_score = 100 if not needs_review else 70
 
                     result = {
                         'success': True,
-                        'total': data.get('total') or 0,
-                        'subtotal': data.get('subtotal') or 0,
+                        'total': total,
+                        'subtotal': subtotal,
                         'tip': tip_value,
                         'has_tip': has_tip,
                         'items': items,
                         'charges': charges,
-                        'price_mode': data.get('price_mode') or 'discounted',
+                        'price_mode': 'original',
                         'decimal_places': decimal_places,
                         'number_format': number_format,
                         'needs_review': needs_review,
                         'review_message': review_message,
                         'confidence_score': quality_score,
                         'ocr_source': 'gemini',
-                        # Compatibility with ocr_enhanced validation format
                         'validation': {
                             'quality_score': quality_score,
                             'is_valid': not needs_review,
@@ -513,21 +445,16 @@ Donde:
                         }
                     }
 
-                    # Log raw items (line by line as seen in receipt)
-                    raw_items = data.get('raw_items') or []
-                    logger.info(f"📋 RAW items (línea por línea): {len(raw_items)} líneas")
-                    for i, raw in enumerate(raw_items):
-                        logger.info(f"   Línea {i+1}: {raw.get('nombre', '?')} @ ${raw.get('precio', 0)}")
-
-                    # Log grouped items
-                    logger.info(f"✅ Gemini extrajo: Total=${result['total']}, Subtotal=${result['subtotal']}, Tip=${result['tip']}, Items={len(items)}, Charges={len(charges)}, Decimals={decimal_places}")
-                    logger.info(f"📦 Items agrupados:")
+                    # Log items
+                    logger.info(f"✅ Gemini extrajo: Total=${total}, Subtotal=${subtotal}, Tip=${tip_value}, Items={len(items)}, Charges={len(charges)}")
+                    logger.info(f"📦 Items:")
                     for i, it in enumerate(items):
                         line_total = it['price'] * it['quantity']
-                        logger.info(f"   Item {i+1}: {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total}")
+                        logger.info(f"   {i+1}. {it['quantity']}x {it['name']} @ ${it['price']} = ${line_total}")
                     for ch in charges:
                         sign = "-" if ch['isDiscount'] else "+"
-                        logger.info(f"   Charge: {sign}{ch['name']} ({ch['value']} {ch['valueType']})")
+                        logger.info(f"   {sign} {ch['name']} ({ch['value']} {ch['valueType']})")
+                    logger.info(f"📊 Validación: Σitems=${items_sum}, diff={diff_ratio*100:.1f}%, needs_review={needs_review}")
 
                     return result
                 else:
