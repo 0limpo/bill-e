@@ -108,10 +108,15 @@
     "add": "Menambah",
     "discount": "Diskon",
     "distribution": "Pembagian",
-    "proportional": "Sesuai konsumsi",
-    "perPerson": "Bagi rata",
+    "proportional": "% konsumsi",
+    "perPerson": "÷ orang",
+    "fixedPerPerson": "× orang",
     "proportionalShort": "proporsional",
     "perPersonShort": "rata",
+    "fixedPerPersonShort": "masing²",
+    "proportionalDesc": "Dibagi sesuai konsumsi masing-masing",
+    "perPersonDesc": "Total dibagi rata ke semua orang",
+    "fixedPerPersonDesc": "Setiap orang bayar jumlah ini",
     "save": "Simpan",
     "delete": "Hapus"
   }

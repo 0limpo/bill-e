@@ -108,10 +108,15 @@
     "add": "Adiciona",
     "discount": "Desconto",
     "distribution": "Divisão",
-    "proportional": "Por consumo",
-    "perPerson": "Partes iguais",
+    "proportional": "% consumo",
+    "perPerson": "÷ pessoas",
+    "fixedPerPerson": "× pessoa",
     "proportionalShort": "proporcional",
     "perPersonShort": "igual",
+    "fixedPerPersonShort": "c/u",
+    "proportionalDesc": "Dividido conforme o consumo de cada um",
+    "perPersonDesc": "Total dividido igualmente entre todos",
+    "fixedPerPersonDesc": "Cada pessoa paga este valor",
     "save": "Salvar",
     "delete": "Excluir"
   }

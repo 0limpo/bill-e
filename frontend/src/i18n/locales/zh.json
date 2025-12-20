@@ -108,10 +108,15 @@
     "add": "增加",
     "discount": "折扣",
     "distribution": "分摊方式",
-    "proportional": "按消费比例",
-    "perPerson": "平均分摊",
+    "proportional": "% 消费",
+    "perPerson": "÷ 人数",
+    "fixedPerPerson": "× 每人",
     "proportionalShort": "比例",
     "perPersonShort": "平均",
+    "fixedPerPersonShort": "每人",
+    "proportionalDesc": "按每人消费比例分摊",
+    "perPersonDesc": "总额平均分给所有人",
+    "fixedPerPersonDesc": "每人支付此金额",
     "save": "保存",
     "delete": "删除"
   }

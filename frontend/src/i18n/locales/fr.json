@@ -108,10 +108,15 @@
     "add": "Ajoute",
     "discount": "Remise",
     "distribution": "Répartition",
-    "proportional": "Par consommation",
-    "perPerson": "Parts égales",
+    "proportional": "% conso",
+    "perPerson": "÷ personnes",
+    "fixedPerPerson": "× personne",
     "proportionalShort": "proportionnel",
     "perPersonShort": "égal",
+    "fixedPerPersonShort": "chacun",
+    "proportionalDesc": "Réparti selon la consommation de chacun",
+    "perPersonDesc": "Total divisé également entre tous",
+    "fixedPerPersonDesc": "Chaque personne paie ce montant",
     "save": "Enregistrer",
     "delete": "Supprimer"
   }

@@ -108,10 +108,15 @@
     "add": "Addiert",
     "discount": "Rabatt",
     "distribution": "Aufteilung",
-    "proportional": "Nach Verbrauch",
-    "perPerson": "Gleichmäßig",
+    "proportional": "% Verbrauch",
+    "perPerson": "÷ Personen",
+    "fixedPerPerson": "× Person",
     "proportionalShort": "proportional",
     "perPersonShort": "gleich",
+    "fixedPerPersonShort": "je",
+    "proportionalDesc": "Aufgeteilt nach Verbrauch jeder Person",
+    "perPersonDesc": "Gesamtbetrag gleichmäßig auf alle aufgeteilt",
+    "fixedPerPersonDesc": "Jede Person zahlt diesen Betrag",
     "save": "Speichern",
     "delete": "Löschen"
   }

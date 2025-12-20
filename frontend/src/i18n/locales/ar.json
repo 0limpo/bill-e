@@ -108,10 +108,15 @@
     "add": "يضيف",
     "discount": "خصم",
     "distribution": "التوزيع",
-    "proportional": "حسب الاستهلاك",
-    "perPerson": "بالتساوي",
+    "proportional": "% استهلاك",
+    "perPerson": "÷ أشخاص",
+    "fixedPerPerson": "× شخص",
     "proportionalShort": "نسبي",
     "perPersonShort": "متساوي",
+    "fixedPerPersonShort": "للفرد",
+    "proportionalDesc": "مقسوم حسب استهلاك كل شخص",
+    "perPersonDesc": "المجموع مقسوم بالتساوي على الكل",
+    "fixedPerPersonDesc": "كل شخص يدفع هذا المبلغ",
     "save": "حفظ",
     "delete": "حذف"
   }

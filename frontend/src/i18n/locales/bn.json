@@ -108,10 +108,15 @@
     "add": "যোগ হয়",
     "discount": "ছাড়",
     "distribution": "ভাগ",
-    "proportional": "খরচ অনুযায়ী",
-    "perPerson": "সমান ভাগ",
+    "proportional": "% খরচ",
+    "perPerson": "÷ জন",
+    "fixedPerPerson": "× প্রতিজন",
     "proportionalShort": "অনুপাতে",
     "perPersonShort": "সমান",
+    "fixedPerPersonShort": "প্রতিজন",
+    "proportionalDesc": "প্রত্যেকের খরচ অনুযায়ী ভাগ করা হয়",
+    "perPersonDesc": "মোট সবার মধ্যে সমান ভাগে ভাগ করা হয়",
+    "fixedPerPersonDesc": "প্রতিজন এই পরিমাণ দেয়",
     "save": "সংরক্ষণ",
     "delete": "মুছুন"
   }

@@ -108,10 +108,15 @@
     "add": "加算",
     "discount": "割引",
     "distribution": "分配方法",
-    "proportional": "消費額に応じて",
-    "perPerson": "均等割り",
+    "proportional": "% 消費",
+    "perPerson": "÷ 人数",
+    "fixedPerPerson": "× 一人",
     "proportionalShort": "比例",
     "perPersonShort": "均等",
+    "fixedPerPersonShort": "各自",
+    "proportionalDesc": "各自の消費額に応じて分配",
+    "perPersonDesc": "合計を全員で均等に分割",
+    "fixedPerPersonDesc": "各自がこの金額を支払う",
     "save": "保存",
     "delete": "削除"
   }

@@ -108,10 +108,15 @@
     "add": "Добавляет",
     "discount": "Скидка",
     "distribution": "Распределение",
-    "proportional": "По потреблению",
-    "perPerson": "Поровну",
+    "proportional": "% потребл.",
+    "perPerson": "÷ людей",
+    "fixedPerPerson": "× человек",
     "proportionalShort": "пропорц.",
     "perPersonShort": "поровну",
+    "fixedPerPersonShort": "каждый",
+    "proportionalDesc": "Делится по потреблению каждого",
+    "perPersonDesc": "Сумма делится поровну на всех",
+    "fixedPerPersonDesc": "Каждый платит эту сумму",
     "save": "Сохранить",
     "delete": "Удалить"
   }
