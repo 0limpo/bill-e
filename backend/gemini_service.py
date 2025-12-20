@@ -326,9 +326,8 @@ Retorna SOLO el JSON, sin explicaciones."""
                         })
 
                     # Convertir cargos de Gemini al formato interno
-                    # Propina se maneja SOLO como cargo (no como campo separado)
+                    # Todos los cargos (propina, taxes, etc.) se manejan igual
                     charges = []
-                    tip_keywords = ['propina', 'tip', 'gratuity', 'gratificación']
 
                     for i, cargo in enumerate(data.get('cargos') or data.get('charges') or []):
                         nombre = cargo.get('nombre') or ''
@@ -337,11 +336,8 @@ Retorna SOLO el JSON, sin explicaciones."""
                         tipo = cargo.get('tipo') or cargo.get('tipo_valor') or 'fixed'
                         es_descuento = cargo.get('es_descuento') or False
 
-                        # Detectar si es propina (para distribución per_person)
-                        is_tip = any(kw in nombre.lower() for kw in tip_keywords)
-
-                        # Inferir distribución: propina = per_person, otros = proportional
-                        distribution = 'per_person' if is_tip else 'proportional'
+                        # Todos los cargos usan distribución proporcional al consumo
+                        distribution = 'proportional'
 
                         charges.append({
                             'id': f"charge_{i}",
