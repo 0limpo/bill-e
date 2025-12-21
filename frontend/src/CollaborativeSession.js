@@ -2404,8 +2404,8 @@ const CollaborativeSession = () => {
         {/* Editors see normal title */}
         {!isOwner && <h3>{t('items.consumption')}</h3>}
 
-        {/* Items list for Step 2 and editors */}
-        {(!isOwner || effectiveStep !== 1) && session.items.map((item, idx) => {
+        {/* Items list for Step 2 and editors (hide in Step 3 for owner) */}
+        {(!isOwner || (effectiveStep !== 1 && effectiveStep !== 3)) && session.items.map((item, idx) => {
           const itemId = item.id || item.name;
           const isVerifyStep = isOwner && effectiveStep === 1;
           return (
@@ -2448,7 +2448,14 @@ const CollaborativeSession = () => {
             <h3>🎉 {t('finalized.billClosed')}</h3>
           </div>
 
-          <div className="finalized-breakdown-list">
+          <div className="sheet-breakdown">
+            {/* Column Headers */}
+            <div className="sheet-breakdown-header">
+              <span className="header-name">{t('items.name')}</span>
+              <span className="header-consumo">{t('totals.subtotal')}</span>
+              <span className="header-total">{t('items.total')}</span>
+            </div>
+
             {session.participants.map(p => {
               const { subtotal, total, chargesTotal, charges: pCharges } = calculateParticipantTotal(p.id);
               const isExpanded = expandedParticipants[p.id];
@@ -2460,11 +2467,8 @@ const CollaborativeSession = () => {
 
                 Object.keys(session.assignments).forEach(key => {
                   const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
-                  if (unitMatch) {
-                    const assigns = session.assignments[key] || [];
-                    if (assigns.length > 0) {
-                      itemsWithUnitAssignments.add(unitMatch[1]);
-                    }
+                  if (unitMatch && session.assignments[key]?.length > 0) {
+                    itemsWithUnitAssignments.add(unitMatch[1]);
                   }
                 });
 
@@ -2481,11 +2485,9 @@ const CollaborativeSession = () => {
                       item = session.items.find(i => (i.id || i.name) === baseItemId);
                       itemName = item ? `${item.name} (U${unitNum})` : `Unidad ${unitNum}`;
                     } else {
+                      if (itemsWithUnitAssignments.has(assignmentKey)) return;
                       item = session.items.find(i => (i.id || i.name) === assignmentKey);
-                      itemName = item?.name || 'Item';
-                      if (item && item.mode === 'grupal' && itemsWithUnitAssignments.has(assignmentKey)) {
-                        return;
-                      }
+                      itemName = item?.name || assignmentKey;
                     }
 
                     if (item) {
@@ -2503,63 +2505,62 @@ const CollaborativeSession = () => {
               };
 
               return (
-                <div
-                  key={p.id}
-                  className={`finalized-participant-row ${isExpanded ? 'expanded' : ''}`}
-                  onClick={() => setExpandedParticipants(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
-                >
-                  <div className="finalized-participant-summary">
-                    <div className="finalized-participant-info">
-                      <Avatar name={p.name} size="small" />
-                      <span className="finalized-participant-name">
+                <div key={p.id} className="sheet-breakdown-item-wrapper">
+                  <div
+                    className={`sheet-breakdown-item clickable ${isExpanded ? 'expanded' : ''}`}
+                    onClick={() => setExpandedParticipants(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
+                  >
+                    <div className="sheet-breakdown-person">
+                      <span className="expand-indicator">{isExpanded ? '▼' : '▶'}</span>
+                      <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(p.name) }}>
+                        {getInitials(p.name)}
+                      </span>
+                      <span className="sheet-breakdown-name">
                         {p.id === currentParticipant?.id ? t('header.you') : p.name}
                       </span>
-                      <span className="finalized-expand-arrow">{isExpanded ? '▲' : '▼'}</span>
                     </div>
-                    <span className="finalized-participant-total">{fmt(total)}</span>
+                    <span className="sheet-breakdown-subtotal">{fmt(subtotal)}</span>
+                    <span className="sheet-breakdown-amount">{fmt(total)}</span>
                   </div>
-
                   {isExpanded && (
-                    <div className="finalized-participant-details">
+                    <div className="participant-breakdown host-view">
                       {getParticipantItems().map((item, idx) => (
-                        <div key={idx} className="finalized-detail-row">
-                          <span className="finalized-detail-name">
-                            {item.itemMode === 'individual' && item.itemQty > 1 && (
-                              <span className="qty-badge">{item.itemQty}×</span>
-                            )}
-                            {item.splitCount > 1 && (
-                              <span className="split-badge">/{item.splitCount}</span>
+                        <div key={idx} className="breakdown-row">
+                          <span>
+                            {item.isUnitAssignment ? (
+                              item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>
+                            ) : (
+                              <>
+                                <span className="qty-badge">{item.itemQty}x</span>
+                                {item.itemMode === 'grupal' && item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
+                              </>
                             )}
                             {item.name}
                           </span>
-                          <span className="finalized-detail-price">{fmt(item.amount)}</span>
+                          <span>{fmt(item.amount)}</span>
                         </div>
                       ))}
-
-                      <div className="finalized-detail-row subtotal">
+                      <div className="breakdown-row subtotal">
                         <span>{t('totals.subtotal')}</span>
                         <span>{fmt(subtotal)}</span>
                       </div>
-
-                      {pCharges && pCharges.map((charge, idx) => (
-                        <div key={idx} className={`finalized-detail-row charge ${charge.isDiscount ? 'discount' : ''}`}>
+                      {/* Show charges (only if non-zero) */}
+                      {pCharges.filter(c => Math.abs(c.amount) > 0).map(charge => (
+                        <div key={charge.id} className={`breakdown-row charge ${charge.amount < 0 ? 'discount' : ''}`}>
                           <span>{charge.name}</span>
-                          <span>{charge.isDiscount ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
+                          <span>{charge.amount < 0 ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
                         </div>
                       ))}
-
-                      <div className="finalized-detail-row total-final">
-                        <span>{t('totals.total')}</span>
-                        <span>{fmt(total)}</span>
-                      </div>
                     </div>
                   )}
                 </div>
               );
             })}
-            <div className="finalized-total-row">
+
+            <div className="sheet-breakdown-total">
               <span>{t('totals.tableTotal')}</span>
-              <span className="finalized-grand-total">{fmt(displayedTotal)}</span>
+              <span></span>
+              <span className="sheet-total-amount">{fmt(displayedTotal)}</span>
             </div>
           </div>
         </div>
