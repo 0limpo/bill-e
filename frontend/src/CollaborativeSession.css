@@ -3206,3 +3206,196 @@ body {
 .bottom-sheet.step-3 {
   /* Simplified for finalized */
 }
+
+/* =============================================================================
+   COLLAPSIBLE SECTIONS (Step 1)
+   ============================================================================= */
+
+.collapsible-section {
+  margin-bottom: 12px;
+  background: var(--glass-surface);
+  backdrop-filter: blur(var(--blur-amount));
+  border-radius: var(--radius-md);
+  border: 1px solid var(--glass-border);
+  overflow: hidden;
+}
+
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.collapsible-header:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.collapsible-header:active {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.collapsible-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.collapsible-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.collapsible-total {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.collapsible-total.match {
+  color: var(--success);
+}
+
+.collapsible-total.mismatch {
+  color: var(--danger);
+}
+
+.collapsible-arrow {
+  font-size: 12px;
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.collapsible-content {
+  padding: 0 12px 12px 12px;
+  animation: collapseExpand 0.2s ease-out;
+}
+
+@keyframes collapseExpand {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Step 1 item cards inside collapsible */
+.collapsible-content .bill-item {
+  margin-bottom: 8px;
+}
+
+.collapsible-content .bill-item:last-child {
+  margin-bottom: 0;
+}
+
+/* Empty message */
+.empty-message {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 16px;
+  margin: 0;
+}
+
+/* =============================================================================
+   STEP 3: EXPANDABLE PARTICIPANT BREAKDOWN
+   ============================================================================= */
+
+.finalized-participant-row {
+  cursor: pointer;
+  border-radius: 10px;
+  margin: 0 -8px;
+  padding: 12px 8px;
+  transition: background 0.2s;
+}
+
+.finalized-participant-row:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.finalized-participant-row:active {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.finalized-participant-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.finalized-expand-arrow {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-left: 8px;
+  transition: transform 0.2s;
+}
+
+.finalized-participant-row.expanded .finalized-expand-arrow {
+  transform: rotate(180deg);
+}
+
+.finalized-participant-details {
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  animation: collapseExpand 0.2s ease-out;
+}
+
+.finalized-detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.05);
+}
+
+.finalized-detail-row:last-child {
+  border-bottom: none;
+}
+
+.finalized-detail-name {
+  flex: 1;
+}
+
+.finalized-detail-price {
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.finalized-detail-row.subtotal {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-bottom: none;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.finalized-detail-row.charge {
+  color: var(--success);
+}
+
+.finalized-detail-row.charge.discount {
+  color: var(--danger);
+}
+
+.finalized-detail-row.tip {
+  color: var(--primary);
+}
+
+.finalized-detail-row.total-final {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 2px solid var(--primary);
+  border-bottom: none;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--primary);
+}
