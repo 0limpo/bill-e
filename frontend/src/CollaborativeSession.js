@@ -2217,35 +2217,33 @@ const CollaborativeSession = () => {
   const effectiveStep = isFinalized ? 3 : hostStep;
 
   return (
-    <div className={`collaborative-session ${isRTL ? 'rtl' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className={`collaborative-session ${isRTL ? 'rtl' : ''} ${isOwner ? `host-step-${effectiveStep}` : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* FLOATING TIMER - Top right corner */}
       <div className="floating-timer">{t('time.timer', { time: timeLeft })}</div>
 
-      {/* STEP INDICATOR - Host only, not finalized */}
-      {isOwner && !isFinalized && (
+      {/* STEP INDICATOR - Host only, always visible including Step 3 */}
+      {isOwner && (
         <StepIndicator
           currentStep={effectiveStep}
-          onStepClick={(step) => setHostStep(step)}
+          onStepClick={(step) => !isFinalized && setHostStep(step)}
         />
       )}
 
       {/* Backdrop for expanded sheet */}
-      {isSheetExpanded && !isFinalized && (
+      {isSheetExpanded && !isFinalized && effectiveStep !== 1 && (
         <div className="sheet-backdrop" onClick={() => setIsSheetExpanded(false)} />
       )}
 
-      {/* LISTA PARTICIPANTES - Only in Step 2 for host, always for editors */}
-      {(!isOwner || effectiveStep >= 2) && (
+      {/* LISTA PARTICIPANTES - Only for editors at top (host sees it at bottom in Step 2) */}
+      {!isOwner && (
         <div className="participants-section">
           <div className="participants-list">
-             {/* Add button first (ghost avatar style) - Anyone can add participants */}
              {!isFinalized && (
                <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>
                  <span className="add-btn-label">{t('items.add')}</span>
                </button>
              )}
              {session.participants.map(p => {
-                // Owner can edit anyone, editors can edit non-owners only
                 const canEdit = session.status !== 'finalized' && (isOwner || p.role !== 'owner');
                 return (
                 <div
@@ -2326,155 +2324,54 @@ const CollaborativeSession = () => {
         )}
       </div>
 
-      {/* BOTTOM SHEET (Interactive Expandable with Swipe) */}
-      {/* Step 1 for host: always expanded. Others: expandable */}
-      <div className={`bottom-sheet ${isSheetExpanded || isFinalized || (isOwner && effectiveStep === 1) ? 'expanded' : ''}`}>
-        {/* Visual Handle - Swipe/Click to toggle for ALL users (except Step 1 for host) */}
-        <div
-          className="sheet-handle"
-          onClick={() => !isFinalized && !(isOwner && effectiveStep === 1) && setIsSheetExpanded(!isSheetExpanded)}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        />
+      {/* ============ STEP 3: FINALIZED - Show breakdown in main area ============ */}
+      {isOwner && effectiveStep === 3 && (
+        <div className="finalized-breakdown-section">
+          <div className="step-header">
+            <h3>🎉 {t('finalized.billClosed')}</h3>
+          </div>
+
+          <div className="finalized-breakdown-list">
+            {session.participants.map(p => {
+              const { subtotal, total } = calculateParticipantTotal(p.id);
+              return (
+                <div key={p.id} className="finalized-participant-row">
+                  <div className="finalized-participant-info">
+                    <Avatar name={p.name} size="small" />
+                    <span className="finalized-participant-name">
+                      {p.id === currentParticipant?.id ? t('header.you') : p.name}
+                    </span>
+                  </div>
+                  <span className="finalized-participant-total">{fmt(total)}</span>
+                </div>
+              );
+            })}
+            <div className="finalized-total-row">
+              <span>{t('totals.tableTotal')}</span>
+              <span className="finalized-grand-total">{fmt(displayedTotal)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM SHEET - Different layouts per step */}
+      <div className={`bottom-sheet ${isSheetExpanded && effectiveStep === 2 ? 'expanded' : ''} step-${effectiveStep}`}>
+        {/* Visual Handle - Only for Step 2 */}
+        {effectiveStep === 2 && (
+          <div
+            className="sheet-handle"
+            onClick={() => setIsSheetExpanded(!isSheetExpanded)}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          />
+        )}
 
         {isFinalized ? (
-          // ============ FINALIZED VIEW (Always Expanded) ============
+          // ============ FINALIZED VIEW ============
           <>
-            {/* Header - Use local calc for consistent display */}
-            <div className="sheet-summary-row">
-              <div className="sheet-column">
-                <span className="my-total-label finalized-label">
-                  {isOwner ? `🎉 ${t('finalized.billClosed')}!` : `🔒 ${t('finalized.billClosed')}`}
-                </span>
-              </div>
-              <span className="my-total-amount">
-                {/* Use local calc to avoid NaN - displayedTotal for Host, getMyTotal for Editor */}
-                {fmt(isOwner ? displayedTotal : getMyTotal())}
-              </span>
-            </div>
-
-            {/* Breakdown - Only show to Host (Editors see simple closed status) */}
+            {/* Host: Simple share buttons (breakdown is in main area) */}
             {isOwner && (
-              <div className="sheet-expanded-content">
-                {/* STEP 3: Use local calculateParticipantTotal instead of session.totals */}
-                <div className="sheet-breakdown">
-                  {/* Column Headers */}
-                  <div className="sheet-breakdown-header">
-                    <span className="header-name">{t('items.name')}</span>
-                    <span className="header-consumo">{t('totals.subtotal')}</span>
-                    <span className="header-total">{t('items.total')}</span>
-                  </div>
-
-                  {session.participants.map(p => {
-                    const { subtotal, total, chargesTotal, charges: pCharges } = calculateParticipantTotal(p.id);
-                    const isExpanded = expandedParticipants[p.id];
-
-                    // Generate breakdown items for this participant
-                    const getParticipantItems = () => {
-                      const items = [];
-                      const itemsWithUnitAssignments = new Set();
-
-                      // Pre-scan for unit assignments
-                      Object.keys(session.assignments).forEach(key => {
-                        const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
-                        if (unitMatch && session.assignments[key]?.length > 0) {
-                          itemsWithUnitAssignments.add(unitMatch[1]);
-                        }
-                      });
-
-                      Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
-                        const pAssign = assigns.find(a => a.participant_id === p.id);
-                        if (pAssign) {
-                          const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
-                          let item, itemName, isUnitAssignment = false;
-
-                          if (unitMatch) {
-                            isUnitAssignment = true;
-                            const baseItemId = unitMatch[1];
-                            const unitNum = parseInt(unitMatch[2]) + 1;
-                            item = session.items.find(i => (i.id || i.name) === baseItemId);
-                            itemName = item ? `${item.name} (U${unitNum})` : `Unidad ${unitNum}`;
-                          } else {
-                            if (itemsWithUnitAssignments.has(assignmentKey)) return;
-                            item = session.items.find(i => (i.id || i.name) === assignmentKey);
-                            itemName = item?.name || assignmentKey;
-                          }
-
-                          if (item) {
-                            const amount = item.price * (pAssign.quantity || 0);
-                            const splitCount = assigns.length;
-                            const itemMode = item.mode || 'individual';
-                            const itemQty = itemMode === 'individual'
-                              ? Math.round(pAssign.quantity || 1)
-                              : (isUnitAssignment ? 1 : (item.quantity || 1));
-                            items.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment, itemMode });
-                          }
-                        }
-                      });
-                      return items;
-                    };
-
-                    return (
-                      <div key={p.id} className="sheet-breakdown-item-wrapper">
-                        <div
-                          className={`sheet-breakdown-item clickable ${isExpanded ? 'expanded' : ''}`}
-                          onClick={() => setExpandedParticipants(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
-                        >
-                          <div className="sheet-breakdown-person">
-                            <span className="expand-indicator">{isExpanded ? '▼' : '▶'}</span>
-                            <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(p.name) }}>
-                              {getInitials(p.name)}
-                            </span>
-                            <span className="sheet-breakdown-name">
-                              {p.id === currentParticipant?.id ? t('header.you') : p.name}
-                            </span>
-                          </div>
-                          <span className="sheet-breakdown-subtotal">{fmt(subtotal)}</span>
-                          <span className="sheet-breakdown-amount">{fmt(total)}</span>
-                        </div>
-                        {isExpanded && (
-                          <div className="participant-breakdown host-view">
-                            {getParticipantItems().map((item, idx) => (
-                              <div key={idx} className="breakdown-row">
-                                <span>
-                                  {item.isUnitAssignment ? (
-                                    item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>
-                                  ) : (
-                                    <>
-                                      <span className="qty-badge">{item.itemQty}x</span>
-                                      {item.itemMode === 'grupal' && item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
-                                    </>
-                                  )}
-                                  {item.name}
-                                </span>
-                                <span>{fmt(item.amount)}</span>
-                              </div>
-                            ))}
-                            <div className="breakdown-row subtotal">
-                              <span>{t('totals.subtotal')}</span>
-                              <span>{fmt(subtotal)}</span>
-                            </div>
-                            {/* Show charges (only if non-zero) */}
-                            {pCharges.filter(c => Math.abs(c.amount) > 0).map(charge => (
-                              <div key={charge.id} className={`breakdown-row charge ${charge.amount < 0 ? 'discount' : ''}`}>
-                                <span>{charge.name}</span>
-                                <span>{charge.amount < 0 ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  <div className="sheet-breakdown-total">
-                    <span>{t('totals.tableTotal')}</span>
-                    <span></span>
-                    <span className="sheet-total-amount">{fmt(displayedTotal)}</span>
-                  </div>
-                </div>
-
-                {/* Share buttons - Only for Host */}
+              <div className="step3-actions">
                 <div className="share-buttons">
                   <button className="share-btn whatsapp" onClick={handleShareWhatsapp}>
                     📱 WhatsApp
@@ -2483,7 +2380,6 @@ const CollaborativeSession = () => {
                     {copied ? '✓ Copiado' : '📋 Copiar'}
                   </button>
                 </div>
-
                 <button className="btn-reopen" onClick={handleReopenSession}>
                   🔓 {t('finalized.reopenTable')}
                 </button>
@@ -2801,131 +2697,101 @@ const CollaborativeSession = () => {
               </div>
             )}
 
-            {/* Owner Step 1: Validation + Charges (always visible in Step 1) */}
+            {/* Owner Step 1: Compact validation + charges inline */}
             {isOwner && effectiveStep === 1 && (
-              <div className="sheet-expanded-content">
-                <div className={`sheet-validation ${itemsMatch ? 'balanced' : 'warning'}`}>
-                  <div className="validation-grid">
-                    <div className="validation-metric">
-                      <span className="validation-metric-label">{t('validation.subtotalBill')}</span>
-                      <input
-                        type="number"
-                        className="validation-metric-input"
-                        value={totalBoleta || ''}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value) || 0;
-                          setSession(prev => ({ ...prev, subtotal: val }));
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                    <div className="validation-metric">
-                      <span className="validation-metric-label">{t('validation.subtotalItems')}</span>
-                      <span className={`validation-metric-value ${itemsMatch ? 'match' : 'mismatch'}`}>
-                        {fmt(totalItems)}
-                      </span>
-                    </div>
+              <div className="step1-compact-content">
+                {/* Compact validation row */}
+                <div className="step1-validation-row">
+                  <div className="step1-metric">
+                    <span className="step1-label">{t('validation.subtotalBill')}</span>
+                    <input
+                      type="number"
+                      className="step1-input"
+                      value={totalBoleta || ''}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setSession(prev => ({ ...prev, subtotal: val }));
+                      }}
+                    />
                   </div>
-
-                  {/* Feedback for Step 1 */}
-                  {itemsMatch ? (
-                    <div className="validation-feedback success">
-                      ✅ {t('validation.balanced')}
-                    </div>
-                  ) : (
-                    <div className="validation-feedback warning">
-                      ⚠️ {t('validation.reviewTotals')}
-                    </div>
-                  )}
-
-                  {/* CHARGES SECTION (Taxes, Discounts, etc.) - Editable in Step 1 */}
-                  <div className="charges-section" onClick={(e) => e.stopPropagation()}>
-                    <div className="charges-header">
-                      <span className="charges-label">{t('charges.title')}</span>
-                      <button
-                        className="add-charge-btn"
-                        onClick={() => {
-                          setEditingCharge(null);
-                          setShowChargeModal(true);
-                        }}
-                      >
-                        + {t('charges.addCharge')}
-                      </button>
-                    </div>
-
-                    {/* List of charges */}
-                    {(session.charges || []).length > 0 && (
-                      <div className="charges-list">
-                        {(session.charges || []).map(charge => (
-                          <div
-                            key={charge.id}
-                            className={`charge-item ${charge.isDiscount ? 'discount' : ''}`}
-                            onClick={() => {
-                              setEditingCharge(charge);
-                              setShowChargeModal(true);
-                            }}
-                          >
-                            <span className="charge-name">{charge.name}</span>
-                            <span className="charge-value">
-                              {charge.isDiscount ? '-' : '+'}
-                              {charge.valueType === 'percent' ? `${charge.value}%` : fmt(charge.value)}
-                            </span>
-                            <span className="charge-dist">
-                              {charge.distribution === 'fixed_per_person'
-                                ? t('charges.fixedPerPersonShort')
-                                : charge.distribution === 'per_person'
-                                  ? t('charges.perPersonShort')
-                                  : t('charges.proportionalShort')}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  <div className={`step1-metric ${itemsMatch ? 'match' : 'mismatch'}`}>
+                    <span className="step1-label">{t('validation.subtotalItems')}</span>
+                    <span className="step1-value">{fmt(totalItems)}</span>
                   </div>
+                  <span className={`step1-status ${itemsMatch ? 'ok' : 'warn'}`}>
+                    {itemsMatch ? '✓' : '⚠️'}
+                  </span>
+                </div>
+
+                {/* Compact charges row */}
+                <div className="step1-charges-row">
+                  <button
+                    className="step1-add-charge"
+                    onClick={() => {
+                      setEditingCharge(null);
+                      setShowChargeModal(true);
+                    }}
+                  >
+                    + {t('charges.title')}
+                  </button>
+                  {(session.charges || []).map(charge => (
+                    <div
+                      key={charge.id}
+                      className={`step1-charge-chip ${charge.isDiscount ? 'discount' : ''}`}
+                      onClick={() => {
+                        setEditingCharge(charge);
+                        setShowChargeModal(true);
+                      }}
+                    >
+                      {charge.name}: {charge.isDiscount ? '-' : '+'}
+                      {charge.valueType === 'percent' ? `${charge.value}%` : fmt(charge.value)}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
-            {/* Owner Step 2: Assignment progress (when expanded) */}
-            {isOwner && effectiveStep === 2 && isSheetExpanded && (
-              <div className="sheet-expanded-content">
-                <div className={`sheet-validation ${assignedMatch ? 'balanced' : 'warning'}`}>
-                  <div className="validation-grid">
-                    <div className="validation-metric">
-                      <span className="validation-metric-label">{t('validation.subtotalBill')}</span>
-                      <span className="validation-metric-value">{fmt(totalBoleta)}</span>
-                    </div>
-                    <div className="validation-metric">
-                      <span className="validation-metric-label">{t('validation.subtotalAssigned')}</span>
-                      <span className={`validation-metric-value ${assignedMatch ? 'match' : 'mismatch'}`}>
-                        {fmt(totalAsignado)}
-                      </span>
-                    </div>
+            {/* Owner Step 2: Participants + Progress */}
+            {isOwner && effectiveStep === 2 && (
+              <>
+                {/* Participants row - sticky at bottom */}
+                <div className="step2-participants">
+                  <div className="step2-participants-scroll">
+                    <button className="add-participant-btn-small" onClick={() => setShowAddParticipant(true)}>
+                      +
+                    </button>
+                    {session.participants.map(p => {
+                      const canEdit = session.status !== 'finalized';
+                      return (
+                        <div
+                          key={p.id}
+                          className={`participant-chip-small ${p.id === currentParticipant?.id ? 'current' : ''}`}
+                          onClick={() => canEdit && handleOpenParticipantEdit(p)}
+                        >
+                          <Avatar name={p.name} size="small" />
+                          <span>{p.id === currentParticipant?.id ? t('header.you') : p.name.split(' ')[0]}</span>
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  {/* Assignment progress bar */}
+                {/* Assignment progress inline */}
+                <div className="step2-progress-row">
+                  <div className="step2-progress-info">
+                    <span>{fmt(totalAsignado)} / {fmt(totalBoleta)}</span>
+                    <span className={assignedMatch ? 'match' : 'mismatch'}>
+                      {assignedMatch ? '✓' : `${Math.round((totalAsignado / totalBoleta) * 100)}%`}
+                    </span>
+                  </div>
                   <div className="assignment-progress">
                     <div
                       className="assignment-progress-bar"
                       style={{ width: `${Math.min(100, (totalAsignado / totalBoleta) * 100)}%` }}
                     />
                   </div>
-
-                  {/* Feedback for Step 2 */}
-                  {assignedMatch ? (
-                    <div className="validation-feedback success">
-                      ✅ {t('validation.balanced')}
-                    </div>
-                  ) : (
-                    <div className="validation-feedback warning">
-                      {totalAsignado < totalBoleta
-                        ? t('validation.missingToAssign', { amount: fmt(totalBoleta - totalAsignado) })
-                        : t('validation.overAssigned', { amount: fmt(totalAsignado - totalBoleta) })
-                      }
-                    </div>
-                  )}
                 </div>
-              </div>
+              </>
             )}
 
             {/* Action Buttons */}
@@ -2935,7 +2801,7 @@ const CollaborativeSession = () => {
                 <button className="btn-main btn-primary" onClick={() => setHostStep(2)}>
                   {t('steps.continue')} →
                 </button>
-              ) : (
+              ) : effectiveStep === 2 ? (
                 /* Step 2: Back and Close Bill buttons */
                 <div className="step-buttons">
                   <button className="btn-secondary" onClick={() => setHostStep(1)}>
@@ -2945,7 +2811,7 @@ const CollaborativeSession = () => {
                     🔒 {t('finalized.closeBill')}
                   </button>
                 </div>
-              )
+              ) : null
             ) : (
               <button className="btn-main" disabled>
                 {t('finalized.billOpen')}

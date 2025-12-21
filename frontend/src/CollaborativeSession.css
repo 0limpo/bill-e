@@ -2929,3 +2929,280 @@ body {
 .collaborative-session.rtl .step-buttons {
   flex-direction: row-reverse;
 }
+
+/* =============================================================================
+   STEP 1: COMPACT LAYOUT (Validation + Charges in footer)
+   ============================================================================= */
+
+.step1-compact-content {
+  padding: 0;
+}
+
+.step1-validation-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.step1-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.step1-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.step1-input {
+  width: 90px;
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.step1-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.step1-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.step1-metric.match .step1-value {
+  color: var(--success);
+}
+
+.step1-metric.mismatch .step1-value {
+  color: var(--danger);
+}
+
+.step1-status {
+  margin-left: auto;
+  font-size: 18px;
+}
+
+.step1-status.ok {
+  color: var(--success);
+}
+
+.step1-status.warn {
+  color: #f59e0b;
+}
+
+.step1-charges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.step1-add-charge {
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px dashed var(--primary);
+  color: var(--primary);
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.step1-charge-chip {
+  padding: 6px 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--success);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.step1-charge-chip.discount {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+}
+
+/* =============================================================================
+   STEP 2: PARTICIPANTS AT BOTTOM
+   ============================================================================= */
+
+.step2-participants {
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.step2-participants-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.add-participant-btn-small {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  border: 2px dashed var(--primary);
+  background: transparent;
+  color: var(--primary);
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.participant-chip-small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+}
+
+.participant-chip-small:hover {
+  border-color: var(--primary);
+}
+
+.participant-chip-small.current {
+  background: rgba(79, 70, 229, 0.1);
+  border-color: var(--primary);
+}
+
+.participant-chip-small span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.step2-progress-row {
+  padding: 8px 0;
+}
+
+.step2-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.step2-progress-info .match {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.step2-progress-info .mismatch {
+  color: var(--text-secondary);
+}
+
+/* =============================================================================
+   STEP 3: FINALIZED BREAKDOWN IN MAIN AREA
+   ============================================================================= */
+
+.finalized-breakdown-section {
+  margin-bottom: 120px;
+}
+
+.finalized-breakdown-list {
+  background: var(--glass-surface);
+  backdrop-filter: blur(var(--blur-amount));
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+}
+
+.finalized-participant-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.finalized-participant-row:last-of-type {
+  border-bottom: none;
+}
+
+.finalized-participant-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.finalized-participant-name {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.finalized-participant-total {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.finalized-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0 0 0;
+  margin-top: 8px;
+  border-top: 2px solid var(--primary);
+}
+
+.finalized-total-row span:first-child {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.finalized-grand-total {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.step3-actions {
+  padding: 16px 0;
+}
+
+.step3-actions .share-buttons {
+  margin-bottom: 12px;
+}
+
+/* =============================================================================
+   BOTTOM SHEET STEP VARIANTS
+   ============================================================================= */
+
+.bottom-sheet.step-1 {
+  max-height: none;
+}
+
+.bottom-sheet.step-2 {
+  /* Default expandable behavior */
+}
+
+.bottom-sheet.step-3 {
+  /* Simplified for finalized */
+}
