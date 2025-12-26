@@ -581,6 +581,10 @@ def format_collaborative_message(
     status_emoji = "✅" if quality_score == 100 else "⚠️"
     status_text = "Totales verificados" if quality_score == 100 else "Revisar totales"
 
+    # Build URLs for both variants (A and B) for testing
+    owner_url_vB = f"{owner_url}&v=B" if "?" in owner_url else f"{owner_url}?v=B"
+    editor_url_vB = f"{editor_url}?v=B"
+
     message = f"""🧾 ¡Boleta procesada!
 
 {status_emoji} *{status_text}*
@@ -593,16 +597,22 @@ def format_collaborative_message(
 ━━━━━━━━━━━━━━━━━━
 
 📌 *Tu link de anfitrión* (guárdalo):
+
+🅰️ Versión A (estable):
 {owner_url}
 
-👆 Usa este link para ver los totales y finalizar
+🅱️ Versión B (nueva):
+{owner_url_vB}
 
 ━━━━━━━━━━━━━━━━━━
 
 🔗 *Link para compartir* con tus amigos:
+
+🅰️ Versión A (estable):
 {editor_url}
 
-👆 Copia y envía este link al grupo
+🅱️ Versión B (nueva):
+{editor_url_vB}
 
 ━━━━━━━━━━━━━━━━━━
 

@@ -881,7 +881,12 @@ def format_collaborative_message_i18n(
         status_emoji = "⚠️"
         status_text = get_message("session_review", lang)
 
-    # Build message
+    # Build URLs for both variants (A and B)
+    # Add ?v=B or &v=B depending on whether URL already has query params
+    owner_url_vB = f"{owner_url}&v=B" if "?" in owner_url else f"{owner_url}?v=B"
+    editor_url_vB = f"{editor_url}?v=B"
+
+    # Build message with both variants for testing
     message = f"""🧾 {get_message("receipt_processed", lang)}
 
 {status_emoji} *{status_text}*
@@ -894,14 +899,22 @@ def format_collaborative_message_i18n(
 ━━━━━━━━━━━━━━━━━━
 
 📌 *{get_message("session_host_link", lang)}:*
+
+🅰️ Versión A (estable):
 {owner_url}
 
-👆 {get_message("session_host_instruction", lang)}
+🅱️ Versión B (nueva):
+{owner_url_vB}
 
 ━━━━━━━━━━━━━━━━━━
 
 🔗 *{get_message("session_share_link", lang)}:*
+
+🅰️ Versión A:
 {editor_url}
+
+🅱️ Versión B:
+{editor_url_vB}
 
 👆 {get_message("session_share_instruction", lang)}
 
