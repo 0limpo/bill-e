@@ -356,37 +356,6 @@ const ChargeModal = ({ charge, onSave, onClose, onDelete }) => {
   );
 };
 
-// Step Indicator Component (Host Flow)
-const StepIndicator = ({ currentStep, onStepClick }) => {
-  const { t } = useTranslation();
-  const steps = [
-    { num: 1, label: t('steps.verify') },
-    { num: 2, label: t('steps.assign') },
-    { num: 3, label: t('steps.share') }
-  ];
-
-  return (
-    <div className="step-indicator">
-      {steps.map((step, idx) => (
-        <React.Fragment key={step.num}>
-          <div
-            className={`step ${currentStep === step.num ? 'active' : ''} ${currentStep > step.num ? 'completed' : ''}`}
-            onClick={() => currentStep > step.num && onStepClick(step.num)}
-          >
-            <div className="step-circle">
-              {currentStep > step.num ? '✓' : step.num}
-            </div>
-            <span className="step-label">{step.label}</span>
-          </div>
-          {idx < steps.length - 1 && (
-            <div className={`step-line ${currentStep > step.num ? 'completed' : ''}`} />
-          )}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-};
-
 // Validation Dashboard Component (Host Only)
 const ValidationDashboard = ({ session, onUpdateSubtotal, decimalPlaces = 0, numberFormat = null }) => {
   const { t } = useTranslation();
@@ -522,8 +491,7 @@ const BillItem = ({
   onSetPerUnitMode,
   isSyncing,
   decimalPlaces = 0,
-  numberFormat = null,
-  hideAssignments = false
+  numberFormat = null
 }) => {
   const { t } = useTranslation();
   const fmt = (amount) => formatCurrency(amount, decimalPlaces, numberFormat);
@@ -619,8 +587,7 @@ const BillItem = ({
         </div>
 
         {/* Mode switch & controls - visible for all items, any participant can toggle */}
-        {/* Hidden in verify step (Step 1) for host */}
-        {!isEditing && !isFinalized && !hideAssignments && (
+        {!isEditing && !isFinalized && (
            <div className="item-mode-switch-container">
              <div className={`item-mode-switch ${isSyncing ? 'syncing' : ''}`}>
                <div
@@ -641,8 +608,7 @@ const BillItem = ({
         )}
 
         {/* Grupal options for items with qty > 1 */}
-        {/* Hidden in verify step (Step 1) for host */}
-        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && !hideAssignments && (() => {
+        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && (() => {
           // Check if all participants are assigned to parent item
           const allAssignedToParent = participants.length > 0 &&
             participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
@@ -861,9 +827,6 @@ const CollaborativeSession = () => {
   // Charge modal state
   const [showChargeModal, setShowChargeModal] = useState(false);
   const [editingCharge, setEditingCharge] = useState(null); // null = new, object = editing
-
-  // Host step flow: 1 = verify receipt, 2 = assign consumptions, 3 = finalized
-  const [hostStep, setHostStep] = useState(1);
 
   // Saved assignments per mode (to restore when switching back)
   // Structure: { [itemId]: { individual: {...}, grupal: {...} } }
@@ -2211,79 +2174,47 @@ const CollaborativeSession = () => {
   const assignedMatch = Math.abs(totalAsignado - totalBoleta) < 1;
   const isBalanced = itemsMatch && assignedMatch;
 
-  // Auto-advance to step 3 when finalized
-  const effectiveStep = isFinalized ? 3 : hostStep;
-
   return (
     <div className={`collaborative-session ${isRTL ? 'rtl' : ''}`} dir={isRTL ? 'rtl' : 'ltr'}>
       {/* FLOATING TIMER - Top right corner */}
       <div className="floating-timer">{t('time.timer', { time: timeLeft })}</div>
-
-      {/* STEP INDICATOR - Host only, not finalized */}
-      {isOwner && !isFinalized && (
-        <StepIndicator
-          currentStep={effectiveStep}
-          onStepClick={(step) => setHostStep(step)}
-        />
-      )}
 
       {/* Backdrop for expanded sheet */}
       {isSheetExpanded && !isFinalized && (
         <div className="sheet-backdrop" onClick={() => setIsSheetExpanded(false)} />
       )}
 
-      {/* LISTA PARTICIPANTES - Only in Step 2 for host, always for editors */}
-      {(!isOwner || effectiveStep >= 2) && (
-        <div className="participants-section">
-          <div className="participants-list">
-             {/* Add button first (ghost avatar style) - Anyone can add participants */}
-             {!isFinalized && (
-               <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>
-                 <span className="add-btn-label">{t('items.add')}</span>
-               </button>
-             )}
-             {session.participants.map(p => {
-                // Owner can edit anyone, editors can edit non-owners only
-                const canEdit = session.status !== 'finalized' && (isOwner || p.role !== 'owner');
-                return (
-                <div
-                  key={p.id}
-                  className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${canEdit ? 'clickable' : ''}`}
-                  onClick={() => canEdit && handleOpenParticipantEdit(p)}
-                >
-                  {p.role === 'owner' && <span className="badge-owner">{t('header.host')}</span>}
-                  <Avatar name={p.name} />
-                  <span className="participant-name">{p.id === currentParticipant?.id ? t('header.you') : p.name}</span>
-                </div>
-             );})}
-          </div>
+      {/* LISTA PARTICIPANTES - Right at the top */}
+      <div className="participants-section">
+        <div className="participants-list">
+           {/* Add button first (ghost avatar style) - Anyone can add participants */}
+           {!isFinalized && (
+             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>
+               <span className="add-btn-label">{t('items.add')}</span>
+             </button>
+           )}
+           {session.participants.map(p => {
+              // Owner can edit anyone, editors can edit non-owners only
+              const canEdit = session.status !== 'finalized' && (isOwner || p.role !== 'owner');
+              return (
+              <div
+                key={p.id}
+                className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${canEdit ? 'clickable' : ''}`}
+                onClick={() => canEdit && handleOpenParticipantEdit(p)}
+              >
+                {p.role === 'owner' && <span className="badge-owner">{t('header.host')}</span>}
+                <Avatar name={p.name} />
+                <span className="participant-name">{p.id === currentParticipant?.id ? t('header.you') : p.name}</span>
+              </div>
+           );})}
         </div>
-      )}
+      </div>
 
       {/* LISTA ITEMS */}
       <div className="items-section">
-        {/* Step 1: Title for verification */}
-        {isOwner && effectiveStep === 1 && (
-          <div className="step-header">
-            <h3>{t('steps.verifyTitle')}</h3>
-            <p className="step-subtitle">{t('steps.verifySubtitle')}</p>
-          </div>
-        )}
-        {/* Step 2: Title for assignment */}
-        {isOwner && effectiveStep === 2 && (
-          <div className="step-header">
-            <h3>{t('steps.assignTitle')}</h3>
-            <p className="step-subtitle">{t('steps.assignSubtitle')}</p>
-          </div>
-        )}
-        {/* Editors see normal title */}
-        {!isOwner && <h3>{t('items.consumption')}</h3>}
-
+        <h3>{t('items.consumption')}</h3>
         {session.items.map((item, idx) => {
           const itemId = item.id || item.name;
-          // Step 1: Host verifies items (can edit, no assignments shown)
-          // Step 2: Host assigns (can't edit, assignments shown)
-          const isVerifyStep = isOwner && effectiveStep === 1;
           return (
             <div key={itemId || idx} className="item-wrapper">
               <BillItem
@@ -2310,14 +2241,12 @@ const CollaborativeSession = () => {
                 isSyncing={syncingItems.has(itemId)}
                 decimalPlaces={session?.decimal_places || 0}
                 numberFormat={session?.number_format}
-                hideAssignments={isVerifyStep}
               />
             </div>
           );
         })}
-
-        {/* Add item button - only in Step 1 for host */}
-        {isOwner && effectiveStep === 1 && (
+        
+        {isOwner && (
           <button className="add-item-btn" onClick={() => setShowAddItemModal(true)}>
             {t('items.addManualItem')}
           </button>
