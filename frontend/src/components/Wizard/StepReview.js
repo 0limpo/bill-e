@@ -42,7 +42,7 @@ const StepReview = ({
   const { t } = useTranslation();
 
   return (
-    <>
+    <div className="step-container-animate">
       <div className="step-header">
         <h3>{t('steps.verifyTitle')}</h3>
         <p className="step-subtitle">{t('steps.verifySubtitle')}</p>
@@ -165,7 +165,7 @@ const StepReview = ({
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 };
 

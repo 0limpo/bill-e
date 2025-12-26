@@ -62,7 +62,7 @@ const StepShare = ({
   };
 
   return (
-    <div className="finalized-breakdown-section">
+    <div className="finalized-breakdown-section step-container-animate">
       <div className="step-header">
         <h3>🎉 {t('finalized.billClosed')}</h3>
       </div>

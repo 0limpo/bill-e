@@ -1647,9 +1647,11 @@ const CollaborativeSession = () => {
 
         {/* Step 2: Title for assignment */}
         {isOwner && effectiveStep === 2 && (
-          <div className="step-header">
-            <h3>{t('steps.assignTitle')}</h3>
-            <p className="step-subtitle">{t('steps.assignSubtitle')}</p>
+          <div className="step-container-animate">
+            <div className="step-header">
+              <h3>{t('steps.assignTitle')}</h3>
+              <p className="step-subtitle">{t('steps.assignSubtitle')}</p>
+            </div>
           </div>
         )}
         {/* Editors see normal title */}

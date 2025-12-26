@@ -3606,3 +3606,35 @@ body {
   border-color: var(--danger);
   color: var(--danger);
 }
+
+/* =============================================================================
+   STEP TRANSITION ANIMATIONS (Native App Feel)
+   ============================================================================= */
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Apply to step containers for smooth entry */
+.step-container-animate {
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Staggered animation for list items */
+.bill-item {
+  animation: slideUpFade 0.3s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.bill-item:nth-child(1) { animation-delay: 0.05s; }
+.bill-item:nth-child(2) { animation-delay: 0.08s; }
+.bill-item:nth-child(3) { animation-delay: 0.11s; }
+.bill-item:nth-child(4) { animation-delay: 0.14s; }
+.bill-item:nth-child(5) { animation-delay: 0.17s; }
+.bill-item:nth-child(n+6) { animation-delay: 0.2s; }
