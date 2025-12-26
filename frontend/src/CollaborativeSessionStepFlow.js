@@ -1584,30 +1584,32 @@ const CollaborativeSession = () => {
         <div className="sheet-backdrop" onClick={() => setIsSheetExpanded(false)} />
       )}
 
-      {/* LISTA PARTICIPANTES - Visible for everyone */}
-      <div className="participants-section">
-        <div className="participants-list">
-           {/* Add button - Anyone can add participants when not finalized */}
-           {!isFinalized && (
-             <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>
-               <span className="add-btn-label">{t('items.add')}</span>
-             </button>
-           )}
-           {session.participants.map(p => {
-              const canEdit = session.status !== 'finalized' && (isOwner || p.role !== 'owner');
-              return (
-              <div
-                key={p.id}
-                className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${canEdit ? 'clickable' : ''}`}
-                onClick={() => canEdit && handleOpenParticipantEdit(p)}
-              >
-                {p.role === 'owner' && <span className="badge-owner">{t('header.host')}</span>}
-                <Avatar name={p.name} />
-                <span className="participant-name">{p.id === currentParticipant?.id ? t('header.you') : p.name}</span>
-              </div>
-           );})}
+      {/* LISTA PARTICIPANTES - Host: only in Step 2 | Editors: always visible */}
+      {(!isOwner || effectiveStep === 2) && (
+        <div className="participants-section">
+          <div className="participants-list">
+             {/* Add button - Anyone can add participants when not finalized */}
+             {!isFinalized && (
+               <button className="add-participant-btn" onClick={() => setShowAddParticipant(true)}>
+                 <span className="add-btn-label">{t('items.add')}</span>
+               </button>
+             )}
+             {session.participants.map(p => {
+                const canEdit = session.status !== 'finalized' && (isOwner || p.role !== 'owner');
+                return (
+                <div
+                  key={p.id}
+                  className={`participant-chip ${p.id === currentParticipant?.id ? 'current' : ''} ${canEdit ? 'clickable' : ''}`}
+                  onClick={() => canEdit && handleOpenParticipantEdit(p)}
+                >
+                  {p.role === 'owner' && <span className="badge-owner">{t('header.host')}</span>}
+                  <Avatar name={p.name} />
+                  <span className="participant-name">{p.id === currentParticipant?.id ? t('header.you') : p.name}</span>
+                </div>
+             );})}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* LISTA ITEMS */}
       <div className="items-section">
