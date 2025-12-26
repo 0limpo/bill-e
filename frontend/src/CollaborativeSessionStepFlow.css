@@ -1,101 +1,55 @@
-/* CollaborativeSession.css - Diseño Premium con Dark Mode Automático */
+/* CollaborativeSession.css - Dark High-Contrast Premium (Google Home / Fintual) */
 
-/* ===== LIGHT MODE (default) ===== */
+/* ===== DARK MODE FIRST - Variable B Only ===== */
 :root {
-  --primary: #4f46e5;
-  --primary-glow: rgba(79, 70, 229, 0.4);
-  --primary-vibrant: #6366f1;
+  /* Fondos */
+  --bg-main: #000000;           /* Negro absoluto (OLED) */
+  --surface-card: #1C1C1E;      /* Gris oscuro para items */
+  --surface-elevated: #2C2C2E;  /* Para modales o dropdowns */
 
-  --bg-base: #f3f4f6;
-  --bg-gradient-1: #e0e7ff;
-  --bg-gradient-2: #f3f4f6;
-  --bg-blob: #c7d2fe;
+  /* Acentos */
+  --primary: #3b82f6;           /* Azul vibrante (Fintual/iOS) */
+  --primary-glow: rgba(59, 130, 246, 0.25);
+  --primary-dim: rgba(59, 130, 246, 0.15);
+  --success: #34C759;           /* Verde iOS */
+  --success-bg: rgba(52, 199, 89, 0.15);
+  --danger: #FF453A;            /* Rojo iOS */
+  --danger-bg: rgba(255, 69, 58, 0.15);
+  --warning: #FF9F0A;           /* Naranja iOS */
+  --warning-bg: rgba(255, 159, 10, 0.15);
 
-  --card-bg: rgba(255, 255, 255, 0.75);
-  --card-border: rgba(255, 255, 255, 0.8);
-  --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-  --blur-amount: 16px;
+  /* Texto */
+  --text-main: #FFFFFF;         /* Blanco puro */
+  --text-secondary: #98989F;    /* Gris medio para etiquetas */
+  --text-tertiary: #636366;     /* Gris oscuro para placeholders */
 
-  --glass-surface: rgba(255, 255, 255, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.8);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-
-  --text-main: #111827;
-  --text-secondary: #6b7280;
-  --text-tertiary: #9ca3af;
-
-  --success: #10b981;
-  --success-bg: rgba(16, 185, 129, 0.1);
-  --danger: #ef4444;
-  --danger-bg: rgba(239, 68, 68, 0.1);
-  --warning: #f59e0b;
-  --warning-bg: rgba(245, 158, 11, 0.1);
-
-  --radius-lg: 24px;
+  /* Bordes y Estructura */
+  --border-subtle: #2C2C2E;
+  --divider: #38383A;
+  --radius-lg: 20px;
   --radius-md: 16px;
   --radius-sm: 12px;
 
+  /* Legacy aliases for compatibility */
+  --bg-base: var(--bg-main);
+  --card-bg: var(--surface-card);
+  --card-border: var(--border-subtle);
+  --card-shadow: none;
+  --blur-amount: 0;
+  --glass-surface: var(--surface-card);
+  --glass-border: var(--border-subtle);
+  --glass-shadow: none;
+  --input-bg: var(--surface-elevated);
+  --input-border: var(--border-subtle);
+
   --bottom-bar-height: 200px;
-
-  --input-bg: #ffffff;
-  --input-border: #e5e7eb;
-  --divider: rgba(0, 0, 0, 0.08);
 }
 
-/* ===== DARK MODE (OLED Premium) ===== */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --primary: #818cf8;
-    --primary-glow: rgba(129, 140, 248, 0.3);
-    --primary-vibrant: #6366f1;
-
-    --bg-base: #000000;
-    --bg-gradient-1: #000000;
-    --bg-gradient-2: #000000;
-    --bg-blob: transparent;
-
-    --card-bg: #1C1C1E;
-    --card-border: #2C2C2E;
-    --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-    --blur-amount: 0px; /* Sin blur en dark mode para máxima legibilidad */
-
-    --glass-surface: #1C1C1E;
-    --glass-border: #2C2C2E;
-    --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-
-    --text-main: #ffffff;
-    --text-secondary: #a1a1aa;
-    --text-tertiary: #71717a;
-
-    --success: #34d399;
-    --success-bg: rgba(52, 211, 153, 0.15);
-    --danger: #f87171;
-    --danger-bg: rgba(248, 113, 113, 0.15);
-    --warning: #fbbf24;
-    --warning-bg: rgba(251, 191, 36, 0.15);
-
-    --input-bg: #2C2C2E;
-    --input-border: #3C3C3E;
-    --divider: rgba(255, 255, 255, 0.1);
-  }
-}
-
-/* Fondo - respeta dark mode */
+/* Fondo negro sólido - sin gradientes */
 body {
   margin: 0;
-  background-color: var(--bg-base);
-  background-image:
-    radial-gradient(at 0% 0%, var(--bg-blob) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, var(--bg-gradient-1) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, var(--bg-blob) 0px, transparent 50%);
-  background-attachment: fixed;
-  background-size: cover;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background-image: none;
-  }
+  background-color: var(--bg-main);
+  background-image: none;
 }
 
 .collaborative-session * {
@@ -501,23 +455,19 @@ body {
 }
 
 .bill-item {
-  background: var(--glass-surface);
-  backdrop-filter: blur(var(--blur-amount));
-  border: 1px solid var(--glass-border);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 12px 14px 10px 14px;
+  padding: 14px 16px 12px 16px;
   margin-bottom: 10px;
-  box-shadow: var(--glass-shadow);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
 }
 
 .bill-item.selected {
   border-color: var(--primary);
-  background: var(--card-bg);
-  box-shadow: 0 8px 24px var(--primary-glow);
-  transform: translateY(-2px);
+  background: var(--surface-elevated);
 }
 
 /* Edit backdrop - click outside to save */
@@ -527,15 +477,15 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.6);
   z-index: 15;
 }
 
 .bill-item.editing {
   position: relative;
   z-index: 20;
-  background: var(--card-bg);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  background: var(--surface-elevated);
+  border-color: var(--primary);
 }
 
 /* GRID LAYOUT: Qty | Name | Price */
@@ -554,19 +504,18 @@ body {
 
 .item-name {
   font-size: 15px;
-  font-weight: 600;
-  color: var(--text-main);
+  font-weight: 500;
+  color: #EBEBF5; /* Gris claro legible */
   white-space: normal;
   text-align: left;
   line-height: 1.3;
   word-break: break-word;
 }
 
-/* Editable state - subtle underline hint */
+/* Editable state - subtle indicator */
 .item-name.editable,
 .item-price.editable {
   cursor: pointer;
-  border-bottom: 1px dashed transparent;
   transition: all 0.2s;
 }
 
@@ -586,22 +535,22 @@ body {
 
 .item-price {
   font-weight: 700;
-  color: var(--primary);
-  font-size: 15px;
+  color: #FFFFFF; /* Blanco puro para máximo contraste */
+  font-size: 16px;
   white-space: nowrap;
 }
 
 .item-unit-price {
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
 .item-qty-badge {
-  background: rgba(79, 70, 229, 0.1);
+  background: var(--primary-dim);
   color: var(--primary);
-  padding: 4px 8px;
-  border-radius: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 700;
   flex-shrink: 0;
@@ -1054,44 +1003,39 @@ body {
 /* --- BOTTOM SHEET (Interactive Expandable) --- */
 .bottom-sheet {
   position: fixed;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
-  background: var(--card-bg);
-  backdrop-filter: blur(var(--blur-amount));
-  -webkit-backdrop-filter: blur(var(--blur-amount));
-  padding: 12px 20px 20px 20px;
-  border-radius: 24px;
-  box-shadow: var(--card-shadow);
-  border: 1px solid var(--card-border);
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface-card);
+  padding: 16px 20px 24px 20px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-top: 1px solid var(--border-subtle);
   z-index: 100;
-  max-width: 560px;
+  max-width: 600px;
   margin: 0 auto;
-  max-height: 180px;
+  max-height: 200px;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-              padding 0.3s ease,
-              box-shadow 0.3s ease;
+              padding 0.3s ease;
   overflow: hidden;
 }
 
-/* Sheet Handle - Grey pill to indicate draggable/clickable */
+/* Sheet Handle - subtle pill */
 .sheet-handle {
-  width: 40px;
-  height: 5px;
-  background: #d1d5db;
+  width: 36px;
+  height: 4px;
+  background: var(--text-tertiary);
   border-radius: 10px;
-  margin: 0 auto 12px auto;
+  margin: 0 auto 14px auto;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .sheet-handle:hover {
-  background: #9ca3af;
+  background: var(--text-secondary);
 }
 
 .bottom-sheet.expanded .sheet-handle {
   background: var(--primary);
-  opacity: 0.5;
 }
 
 /* Expanded state */
@@ -1755,59 +1699,66 @@ body {
   color: #9ca3af;
 }
 
+/* === BUTTONS - Big Touch Targets === */
 .btn-main {
   width: 100%;
-  background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
+  background: var(--primary);
   color: white;
   border: none;
   padding: 18px;
-  border-radius: 18px;
+  min-height: 56px;
+  border-radius: var(--radius-md);
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 8px 20px var(--primary-glow);
-  transition: transform 0.2s;
+  transition: transform 0.15s, opacity 0.15s;
 }
 
 .btn-main:active {
   transform: scale(0.98);
+  opacity: 0.9;
 }
 
 .btn-main:disabled {
-  background: #cbd5e1;
-  box-shadow: none;
+  background: var(--surface-elevated);
+  color: var(--text-tertiary);
   cursor: not-allowed;
 }
 
 .btn-main.btn-dark {
-  background: linear-gradient(135deg, #111827 0%, #374151 100%);
-  box-shadow: 0 8px 20px rgba(17, 24, 39, 0.3);
+  background: var(--surface-elevated);
+  color: var(--text-main);
 }
 
 .btn-secondary {
-  background: rgba(0,0,0,0.04);
+  background: var(--surface-card);
   color: var(--text-main);
-  border: none;
-  padding: 12px;
-  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  padding: 14px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
   cursor: pointer;
   width: 100%;
   margin-top: 8px;
+  transition: all 0.15s;
+}
+
+.btn-secondary:active {
+  background: var(--surface-elevated);
 }
 
 .btn-danger {
   width: 100%;
   background: transparent;
   color: var(--danger);
-  border: 2px solid var(--danger);
+  border: 1px solid var(--danger);
   padding: 14px;
-  border-radius: 14px;
+  border-radius: var(--radius-sm);
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   margin-top: 12px;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .btn-danger:hover {
@@ -2821,16 +2772,16 @@ body {
    STEP INDICATOR (Host Flow)
    ============================================================================= */
 
+/* === STEP INDICATOR - Clean Minimal Design === */
 .step-indicator {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0;
   padding: 16px 20px;
-  margin: -20px -20px 16px -20px;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  margin: -20px -20px 20px -20px;
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .step {
@@ -2857,25 +2808,24 @@ body {
 }
 
 .step-circle {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--glass-surface);
-  border: 2px solid rgba(0, 0, 0, 0.1);
+  background: var(--surface-card);
+  border: 2px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  color: var(--text-secondary);
-  transition: all 0.3s;
+  color: var(--text-tertiary);
+  transition: all 0.2s;
 }
 
 .step.active .step-circle {
   background: var(--primary);
   border-color: var(--primary);
   color: white;
-  box-shadow: 0 4px 12px var(--primary-glow);
 }
 
 .step.completed .step-circle {
@@ -2885,15 +2835,16 @@ body {
 }
 
 .step-label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .step.active .step-label {
-  color: var(--primary);
+  color: #FFFFFF;
+  font-weight: 700;
 }
 
 .step.completed .step-label {
@@ -2901,12 +2852,12 @@ body {
 }
 
 .step-line {
-  width: 40px;
+  width: 32px;
   height: 2px;
-  background: rgba(0, 0, 0, 0.1);
-  margin: 0 8px;
-  margin-bottom: 20px;
-  transition: background 0.3s;
+  background: var(--border-subtle);
+  margin: 0 6px;
+  margin-bottom: 18px;
+  transition: background 0.2s;
 }
 
 .step-line.completed {
@@ -3465,147 +3416,104 @@ body {
 }
 
 /* =============================================================================
-   DARK MODE SPECIFIC OVERRIDES
+   DARK THEME SPECIFIC STYLES (Always active for Variant B)
    ============================================================================= */
-@media (prefers-color-scheme: dark) {
-  /* Collapsible hover states */
-  .collapsible-header:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-  .collapsible-header:active {
-    background: rgba(255, 255, 255, 0.08);
-  }
 
-  /* Details backgrounds */
-  .finalized-participant-details {
-    background: rgba(255, 255, 255, 0.05);
-  }
-  .finalized-detail-row {
-    border-bottom-color: rgba(255, 255, 255, 0.08);
-  }
-  .finalized-detail-row.subtotal {
-    border-top-color: rgba(255, 255, 255, 0.15);
-  }
+/* Collapsible hover states */
+.collapsible-header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.collapsible-header:active {
+  background: rgba(255, 255, 255, 0.08);
+}
 
-  /* Validation borders */
-  .validation-summary.match {
-    border-left: 4px solid var(--success);
-    background: var(--success-bg);
-  }
-  .validation-summary.mismatch {
-    border-left: 4px solid var(--warning);
-    background: var(--warning-bg);
-  }
-  .validation-warning {
-    background: var(--danger-bg);
-    border-left: 4px solid var(--danger);
-  }
+/* Details backgrounds */
+.finalized-participant-details {
+  background: rgba(255, 255, 255, 0.05);
+}
+.finalized-detail-row {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.finalized-detail-row.subtotal {
+  border-top-color: rgba(255, 255, 255, 0.15);
+}
 
-  /* Step indicator - subtle on dark */
-  .step-circle {
-    background: var(--card-bg);
-    border-color: var(--card-border);
-    color: var(--text-secondary);
-  }
-  .step.active .step-circle {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: white;
-  }
-  .step.completed .step-circle {
-    background: var(--success);
-    border-color: var(--success);
-    color: white;
-  }
-  .step-line {
-    background: var(--card-border);
-  }
-  .step-line.completed {
-    background: var(--success);
-  }
+/* Validation with colored borders */
+.validation-summary.match {
+  border-left: 4px solid var(--success);
+  background: var(--success-bg);
+}
+.validation-summary.mismatch {
+  border-left: 4px solid var(--warning);
+  background: var(--warning-bg);
+}
+.validation-warning {
+  background: var(--danger-bg);
+  border-left: 4px solid var(--danger);
+}
 
-  /* Avatars - vibrant colors on dark background */
-  .participant-chip .avatar,
-  .avatar,
-  .sheet-breakdown-avatar {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  }
+/* Avatars - vibrant on dark */
+.participant-chip .avatar,
+.avatar,
+.sheet-breakdown-avatar {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
 
-  /* Sheet breakdown for Step 3 */
-  .sheet-breakdown {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-  }
-  .sheet-breakdown-header {
-    background: rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid var(--divider);
-  }
-  .sheet-breakdown-item {
-    border-bottom-color: var(--divider);
-  }
-  .sheet-breakdown-item.clickable:hover {
-    background: rgba(255, 255, 255, 0.05);
-  }
-  .sheet-breakdown-total {
-    background: rgba(255, 255, 255, 0.08);
-  }
+/* Sheet breakdown for Step 3 */
+.sheet-breakdown {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.sheet-breakdown-header {
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--divider);
+}
+.sheet-breakdown-item {
+  border-bottom-color: var(--divider);
+}
+.sheet-breakdown-item.clickable:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.sheet-breakdown-total {
+  background: rgba(255, 255, 255, 0.05);
+}
 
-  /* Participant breakdown */
-  .participant-breakdown {
-    background: rgba(255, 255, 255, 0.03);
-    border-color: var(--divider);
-  }
-  .breakdown-row {
-    border-bottom-color: var(--divider);
-  }
+/* Participant breakdown */
+.participant-breakdown {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--divider);
+}
+.breakdown-row {
+  border-bottom-color: var(--divider);
+}
 
-  /* Charge toggle buttons */
-  .charge-toggle-btn {
-    background: var(--card-bg);
-    border-color: var(--card-border);
-    color: var(--text-secondary);
-  }
-  .charge-toggle-btn.active {
-    background: var(--primary);
-    border-color: var(--primary);
-    color: white;
-  }
-  .charge-toggle-btn.discount.active {
-    background: var(--danger);
-    border-color: var(--danger);
-  }
+/* Charge toggle buttons */
+.charge-toggle-btn {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+.charge-toggle-btn.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.charge-toggle-btn.discount.active {
+  background: var(--danger);
+  border-color: var(--danger);
+}
 
-  /* Mode switch */
-  .item-mode-switch,
-  .grupal-switch {
-    background: var(--card-bg);
-    border-color: var(--card-border);
-  }
-  .mode-option.active,
-  .grupal-switch-option.active {
-    background: var(--primary);
-    color: white;
-  }
-
-  /* Share buttons - Step 3 */
-  .share-btn.whatsapp {
-    background: #25D366;
-    color: white;
-  }
-  .share-btn.copy {
-    background: var(--card-bg);
-    border: 1px solid var(--card-border);
-    color: var(--text-main);
-  }
-
-  /* Selection screen avatars grid */
-  .participants-grid .avatar-option {
-    background: var(--card-bg);
-    border-color: var(--card-border);
-  }
-  .participants-grid .avatar-option:hover {
-    background: rgba(255, 255, 255, 0.08);
-  }
+/* Mode switch */
+.item-mode-switch,
+.grupal-switch {
+  background: var(--surface-card);
+  border-color: var(--border-subtle);
+}
+.mode-option.active,
+.grupal-switch-option.active {
+  background: var(--primary);
+  color: white;
 }
 
 /* =============================================================================
