@@ -3223,8 +3223,22 @@ body {
    BOTTOM SHEET STEP VARIANTS
    ============================================================================= */
 
+/* Step 1: Minimal bottom sheet - just button */
 .bottom-sheet.step-1 {
   max-height: none;
+  padding: 16px 20px;
+  background: var(--bg-main);
+  border-top: 1px solid var(--divider);
+}
+
+.step1-minimal-status {
+  text-align: center;
+  padding: 8px 0 16px;
+}
+
+.step1-warning {
+  color: var(--warning);
+  font-size: 13px;
 }
 
 .bottom-sheet.step-2 {

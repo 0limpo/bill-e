@@ -2044,57 +2044,10 @@ const CollaborativeSession = () => {
               </div>
             )}
 
-            {/* Owner Step 1: Compact validation + charges inline */}
-            {isOwner && effectiveStep === 1 && (
-              <div className="step1-compact-content">
-                {/* Compact validation row */}
-                <div className="step1-validation-row">
-                  <div className="step1-metric">
-                    <span className="step1-label">{t('validation.subtotalBill')}</span>
-                    <input
-                      type="number"
-                      className="step1-input"
-                      value={totalBoleta || ''}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value) || 0;
-                        setSession(prev => ({ ...prev, subtotal: val }));
-                      }}
-                    />
-                  </div>
-                  <div className={`step1-metric ${itemsMatch ? 'match' : 'mismatch'}`}>
-                    <span className="step1-label">{t('validation.subtotalItems')}</span>
-                    <span className="step1-value">{fmt(totalItems)}</span>
-                  </div>
-                  <span className={`step1-status ${itemsMatch ? 'ok' : 'warn'}`}>
-                    {itemsMatch ? '✓' : '⚠️'}
-                  </span>
-                </div>
-
-                {/* Compact charges row */}
-                <div className="step1-charges-row">
-                  <button
-                    className="step1-add-charge"
-                    onClick={() => {
-                      setEditingCharge(null);
-                      setShowChargeModal(true);
-                    }}
-                  >
-                    + {t('charges.title')}
-                  </button>
-                  {(session.charges || []).map(charge => (
-                    <div
-                      key={charge.id}
-                      className={`step1-charge-chip ${charge.isDiscount ? 'discount' : ''}`}
-                      onClick={() => {
-                        setEditingCharge(charge);
-                        setShowChargeModal(true);
-                      }}
-                    >
-                      {charge.name}: {charge.isDiscount ? '-' : '+'}
-                      {charge.valueType === 'percent' ? `${charge.value}%` : fmt(charge.value)}
-                    </div>
-                  ))}
-                </div>
+            {/* Owner Step 1: Minimal - just status indicator */}
+            {isOwner && effectiveStep === 1 && !itemsMatch && (
+              <div className="step1-minimal-status">
+                <span className="step1-warning">⚠️ {t('validation.reviewTotals')}</span>
               </div>
             )}
 
