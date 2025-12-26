@@ -894,7 +894,7 @@ const CollaborativeSession = () => {
     });
 
     text += `\n*Total Mesa: ${fmt(grandTotal)}*`;
-    text += `\n\n📱 Ver detalle: https://bill-e.vercel.app/s/${sessionId}`;
+    text += `\n\n📱 Ver detalle: https://bill-e.vercel.app/s/${sessionId}?v=B`;
     text += `\n\n🤖 *¿Quieres dividir tu cuenta fácil?*`;
     text += `\nAgrega a Bill-e: https://wa.me/15551925783`;
 
