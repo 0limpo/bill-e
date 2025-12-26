@@ -1,38 +1,101 @@
-/* CollaborativeSession.css - Diseño Glassmorphism Premium */
+/* CollaborativeSession.css - Diseño Premium con Dark Mode Automático */
+
+/* ===== LIGHT MODE (default) ===== */
 :root {
-  --primary: #4f46e5; /* Indigo más profundo y elegante */
+  --primary: #4f46e5;
   --primary-glow: rgba(79, 70, 229, 0.4);
+  --primary-vibrant: #6366f1;
+
+  --bg-base: #f3f4f6;
   --bg-gradient-1: #e0e7ff;
   --bg-gradient-2: #f3f4f6;
   --bg-blob: #c7d2fe;
 
+  --card-bg: rgba(255, 255, 255, 0.75);
+  --card-border: rgba(255, 255, 255, 0.8);
+  --card-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  --blur-amount: 16px;
+
   --glass-surface: rgba(255, 255, 255, 0.75);
   --glass-border: rgba(255, 255, 255, 0.8);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-  --blur-amount: 16px;
 
   --text-main: #111827;
   --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+
   --success: #10b981;
+  --success-bg: rgba(16, 185, 129, 0.1);
   --danger: #ef4444;
+  --danger-bg: rgba(239, 68, 68, 0.1);
+  --warning: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
 
   --radius-lg: 24px;
   --radius-md: 16px;
   --radius-sm: 12px;
 
   --bottom-bar-height: 200px;
+
+  --input-bg: #ffffff;
+  --input-border: #e5e7eb;
+  --divider: rgba(0, 0, 0, 0.08);
 }
 
-/* Fondo animado sutil */
+/* ===== DARK MODE (OLED Premium) ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary: #818cf8;
+    --primary-glow: rgba(129, 140, 248, 0.3);
+    --primary-vibrant: #6366f1;
+
+    --bg-base: #000000;
+    --bg-gradient-1: #000000;
+    --bg-gradient-2: #000000;
+    --bg-blob: transparent;
+
+    --card-bg: #1C1C1E;
+    --card-border: #2C2C2E;
+    --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --blur-amount: 0px; /* Sin blur en dark mode para máxima legibilidad */
+
+    --glass-surface: #1C1C1E;
+    --glass-border: #2C2C2E;
+    --glass-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+
+    --text-main: #ffffff;
+    --text-secondary: #a1a1aa;
+    --text-tertiary: #71717a;
+
+    --success: #34d399;
+    --success-bg: rgba(52, 211, 153, 0.15);
+    --danger: #f87171;
+    --danger-bg: rgba(248, 113, 113, 0.15);
+    --warning: #fbbf24;
+    --warning-bg: rgba(251, 191, 36, 0.15);
+
+    --input-bg: #2C2C2E;
+    --input-border: #3C3C3E;
+    --divider: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Fondo - respeta dark mode */
 body {
   margin: 0;
-  background-color: #f3f4f6;
+  background-color: var(--bg-base);
   background-image:
     radial-gradient(at 0% 0%, var(--bg-blob) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, #e0e7ff 0px, transparent 50%),
+    radial-gradient(at 100% 0%, var(--bg-gradient-1) 0px, transparent 50%),
     radial-gradient(at 100% 100%, var(--bg-blob) 0px, transparent 50%);
   background-attachment: fixed;
   background-size: cover;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-image: none;
+  }
 }
 
 .collaborative-session * {
@@ -55,17 +118,17 @@ body {
   position: fixed;
   top: 16px;
   right: 16px;
-  background: rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: var(--card-bg);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+  border: 1px solid var(--card-border);
   color: var(--text-secondary);
   padding: 6px 12px;
   border-radius: 16px;
   font-size: 12px;
   font-weight: 600;
   z-index: 50;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  box-shadow: var(--card-shadow);
 }
 
 /* --- SHEET BACKDROP --- */
@@ -452,7 +515,7 @@ body {
 
 .bill-item.selected {
   border-color: var(--primary);
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--card-bg);
   box-shadow: 0 8px 24px var(--primary-glow);
   transform: translateY(-2px);
 }
@@ -464,14 +527,15 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.4);
   z-index: 15;
 }
 
 .bill-item.editing {
   position: relative;
   z-index: 20;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  background: var(--card-bg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 /* GRID LAYOUT: Qty | Name | Price */
@@ -562,12 +626,13 @@ body {
 }
 
 .clean-input {
-  border: 1px solid #ccc;
+  border: 1px solid var(--input-border);
   border-radius: 6px;
   padding: 8px 6px;
   font-size: 14px;
   font-weight: 600;
-  background: white;
+  background: var(--input-bg);
+  color: var(--text-main);
   outline: none;
   box-shadow: none;
   -webkit-appearance: none;
@@ -992,13 +1057,13 @@ body {
   bottom: 16px;
   left: 16px;
   right: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--card-bg);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
   padding: 12px 20px 20px 20px;
   border-radius: 24px;
-  box-shadow: 0 -4px 30px rgba(0,0,0,0.12);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--card-border);
   z-index: 100;
   max-width: 560px;
   margin: 0 auto;
@@ -1886,10 +1951,7 @@ body {
 
 /* --- JOIN SCREEN (Welcome) --- */
 .join-screen {
-  background: #f3f4f6;
-  background-image:
-    radial-gradient(at 10% 10%, #e0e7ff 0px, transparent 50%),
-    radial-gradient(at 90% 90%, #fef3c7 0px, transparent 50%);
+  background: var(--bg-base);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -1898,15 +1960,15 @@ body {
 }
 
 .join-card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(24px);
+  background: var(--card-bg);
+  backdrop-filter: blur(var(--blur-amount));
   padding: 40px 32px;
   border-radius: 32px;
   width: 100%;
   max-width: 400px;
   text-align: center;
-  border: 1px solid white;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
 }
 
 .join-card h1 {
@@ -1924,13 +1986,14 @@ body {
 .join-input {
   width: 100%;
   padding: 16px 20px;
-  border: 2px solid transparent;
-  background: white;
+  border: 2px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text-main);
   border-radius: 16px;
   margin-bottom: 16px;
   font-size: 16px;
   transition: all 0.2s;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  box-shadow: var(--card-shadow);
 }
 
 .join-input:focus {
@@ -2245,13 +2308,14 @@ body {
 }
 
 .modal-content {
-  background: rgba(255,255,255,0.95);
-  backdrop-filter: blur(20px);
+  background: var(--card-bg);
+  backdrop-filter: blur(var(--blur-amount));
   padding: 28px;
   border-radius: var(--radius-lg);
   width: 90%;
   max-width: 350px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--card-border);
 }
 
 .modal-content h3 {
@@ -3398,4 +3462,226 @@ body {
   font-weight: 700;
   font-size: 14px;
   color: var(--primary);
+}
+
+/* =============================================================================
+   DARK MODE SPECIFIC OVERRIDES
+   ============================================================================= */
+@media (prefers-color-scheme: dark) {
+  /* Collapsible hover states */
+  .collapsible-header:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .collapsible-header:active {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Details backgrounds */
+  .finalized-participant-details {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .finalized-detail-row {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
+  .finalized-detail-row.subtotal {
+    border-top-color: rgba(255, 255, 255, 0.15);
+  }
+
+  /* Validation borders */
+  .validation-summary.match {
+    border-left: 4px solid var(--success);
+    background: var(--success-bg);
+  }
+  .validation-summary.mismatch {
+    border-left: 4px solid var(--warning);
+    background: var(--warning-bg);
+  }
+  .validation-warning {
+    background: var(--danger-bg);
+    border-left: 4px solid var(--danger);
+  }
+
+  /* Step indicator - subtle on dark */
+  .step-circle {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-secondary);
+  }
+  .step.active .step-circle {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+  }
+  .step.completed .step-circle {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+  }
+  .step-line {
+    background: var(--card-border);
+  }
+  .step-line.completed {
+    background: var(--success);
+  }
+
+  /* Avatars - vibrant colors on dark background */
+  .participant-chip .avatar,
+  .avatar,
+  .sheet-breakdown-avatar {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Sheet breakdown for Step 3 */
+  .sheet-breakdown {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+  }
+  .sheet-breakdown-header {
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--divider);
+  }
+  .sheet-breakdown-item {
+    border-bottom-color: var(--divider);
+  }
+  .sheet-breakdown-item.clickable:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .sheet-breakdown-total {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  /* Participant breakdown */
+  .participant-breakdown {
+    background: rgba(255, 255, 255, 0.03);
+    border-color: var(--divider);
+  }
+  .breakdown-row {
+    border-bottom-color: var(--divider);
+  }
+
+  /* Charge toggle buttons */
+  .charge-toggle-btn {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-secondary);
+  }
+  .charge-toggle-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+  }
+  .charge-toggle-btn.discount.active {
+    background: var(--danger);
+    border-color: var(--danger);
+  }
+
+  /* Mode switch */
+  .item-mode-switch,
+  .grupal-switch {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+  }
+  .mode-option.active,
+  .grupal-switch-option.active {
+    background: var(--primary);
+    color: white;
+  }
+
+  /* Share buttons - Step 3 */
+  .share-btn.whatsapp {
+    background: #25D366;
+    color: white;
+  }
+  .share-btn.copy {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    color: var(--text-main);
+  }
+
+  /* Selection screen avatars grid */
+  .participants-grid .avatar-option {
+    background: var(--card-bg);
+    border-color: var(--card-border);
+  }
+  .participants-grid .avatar-option:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* =============================================================================
+   STEP 3: SHARE - Premium Breakdown Style (Fintual inspired)
+   ============================================================================= */
+.step3-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.share-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.share-btn {
+  flex: 1;
+  padding: 16px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.share-btn:active {
+  transform: scale(0.98);
+}
+
+.share-btn.whatsapp {
+  background: #25D366;
+  color: white;
+}
+
+.share-btn.copy {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--text-main);
+}
+
+/* Big blue button for primary action - Fintual style */
+.btn-share-primary {
+  width: 100%;
+  padding: 20px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 24px var(--primary-glow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-share-primary:active {
+  transform: scale(0.98);
+}
+
+.btn-reopen {
+  width: 100%;
+  padding: 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--divider);
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-reopen:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger);
+  color: var(--danger);
 }
