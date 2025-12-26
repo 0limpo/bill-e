@@ -51,7 +51,9 @@
     "subtotalAssigned": "Assigned Subtotal",
     "itemsSum": "Items Sum",
     "missingToAssign": "{{amount}} left to assign",
-    "overAssigned": "Over by {{amount}}"
+    "overAssigned": "Over by {{amount}}",
+    "overItems": "Items exceed by {{amount}}",
+    "missingItems": "Missing {{amount}} in items"
   },
   "tip": {
     "title": "Tip",

@@ -3638,3 +3638,195 @@ body {
 .bill-item:nth-child(4) { animation-delay: 0.14s; }
 .bill-item:nth-child(5) { animation-delay: 0.17s; }
 .bill-item:nth-child(n+6) { animation-delay: 0.2s; }
+
+/* =============================================================================
+   STEP 1: RECEIPT-STYLE MINIMALIST DESIGN
+   ============================================================================= */
+
+.step-review-receipt {
+  padding: 0;
+}
+
+/* Header: Total flotante grande */
+.receipt-header {
+  text-align: center;
+  padding: 24px 0 32px;
+}
+
+.receipt-total-label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+
+.receipt-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.receipt-total-value {
+  font-size: 42px;
+  font-weight: 200;
+  color: var(--text-main);
+  letter-spacing: -1px;
+}
+
+.receipt-check {
+  font-size: 24px;
+  color: var(--success);
+}
+
+.receipt-diff-warning {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/* Items lista estilo recibo */
+.receipt-items {
+  border-top: 1px solid var(--divider);
+}
+
+/* BillItem en modo recibo - sin tarjeta */
+.receipt-items .bill-item {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--divider) !important;
+  border-radius: 0 !important;
+  padding: 14px 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+}
+
+.receipt-items .bill-item:last-of-type {
+  border-bottom: none !important;
+}
+
+/* Contenido del item en modo recibo */
+.receipt-items .item-main-row {
+  padding: 0;
+}
+
+.receipt-items .item-qty {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  min-width: 28px;
+}
+
+.receipt-items .item-name {
+  color: var(--text-main);
+  font-weight: 400;
+}
+
+.receipt-items .item-price {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+/* Botón agregar item - sutil */
+.receipt-add-item {
+  width: 100%;
+  padding: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s;
+  text-align: left;
+}
+
+.receipt-add-item:hover {
+  color: var(--primary);
+}
+
+/* Divisor */
+.receipt-divider {
+  height: 1px;
+  background: var(--divider);
+  margin: 8px 0;
+}
+
+.receipt-divider.thick {
+  height: 2px;
+  background: var(--text-tertiary);
+  margin: 16px 0;
+}
+
+/* Subtotales */
+.receipt-subtotals {
+  padding: 4px 0;
+}
+
+.receipt-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Cargos */
+.receipt-charges {
+  padding: 4px 0;
+}
+
+.receipt-charge {
+  cursor: pointer;
+  transition: background 0.2s;
+  margin: 0 -16px;
+  padding: 8px 16px !important;
+  border-radius: 8px;
+}
+
+.receipt-charge:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.receipt-charge-name {
+  color: var(--text-secondary);
+}
+
+.receipt-charge-value {
+  color: var(--success);
+  font-weight: 500;
+}
+
+.receipt-charge.discount .receipt-charge-value {
+  color: var(--danger);
+}
+
+/* Botón agregar cargo - sutil */
+.receipt-add-charge {
+  width: 100%;
+  padding: 12px 0;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.2s;
+  text-align: left;
+}
+
+.receipt-add-charge:hover {
+  color: var(--primary);
+}
+
+/* Total final */
+.receipt-final-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+}

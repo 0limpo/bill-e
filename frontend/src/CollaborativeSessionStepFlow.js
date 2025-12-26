@@ -317,10 +317,6 @@ const CollaborativeSession = () => {
   // Host step flow: 1 = verify receipt, 2 = assign consumptions, 3 = finalized
   const [hostStep, setHostStep] = useState(1);
 
-  // Step 1: Collapsible sections state
-  const [step1ItemsExpanded, setStep1ItemsExpanded] = useState(true);
-  const [step1ChargesExpanded, setStep1ChargesExpanded] = useState(true);
-
   // Saved assignments per mode (to restore when switching back)
   // Structure: { [itemId]: { individual: {...}, grupal: {...} } }
   // Using useRef for immediate updates (not dependent on React render cycle)
@@ -1619,13 +1615,10 @@ const CollaborativeSession = () => {
             session={session}
             currentParticipant={currentParticipant}
             totalItems={totalItems}
+            totalBoleta={totalBoleta}
             totalChargesAmount={totalChargesAmount}
             itemsMatch={itemsMatch}
             fmt={fmt}
-            step1ItemsExpanded={step1ItemsExpanded}
-            setStep1ItemsExpanded={setStep1ItemsExpanded}
-            step1ChargesExpanded={step1ChargesExpanded}
-            setStep1ChargesExpanded={setStep1ChargesExpanded}
             expandedItems={expandedItems}
             setExpandedItems={setExpandedItems}
             perUnitModeItems={perUnitModeItems}

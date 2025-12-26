@@ -51,7 +51,9 @@
     "subtotalAssigned": "Subtotal Asignado",
     "itemsSum": "Suma Items",
     "missingToAssign": "Faltan {{amount}} por asignar",
-    "overAssigned": "Sobrepasado por {{amount}}"
+    "overAssigned": "Sobrepasado por {{amount}}",
+    "overItems": "Items exceden por {{amount}}",
+    "missingItems": "Faltan {{amount}} en items"
   },
   "tip": {
     "title": "Propina",
