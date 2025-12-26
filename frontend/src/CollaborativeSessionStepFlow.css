@@ -3643,6 +3643,16 @@ body {
    STEP 1: RECEIPT-STYLE MINIMALIST DESIGN
    ============================================================================= */
 
+/* Remove all card styling from Step 1 containers */
+.host-step-1 .items-section,
+.host-step-1 .items-section > *,
+.step-review-receipt {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
 .step-review-receipt {
   padding: 0;
 }
@@ -3651,6 +3661,7 @@ body {
 .receipt-header {
   text-align: center;
   padding: 24px 0 32px;
+  background: transparent;
 }
 
 .receipt-total-label {
@@ -3691,10 +3702,12 @@ body {
 /* Items lista estilo recibo */
 .receipt-items {
   border-top: 1px solid var(--divider);
+  background: transparent;
 }
 
 /* BillItem en modo recibo - sin tarjeta */
-.receipt-items .bill-item {
+.receipt-items .bill-item,
+.step-review-receipt .bill-item {
   background: transparent !important;
   border: none !important;
   border-bottom: 1px solid var(--divider) !important;
@@ -3704,29 +3717,58 @@ body {
   box-shadow: none !important;
 }
 
-.receipt-items .bill-item:last-of-type {
+.receipt-items .bill-item:last-of-type,
+.step-review-receipt .bill-item:last-of-type {
   border-bottom: none !important;
 }
 
-/* Contenido del item en modo recibo */
-.receipt-items .item-main-row {
+/* Item header en modo recibo - layout horizontal */
+.receipt-items .item-header,
+.step-review-receipt .item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 0;
 }
 
-.receipt-items .item-qty {
-  color: var(--text-tertiary);
-  font-size: 13px;
-  min-width: 28px;
-}
-
-.receipt-items .item-name {
-  color: var(--text-main);
-  font-weight: 400;
-}
-
-.receipt-items .item-price {
-  color: var(--text-main);
+/* Cantidad - badge sutil */
+.receipt-items .item-qty-badge,
+.step-review-receipt .item-qty-badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  font-size: 12px;
   font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  min-width: auto;
+}
+
+/* Nombre del item - VISIBLE */
+.receipt-items .item-name,
+.step-review-receipt .item-name {
+  flex: 1;
+  color: var(--text-main) !important;
+  font-weight: 400;
+  font-size: 15px;
+}
+
+/* Precio - alineado derecha */
+.receipt-items .item-price-col,
+.step-review-receipt .item-price-col {
+  text-align: right;
+}
+
+.receipt-items .item-price,
+.step-review-receipt .item-price {
+  color: var(--text-main) !important;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.receipt-items .item-unit-price,
+.step-review-receipt .item-unit-price {
+  color: var(--text-tertiary);
+  font-size: 12px;
 }
 
 /* Botón agregar item - sutil */
