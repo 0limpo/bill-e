@@ -14,7 +14,7 @@ import {
   getInitials,
   calculateParticipantTotal as calcParticipantTotal
 } from './utils/billEngine';
-import { Avatar, StepIndicator, ChargeModal } from './components/Wizard';
+import { Avatar, StepIndicator, ChargeModal, BillItem, StepReview, StepShare } from './components/Wizard';
 
 const API_URL = 'https://bill-e-backend-lfwp.onrender.com';
 
@@ -153,38 +153,6 @@ const SelectionScreen = ({ participants, onSelectParticipant, onCreateNew, isLoa
   );
 };
 
-// Edit inputs with local state to prevent sticky "0" behavior
-const EditableInput = ({ type, initialValue, onSave, className, defaultValue = 0 }) => {
-  const [localVal, setLocalVal] = useState(initialValue?.toString() || '');
-
-  const handleBlur = () => {
-    let parsed;
-    if (type === 'number') {
-      parsed = parseFloat(localVal);
-      if (isNaN(parsed) || parsed < 0) parsed = defaultValue;
-    } else {
-      parsed = localVal.trim() || defaultValue;
-    }
-    onSave(parsed);
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' || e.key === 'Escape') {
-      e.target.blur();
-    }
-  };
-
-  return (
-    <input
-      type={type === 'number' ? 'number' : 'text'}
-      value={localVal}
-      className={className}
-      onChange={(e) => setLocalVal(e.target.value)}
-      onBlur={handleBlur}
-      onKeyDown={handleKeyDown}
-    />
-  );
-};
 // Validation Dashboard Component (Host Only)
 const ValidationDashboard = ({ session, onUpdateSubtotal, decimalPlaces = 0, numberFormat = null }) => {
   const { t } = useTranslation();
@@ -294,322 +262,6 @@ const ValidationDashboard = ({ session, onUpdateSubtotal, decimalPlaces = 0, num
         </div>
       )}
     </div>
-  );
-};
-
-const BillItem = ({
-  item,
-  assignments,
-  participants,
-  currentParticipant,
-  isOwner,
-  onAssign,
-  onGroupAssign,
-  onUnitAssign,
-  onClearUnitsAndAssignAll,
-  onClearParent,
-  onToggleMode,
-  itemMode,
-  isFinalized,
-  onEditItem,
-  onToggleEdit,
-  onDeleteItem,
-  isExpanded,
-  onToggleExpand,
-  isPerUnitMode,
-  onSetPerUnitMode,
-  isSyncing,
-  decimalPlaces = 0,
-  numberFormat = null,
-  hideAssignments = false
-}) => {
-  const { t } = useTranslation();
-  const fmt = (amount) => formatCurrency(amount, decimalPlaces, numberFormat);
-  const itemId = item.id || item.name;
-  const itemAssignments = assignments[itemId] || [];
-  const isAssignedToMe = itemAssignments.some(a => a.participant_id === currentParticipant?.id);
-
-  // Derive perUnitMode from synced assignments (detects unit assignments from other users)
-  // Check for actual assignments (non-empty arrays), not just existing keys
-  const hasUnitAssignments = Object.entries(assignments).some(([key, assigns]) =>
-    key.startsWith(`${itemId}_unit_`) && assigns && assigns.length > 0
-  );
-  // Use derived state from assignments OR local state for immediate UI feedback
-  const effectivePerUnitMode = hasUnitAssignments || isPerUnitMode;
-
-  const totalAssigned = itemAssignments.reduce((sum, a) => sum + (a.quantity || 1), 0);
-  const remaining = Math.max(0, (item.quantity || 1) - totalAssigned);
-
-  const isEditing = item.isEditing;
-  const qty = item.quantity || 1;
-  const unitPrice = item.price;
-  const totalPrice = unitPrice * qty;
-
-  const canEditItem = isOwner && !isFinalized;
-
-  return (
-    <>
-      {/* Edit backdrop - click outside to save */}
-      {isEditing && (
-        <div className="edit-backdrop" onClick={() => onToggleEdit(itemId)} />
-      )}
-
-      <div className={`bill-item ${isAssignedToMe ? 'selected' : ''} ${isFinalized ? 'finalized' : ''} ${isEditing ? 'editing' : ''}`}>
-        {/* GRID LAYOUT: Qty | Name | Price */}
-        <div className="item-header" onClick={() => canEditItem && !isEditing && onToggleEdit(itemId)}>
-          {isEditing ? (
-            // EDIT MODE - Clean CSS Grid layout
-            <div className="item-edit-grid" onClick={(e) => e.stopPropagation()}>
-              {/* Row 1: Labels */}
-              <label className="edit-label">{t('items.qty')}</label>
-              <label className="edit-label">{t('items.itemName')}</label>
-              <label className="edit-label">{t('items.unitPrice')}</label>
-              <span></span>
-
-              {/* Row 2: Inputs */}
-              <EditableInput
-                type="number"
-                initialValue={qty}
-                className="clean-input qty"
-                defaultValue={1}
-                onSave={(val) => { onEditItem(itemId, { quantity: Math.max(1, Math.round(val)) }); }}
-              />
-              <EditableInput
-                type="text"
-                initialValue={item.name}
-                className="clean-input name"
-                defaultValue="Item"
-                onSave={(val) => { onEditItem(itemId, { name: val }); }}
-              />
-              <EditableInput
-                type="number"
-                initialValue={unitPrice}
-                className="clean-input price"
-                defaultValue={0}
-                onSave={(val) => { onEditItem(itemId, { price: val }); }}
-              />
-              <button
-                className="btn-trash"
-                onClick={(e) => { e.stopPropagation(); onDeleteItem(itemId); }}
-                title={t('items.deleteItem')}
-              >
-                🗑️
-              </button>
-
-              {/* Row 3: Total helper */}
-              <div className="edit-total-row">
-                {t('items.total')}: <strong>{fmt(totalPrice)}</strong>
-              </div>
-            </div>
-          ) : (
-            // VIEW MODE - Grid: Qty | Name | Price
-            <>
-              <span className="item-qty-badge">{qty}x</span>
-              <span className={`item-name ${canEditItem ? 'editable' : ''}`}>{item.name}</span>
-              <div className="item-price-col">
-                <span className={`item-price ${canEditItem ? 'editable' : ''}`}>{fmt(totalPrice)}</span>
-                {qty > 1 && (
-                  <span className="item-unit-price">{fmt(unitPrice)} {t('items.perUnitSuffix')}</span>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Mode switch & controls - visible for all items, any participant can toggle */}
-        {/* Hidden in verify step (Step 1) for host */}
-        {!isEditing && !isFinalized && !hideAssignments && (
-           <div className="item-mode-switch-container">
-             <div className={`item-mode-switch ${isSyncing ? 'syncing' : ''}`}>
-               <div
-                  className={`mode-option ${itemMode !== 'grupal' ? 'active' : ''}`}
-                  onClick={() => !isSyncing && onToggleMode(itemId)}
-               >
-                 {t('items.individual')}
-               </div>
-               <div
-                  className={`mode-option ${itemMode === 'grupal' ? 'active' : ''}`}
-                  onClick={() => !isSyncing && onToggleMode(itemId)}
-               >
-                 {t('items.grupal')}
-               </div>
-             </div>
-             {isSyncing && <span className="sync-spinner" />}
-           </div>
-        )}
-
-        {/* Grupal options for items with qty > 1 */}
-        {/* Hidden in verify step (Step 1) for host */}
-        {!isEditing && item.quantity > 1 && itemMode === 'grupal' && !isFinalized && !hideAssignments && (() => {
-          // Check if all participants are assigned to parent item
-          const allAssignedToParent = participants.length > 0 &&
-            participants.every(p => itemAssignments.some(a => a.participant_id === p.id));
-
-          return (
-            <div className="grupal-options">
-              {/* Switch: Entre todos / Por unidad */}
-              <div className={`grupal-switch ${isSyncing ? 'syncing' : ''}`}>
-                <div
-                  className={`grupal-switch-option ${!effectivePerUnitMode ? 'active' : ''}`}
-                  onClick={() => {
-                    if (isSyncing) return;
-                    if (effectivePerUnitMode) {
-                      // Switching from "Por unidad" to "Entre todos"
-                      // Clear unit assignments and assign all to parent
-                      onClearUnitsAndAssignAll(itemId, qty);
-                      onSetPerUnitMode(itemId, false);
-                      // Also collapse if expanded
-                      if (isExpanded) {
-                        onToggleExpand(itemId);
-                      }
-                    } else if (!allAssignedToParent) {
-                      // Already in "Entre todos" but not all assigned - assign all
-                      onGroupAssign(itemId, '__ALL__', true);
-                    }
-                  }}
-                >
-                  {!effectivePerUnitMode && allAssignedToParent ? '✓ ' : ''}👥 {t('items.allTogether')}
-                </div>
-                <div
-                  className={`grupal-switch-option ${effectivePerUnitMode ? 'active' : ''}`}
-                  onClick={() => {
-                    if (isSyncing) return;
-                    if (!effectivePerUnitMode) {
-                      // Switching to "Por unidad" mode
-                      onSetPerUnitMode(itemId, true);
-                      // Clear parent assignments when switching to per-unit mode
-                      onClearParent(itemId);
-                      // Expand to show units
-                      if (!isExpanded) {
-                        onToggleExpand(itemId);
-                      }
-                    } else {
-                      // Already in per-unit mode - just toggle expand/collapse
-                      onToggleExpand(itemId);
-                    }
-                  }}
-                >
-                  {t('items.perUnit')} {isExpanded ? '▲' : '▼'}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* EXPANDED TREE VIEW - Per-unit independent assignments */}
-        {/* Hidden in verify step (Step 1) for host */}
-        {!hideAssignments && isExpanded && itemMode === 'grupal' && qty > 1 ? (
-          <div className="expanded-tree">
-            {Array.from({ length: qty }, (_, unitIndex) => {
-              const unitNum = unitIndex + 1;
-              const unitId = `${itemId}_unit_${unitIndex}`;
-              // Get assignments for THIS specific unit (independent per unit)
-              const unitAssignments = assignments[unitId] || [];
-
-              return (
-                <div key={unitIndex} className="tree-unit">
-                  <div className="tree-connector"></div>
-                  <div className="tree-unit-content">
-                    <span className="tree-unit-label">{t('items.unit', { num: unitNum })}</span>
-                    <div className="tree-unit-assignees">
-                      {participants.map(p => {
-                        // Check THIS unit's assignment (not parent item)
-                        const unitAssignment = unitAssignments.find(a => a.participant_id === p.id);
-                        const isAssigned = unitAssignment && unitAssignment.quantity > 0;
-                        // Any authenticated participant can assign items to anyone
-                        const canAssign = !isFinalized && currentParticipant;
-
-                        return (
-                          <div
-                            key={p.id}
-                            className={`tree-assignee ${isAssigned ? 'assigned' : 'dimmed'}`}
-                            onClick={() => canAssign && onUnitAssign(itemId, unitIndex, p.id, !isAssigned)}
-                            style={{ cursor: canAssign ? 'pointer' : 'default' }}
-                          >
-                            <Avatar name={p.name} size="small" />
-                            {isAssigned && <span className="check-badge small">✓</span>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : !hideAssignments && itemMode === 'grupal' && qty > 1 ? (
-          /* COLLAPSED GRUPAL VIEW - "Entre todos" mode: no extra UI needed, switch handles it */
-          null
-        ) : !hideAssignments ? (
-          /* HORIZONTAL SCROLL LIST - Normal view (individual mode or grupal qty=1) */
-          <div className="consumer-scroll-list">
-            {participants.map(p => {
-              const assignment = itemAssignments.find(a => a.participant_id === p.id);
-              const pQty = assignment?.quantity || 0;
-              const isAssigned = pQty > 0;
-              // Any authenticated participant can assign items to anyone
-              const canAssign = !isFinalized && currentParticipant;
-              const displayName = p.id === currentParticipant?.id ? t('header.you') : p.name;
-
-              return (
-                <div
-                  key={p.id}
-                  className={`consumer-item-wrapper ${isAssigned ? 'assigned' : 'dimmed'}`}
-                >
-                  {itemMode === 'grupal' ? (
-                    // MODO GRUPAL (qty=1): Simple toggle
-                    <div
-                      className="avatar-wrapper"
-                      onClick={() => canAssign && onGroupAssign(itemId, p.id, !isAssigned)}
-                      style={{ position: 'relative', cursor: canAssign ? 'pointer' : 'default' }}
-                    >
-                      <Avatar name={p.name} />
-                      {isAssigned && <span className="check-badge">✓</span>}
-                    </div>
-                  ) : (
-                    // MODO INDIVIDUAL: Specific quantities per person
-                    <div
-                      className="avatar-wrapper"
-                      onClick={() => canAssign && !isAssigned && remaining > 0 && onAssign(itemId, p.id, 1, true)}
-                      style={{ position: 'relative', cursor: canAssign && !isAssigned && remaining > 0 ? 'pointer' : 'default' }}
-                    >
-                      <Avatar name={p.name} />
-                      {isAssigned && <span className="check-badge">✓</span>}
-                    </div>
-                  )}
-                  <span className="consumer-name">{displayName}</span>
-
-                  {/* Stepper only in Individual mode when assigned */}
-                  {itemMode !== 'grupal' && isAssigned && (
-                    <div className="stepper-compact">
-                      <button
-                        className="stepper-btn"
-                        disabled={!canAssign || pQty <= 0}
-                        onClick={() => onAssign(itemId, p.id, Math.max(0, Math.round(pQty) - 1), Math.round(pQty) - 1 > 0)}
-                      >−</button>
-                      <span className="stepper-val">{Math.round(pQty)}</span>
-                      <button
-                        className="stepper-btn"
-                        disabled={!canAssign || remaining <= 0}
-                        onClick={() => onAssign(itemId, p.id, Math.round(pQty) + 1, true)}
-                      >+</button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : null}
-
-        {/* Warning for Individual mode when items not fully assigned */}
-        {/* Hidden in verify step (Step 1) for host */}
-        {!hideAssignments && itemMode !== 'grupal' && remaining > 0 && totalAssigned > 0 && (
-          <div className="grupal-warning">
-            ⚠️ {t('validation.missingToAssign', { amount: remaining })}
-          </div>
-        )}
-      </div>
-    </>
   );
 };
 
@@ -1960,132 +1612,37 @@ const CollaborativeSession = () => {
 
       {/* LISTA ITEMS */}
       <div className="items-section">
-        {/* Step 1: Two collapsible sections */}
+        {/* Step 1: Verification (extracted component) */}
         {isOwner && effectiveStep === 1 && (
-          <>
-            <div className="step-header">
-              <h3>{t('steps.verifyTitle')}</h3>
-              <p className="step-subtitle">{t('steps.verifySubtitle')}</p>
-            </div>
-
-            {/* Collapsible: Items */}
-            <div className="collapsible-section">
-              <div
-                className="collapsible-header"
-                onClick={() => setStep1ItemsExpanded(!step1ItemsExpanded)}
-              >
-                <span className="collapsible-title">
-                  {t('items.consumption')} ({session.items.length})
-                </span>
-                <div className="collapsible-right">
-                  <span className={`collapsible-total ${itemsMatch ? 'match' : 'mismatch'}`}>
-                    {fmt(totalItems)}
-                  </span>
-                  <span className="collapsible-arrow">{step1ItemsExpanded ? '▼' : '▶'}</span>
-                </div>
-              </div>
-              {step1ItemsExpanded && (
-                <div className="collapsible-content">
-                  {session.items.map((item, idx) => {
-                    const itemId = item.id || item.name;
-                    return (
-                      <div key={itemId || idx} className="item-wrapper">
-                        <BillItem
-                          item={item}
-                          assignments={session.assignments}
-                          participants={session.participants}
-                          currentParticipant={currentParticipant}
-                          isOwner={isOwner}
-                          onAssign={handleAssign}
-                          onGroupAssign={handleGroupAssign}
-                          onUnitAssign={handleUnitAssign}
-                          onClearUnitsAndAssignAll={handleClearUnitsAndAssignAll}
-                          onClearParent={handleClearParent}
-                          itemMode={item.mode || 'individual'}
-                          onToggleMode={toggleItemMode}
-                          isFinalized={session.status === 'finalized'}
-                          onEditItem={handleItemUpdate}
-                          onToggleEdit={handleToggleItemEdit}
-                          onDeleteItem={handleDeleteItem}
-                          isExpanded={expandedItems[itemId] || false}
-                          onToggleExpand={(id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }))}
-                          isPerUnitMode={perUnitModeItems[itemId] || false}
-                          onSetPerUnitMode={(id, value) => setPerUnitModeItems(prev => ({ ...prev, [id]: value }))}
-                          isSyncing={syncingItems.has(itemId)}
-                          decimalPlaces={session?.decimal_places || 0}
-                          numberFormat={session?.number_format}
-                          hideAssignments={true}
-                        />
-                      </div>
-                    );
-                  })}
-                  <button className="add-item-btn" onClick={() => setShowAddItemModal(true)}>
-                    {t('items.addManualItem')}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Collapsible: Charges & Discounts */}
-            <div className="collapsible-section">
-              <div
-                className="collapsible-header"
-                onClick={() => setStep1ChargesExpanded(!step1ChargesExpanded)}
-              >
-                <span className="collapsible-title">
-                  {t('charges.title')} ({(session.charges || []).length})
-                </span>
-                <div className="collapsible-right">
-                  <span className="collapsible-total">
-                    {fmt(totalChargesAmount)}
-                  </span>
-                  <span className="collapsible-arrow">{step1ChargesExpanded ? '▼' : '▶'}</span>
-                </div>
-              </div>
-              {step1ChargesExpanded && (
-                <div className="collapsible-content">
-                  {(session.charges || []).length === 0 ? (
-                    <p className="empty-message">{t('charges.title')}: 0</p>
-                  ) : (
-                    <div className="charges-list-step1">
-                      {(session.charges || []).map(charge => (
-                        <div
-                          key={charge.id}
-                          className={`charge-item ${charge.isDiscount ? 'discount' : ''}`}
-                          onClick={() => {
-                            setEditingCharge(charge);
-                            setShowChargeModal(true);
-                          }}
-                        >
-                          <span className="charge-name">{charge.name}</span>
-                          <span className="charge-value">
-                            {charge.isDiscount ? '-' : '+'}
-                            {charge.valueType === 'percent' ? `${charge.value}%` : fmt(charge.value)}
-                          </span>
-                          <span className="charge-dist">
-                            {charge.distribution === 'fixed_per_person'
-                              ? t('charges.fixedPerPersonShort')
-                              : charge.distribution === 'per_person'
-                                ? t('charges.perPersonShort')
-                                : t('charges.proportionalShort')}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <button
-                    className="add-charge-btn-full"
-                    onClick={() => {
-                      setEditingCharge(null);
-                      setShowChargeModal(true);
-                    }}
-                  >
-                    + {t('charges.addCharge')}
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
+          <StepReview
+            session={session}
+            currentParticipant={currentParticipant}
+            totalItems={totalItems}
+            totalChargesAmount={totalChargesAmount}
+            itemsMatch={itemsMatch}
+            fmt={fmt}
+            step1ItemsExpanded={step1ItemsExpanded}
+            setStep1ItemsExpanded={setStep1ItemsExpanded}
+            step1ChargesExpanded={step1ChargesExpanded}
+            setStep1ChargesExpanded={setStep1ChargesExpanded}
+            expandedItems={expandedItems}
+            setExpandedItems={setExpandedItems}
+            perUnitModeItems={perUnitModeItems}
+            setPerUnitModeItems={setPerUnitModeItems}
+            syncingItems={syncingItems}
+            handleAssign={handleAssign}
+            handleGroupAssign={handleGroupAssign}
+            handleUnitAssign={handleUnitAssign}
+            handleClearUnitsAndAssignAll={handleClearUnitsAndAssignAll}
+            handleClearParent={handleClearParent}
+            toggleItemMode={toggleItemMode}
+            handleItemUpdate={handleItemUpdate}
+            handleToggleItemEdit={handleToggleItemEdit}
+            handleDeleteItem={handleDeleteItem}
+            setShowAddItemModal={setShowAddItemModal}
+            setShowChargeModal={setShowChargeModal}
+            setEditingCharge={setEditingCharge}
+          />
         )}
 
         {/* Step 2: Title for assignment */}
@@ -2135,129 +1692,17 @@ const CollaborativeSession = () => {
         })}
       </div>
 
-      {/* ============ STEP 3: FINALIZED - Show breakdown in main area ============ */}
+      {/* Step 3: Final breakdown (extracted component) */}
       {isOwner && effectiveStep === 3 && (
-        <div className="finalized-breakdown-section">
-          <div className="step-header">
-            <h3>🎉 {t('finalized.billClosed')}</h3>
-          </div>
-
-          <div className="sheet-breakdown">
-            {/* Column Headers */}
-            <div className="sheet-breakdown-header">
-              <span className="header-name">{t('items.name')}</span>
-              <span className="header-consumo">{t('totals.subtotal')}</span>
-              <span className="header-total">{t('items.total')}</span>
-            </div>
-
-            {session.participants.map(p => {
-              const { subtotal, total, chargesTotal, charges: pCharges } = calculateParticipantTotal(p.id);
-              const isExpanded = expandedParticipants[p.id];
-
-              // Calculate items for this participant when expanded
-              const getParticipantItems = () => {
-                const items = [];
-                const itemsWithUnitAssignments = new Set();
-
-                Object.keys(session.assignments).forEach(key => {
-                  const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
-                  if (unitMatch && session.assignments[key]?.length > 0) {
-                    itemsWithUnitAssignments.add(unitMatch[1]);
-                  }
-                });
-
-                Object.entries(session.assignments).forEach(([assignmentKey, assigns]) => {
-                  const pAssign = assigns.find(a => a.participant_id === p.id);
-                  if (pAssign) {
-                    const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
-                    let item, itemName, isUnitAssignment = false;
-
-                    if (unitMatch) {
-                      isUnitAssignment = true;
-                      const baseItemId = unitMatch[1];
-                      const unitNum = parseInt(unitMatch[2]) + 1;
-                      item = session.items.find(i => (i.id || i.name) === baseItemId);
-                      itemName = item ? `${item.name} (U${unitNum})` : `Unidad ${unitNum}`;
-                    } else {
-                      if (itemsWithUnitAssignments.has(assignmentKey)) return;
-                      item = session.items.find(i => (i.id || i.name) === assignmentKey);
-                      itemName = item?.name || assignmentKey;
-                    }
-
-                    if (item) {
-                      const amount = item.price * (pAssign.quantity || 0);
-                      const splitCount = assigns.length;
-                      const itemMode = item.mode || 'individual';
-                      const itemQty = itemMode === 'individual'
-                        ? Math.round(pAssign.quantity || 1)
-                        : (isUnitAssignment ? 1 : (item.quantity || 1));
-                      items.push({ name: itemName, amount, splitCount, itemQty, isUnitAssignment, itemMode });
-                    }
-                  }
-                });
-                return items;
-              };
-
-              return (
-                <div key={p.id} className="sheet-breakdown-item-wrapper">
-                  <div
-                    className={`sheet-breakdown-item clickable ${isExpanded ? 'expanded' : ''}`}
-                    onClick={() => setExpandedParticipants(prev => ({ ...prev, [p.id]: !prev[p.id] }))}
-                  >
-                    <div className="sheet-breakdown-person">
-                      <span className="expand-indicator">{isExpanded ? '▼' : '▶'}</span>
-                      <span className="sheet-breakdown-avatar" style={{ background: getAvatarColor(p.name) }}>
-                        {getInitials(p.name)}
-                      </span>
-                      <span className="sheet-breakdown-name">
-                        {p.id === currentParticipant?.id ? t('header.you') : p.name}
-                      </span>
-                    </div>
-                    <span className="sheet-breakdown-subtotal">{fmt(subtotal)}</span>
-                    <span className="sheet-breakdown-amount">{fmt(total)}</span>
-                  </div>
-                  {isExpanded && (
-                    <div className="participant-breakdown host-view">
-                      {getParticipantItems().map((item, idx) => (
-                        <div key={idx} className="breakdown-row">
-                          <span>
-                            {item.isUnitAssignment ? (
-                              item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>
-                            ) : (
-                              <>
-                                <span className="qty-badge">{item.itemQty}x</span>
-                                {item.itemMode === 'grupal' && item.splitCount > 1 && <span className="split-badge">/{item.splitCount}</span>}
-                              </>
-                            )}
-                            {item.name}
-                          </span>
-                          <span>{fmt(item.amount)}</span>
-                        </div>
-                      ))}
-                      <div className="breakdown-row subtotal">
-                        <span>{t('totals.subtotal')}</span>
-                        <span>{fmt(subtotal)}</span>
-                      </div>
-                      {/* Show charges (only if non-zero) */}
-                      {pCharges.filter(c => Math.abs(c.amount) > 0).map(charge => (
-                        <div key={charge.id} className={`breakdown-row charge ${charge.amount < 0 ? 'discount' : ''}`}>
-                          <span>{charge.name}</span>
-                          <span>{charge.amount < 0 ? '-' : '+'}{fmt(Math.abs(charge.amount))}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            <div className="sheet-breakdown-total">
-              <span>{t('totals.tableTotal')}</span>
-              <span></span>
-              <span className="sheet-total-amount">{fmt(displayedTotal)}</span>
-            </div>
-          </div>
-        </div>
+        <StepShare
+          session={session}
+          currentParticipant={currentParticipant}
+          expandedParticipants={expandedParticipants}
+          setExpandedParticipants={setExpandedParticipants}
+          calculateParticipantTotal={calculateParticipantTotal}
+          displayedTotal={displayedTotal}
+          fmt={fmt}
+        />
       )}
 
       {/* BOTTOM SHEET - Different layouts per step */}
