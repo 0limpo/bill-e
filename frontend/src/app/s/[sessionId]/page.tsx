@@ -137,35 +137,12 @@ export default function SessionPage() {
     );
   };
 
-  const handleAssignmentsChange = async (newAssignments: Record<string, Assignment[]>) => {
+  // Simplified: directly toggle assignment when clicked
+  const handleToggleAssignment = async (itemId: string, participantId: string) => {
     markInteraction();
-    // Find what changed and call toggleAssignment
-    for (const [itemId, assigns] of Object.entries(newAssignments)) {
-      const oldAssigns = assignments[itemId] || [];
-
-      for (const assign of assigns) {
-        const wasAssigned = oldAssigns.some((a) => a.participant_id === assign.participant_id);
-        if (!wasAssigned) {
-          await toggleAssignment(itemId, assign.participant_id, false);
-        }
-      }
-
-      for (const oldAssign of oldAssigns) {
-        const stillAssigned = assigns.some((a) => a.participant_id === oldAssign.participant_id);
-        if (!stillAssigned) {
-          await toggleAssignment(itemId, oldAssign.participant_id, true);
-        }
-      }
-    }
-
-    // Check for items that had assignments but now don't
-    for (const itemId of Object.keys(assignments)) {
-      if (!newAssignments[itemId]) {
-        for (const oldAssign of assignments[itemId]) {
-          await toggleAssignment(itemId, oldAssign.participant_id, true);
-        }
-      }
-    }
+    const itemAssigns = assignments[itemId] || [];
+    const isCurrentlyAssigned = itemAssigns.some((a) => a.participant_id === participantId);
+    await toggleAssignment(itemId, participantId, isCurrentlyAssigned);
   };
 
   const handleFinalize = async () => {
@@ -350,7 +327,7 @@ export default function SessionPage() {
             items={items}
             participants={participants}
             assignments={assignments}
-            onAssignmentsChange={handleAssignmentsChange}
+            onToggleAssignment={handleToggleAssignment}
             onBack={() => goToStep(1)}
             onNext={isOwner ? handleFinalize : () => goToStep(3)}
             t={t}

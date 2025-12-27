@@ -16,7 +16,7 @@ interface StepAssignProps {
   items: Item[];
   participants: Participant[];
   assignments: Record<string, Assignment[]>;
-  onAssignmentsChange: (assignments: Record<string, Assignment[]>) => void;
+  onToggleAssignment: (itemId: string, participantId: string) => void;
   onBack: () => void;
   onNext: () => void;
   t: (key: string) => string;
@@ -26,7 +26,7 @@ export function StepAssign({
   items,
   participants,
   assignments,
-  onAssignmentsChange,
+  onToggleAssignment,
   onBack,
   onNext,
   t,
@@ -35,57 +35,20 @@ export function StepAssign({
 
   const fmt = (amount: number) => formatCurrency(amount);
 
-  // Toggle assignment for a participant on an item
-  const toggleAssignment = (itemId: string, participantId: string) => {
-    const itemAssignments = assignments[itemId] || [];
-    const existing = itemAssignments.find((a) => a.participant_id === participantId);
-
-    let newAssignments: Assignment[];
-    if (existing) {
-      // Remove assignment
-      newAssignments = itemAssignments.filter((a) => a.participant_id !== participantId);
-    } else {
-      // Add assignment
-      const item = items.find((i) => (i.id || i.name) === itemId);
-      const mode = itemModes[itemId] || "individual";
-
-      if (mode === "grupal") {
-        // Grupal: each person gets a fraction
-        newAssignments = [...itemAssignments, { participant_id: participantId, quantity: 1 }];
-      } else {
-        // Individual: assign one unit
-        newAssignments = [...itemAssignments, { participant_id: participantId, quantity: 1 }];
-      }
-    }
-
-    onAssignmentsChange({
-      ...assignments,
-      [itemId]: newAssignments,
-    });
-  };
-
-  // Toggle mode for an item
+  // Toggle mode for an item (local UI state only)
   const toggleMode = (itemId: string) => {
     const currentMode = itemModes[itemId] || "individual";
     const newMode = currentMode === "individual" ? "grupal" : "individual";
     setItemModes({ ...itemModes, [itemId]: newMode });
-
-    // Clear assignments when switching modes
-    onAssignmentsChange({
-      ...assignments,
-      [itemId]: [],
-    });
   };
 
-  // Assign all participants to an item (grupal mode)
+  // Assign all participants to an item
   const assignAll = (itemId: string) => {
-    const newAssignments = participants.map((p) => ({
-      participant_id: p.id,
-      quantity: 1,
-    }));
-    onAssignmentsChange({
-      ...assignments,
-      [itemId]: newAssignments,
+    participants.forEach((p) => {
+      const isAssigned = (assignments[itemId] || []).some((a) => a.participant_id === p.id);
+      if (!isAssigned) {
+        onToggleAssignment(itemId, p.id);
+      }
     });
   };
 
@@ -175,7 +138,7 @@ export function StepAssign({
                     <button
                       key={p.id}
                       className="participant-chip"
-                      onClick={() => toggleAssignment(itemId, p.id)}
+                      onClick={() => onToggleAssignment(itemId, p.id)}
                     >
                       <div
                         className={`participant-avatar ${isAssigned ? "selected" : "opacity-40"}`}
