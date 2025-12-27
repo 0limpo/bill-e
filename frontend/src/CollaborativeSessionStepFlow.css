@@ -3967,8 +3967,8 @@ body {
   color: var(--danger);
 }
 
-/* Estilo unificado para Paso 1 y 3 (Lista Plana) */
-.participant-breakdown.host-view .breakdown-row {
+/* Estilos SOLO para Paso 1 (Step Review) - NO afecta Paso 3 */
+.step-review-container .breakdown-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -3978,7 +3978,7 @@ body {
   font-size: 15px;
 }
 
-.participant-breakdown.host-view .breakdown-row:last-child {
+.step-review-container .breakdown-row:last-child {
   border-bottom: none;
 }
 
@@ -4009,8 +4009,8 @@ body {
   text-align: right;
 }
 
-/* Input invisible que vive dentro de una breakdown-row */
-.breakdown-row .inline-edit {
+/* Input invisible - Solo Paso 1 */
+.step-review-container .inline-edit {
   background: transparent;
   border: none;
   color: inherit;
@@ -4023,38 +4023,38 @@ body {
   -moz-appearance: textfield;
 }
 
-.breakdown-row .inline-edit:focus {
+.step-review-container .inline-edit:focus {
   outline: none;
   background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
 }
 
-/* Specific inline edit styles */
-.breakdown-row .inline-edit.edit-qty {
+/* Specific inline edit styles - Solo Paso 1 */
+.step-review-container .inline-edit.edit-qty {
   width: 30px;
   text-align: center;
   font-weight: 600;
 }
 
-.breakdown-row .inline-edit.edit-name {
+.step-review-container .inline-edit.edit-name {
   flex: 1;
   min-width: 80px;
 }
 
-.breakdown-row .inline-edit.edit-price {
+.step-review-container .inline-edit.edit-price {
   width: 70px;
   text-align: right;
 }
 
 /* Remove spin buttons from number inputs */
-.breakdown-row .inline-edit::-webkit-inner-spin-button,
-.breakdown-row .inline-edit::-webkit-outer-spin-button {
+.step-review-container .inline-edit::-webkit-inner-spin-button,
+.step-review-container .inline-edit::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-/* Delete button in editable rows */
-.breakdown-row .row-delete {
+/* Delete button - Solo Paso 1 */
+.step-review-container .row-delete {
   background: transparent;
   border: none;
   color: var(--text-tertiary);
@@ -4065,13 +4065,13 @@ body {
   transition: all 0.2s;
 }
 
-.breakdown-row .row-delete:hover {
+.step-review-container .row-delete:hover {
   color: var(--danger);
   opacity: 1;
 }
 
-/* Qty badge styling for editable inputs */
-.breakdown-row.editable .qty-badge {
+/* Qty badge styling - Solo Paso 1 */
+.step-review-container .breakdown-row.editable .qty-badge {
   background: transparent;
   padding: 0;
   margin: 0;
@@ -4094,16 +4094,16 @@ body {
   color: var(--primary);
 }
 
-/* Subtotal row */
-.participant-breakdown.host-view .breakdown-row.subtotal {
+/* Subtotal row - Solo Paso 1 */
+.step-review-container .breakdown-row.subtotal {
   margin-top: 8px;
   padding-top: 14px;
   border-top: 1px solid var(--surface-elevated);
   font-weight: 600;
 }
 
-/* Total Final row */
-.participant-breakdown.host-view .breakdown-row.total-final {
+/* Total Final row - Solo Paso 1 */
+.step-review-container .breakdown-row.total-final {
   margin-top: 16px;
   padding-top: 16px;
   border-top: 2px solid var(--text-tertiary);
@@ -4111,8 +4111,8 @@ body {
   font-weight: 700;
 }
 
-/* Charge rows */
-.participant-breakdown.host-view .breakdown-row.charge {
+/* Charge rows - Solo Paso 1 */
+.step-review-container .breakdown-row.charge {
   cursor: pointer;
   color: var(--text-secondary);
   transition: background 0.2s;
@@ -4122,14 +4122,14 @@ body {
   border-bottom: none;
 }
 
-.participant-breakdown.host-view .breakdown-row.charge:hover {
+.step-review-container .breakdown-row.charge:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 
-.participant-breakdown.host-view .breakdown-row.charge span:last-child {
+.step-review-container .breakdown-row.charge span:last-child {
   color: var(--success);
 }
 
-.participant-breakdown.host-view .breakdown-row.charge.discount span:last-child {
+.step-review-container .breakdown-row.charge.discount span:last-child {
   color: var(--danger);
 }
