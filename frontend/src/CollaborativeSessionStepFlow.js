@@ -1613,25 +1613,12 @@ const CollaborativeSession = () => {
         {isOwner && effectiveStep === 1 && (
           <StepReview
             session={session}
-            currentParticipant={currentParticipant}
             totalItems={totalItems}
             totalBoleta={totalBoleta}
             totalChargesAmount={totalChargesAmount}
             itemsMatch={itemsMatch}
             fmt={fmt}
-            expandedItems={expandedItems}
-            setExpandedItems={setExpandedItems}
-            perUnitModeItems={perUnitModeItems}
-            setPerUnitModeItems={setPerUnitModeItems}
-            syncingItems={syncingItems}
-            handleAssign={handleAssign}
-            handleGroupAssign={handleGroupAssign}
-            handleUnitAssign={handleUnitAssign}
-            handleClearUnitsAndAssignAll={handleClearUnitsAndAssignAll}
-            handleClearParent={handleClearParent}
-            toggleItemMode={toggleItemMode}
             handleItemUpdate={handleItemUpdate}
-            handleToggleItemEdit={handleToggleItemEdit}
             handleDeleteItem={handleDeleteItem}
             setShowAddItemModal={setShowAddItemModal}
             setShowChargeModal={setShowChargeModal}

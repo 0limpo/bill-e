@@ -1,35 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import BillItem from './BillItem';
 
 /**
  * StepReview - Paso 1: Verificación de items y cargos
- * Diseño minimalista estilo "Boleta Digital"
+ * Diseño unificado con Paso 3 (filas simples, sin tarjetas)
+ * Diferencia: inputs editables invisibles hasta el focus
  */
+
+// Inline editable input component
+const InlineInput = ({ type, value, onSave, className }) => {
+  const [localVal, setLocalVal] = useState(value?.toString() || '');
+
+  const handleBlur = () => {
+    let parsed = type === 'number'
+      ? (parseFloat(localVal) || 0)
+      : (localVal.trim() || 'Item');
+    onSave(parsed);
+  };
+
+  return (
+    <input
+      type={type === 'number' ? 'number' : 'text'}
+      value={localVal}
+      className={`inline-edit ${className || ''}`}
+      onChange={(e) => setLocalVal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+    />
+  );
+};
+
 const StepReview = ({
   session,
-  currentParticipant,
-  // Valores calculados
   totalItems,
   totalBoleta,
   totalChargesAmount,
   itemsMatch,
   fmt,
-  // Estados de UI
-  expandedItems,
-  setExpandedItems,
-  perUnitModeItems,
-  setPerUnitModeItems,
-  syncingItems,
-  // Handlers
-  handleAssign,
-  handleGroupAssign,
-  handleUnitAssign,
-  handleClearUnitsAndAssignAll,
-  handleClearParent,
-  toggleItemMode,
   handleItemUpdate,
-  handleToggleItemEdit,
   handleDeleteItem,
   setShowAddItemModal,
   setShowChargeModal,
@@ -40,16 +48,16 @@ const StepReview = ({
   const hasDifference = Math.abs(difference) >= 1;
 
   return (
-    <div className="step-review-receipt step-container-animate">
-      {/* Header: Total grande flotante */}
-      <div className="receipt-header">
-        <span className="receipt-total-label">{t('totals.total')}</span>
-        <div className="receipt-total-row">
-          <span className="receipt-total-value">{fmt(totalBoleta + totalChargesAmount)}</span>
-          {!hasDifference && <span className="receipt-check">✓</span>}
+    <div className="step-review-unified step-container-animate">
+      {/* Header: Total grande */}
+      <div className="review-header">
+        <span className="review-total-label">{t('totals.total')}</span>
+        <div className="review-total-row">
+          <span className="review-total-value">{fmt(totalBoleta + totalChargesAmount)}</span>
+          {!hasDifference && <span className="review-check">✓</span>}
         </div>
         {hasDifference && (
-          <span className="receipt-diff-warning">
+          <span className="review-warning">
             {difference > 0
               ? t('validation.overItems', { amount: fmt(Math.abs(difference)) })
               : t('validation.missingItems', { amount: fmt(Math.abs(difference)) })
@@ -58,105 +66,115 @@ const StepReview = ({
         )}
       </div>
 
-      {/* Lista de items estilo recibo */}
-      <div className="receipt-items">
-        {session.items.map((item, idx) => {
+      {/* Items list - unified with Step 3 style */}
+      <div className="review-list">
+        {/* Column Headers */}
+        <div className="review-list-header">
+          <span className="header-qty">{t('items.qty')}</span>
+          <span className="header-name">{t('items.itemName')}</span>
+          <span className="header-price">{t('items.unitPrice')}</span>
+          <span className="header-total">{t('items.total')}</span>
+        </div>
+
+        {/* Items */}
+        {session.items.map((item) => {
           const itemId = item.id || item.name;
+          const qty = item.quantity || 1;
+          const unitPrice = item.price || 0;
+          const totalPrice = qty * unitPrice;
+
           return (
-            <BillItem
-              key={itemId || idx}
-              item={item}
-              assignments={session.assignments}
-              participants={session.participants}
-              currentParticipant={currentParticipant}
-              isOwner={true}
-              onAssign={handleAssign}
-              onGroupAssign={handleGroupAssign}
-              onUnitAssign={handleUnitAssign}
-              onClearUnitsAndAssignAll={handleClearUnitsAndAssignAll}
-              onClearParent={handleClearParent}
-              itemMode={item.mode || 'individual'}
-              onToggleMode={toggleItemMode}
-              isFinalized={session.status === 'finalized'}
-              onEditItem={handleItemUpdate}
-              onToggleEdit={handleToggleItemEdit}
-              onDeleteItem={handleDeleteItem}
-              isExpanded={expandedItems[itemId] || false}
-              onToggleExpand={(id) => setExpandedItems(prev => ({ ...prev, [id]: !prev[id] }))}
-              isPerUnitMode={perUnitModeItems[itemId] || false}
-              onSetPerUnitMode={(id, value) => setPerUnitModeItems(prev => ({ ...prev, [id]: value }))}
-              isSyncing={syncingItems.has(itemId)}
-              decimalPlaces={session?.decimal_places || 0}
-              numberFormat={session?.number_format}
-              hideAssignments={true}
-              receiptMode={true}
-            />
+            <div key={itemId} className="review-row">
+              <InlineInput
+                type="number"
+                value={qty}
+                className="edit-qty"
+                onSave={(val) => handleItemUpdate(itemId, { quantity: Math.max(1, Math.round(val)) })}
+              />
+              <InlineInput
+                type="text"
+                value={item.name}
+                className="edit-name"
+                onSave={(val) => handleItemUpdate(itemId, { name: val })}
+              />
+              <InlineInput
+                type="number"
+                value={unitPrice}
+                className="edit-price"
+                onSave={(val) => handleItemUpdate(itemId, { price: val })}
+              />
+              <span className="row-total">{fmt(totalPrice)}</span>
+              <button
+                className="row-delete"
+                onClick={() => handleDeleteItem(itemId)}
+                title={t('items.deleteItem')}
+              >
+                ×
+              </button>
+            </div>
           );
         })}
 
-        {/* Botón agregar item - sutil */}
-        <button className="receipt-add-item" onClick={() => setShowAddItemModal(true)}>
+        {/* Add item button */}
+        <button className="review-add-row" onClick={() => setShowAddItemModal(true)}>
           + {t('items.addManualItem')}
         </button>
-      </div>
 
-      {/* Línea divisoria */}
-      <div className="receipt-divider" />
+        {/* Divider */}
+        <div className="review-divider" />
 
-      {/* Subtotales */}
-      <div className="receipt-subtotals">
-        <div className="receipt-line">
+        {/* Subtotal */}
+        <div className="review-row summary">
+          <span></span>
           <span>{t('totals.subtotal')}</span>
-          <span>{fmt(totalItems)}</span>
+          <span></span>
+          <span className="row-total">{fmt(totalItems)}</span>
         </div>
-      </div>
 
-      {/* Cargos estilo recibo */}
-      {(session.charges || []).length > 0 && (
-        <div className="receipt-charges">
-          {(session.charges || []).map(charge => (
-            <div
-              key={charge.id}
-              className={`receipt-line receipt-charge ${charge.isDiscount ? 'discount' : ''}`}
-              onClick={() => {
-                setEditingCharge(charge);
-                setShowChargeModal(true);
-              }}
-            >
-              <span className="receipt-charge-name">
-                {charge.name}
-                {charge.valueType === 'percent' && ` (${charge.value}%)`}
-              </span>
-              <span className="receipt-charge-value">
-                {charge.isDiscount ? '−' : '+'}
-                {charge.valueType === 'percent'
-                  ? fmt(charge.calculatedAmount || 0)
-                  : fmt(charge.value)
-                }
-              </span>
-            </div>
-          ))}
+        {/* Charges */}
+        {(session.charges || []).map(charge => (
+          <div
+            key={charge.id}
+            className={`review-row charge ${charge.isDiscount ? 'discount' : ''}`}
+            onClick={() => {
+              setEditingCharge(charge);
+              setShowChargeModal(true);
+            }}
+          >
+            <span></span>
+            <span className="charge-name">
+              {charge.name}
+              {charge.valueType === 'percent' && ` (${charge.value}%)`}
+            </span>
+            <span></span>
+            <span className="row-total">
+              {charge.isDiscount ? '−' : '+'}
+              {fmt(charge.valueType === 'percent' ? (charge.calculatedAmount || 0) : charge.value)}
+            </span>
+          </div>
+        ))}
+
+        {/* Add charge button */}
+        <button
+          className="review-add-row"
+          onClick={() => {
+            setEditingCharge(null);
+            setShowChargeModal(true);
+          }}
+        >
+          + {t('charges.addCharge')}
+        </button>
+
+        {/* Final divider */}
+        <div className="review-divider thick" />
+
+        {/* Total */}
+        <div className="review-row total-final">
+          <span></span>
+          <span>{t('totals.total')}</span>
+          <span></span>
+          <span className="row-total">{fmt(totalBoleta + totalChargesAmount)}</span>
         </div>
-      )}
-
-      {/* Botón agregar cargo - sutil */}
-      <button
-        className="receipt-add-charge"
-        onClick={() => {
-          setEditingCharge(null);
-          setShowChargeModal(true);
-        }}
-      >
-        + {t('charges.addCharge')}
-      </button>
-
-      {/* Línea divisoria final */}
-      <div className="receipt-divider thick" />
-
-      {/* Total final */}
-      <div className="receipt-final-total">
-        <span>{t('totals.total')}</span>
-        <span>{fmt(totalBoleta + totalChargesAmount)}</span>
       </div>
     </div>
   );

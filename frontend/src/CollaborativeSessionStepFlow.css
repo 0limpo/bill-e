@@ -1,16 +1,16 @@
-/* CollaborativeSession.css - Dark High-Contrast Premium (Google Home / Fintual) */
+/* CollaborativeSession.css - Soft Dark Premium (Fintual/Google Home Style) */
 
-/* ===== DARK MODE FIRST - Variable B Only ===== */
+/* ===== SOFT DARK PALETTE - Variant B ===== */
 :root {
-  /* Fondos */
-  --bg-main: #000000;           /* Negro absoluto (OLED) */
-  --surface-card: #1C1C1E;      /* Gris oscuro para items */
-  --surface-elevated: #2C2C2E;  /* Para modales o dropdowns */
+  /* FONDOS: Escala de Grises Mate (No negro puro) */
+  --bg-main: #121214;           /* El nuevo lienzo principal */
+  --surface-card: #1C1C1E;      /* Superficie secundaria */
+  --surface-elevated: #27272A;  /* Elementos flotantes */
 
-  /* Acentos */
-  --primary: #3b82f6;           /* Azul vibrante (Fintual/iOS) */
-  --primary-glow: rgba(59, 130, 246, 0.25);
-  --primary-dim: rgba(59, 130, 246, 0.15);
+  /* ACENTOS: Un solo azul */
+  --primary: #3F7BF6;           /* Azul Fintual */
+  --primary-glow: rgba(63, 123, 246, 0.25);
+  --primary-dim: rgba(63, 123, 246, 0.15);
   --success: #34C759;           /* Verde iOS */
   --success-bg: rgba(52, 199, 89, 0.15);
   --danger: #FF453A;            /* Rojo iOS */
@@ -18,15 +18,15 @@
   --warning: #FF9F0A;           /* Naranja iOS */
   --warning-bg: rgba(255, 159, 10, 0.15);
 
-  /* Texto */
-  --text-main: #FFFFFF;         /* Blanco puro */
-  --text-secondary: #98989F;    /* Gris medio para etiquetas */
-  --text-tertiary: #636366;     /* Gris oscuro para placeholders */
+  /* TEXTO: Suavizado */
+  --text-main: #F3F4F6;         /* Blanco 95% para evitar fatiga */
+  --text-secondary: #9CA3AF;    /* Gris frío para metadatos */
+  --text-tertiary: #4B5563;     /* Solo para placeholders */
 
-  /* Bordes y Estructura */
-  --border-subtle: #2C2C2E;
-  --divider: #38383A;
-  --radius-lg: 20px;
+  /* ESTRUCTURA */
+  --border-subtle: #27272A;
+  --divider: #27272A;           /* Líneas casi invisibles */
+  --radius-lg: 24px;            /* Bordes muy suaves */
   --radius-md: 16px;
   --radius-sm: 12px;
 
@@ -3654,141 +3654,198 @@ body {
 .bill-item:nth-child(n+6) { animation-delay: 0.2s; }
 
 /* =============================================================================
-   STEP 1: RECEIPT-STYLE MINIMALIST DESIGN
+   STEP 1: UNIFIED DESIGN (Same as Step 3)
    ============================================================================= */
 
 /* Remove all card styling from Step 1 containers */
 .host-step-1 .items-section,
 .host-step-1 .items-section > *,
-.step-review-receipt {
+.step-review-unified {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
 
-.step-review-receipt {
+.step-review-unified {
   padding: 0;
 }
 
-/* Header: Total flotante grande */
-.receipt-header {
+/* Header: Total grande */
+.review-header {
   text-align: center;
   padding: 24px 0 32px;
   background: transparent;
 }
 
-.receipt-total-label {
+/* Review Total Header */
+.review-total-label {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 2px;
   color: var(--text-tertiary);
   margin-bottom: 8px;
 }
 
-.receipt-total-row {
+.review-total-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
 }
 
-.receipt-total-value {
+.review-total-value {
   font-size: 42px;
   font-weight: 200;
   color: var(--text-main);
   letter-spacing: -1px;
 }
 
-.receipt-check {
+.review-check {
   font-size: 24px;
   color: var(--success);
 }
 
-.receipt-diff-warning {
+.review-warning {
   display: block;
   margin-top: 8px;
   font-size: 13px;
   color: var(--danger);
 }
 
-/* Items lista estilo recibo */
-.receipt-items {
-  border-top: 1px solid var(--divider);
+/* Review List - Unified with Step 3 */
+.review-list {
   background: transparent;
 }
 
-/* BillItem en modo recibo - sin tarjeta */
-.receipt-items .bill-item,
-.step-review-receipt .bill-item {
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid var(--divider) !important;
-  border-radius: 0 !important;
-  padding: 14px 0 !important;
-  margin: 0 !important;
-  box-shadow: none !important;
+.review-list-header {
+  display: grid;
+  grid-template-columns: 50px 1fr 80px 80px 30px;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--divider);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-tertiary);
 }
 
-.receipt-items .bill-item:last-of-type,
-.step-review-receipt .bill-item:last-of-type {
-  border-bottom: none !important;
-}
+.review-list-header .header-qty { text-align: center; }
+.review-list-header .header-price { text-align: right; }
+.review-list-header .header-total { text-align: right; }
 
-/* Item header en modo recibo - layout horizontal */
-.receipt-items .item-header,
-.step-review-receipt .item-header {
-  display: flex;
+/* Review Row - Flat design */
+.review-row {
+  display: grid;
+  grid-template-columns: 50px 1fr 80px 80px 30px;
+  gap: 8px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--divider);
   align-items: center;
-  gap: 12px;
-  padding: 0;
 }
 
-/* Cantidad - badge sutil */
-.receipt-items .item-qty-badge,
-.step-review-receipt .item-qty-badge {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-  font-size: 12px;
+.review-row:last-of-type {
+  border-bottom: none;
+}
+
+/* Inline Edit Inputs - Invisible until focus */
+.inline-edit {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text-main);
+  font-size: 14px;
+  padding: 4px 0;
+  width: 100%;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+
+.inline-edit:focus {
+  outline: none;
+  border-bottom: 2px solid var(--primary);
+}
+
+.inline-edit.edit-qty {
+  text-align: center;
   font-weight: 600;
-  padding: 4px 8px;
-  border-radius: 6px;
-  min-width: auto;
+  color: var(--text-secondary);
 }
 
-/* Nombre del item - VISIBLE */
-.receipt-items .item-name,
-.step-review-receipt .item-name {
-  flex: 1;
-  color: var(--text-main) !important;
-  font-weight: 400;
-  font-size: 15px;
+.inline-edit.edit-name {
+  font-weight: 500;
 }
 
-/* Precio - alineado derecha */
-.receipt-items .item-price-col,
-.step-review-receipt .item-price-col {
+.inline-edit.edit-price {
   text-align: right;
 }
 
-.receipt-items .item-price,
-.step-review-receipt .item-price {
-  color: var(--text-main) !important;
+/* Remove spin buttons */
+.inline-edit::-webkit-inner-spin-button,
+.inline-edit::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.row-total {
+  text-align: right;
   font-weight: 600;
-  font-size: 15px;
+  color: var(--text-main);
 }
 
-.receipt-items .item-unit-price,
-.step-review-receipt .item-unit-price {
+.row-delete {
+  background: transparent;
+  border: none;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.5;
+  transition: all 0.2s;
 }
 
-/* Botón agregar item - sutil */
-.receipt-add-item {
+.row-delete:hover {
+  color: var(--danger);
+  opacity: 1;
+}
+
+/* Summary and Charge rows */
+.review-row.summary {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.review-row.charge {
+  cursor: pointer;
+  transition: background 0.2s;
+  margin: 0 -16px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border-bottom: none;
+}
+
+.review-row.charge:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.review-row.charge .charge-name {
+  color: var(--text-secondary);
+}
+
+.review-row.charge .row-total {
+  color: var(--success);
+}
+
+.review-row.charge.discount .row-total {
+  color: var(--danger);
+}
+
+/* Add buttons - Subtle */
+.review-add-row {
   width: 100%;
-  padding: 16px;
+  padding: 14px 0;
   background: transparent;
   border: none;
   color: var(--text-tertiary);
@@ -3798,124 +3855,31 @@ body {
   text-align: left;
 }
 
-.receipt-add-item:hover {
+.review-add-row:hover {
   color: var(--primary);
 }
 
-/* Divisor */
-.receipt-divider {
+/* Dividers */
+.review-divider {
   height: 1px;
   background: var(--divider);
   margin: 8px 0;
 }
 
-.receipt-divider.thick {
+.review-divider.thick {
   height: 2px;
   background: var(--text-tertiary);
   margin: 16px 0;
 }
 
-/* Subtotales */
-.receipt-subtotals {
-  padding: 4px 0;
-}
-
-.receipt-line {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-/* Cargos */
-.receipt-charges {
-  padding: 4px 0;
-}
-
-.receipt-charge {
-  cursor: pointer;
-  transition: background 0.2s;
-  margin: 0 -16px;
-  padding: 8px 16px !important;
-  border-radius: 8px;
-}
-
-.receipt-charge:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.receipt-charge-name {
-  color: var(--text-secondary);
-}
-
-.receipt-charge-value {
-  color: var(--success);
-  font-weight: 500;
-}
-
-.receipt-charge.discount .receipt-charge-value {
-  color: var(--danger);
-}
-
-/* Botón agregar cargo - sutil */
-.receipt-add-charge {
-  width: 100%;
-  padding: 12px 0;
-  background: transparent;
-  border: none;
-  color: var(--text-tertiary);
-  font-size: 13px;
-  cursor: pointer;
-  transition: color 0.2s;
-  text-align: left;
-}
-
-.receipt-add-charge:hover {
-  color: var(--primary);
-}
-
-/* Total final */
-.receipt-final-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  font-size: 18px;
+/* Total Final Row */
+.review-row.total-final {
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-main);
+  border-bottom: none;
 }
 
-/* ==========================================================================
-   FIX MINIMALISTA: Aplanar Items en Paso 1 (Gemini Feedback)
-   ========================================================================== */
-
-/* Ocultar controles innecesarios en Paso 1 */
-.step-review-receipt .item-mode-switch-container,
-.step-review-receipt .avatar-wrapper,
-.step-review-receipt .consumer-scroll-list,
-.step-review-receipt .grupal-options {
-  display: none !important;
-}
-
-/* Inputs Invisibles (Estilo Google Home) */
-.step-review-receipt .clean-input {
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid transparent;
-  color: var(--text-main);
-  padding: 0;
-  border-radius: 0;
-  transition: border-color 0.2s;
-}
-
-.step-review-receipt .clean-input:focus {
-  outline: none;
-  border-bottom: 2px solid var(--primary);
-}
-
-/* Quitar margin-bottom del item-header en modo recibo */
-.step-review-receipt .item-header {
-  margin-bottom: 0;
+.review-row.total-final .row-total {
+  font-size: 18px;
 }
