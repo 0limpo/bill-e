@@ -67,8 +67,8 @@ export interface UseSessionReturn {
 export function useSession({
   sessionId,
   ownerToken,
-  pollInterval = 3000,
-  interactionPause = 5000,
+  pollInterval = 5000,
+  interactionPause = 15000,
 }: UseSessionOptions): UseSessionReturn {
   const [session, setSession] = useState<SessionResponse | null>(null);
   const [loading, setLoading] = useState(true);

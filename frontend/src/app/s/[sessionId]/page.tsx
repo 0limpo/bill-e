@@ -43,8 +43,8 @@ export default function SessionPage() {
   } = useSession({
     sessionId,
     ownerToken,
-    pollInterval: 3000,
-    interactionPause: 5000,
+    pollInterval: 5000,
+    interactionPause: 15000,
   });
 
   // Detect language
