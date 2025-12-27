@@ -1,0 +1,267 @@
+@import "tailwindcss";
+
+/* Bill-e Premium Dark Theme - Soft Dark (Fintual/Google Home Style) */
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Colors mapped to CSS variables */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-success: var(--success);
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Dark theme as DEFAULT (Bill-e Soft Dark) */
+:root {
+  --radius: 0.75rem;
+
+  /* Soft Dark Palette - NOT pure black */
+  --background: #121214;          /* Main canvas - soft dark */
+  --foreground: #F3F4F6;          /* Main text - soft white */
+
+  --card: #1C1C1E;                /* Card surfaces */
+  --card-foreground: #F3F4F6;
+
+  --primary: #3F7BF6;             /* Fintual Blue accent */
+  --primary-foreground: #FFFFFF;
+
+  --secondary: #27272A;           /* Elevated surfaces */
+  --secondary-foreground: #F3F4F6;
+
+  --muted: #27272A;
+  --muted-foreground: #9CA3AF;    /* Secondary text */
+
+  --accent: #27272A;
+  --accent-foreground: #F3F4F6;
+
+  --destructive: #FF453A;         /* iOS Red */
+  --destructive-foreground: #FFFFFF;
+
+  --success: #34C759;             /* iOS Green */
+  --warning: #FF9F0A;             /* iOS Orange */
+
+  --border: #2C2C2E;              /* Subtle borders */
+  --input: #27272A;
+  --ring: #3F7BF6;
+}
+
+/* Light theme (optional, if needed later) */
+.light {
+  --background: #FFFFFF;
+  --foreground: #121214;
+  --card: #F9FAFB;
+  --card-foreground: #121214;
+  --primary: #3F7BF6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3F4F6;
+  --secondary-foreground: #121214;
+  --muted: #F3F4F6;
+  --muted-foreground: #6B7280;
+  --accent: #F3F4F6;
+  --accent-foreground: #121214;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --border: #E5E7EB;
+  --input: #F3F4F6;
+  --ring: #3F7BF6;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Bill-e Custom Component Styles */
+@layer components {
+  /* Inline editable input - invisible until focus */
+  .inline-edit {
+    @apply bg-transparent border-0 border-b border-transparent p-0 outline-none;
+    @apply focus:border-b-primary focus:bg-primary/10 focus:px-1 focus:rounded;
+    @apply transition-all duration-150;
+    @apply text-foreground;
+  }
+
+  .edit-qty {
+    @apply w-8 text-center font-semibold tabular-nums text-primary;
+  }
+
+  .edit-name {
+    @apply font-normal flex-1;
+  }
+
+  .edit-price {
+    @apply text-right w-20 tabular-nums font-semibold;
+  }
+
+  /* Breakdown row - clean list style */
+  .breakdown-row {
+    @apply flex items-center justify-between py-4 px-0;
+    @apply border-b border-border/50 last:border-0;
+    @apply text-sm text-foreground;
+  }
+
+  .breakdown-row.subtotal {
+    @apply font-semibold text-base pt-4 mt-2 border-t border-border;
+  }
+
+  .breakdown-row.total-final {
+    @apply font-bold text-lg pt-4 border-t-2 border-primary/30;
+  }
+
+  .breakdown-row.charge {
+    @apply text-muted-foreground cursor-pointer;
+    @apply hover:bg-secondary/50 -mx-4 px-4 rounded-lg transition-colors;
+  }
+
+  .breakdown-row.charge.discount {
+    @apply text-destructive;
+  }
+
+  /* Add button - Fintual style blue link */
+  .breakdown-add-btn {
+    @apply w-full py-3 text-sm font-semibold text-primary;
+    @apply hover:bg-accent/50 transition-colors rounded-lg text-left;
+    @apply flex items-center gap-2;
+  }
+
+  /* Item card - for Step 2 assignment */
+  .item-card {
+    @apply relative bg-card rounded-2xl p-4;
+    @apply border border-border;
+    @apply transition-all duration-200;
+  }
+
+  .item-card.assigned {
+    @apply border-primary/40 bg-primary/5;
+  }
+
+  /* Delete button - hidden until hover */
+  .row-delete {
+    @apply opacity-0 text-destructive bg-transparent border-0;
+    @apply text-lg leading-none cursor-pointer;
+    @apply hover:opacity-100 transition-opacity;
+    @apply w-6 h-6 flex items-center justify-center rounded-full;
+    @apply hover:bg-destructive/10;
+  }
+
+  .breakdown-row:hover .row-delete,
+  .group:hover .row-delete {
+    @apply opacity-100;
+  }
+
+  /* Participant chip/avatar */
+  .participant-chip {
+    @apply flex flex-col items-center gap-1;
+    @apply min-w-14 max-w-16;
+  }
+
+  .participant-avatar {
+    @apply w-12 h-12 rounded-full flex items-center justify-center;
+    @apply text-white font-bold text-lg;
+    @apply border-2 border-transparent transition-all;
+  }
+
+  .participant-avatar.selected {
+    @apply border-primary ring-2 ring-primary/30;
+  }
+
+  .participant-name {
+    @apply text-xs text-muted-foreground text-center truncate w-full;
+  }
+
+  /* Qty badge */
+  .qty-badge {
+    @apply inline-flex items-center justify-center;
+    @apply min-w-7 h-6 px-1.5 rounded-md;
+    @apply bg-success/10 text-success;
+    @apply text-xs font-semibold tabular-nums;
+  }
+
+  /* Split badge */
+  .split-badge {
+    @apply inline-flex items-center justify-center;
+    @apply px-1.5 h-5 rounded;
+    @apply bg-primary/10 text-primary;
+    @apply text-xs font-medium;
+  }
+
+  /* Step indicator */
+  .step-indicator {
+    @apply flex items-center gap-1;
+  }
+
+  .step-dot {
+    @apply h-1.5 w-8 rounded-full transition-colors;
+  }
+
+  .step-dot.active {
+    @apply bg-primary;
+  }
+
+  .step-dot.inactive {
+    @apply bg-muted;
+  }
+
+  /* Review header - big total */
+  .review-header {
+    @apply text-center py-8 border-b border-border mb-6;
+  }
+
+  .review-total-label {
+    @apply text-sm text-muted-foreground uppercase tracking-wider font-medium mb-2;
+  }
+
+  .review-total-value {
+    @apply text-5xl font-bold tracking-tight tabular-nums;
+  }
+
+  .review-warning {
+    @apply inline-block mt-4 px-3 py-1.5 rounded-full;
+    @apply bg-destructive/10 text-destructive text-sm font-medium;
+  }
+
+  /* Animation */
+  .step-animate {
+    animation: stepEnter 0.3s ease-out;
+  }
+}
+
+@keyframes stepEnter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
