@@ -13,6 +13,7 @@ import {
   finalizeSession,
   reopenSession,
   removeParticipant,
+  addParticipantManual,
   type SessionResponse,
   type ApiCharge,
   type PollResponse,
@@ -41,6 +42,7 @@ export interface UseSessionReturn {
 
   // Participant actions
   join: (name: string, phone?: string) => Promise<boolean>;
+  addParticipant: (name: string, phone?: string) => Promise<boolean>;
   removeParticipantById: (participantId: string) => Promise<boolean>;
 
   // Item actions
@@ -191,6 +193,31 @@ export function useSession({
     [sessionId, markInteraction, refresh]
   );
 
+  // Add participant (owner only)
+  const addParticipant = useCallback(
+    async (name: string, phone?: string): Promise<boolean> => {
+      if (!ownerToken) return false;
+      markInteraction();
+      try {
+        const result = await addParticipantManual(sessionId, ownerToken, name, phone);
+        // Optimistic update
+        setSession((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            participants: [...prev.participants, result.participant],
+          };
+        });
+        return true;
+      } catch (err) {
+        console.error("Add participant error:", err);
+        await refresh();
+        return false;
+      }
+    },
+    [sessionId, ownerToken, markInteraction, refresh]
+  );
+
   // Remove participant
   const removeParticipantById = useCallback(
     async (participantId: string): Promise<boolean> => {
@@ -280,47 +307,50 @@ export function useSession({
     [sessionId, ownerToken, markInteraction, refresh]
   );
 
-  // Toggle assignment
+  // Toggle assignment with optimistic update FIRST
   const toggleAssignment = useCallback(
     async (itemId: string, participantId: string, currentlyAssigned: boolean): Promise<boolean> => {
       const participant = session?.participants.find((p) => p.id === participantId);
       if (!participant) return false;
 
       markInteraction();
+
+      // Optimistic update FIRST for instant feedback
+      const newQuantity = currentlyAssigned ? 0 : 1;
+      setSession((prev) => {
+        if (!prev) return prev;
+        const currentAssignments = prev.assignments[itemId] || [];
+
+        let newAssignments;
+        if (currentlyAssigned) {
+          newAssignments = currentAssignments.filter((a) => a.participant_id !== participantId);
+        } else {
+          newAssignments = [...currentAssignments, { participant_id: participantId, quantity: 1 }];
+        }
+
+        return {
+          ...prev,
+          assignments: {
+            ...prev.assignments,
+            [itemId]: newAssignments,
+          },
+        };
+      });
+
+      // Then make API call in background
       try {
         await assignItem(
           sessionId,
           itemId,
           participantId,
-          currentlyAssigned ? 0 : 1,
+          newQuantity,
           !currentlyAssigned,
           participant.name
         );
-
-        // Optimistic update
-        setSession((prev) => {
-          if (!prev) return prev;
-          const currentAssignments = prev.assignments[itemId] || [];
-
-          let newAssignments;
-          if (currentlyAssigned) {
-            newAssignments = currentAssignments.filter((a) => a.participant_id !== participantId);
-          } else {
-            newAssignments = [...currentAssignments, { participant_id: participantId, quantity: 1 }];
-          }
-
-          return {
-            ...prev,
-            assignments: {
-              ...prev.assignments,
-              [itemId]: newAssignments,
-            },
-          };
-        });
-
         return true;
       } catch (err) {
         console.error("Assignment error:", err);
+        // Rollback on error
         await refresh();
         return false;
       }
@@ -382,6 +412,7 @@ export function useSession({
     refresh,
     markInteraction,
     join,
+    addParticipant,
     removeParticipantById,
     addNewItem,
     updateItemById,

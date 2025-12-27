@@ -166,6 +166,21 @@ export async function removeParticipant(
   });
 }
 
+/**
+ * Add participant manually (owner only)
+ */
+export async function addParticipantManual(
+  sessionId: string,
+  ownerToken: string,
+  name: string,
+  phone?: string
+): Promise<{ participant: ApiParticipant }> {
+  return apiRequest(`/api/session/${sessionId}/add-participant-manual`, {
+    method: "POST",
+    body: JSON.stringify({ owner_token: ownerToken, name, phone }),
+  });
+}
+
 // --- Item Endpoints ---
 
 /**

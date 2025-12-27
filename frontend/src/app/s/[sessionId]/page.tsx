@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 import { StepReview } from "@/components/steps/StepReview";
@@ -22,6 +22,8 @@ export default function SessionPage() {
   const [lang, setLang] = useState<Language>("es");
   const [joinName, setJoinName] = useState("");
   const [joining, setJoining] = useState(false);
+  const [newParticipantName, setNewParticipantName] = useState("");
+  const [showAddParticipant, setShowAddParticipant] = useState(false);
 
   const {
     session,
@@ -30,6 +32,7 @@ export default function SessionPage() {
     isOwner,
     currentParticipant,
     join,
+    addParticipant,
     toggleAssignment,
     addNewItem,
     updateItemById,
@@ -91,6 +94,13 @@ export default function SessionPage() {
     setJoining(true);
     await join(joinName.trim());
     setJoining(false);
+  };
+
+  const handleAddParticipant = async () => {
+    if (!newParticipantName.trim()) return;
+    await addParticipant(newParticipantName.trim());
+    setNewParticipantName("");
+    setShowAddParticipant(false);
   };
 
   const handleItemsChange = async (newItems: Item[]) => {
@@ -323,15 +333,55 @@ export default function SessionPage() {
 
         {/* Step 2: Assign */}
         {step === 2 && (
-          <StepAssign
-            items={items}
-            participants={participants}
-            assignments={assignments}
-            onToggleAssignment={handleToggleAssignment}
-            onBack={() => goToStep(1)}
-            onNext={isOwner ? handleFinalize : () => goToStep(3)}
-            t={t}
-          />
+          <>
+            {/* Add Participant (owner only) */}
+            {isOwner && (
+              <div className="mb-6">
+                {showAddParticipant ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newParticipantName}
+                      onChange={(e) => setNewParticipantName(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddParticipant()}
+                      placeholder={t("participants.name")}
+                      className="flex-1 px-4 py-2 bg-secondary rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary"
+                      autoFocus
+                    />
+                    <Button onClick={handleAddParticipant} size="icon" className="rounded-xl">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      onClick={() => setShowAddParticipant(false)}
+                      size="icon"
+                      variant="ghost"
+                      className="rounded-xl"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <button
+                    className="w-full py-3 text-sm font-semibold text-primary bg-primary/10 rounded-xl hover:bg-primary/20 transition-colors flex items-center justify-center gap-2"
+                    onClick={() => setShowAddParticipant(true)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t("participants.add")}
+                  </button>
+                )}
+              </div>
+            )}
+
+            <StepAssign
+              items={items}
+              participants={participants}
+              assignments={assignments}
+              onToggleAssignment={handleToggleAssignment}
+              onBack={() => goToStep(1)}
+              onNext={isOwner ? handleFinalize : () => goToStep(3)}
+              t={t}
+            />
+          </>
         )}
 
         {/* Step 3: Share */}
