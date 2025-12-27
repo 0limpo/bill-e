@@ -48,6 +48,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Participants
     "participants.add": "Agregar persona",
+    "participants.addShort": "Agregar",
     "participants.name": "Nombre",
 
     // Finalized
@@ -101,6 +102,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Participants
     "participants.add": "Add person",
+    "participants.addShort": "Add",
     "participants.name": "Name",
 
     // Finalized

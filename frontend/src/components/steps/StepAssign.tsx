@@ -124,6 +124,7 @@ export function StepAssign({
             >
               <Plus className="w-6 h-6" />
             </button>
+            <span className="text-xs text-muted-foreground">{t("participants.addShort")}</span>
           </div>
         )}
 
