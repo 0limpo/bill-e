@@ -3886,3 +3886,36 @@ body {
   font-weight: 700;
   color: var(--text-main);
 }
+
+/* ==========================================================================
+   FIX MINIMALISTA: Aplanar Items en Paso 1 (Gemini Feedback)
+   ========================================================================== */
+
+/* Ocultar controles innecesarios en Paso 1 */
+.step-review-receipt .item-mode-switch-container,
+.step-review-receipt .avatar-wrapper,
+.step-review-receipt .consumer-scroll-list,
+.step-review-receipt .grupal-options {
+  display: none !important;
+}
+
+/* Inputs Invisibles (Estilo Google Home) */
+.step-review-receipt .clean-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  color: var(--text-main);
+  padding: 0;
+  border-radius: 0;
+  transition: border-color 0.2s;
+}
+
+.step-review-receipt .clean-input:focus {
+  outline: none;
+  border-bottom: 2px solid var(--primary);
+}
+
+/* Quitar margin-bottom del item-header en modo recibo */
+.step-review-receipt .item-header {
+  margin-bottom: 0;
+}
