@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 /**
- * StepReview - Paso 1: Verificación de items y cargos
- * Diseño unificado con Paso 3 (usa breakdown-row igual que StepShare)
- * Diferencia: inputs editables invisibles hasta el focus
+ * StepReview - Paso 1: Verificación de items
+ * Estilo unificado: Lista limpia (igual al Paso 3) con inputs invisibles.
  */
 
-// Inline editable input component
+// Componente de Input Invisible
 const InlineInput = ({ type, value, onSave, className }) => {
   const [localVal, setLocalVal] = useState(value?.toString() || '');
 
@@ -15,7 +14,10 @@ const InlineInput = ({ type, value, onSave, className }) => {
     let parsed = type === 'number'
       ? (parseFloat(localVal) || 0)
       : (localVal.trim() || 'Item');
-    onSave(parsed);
+    // Solo guardar si cambió
+    if (parsed != value) {
+      onSave(parsed);
+    }
   };
 
   return (
@@ -26,6 +28,7 @@ const InlineInput = ({ type, value, onSave, className }) => {
       onChange={(e) => setLocalVal(e.target.value)}
       onBlur={handleBlur}
       onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+      placeholder={type === 'text' ? 'Nombre del item' : '0'}
     />
   );
 };
@@ -49,26 +52,27 @@ const StepReview = ({
 
   return (
     <div className="step-review-container step-container-animate">
-      {/* Header: Total grande */}
+
+      {/* 1. Header Gigante (Estilo Fintech) */}
       <div className="review-header">
         <span className="review-total-label">{t('totals.total')}</span>
         <div className="review-total-row">
           <span className="review-total-value">{fmt(totalBoleta + totalChargesAmount)}</span>
-          {!hasDifference && <span className="review-check">✓</span>}
         </div>
+
+        {/* Aviso de validación flotante */}
         {hasDifference && (
-          <span className="review-warning">
+          <div className="review-warning">
             {difference > 0
-              ? t('validation.overItems', { amount: fmt(Math.abs(difference)) })
-              : t('validation.missingItems', { amount: fmt(Math.abs(difference)) })
+              ? `Sobran ${fmt(Math.abs(difference))}`
+              : `Faltan ${fmt(Math.abs(difference))}`
             }
-          </span>
+          </div>
         )}
       </div>
 
-      {/* Items list - using breakdown-row like StepShare */}
-      <div className="participant-breakdown host-view">
-        {/* Items */}
+      {/* 2. Lista de Items (Clean List Style) */}
+      <div className="review-list">
         {session.items.map((item) => {
           const itemId = item.id || item.name;
           const qty = item.quantity || 1;
@@ -76,44 +80,43 @@ const StepReview = ({
           const totalPrice = qty * unitPrice;
 
           return (
-            <div key={itemId} className="breakdown-row editable">
-              <span className="breakdown-left">
-                <span className="qty-badge">
-                  <InlineInput
-                    type="number"
-                    value={qty}
-                    className="edit-qty"
-                    onSave={(val) => handleItemUpdate(itemId, { quantity: Math.max(1, Math.round(val)) })}
-                  />
-                </span>
+            <div key={itemId} className="breakdown-row">
+              {/* Izquierda: Cantidad + Nombre */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                <InlineInput
+                  type="number"
+                  value={qty}
+                  className="edit-qty"
+                  onSave={(val) => handleItemUpdate(itemId, { quantity: Math.max(1, Math.round(val)) })}
+                />
                 <InlineInput
                   type="text"
                   value={item.name}
                   className="edit-name"
                   onSave={(val) => handleItemUpdate(itemId, { name: val })}
                 />
-              </span>
-              <span className="breakdown-right">
+              </div>
+
+              {/* Derecha: Precio + Eliminar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <InlineInput
                   type="number"
                   value={unitPrice}
                   className="edit-price"
                   onSave={(val) => handleItemUpdate(itemId, { price: val })}
                 />
-                <span className="breakdown-total">{fmt(totalPrice)}</span>
                 <button
                   className="row-delete"
                   onClick={() => handleDeleteItem(itemId)}
-                  title={t('items.deleteItem')}
                 >
                   ×
                 </button>
-              </span>
+              </div>
             </div>
           );
         })}
 
-        {/* Add item button */}
+        {/* Botón Agregar Item (Texto simple azul) */}
         <button className="breakdown-add-btn" onClick={() => setShowAddItemModal(true)}>
           + {t('items.addManualItem')}
         </button>
@@ -124,30 +127,31 @@ const StepReview = ({
           <span>{fmt(totalItems)}</span>
         </div>
 
-        {/* Charges */}
+        {/* Cargos y Descuentos */}
         {(session.charges || []).map(charge => (
           <div
             key={charge.id}
-            className={`breakdown-row charge ${charge.isDiscount ? 'discount' : ''}`}
+            className="breakdown-row"
+            style={{ color: charge.isDiscount ? 'var(--danger)' : 'var(--success)' }}
             onClick={() => {
               setEditingCharge(charge);
               setShowChargeModal(true);
             }}
           >
-            <span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {charge.name}
-              {charge.valueType === 'percent' && ` (${charge.value}%)`}
+              {charge.valueType === 'percent' && <small style={{ opacity: 0.7 }}>({charge.value}%)</small>}
             </span>
-            <span>
-              {charge.isDiscount ? '−' : '+'}
-              {fmt(charge.valueType === 'percent' ? (charge.calculatedAmount || 0) : charge.value)}
+            <span style={{ fontWeight: 600 }}>
+              {charge.isDiscount ? '-' : '+'}{fmt(charge.valueType === 'percent' ? (charge.calculatedAmount || 0) : charge.value)}
             </span>
           </div>
         ))}
 
-        {/* Add charge button */}
+        {/* Botón Agregar Cargo */}
         <button
           className="breakdown-add-btn"
+          style={{ paddingTop: '8px' }}
           onClick={() => {
             setEditingCharge(null);
             setShowChargeModal(true);
@@ -156,7 +160,7 @@ const StepReview = ({
           + {t('charges.addCharge')}
         </button>
 
-        {/* Total Final */}
+        {/* Total Final (Texto simple) */}
         <div className="breakdown-row total-final">
           <span>{t('totals.total')}</span>
           <span>{fmt(totalBoleta + totalChargesAmount)}</span>
