@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
@@ -16,7 +16,7 @@ interface StepAssignProps {
   items: Item[];
   participants: Participant[];
   assignments: Record<string, Assignment[]>;
-  onToggleAssignment: (itemId: string, participantId: string) => void;
+  onUpdateQty: (itemId: string, participantId: string, delta: number) => void;
   onBack: () => void;
   onNext: () => void;
   t: (key: string) => string;
@@ -26,7 +26,7 @@ export function StepAssign({
   items,
   participants,
   assignments,
-  onToggleAssignment,
+  onUpdateQty,
   onBack,
   onNext,
   t,
@@ -42,14 +42,19 @@ export function StepAssign({
     setItemModes({ ...itemModes, [itemId]: newMode });
   };
 
-  // Assign all participants to an item
+  // Assign all participants to an item (1 unit each)
   const assignAll = (itemId: string) => {
     participants.forEach((p) => {
-      const isAssigned = (assignments[itemId] || []).some((a) => a.participant_id === p.id);
-      if (!isAssigned) {
-        onToggleAssignment(itemId, p.id);
+      const currentQty = (assignments[itemId] || []).find((a) => a.participant_id === p.id)?.quantity || 0;
+      if (currentQty === 0) {
+        onUpdateQty(itemId, p.id, 1);
       }
     });
+  };
+
+  // Get total assigned quantity for an item
+  const getTotalAssigned = (itemId: string) => {
+    return (assignments[itemId] || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
   };
 
   return (
@@ -79,20 +84,27 @@ export function StepAssign({
       <div className="space-y-3">
         {items.map((item) => {
           const itemId = item.id || item.name;
-          const qty = item.quantity || 1;
-          const totalPrice = qty * (item.price || 0);
+          const itemQty = item.quantity || 1;
+          const totalPrice = itemQty * (item.price || 0);
           const itemAssignments = assignments[itemId] || [];
           const mode = itemModes[itemId] || "individual";
+          const totalAssigned = getTotalAssigned(itemId);
+          const remaining = itemQty - totalAssigned;
 
           return (
             <div key={itemId} className="item-card">
               {/* Item Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="qty-badge">{qty}x</span>
+                  <span className="qty-badge">{itemQty}x</span>
                   <span className="font-medium">{item.name}</span>
                 </div>
-                <span className="font-semibold tabular-nums">{fmt(totalPrice)}</span>
+                <div className="flex items-center gap-2">
+                  {remaining > 0 && totalAssigned > 0 && (
+                    <span className="text-xs text-warning">{remaining} sin asignar</span>
+                  )}
+                  <span className="font-semibold tabular-nums">{fmt(totalPrice)}</span>
+                </div>
               </div>
 
               {/* Mode Toggle */}
@@ -132,26 +144,43 @@ export function StepAssign({
               {/* Participants Assignment */}
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {participants.map((p) => {
-                  const isAssigned = itemAssignments.some((a) => a.participant_id === p.id);
+                  const assign = itemAssignments.find((a) => a.participant_id === p.id);
+                  const qty = assign?.quantity || 0;
+                  const isAssigned = qty > 0;
+                  const canAdd = remaining > 0 || mode === "grupal";
 
                   return (
-                    <button
-                      key={p.id}
-                      className="participant-chip"
-                      onClick={() => onToggleAssignment(itemId, p.id)}
-                    >
-                      <div
-                        className={`participant-avatar ${isAssigned ? "selected" : "opacity-40"}`}
-                        style={{ backgroundColor: getAvatarColor(p.name) }}
+                    <div key={p.id} className="flex flex-col items-center gap-1 min-w-14">
+                      {/* Avatar with click to add */}
+                      <button
+                        className="relative"
+                        onClick={() => canAdd && onUpdateQty(itemId, p.id, 1)}
+                        disabled={!canAdd && !isAssigned}
                       >
-                        {getInitials(p.name)}
-                        {isAssigned && (
-                          <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center text-[10px] text-white">
-                            ✓
+                        <div
+                          className={`participant-avatar ${isAssigned ? "selected" : canAdd ? "opacity-40" : "opacity-20"}`}
+                          style={{ backgroundColor: getAvatarColor(p.name) }}
+                        >
+                          {getInitials(p.name)}
+                        </div>
+                        {/* Quantity badge */}
+                        {qty > 0 && (
+                          <span className="absolute -bottom-1 -right-1 min-w-5 h-5 px-1 bg-primary rounded-full flex items-center justify-center text-[11px] text-white font-bold">
+                            {qty}
                           </span>
                         )}
-                      </div>
-                    </button>
+                      </button>
+
+                      {/* Minus button (only show when assigned) */}
+                      {qty > 0 && (
+                        <button
+                          className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center hover:bg-destructive/30 transition-colors"
+                          onClick={() => onUpdateQty(itemId, p.id, -1)}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>

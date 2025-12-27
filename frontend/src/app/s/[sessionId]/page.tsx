@@ -33,7 +33,7 @@ export default function SessionPage() {
     currentParticipant,
     join,
     addParticipant,
-    toggleAssignment,
+    updateAssignmentQty,
     addNewItem,
     updateItemById,
     deleteItemById,
@@ -147,13 +147,6 @@ export default function SessionPage() {
     );
   };
 
-  // Simplified: directly toggle assignment when clicked
-  const handleToggleAssignment = async (itemId: string, participantId: string) => {
-    markInteraction();
-    const itemAssigns = assignments[itemId] || [];
-    const isCurrentlyAssigned = itemAssigns.some((a) => a.participant_id === participantId);
-    await toggleAssignment(itemId, participantId, isCurrentlyAssigned);
-  };
 
   const handleFinalize = async () => {
     await finalize();
@@ -376,7 +369,7 @@ export default function SessionPage() {
               items={items}
               participants={participants}
               assignments={assignments}
-              onToggleAssignment={handleToggleAssignment}
+              onUpdateQty={updateAssignmentQty}
               onBack={() => goToStep(1)}
               onNext={isOwner ? handleFinalize : () => goToStep(3)}
               t={t}

@@ -52,6 +52,7 @@ export interface UseSessionReturn {
 
   // Assignment actions
   toggleAssignment: (itemId: string, participantId: string, currentlyAssigned: boolean) => Promise<boolean>;
+  updateAssignmentQty: (itemId: string, participantId: string, delta: number) => Promise<boolean>;
 
   // Charges actions
   updateSessionCharges: (charges: ApiCharge[]) => Promise<boolean>;
@@ -358,6 +359,70 @@ export function useSession({
     [sessionId, session, markInteraction, refresh]
   );
 
+  // Update assignment quantity (+1 or -1)
+  const updateAssignmentQty = useCallback(
+    async (itemId: string, participantId: string, delta: number): Promise<boolean> => {
+      const participant = session?.participants.find((p) => p.id === participantId);
+      if (!participant) return false;
+
+      const currentAssignments = session?.assignments[itemId] || [];
+      const currentAssign = currentAssignments.find((a) => a.participant_id === participantId);
+      const currentQty = currentAssign?.quantity || 0;
+      const newQty = Math.max(0, currentQty + delta);
+
+      // Don't do anything if trying to go below 0
+      if (newQty === currentQty) return true;
+
+      markInteraction();
+
+      // Optimistic update FIRST
+      setSession((prev) => {
+        if (!prev) return prev;
+        const assigns = prev.assignments[itemId] || [];
+
+        let newAssigns;
+        if (newQty === 0) {
+          // Remove assignment
+          newAssigns = assigns.filter((a) => a.participant_id !== participantId);
+        } else if (currentQty === 0) {
+          // Add new assignment
+          newAssigns = [...assigns, { participant_id: participantId, quantity: newQty }];
+        } else {
+          // Update existing
+          newAssigns = assigns.map((a) =>
+            a.participant_id === participantId ? { ...a, quantity: newQty } : a
+          );
+        }
+
+        return {
+          ...prev,
+          assignments: {
+            ...prev.assignments,
+            [itemId]: newAssigns,
+          },
+        };
+      });
+
+      // API call in background
+      try {
+        await assignItem(
+          sessionId,
+          itemId,
+          participantId,
+          newQty,
+          newQty > 0,
+          participant.name
+        );
+        return true;
+      } catch (err) {
+        console.error("Assignment error:", err);
+        await refresh();
+        return false;
+      }
+    },
+    [sessionId, session, markInteraction, refresh]
+  );
+
   // Update charges
   const updateSessionCharges = useCallback(
     async (charges: ApiCharge[]): Promise<boolean> => {
@@ -418,6 +483,7 @@ export function useSession({
     updateItemById,
     deleteItemById,
     toggleAssignment,
+    updateAssignmentQty,
     updateSessionCharges,
     finalize,
     reopen,
