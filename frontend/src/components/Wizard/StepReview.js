@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 /**
  * StepReview - Paso 1: Verificación de items y cargos
- * Diseño unificado con Paso 3 (filas simples, sin tarjetas)
+ * Diseño unificado con Paso 3 (usa breakdown-row igual que StepShare)
  * Diferencia: inputs editables invisibles hasta el focus
  */
 
@@ -48,7 +48,7 @@ const StepReview = ({
   const hasDifference = Math.abs(difference) >= 1;
 
   return (
-    <div className="step-review-unified step-container-animate">
+    <div className="step-review-container step-container-animate">
       {/* Header: Total grande */}
       <div className="review-header">
         <span className="review-total-label">{t('totals.total')}</span>
@@ -66,16 +66,8 @@ const StepReview = ({
         )}
       </div>
 
-      {/* Items list - unified with Step 3 style */}
-      <div className="review-list">
-        {/* Column Headers */}
-        <div className="review-list-header">
-          <span className="header-qty">{t('items.qty')}</span>
-          <span className="header-name">{t('items.itemName')}</span>
-          <span className="header-price">{t('items.unitPrice')}</span>
-          <span className="header-total">{t('items.total')}</span>
-        </div>
-
+      {/* Items list - using breakdown-row like StepShare */}
+      <div className="participant-breakdown host-view">
         {/* Items */}
         {session.items.map((item) => {
           const itemId = item.id || item.name;
@@ -84,70 +76,69 @@ const StepReview = ({
           const totalPrice = qty * unitPrice;
 
           return (
-            <div key={itemId} className="review-row">
-              <InlineInput
-                type="number"
-                value={qty}
-                className="edit-qty"
-                onSave={(val) => handleItemUpdate(itemId, { quantity: Math.max(1, Math.round(val)) })}
-              />
-              <InlineInput
-                type="text"
-                value={item.name}
-                className="edit-name"
-                onSave={(val) => handleItemUpdate(itemId, { name: val })}
-              />
-              <InlineInput
-                type="number"
-                value={unitPrice}
-                className="edit-price"
-                onSave={(val) => handleItemUpdate(itemId, { price: val })}
-              />
-              <span className="row-total">{fmt(totalPrice)}</span>
-              <button
-                className="row-delete"
-                onClick={() => handleDeleteItem(itemId)}
-                title={t('items.deleteItem')}
-              >
-                ×
-              </button>
+            <div key={itemId} className="breakdown-row editable">
+              <span className="breakdown-left">
+                <span className="qty-badge">
+                  <InlineInput
+                    type="number"
+                    value={qty}
+                    className="edit-qty"
+                    onSave={(val) => handleItemUpdate(itemId, { quantity: Math.max(1, Math.round(val)) })}
+                  />
+                </span>
+                <InlineInput
+                  type="text"
+                  value={item.name}
+                  className="edit-name"
+                  onSave={(val) => handleItemUpdate(itemId, { name: val })}
+                />
+              </span>
+              <span className="breakdown-right">
+                <InlineInput
+                  type="number"
+                  value={unitPrice}
+                  className="edit-price"
+                  onSave={(val) => handleItemUpdate(itemId, { price: val })}
+                />
+                <span className="breakdown-total">{fmt(totalPrice)}</span>
+                <button
+                  className="row-delete"
+                  onClick={() => handleDeleteItem(itemId)}
+                  title={t('items.deleteItem')}
+                >
+                  ×
+                </button>
+              </span>
             </div>
           );
         })}
 
         {/* Add item button */}
-        <button className="review-add-row" onClick={() => setShowAddItemModal(true)}>
+        <button className="breakdown-add-btn" onClick={() => setShowAddItemModal(true)}>
           + {t('items.addManualItem')}
         </button>
 
-        {/* Divider */}
-        <div className="review-divider" />
-
         {/* Subtotal */}
-        <div className="review-row summary">
-          <span></span>
+        <div className="breakdown-row subtotal">
           <span>{t('totals.subtotal')}</span>
-          <span></span>
-          <span className="row-total">{fmt(totalItems)}</span>
+          <span>{fmt(totalItems)}</span>
         </div>
 
         {/* Charges */}
         {(session.charges || []).map(charge => (
           <div
             key={charge.id}
-            className={`review-row charge ${charge.isDiscount ? 'discount' : ''}`}
+            className={`breakdown-row charge ${charge.isDiscount ? 'discount' : ''}`}
             onClick={() => {
               setEditingCharge(charge);
               setShowChargeModal(true);
             }}
           >
-            <span></span>
-            <span className="charge-name">
+            <span>
               {charge.name}
               {charge.valueType === 'percent' && ` (${charge.value}%)`}
             </span>
-            <span></span>
-            <span className="row-total">
+            <span>
               {charge.isDiscount ? '−' : '+'}
               {fmt(charge.valueType === 'percent' ? (charge.calculatedAmount || 0) : charge.value)}
             </span>
@@ -156,7 +147,7 @@ const StepReview = ({
 
         {/* Add charge button */}
         <button
-          className="review-add-row"
+          className="breakdown-add-btn"
           onClick={() => {
             setEditingCharge(null);
             setShowChargeModal(true);
@@ -165,15 +156,10 @@ const StepReview = ({
           + {t('charges.addCharge')}
         </button>
 
-        {/* Final divider */}
-        <div className="review-divider thick" />
-
-        {/* Total */}
-        <div className="review-row total-final">
-          <span></span>
+        {/* Total Final */}
+        <div className="breakdown-row total-final">
           <span>{t('totals.total')}</span>
-          <span></span>
-          <span className="row-total">{fmt(totalBoleta + totalChargesAmount)}</span>
+          <span>{fmt(totalBoleta + totalChargesAmount)}</span>
         </div>
       </div>
     </div>
