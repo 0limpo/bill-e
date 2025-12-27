@@ -3900,38 +3900,38 @@ body {
   --divider: #27272A;           /* Líneas divisorias */
 }
 
-/* 2. ESTILO LISTA (Shared Style para Paso 1 y Paso 3)
-   Esto hace que el Review y el Share se vean idénticos */
-.breakdown-row {
+/* 2. ESTILO LISTA - SOLO PASO 1 (Step Review)
+   NO afecta Paso 3 (StepShare) */
+.step-review-container .breakdown-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0; /* Más aire vertical */
+  padding: 16px 0;
   border-bottom: 1px solid var(--divider);
   color: var(--text-main);
-  background: transparent !important; /* Asegurar que no tenga fondo */
+  background: transparent !important;
 }
 
-.breakdown-row:last-child {
+.step-review-container .breakdown-row:last-child {
   border-bottom: none;
 }
 
-/* Tipografía de Lista */
-.breakdown-row span {
+/* Tipografía de Lista - Solo Paso 1 */
+.step-review-container .breakdown-row span {
   font-size: 15px;
   font-weight: 400;
 }
 
-.breakdown-row span:last-child {
-  font-weight: 600; /* Precios en semibold */
-  font-feature-settings: "tnum"; /* Números tabulares para alineación */
+.step-review-container .breakdown-row span:last-child {
+  font-weight: 600;
+  font-feature-settings: "tnum";
 }
 
-/* Inputs Invisibles (Solo Paso 1) */
-.inline-edit {
+/* Inputs Invisibles - Solo Paso 1 */
+.step-review-container .inline-edit {
   background: transparent;
   border: none;
-  border-bottom: 1px solid transparent; /* Invisible por defecto */
+  border-bottom: 1px solid transparent;
   color: var(--text-main);
   font-family: inherit;
   font-size: 15px;
@@ -3940,7 +3940,7 @@ body {
   transition: all 0.2s;
 }
 
-.inline-edit:focus {
+.step-review-container .inline-edit:focus {
   outline: none;
   border-bottom: 1px solid var(--primary);
   background: rgba(63, 123, 246, 0.1);
@@ -3948,13 +3948,13 @@ body {
   border-radius: 4px;
 }
 
-/* Alineaciones específicas de inputs */
-.edit-qty { text-align: center; width: 30px; font-weight: 600; color: var(--primary); }
-.edit-name { text-align: left; }
-.edit-price { text-align: right; font-weight: 600; }
+/* Alineaciones específicas - Solo Paso 1 */
+.step-review-container .edit-qty { text-align: center; width: 30px; font-weight: 600; color: var(--primary); }
+.step-review-container .edit-name { text-align: left; }
+.step-review-container .edit-price { text-align: right; font-weight: 600; }
 
-/* Botones de acción sutiles en la lista */
-.row-delete {
+/* Botón eliminar - Solo Paso 1 */
+.step-review-container .row-delete {
   opacity: 0;
   color: var(--danger);
   background: transparent;
@@ -3965,12 +3965,12 @@ body {
   transition: opacity 0.2s;
 }
 
-.breakdown-row:hover .row-delete {
-  opacity: 1; /* Solo mostrar la X al pasar el mouse/tocar */
+.step-review-container .breakdown-row:hover .row-delete {
+  opacity: 1;
 }
 
-/* Botón "Agregar Item" estilo Fintual (Link azul simple) */
-.breakdown-add-btn {
+/* Botón "Agregar Item" - Solo Paso 1 */
+.step-review-container .breakdown-add-btn {
   width: 100%;
   text-align: left;
   background: transparent;
@@ -3985,12 +3985,12 @@ body {
   gap: 8px;
 }
 
-.breakdown-add-btn:hover {
+.step-review-container .breakdown-add-btn:hover {
   opacity: 0.8;
 }
 
-/* Totales y Subtotales */
-.breakdown-row.subtotal {
+/* Subtotal - Solo Paso 1 */
+.step-review-container .breakdown-row.subtotal {
   margin-top: 12px;
   padding-top: 12px;
   border-top: 1px solid var(--divider);
@@ -3998,7 +3998,8 @@ body {
   font-size: 14px;
 }
 
-.breakdown-row.total-final {
+/* Total Final - Solo Paso 1 */
+.step-review-container .breakdown-row.total-final {
   margin-top: 4px;
   border-top: none;
   font-size: 18px;
