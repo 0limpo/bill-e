@@ -82,47 +82,48 @@ export function StepAssign({
         <p className="text-muted-foreground text-sm">{t("steps.assignSubtitle")}</p>
       </div>
 
+      {/* Add Participant Input (expanded) */}
+      {isOwner && showAddParticipant && (
+        <div className="mb-4 p-3 bg-secondary/50 rounded-xl">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={newParticipantName}
+              onChange={(e) => onNewParticipantNameChange?.(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && onAddParticipant?.()}
+              placeholder={t("participants.name")}
+              className="flex-1 px-4 py-3 bg-background rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary text-base"
+              autoFocus
+              disabled={addingParticipant}
+            />
+            <button
+              onClick={onAddParticipant}
+              disabled={!newParticipantName.trim() || addingParticipant}
+              className="px-4 py-3 rounded-xl bg-primary text-white font-medium disabled:opacity-50 flex items-center gap-2"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => onToggleAddParticipant?.(false)}
+              className="px-3 py-3 rounded-xl bg-secondary text-muted-foreground hover:bg-secondary/80"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Participants Bar */}
       <div className="flex gap-3 overflow-x-auto pb-4 mb-6 scrollbar-hide items-start">
         {/* Add Participant Button (circle) - only for owner */}
-        {isOwner && (
+        {isOwner && !showAddParticipant && (
           <div className="flex flex-col items-center gap-1 min-w-14 shrink-0">
-            {showAddParticipant ? (
-              <div className="flex flex-col items-center gap-2">
-                <input
-                  type="text"
-                  value={newParticipantName}
-                  onChange={(e) => onNewParticipantNameChange?.(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && onAddParticipant?.()}
-                  placeholder={t("participants.name")}
-                  className="w-24 px-2 py-1 text-xs bg-secondary rounded-lg text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary"
-                  autoFocus
-                  disabled={addingParticipant}
-                />
-                <div className="flex gap-1">
-                  <button
-                    onClick={onAddParticipant}
-                    disabled={!newParticipantName.trim() || addingParticipant}
-                    className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center disabled:opacity-50"
-                  >
-                    <Plus className="w-3 h-3" />
-                  </button>
-                  <button
-                    onClick={() => onToggleAddParticipant?.(false)}
-                    className="w-6 h-6 rounded-full bg-secondary text-muted-foreground flex items-center justify-center hover:bg-secondary/80"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => onToggleAddParticipant?.(true)}
-                className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors border-2 border-dashed border-primary/30"
-              >
-                <Plus className="w-6 h-6" />
-              </button>
-            )}
+            <button
+              onClick={() => onToggleAddParticipant?.(true)}
+              className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors border-2 border-dashed border-primary/30"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
           </div>
         )}
 
@@ -137,7 +138,7 @@ export function StepAssign({
             </div>
             <span className="participant-name">{p.name}</span>
 
-            {/* Delete button (only for owner, hidden on hover) */}
+            {/* Delete button (only for owner, visible on hover) */}
             {isOwner && onRemoveParticipant && (
               <button
                 onClick={() => onRemoveParticipant(p.id)}
