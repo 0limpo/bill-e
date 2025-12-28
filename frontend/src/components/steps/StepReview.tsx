@@ -155,7 +155,7 @@ export function StepReview({
               </div>
 
               {/* Right: Price + Delete */}
-              <div className="flex items-center gap-2">
+              <div className="relative">
                 <InlineInput
                   type="number"
                   value={unitPrice}
