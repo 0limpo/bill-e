@@ -251,7 +251,7 @@ export function StepReview({
                     <button
                       onClick={() => updateCharge(charge.id, { valueType: "percent" })}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        charge.valueType === "percent" ? "bg-primary text-white" : "bg-background"
+                        charge.valueType === "percent" ? "bg-primary/20 text-primary" : "bg-background text-muted-foreground"
                       }`}
                     >
                       %
@@ -259,7 +259,7 @@ export function StepReview({
                     <button
                       onClick={() => updateCharge(charge.id, { valueType: "fixed" })}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        charge.valueType === "fixed" ? "bg-primary text-white" : "bg-background"
+                        charge.valueType === "fixed" ? "bg-primary/20 text-primary" : "bg-background text-muted-foreground"
                       }`}
                     >
                       $
@@ -271,7 +271,7 @@ export function StepReview({
                     <button
                       onClick={() => updateCharge(charge.id, { isDiscount: false })}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        !charge.isDiscount ? "bg-primary text-white" : "bg-background"
+                        !charge.isDiscount ? "bg-primary/20 text-primary" : "bg-background text-muted-foreground"
                       }`}
                     >
                       +{t("charges.charge")}
@@ -279,7 +279,7 @@ export function StepReview({
                     <button
                       onClick={() => updateCharge(charge.id, { isDiscount: true })}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        charge.isDiscount ? "bg-green-600 text-white" : "bg-background"
+                        charge.isDiscount ? "bg-green-600/20 text-green-600" : "bg-background text-muted-foreground"
                       }`}
                     >
                       -{t("charges.discount")}
@@ -294,29 +294,29 @@ export function StepReview({
                         <button
                           onClick={() => updateCharge(charge.id, { distribution: "proportional" })}
                           className={`w-full py-2 px-3 rounded-lg text-left transition-colors ${
-                            charge.distribution === "proportional" ? "bg-primary text-white" : "bg-background"
+                            charge.distribution === "proportional" ? "bg-primary/20" : "bg-background"
                           }`}
                         >
-                          <span className="text-sm font-medium">{t("charges.proportional")}</span>
-                          <span className="block text-xs opacity-70">{t("charges.proportionalDesc")}</span>
+                          <span className={`text-sm font-medium ${charge.distribution === "proportional" ? "text-primary" : ""}`}>{t("charges.proportional")}</span>
+                          <span className="block text-xs text-muted-foreground">{t("charges.proportionalDesc")}</span>
                         </button>
                         <button
                           onClick={() => updateCharge(charge.id, { distribution: "per_person" })}
                           className={`w-full py-2 px-3 rounded-lg text-left transition-colors ${
-                            charge.distribution === "per_person" ? "bg-primary text-white" : "bg-background"
+                            charge.distribution === "per_person" ? "bg-primary/20" : "bg-background"
                           }`}
                         >
-                          <span className="text-sm font-medium">{t("charges.perPerson")}</span>
-                          <span className="block text-xs opacity-70">{t("charges.perPersonDesc")}</span>
+                          <span className={`text-sm font-medium ${charge.distribution === "per_person" ? "text-primary" : ""}`}>{t("charges.perPerson")}</span>
+                          <span className="block text-xs text-muted-foreground">{t("charges.perPersonDesc")}</span>
                         </button>
                         <button
                           onClick={() => updateCharge(charge.id, { distribution: "fixed_per_person" })}
                           className={`w-full py-2 px-3 rounded-lg text-left transition-colors ${
-                            charge.distribution === "fixed_per_person" ? "bg-primary text-white" : "bg-background"
+                            charge.distribution === "fixed_per_person" ? "bg-primary/20" : "bg-background"
                           }`}
                         >
-                          <span className="text-sm font-medium">{t("charges.splitEqual")}</span>
-                          <span className="block text-xs opacity-70">{t("charges.splitEqualDesc")}</span>
+                          <span className={`text-sm font-medium ${charge.distribution === "fixed_per_person" ? "text-primary" : ""}`}>{t("charges.splitEqual")}</span>
+                          <span className="block text-xs text-muted-foreground">{t("charges.splitEqualDesc")}</span>
                         </button>
                       </div>
                     </div>
