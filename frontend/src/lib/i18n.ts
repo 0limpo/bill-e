@@ -39,6 +39,12 @@ export const translations: Record<Language, Record<string, string>> = {
     "charges.tax": "Impuesto",
     "charges.discount": "Descuento",
     "charges.service": "Servicio",
+    "charges.charge": "Cargo",
+    "charges.percent": "%",
+    "charges.fixed": "$",
+    "charges.proportional": "Proporcional",
+    "charges.perPerson": "Por persona",
+    "charges.splitEqual": "Dividido igual",
 
     // Totals
     "totals.subtotal": "Subtotal",
@@ -93,6 +99,12 @@ export const translations: Record<Language, Record<string, string>> = {
     "charges.tax": "Tax",
     "charges.discount": "Discount",
     "charges.service": "Service",
+    "charges.charge": "Charge",
+    "charges.percent": "%",
+    "charges.fixed": "$",
+    "charges.proportional": "Proportional",
+    "charges.perPerson": "Per person",
+    "charges.splitEqual": "Split equal",
 
     // Totals
     "totals.subtotal": "Subtotal",

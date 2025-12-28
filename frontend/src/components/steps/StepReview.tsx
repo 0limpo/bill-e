@@ -116,12 +116,21 @@ export function StepReview({
   const addCharge = () => {
     const newCharge: Charge = {
       id: String(Date.now()),
-      name: "Nuevo Cargo",
+      name: t("charges.charge"),
       value: 10,
       valueType: "percent",
       isDiscount: false,
+      distribution: "proportional",
     };
     onChargesChange([...charges, newCharge]);
+  };
+
+  const updateCharge = (id: string, updates: Partial<Charge>) => {
+    onChargesChange(charges.map((c) => c.id === id ? { ...c, ...updates } : c));
+  };
+
+  const deleteCharge = (id: string) => {
+    onChargesChange(charges.filter((c) => c.id !== id));
   };
 
   const fmt = (amount: number) => formatCurrency(amount);
@@ -193,20 +202,89 @@ export function StepReview({
             : charge.value;
 
           return (
-            <div
-              key={charge.id}
-              className={`breakdown-row charge ${charge.isDiscount ? "discount" : ""}`}
-            >
-              <span className="flex items-center gap-2">
-                {charge.name}
-                {charge.valueType === "percent" && (
-                  <span className="text-xs opacity-70">({charge.value}%)</span>
-                )}
-              </span>
-              <span className="font-semibold">
-                {charge.isDiscount ? "-" : "+"}
-                {fmt(amount)}
-              </span>
+            <div key={charge.id} className="bg-secondary/30 rounded-xl p-3 mb-2">
+              {/* Row 1: Name + Value + Delete */}
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="text"
+                  value={charge.name}
+                  onChange={(e) => updateCharge(charge.id, { name: e.target.value })}
+                  className="flex-1 bg-transparent text-sm font-medium outline-none"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={charge.value}
+                    onChange={(e) => updateCharge(charge.id, { value: parseFloat(e.target.value) || 0 })}
+                    className="w-16 text-right bg-background rounded-lg px-2 py-1 text-sm outline-none"
+                  />
+                  <button
+                    onClick={() => updateCharge(charge.id, { valueType: charge.valueType === "percent" ? "fixed" : "percent" })}
+                    className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                      charge.valueType === "percent" ? "bg-primary text-white" : "bg-background"
+                    }`}
+                  >
+                    %
+                  </button>
+                  <button
+                    onClick={() => updateCharge(charge.id, { valueType: charge.valueType === "fixed" ? "percent" : "fixed" })}
+                    className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                      charge.valueType === "fixed" ? "bg-primary text-white" : "bg-background"
+                    }`}
+                  >
+                    $
+                  </button>
+                </div>
+                <button
+                  onClick={() => deleteCharge(charge.id)}
+                  className="text-destructive hover:bg-destructive/10 rounded-full w-6 h-6 flex items-center justify-center"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Row 2: Charge/Discount + Distribution */}
+              <div className="flex items-center gap-2 text-xs">
+                <button
+                  onClick={() => updateCharge(charge.id, { isDiscount: false })}
+                  className={`px-2 py-1 rounded-lg ${!charge.isDiscount ? "bg-primary text-white" : "bg-background"}`}
+                >
+                  +{t("charges.charge")}
+                </button>
+                <button
+                  onClick={() => updateCharge(charge.id, { isDiscount: true })}
+                  className={`px-2 py-1 rounded-lg ${charge.isDiscount ? "bg-destructive text-white" : "bg-background"}`}
+                >
+                  -{t("charges.discount")}
+                </button>
+                <span className="text-muted-foreground mx-1">|</span>
+                <button
+                  onClick={() => updateCharge(charge.id, { distribution: "proportional" })}
+                  className={`px-2 py-1 rounded-lg ${charge.distribution === "proportional" ? "bg-primary text-white" : "bg-background"}`}
+                >
+                  {t("charges.proportional")}
+                </button>
+                <button
+                  onClick={() => updateCharge(charge.id, { distribution: "per_person" })}
+                  className={`px-2 py-1 rounded-lg ${charge.distribution === "per_person" ? "bg-primary text-white" : "bg-background"}`}
+                >
+                  {t("charges.perPerson")}
+                </button>
+                <button
+                  onClick={() => updateCharge(charge.id, { distribution: "fixed_per_person" })}
+                  className={`px-2 py-1 rounded-lg ${charge.distribution === "fixed_per_person" ? "bg-primary text-white" : "bg-background"}`}
+                >
+                  {t("charges.splitEqual")}
+                </button>
+              </div>
+
+              {/* Calculated amount */}
+              <div className="text-right text-sm font-semibold mt-2">
+                <span className={charge.isDiscount ? "text-destructive" : "text-primary"}>
+                  {charge.isDiscount ? "-" : "+"}{fmt(amount)}
+                </span>
+              </div>
             </div>
           );
         })}
