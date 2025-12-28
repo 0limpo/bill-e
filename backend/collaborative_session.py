@@ -27,7 +27,8 @@ def create_collaborative_session(
     charges: List[Dict] = None,
     decimal_places: int = 0,
     has_tip: bool = False,
-    number_format: Dict = None
+    number_format: Dict = None,
+    price_mode: str = "unitario"
 ) -> Dict[str, Any]:
     session_id = str(uuid.uuid4())[:8]
     owner_token = str(uuid.uuid4())
@@ -60,6 +61,7 @@ def create_collaborative_session(
         "has_tip": has_tip,
         "decimal_places": decimal_places,
         "number_format": number_format or {"thousands": ",", "decimal": "."},
+        "price_mode": price_mode,
         "raw_text": raw_text,
         "participants": [
             {
