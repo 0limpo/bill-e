@@ -170,7 +170,7 @@ export function StepReview({
               </div>
 
               {/* Right: Price + Delete */}
-              <div className="relative">
+              <div className="flex items-center gap-2">
                 <InlineInput
                   type="number"
                   value={unitPrice}
@@ -178,7 +178,7 @@ export function StepReview({
                   onSave={(val) => updateItem(itemId, { price: Math.max(0, Number(val)) })}
                 />
                 <button
-                  className="row-delete"
+                  className="w-6 h-6 flex items-center justify-center rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all pointer-events-none group-hover:pointer-events-auto"
                   onClick={() => deleteItem(itemId)}
                   title={t("items.deleteItem")}
                 >
