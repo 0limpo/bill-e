@@ -124,17 +124,17 @@
 
   /* Breakdown row - clean list style */
   .breakdown-row {
-    @apply flex items-center justify-between py-4 px-0;
+    @apply flex items-center justify-between py-2 px-0;
     @apply border-b border-border/50 last:border-0;
     @apply text-sm text-foreground;
   }
 
   .breakdown-row.subtotal {
-    @apply font-semibold text-base pt-4 mt-2 border-t border-border;
+    @apply font-semibold text-base pt-3 mt-1 border-t border-border;
   }
 
   .breakdown-row.total-final {
-    @apply font-bold text-lg pt-4 border-t-2 border-primary/30;
+    @apply font-bold text-lg pt-3 border-t-2 border-primary/30;
   }
 
   .breakdown-row.charge {
