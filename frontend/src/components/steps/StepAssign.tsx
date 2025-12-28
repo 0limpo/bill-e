@@ -74,6 +74,17 @@ export function StepAssign({
     return (assignments[itemId] || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
   };
 
+  // Calculate total amounts for progress indicator
+  const totalAmount = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
+  const assignedAmount = items.reduce((sum, item) => {
+    const itemId = item.id || item.name;
+    const assignedQty = getTotalAssigned(itemId);
+    return sum + assignedQty * (item.price || 0);
+  }, 0);
+  const remainingAmount = totalAmount - assignedAmount;
+  const progressPercent = totalAmount > 0 ? (assignedAmount / totalAmount) * 100 : 0;
+  const isAllAssigned = remainingAmount <= 0 && totalAmount > 0;
+
   return (
     <div className="step-animate">
       {/* Header */}
@@ -152,6 +163,29 @@ export function StepAssign({
         ))}
       </div>
 
+      {/* Progress Indicator */}
+      <div className="mb-4">
+        {isAllAssigned ? (
+          <div className="flex items-center gap-2 py-3 px-4 bg-green-500/10 rounded-xl text-green-500">
+            <span className="text-lg">✓</span>
+            <span className="font-medium">{t("assign.allAssigned")}</span>
+          </div>
+        ) : (
+          <div className="py-3 px-4 bg-secondary/50 rounded-xl">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">{t("assign.remaining")}</span>
+              <span className="font-semibold text-foreground">{fmt(remainingAmount)}</span>
+            </div>
+            <div className="h-2 bg-secondary rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Items List */}
       <div className="space-y-3">
         {items.map((item) => {
@@ -163,8 +197,10 @@ export function StepAssign({
           const totalAssigned = getTotalAssigned(itemId);
           const remaining = itemQty - totalAssigned;
 
+          const isComplete = remaining <= 0 && totalAssigned > 0;
+
           return (
-            <div key={itemId} className="item-card">
+            <div key={itemId} className={`item-card transition-opacity ${isComplete ? "opacity-50" : ""}`}>
               {/* Item Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -172,9 +208,6 @@ export function StepAssign({
                   <span className="font-medium">{item.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {remaining > 0 && totalAssigned > 0 && (
-                    <span className="text-xs text-warning">{remaining} sin asignar</span>
-                  )}
                   <span className="font-semibold tabular-nums">{fmt(totalPrice)}</span>
                 </div>
               </div>

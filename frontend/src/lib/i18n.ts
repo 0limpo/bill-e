@@ -73,6 +73,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "verify.mismatch": "Diferencia con boleta",
     "verify.scannedCorrectly": "Boleta leída correctamente",
 
+    // Assignment
+    "assign.remaining": "Falta por asignar",
+    "assign.allAssigned": "Todo asignado",
+
     // Errors
     "error.noItems": "No hay items",
     "error.noParticipants": "Agrega personas primero",
@@ -143,6 +147,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "verify.match": "Items sum matches the receipt",
     "verify.mismatch": "Difference from receipt",
     "verify.scannedCorrectly": "Receipt scanned correctly",
+
+    // Assignment
+    "assign.remaining": "Remaining to assign",
+    "assign.allAssigned": "All assigned",
 
     // Errors
     "error.noItems": "No items",
