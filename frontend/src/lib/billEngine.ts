@@ -15,6 +15,7 @@ export interface Item {
   id?: string;
   name: string;
   price: number;
+  price_as_shown?: number;  // Precio como aparece en la boleta
   quantity: number;
   mode?: 'individual' | 'grupal';
 }

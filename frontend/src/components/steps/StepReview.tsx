@@ -66,6 +66,7 @@ interface StepReviewProps {
   items: Item[];
   charges: Charge[];
   originalSubtotal?: number;
+  priceMode?: "unitario" | "total_linea";
   onOriginalSubtotalChange?: (value: number) => void;
   onItemsChange: (items: Item[]) => void;
   onChargesChange: (charges: Charge[]) => void;
@@ -77,6 +78,7 @@ export function StepReview({
   items,
   charges,
   originalSubtotal,
+  priceMode = "unitario",
   onOriginalSubtotalChange,
   onItemsChange,
   onChargesChange,
@@ -173,8 +175,24 @@ export function StepReview({
           const itemId = item.id || item.name;
           const qty = item.quantity || 1;
           const unitPrice = item.price || 0;
+          const lineTotal = unitPrice * qty;
+
+          // Determinar qué precio mostrar/editar según el modo
+          const displayPrice = priceMode === "total_linea" ? lineTotal : unitPrice;
 
           const isEditing = editingItemId === itemId;
+
+          // Handler para guardar precio según modo
+          const handlePriceSave = (val: string | number) => {
+            const newValue = Math.max(0, Number(val));
+            if (priceMode === "total_linea") {
+              // Usuario editó total de línea, calcular precio unitario
+              updateItem(itemId, { price: qty > 0 ? newValue / qty : newValue });
+            } else {
+              // Usuario editó precio unitario
+              updateItem(itemId, { price: newValue });
+            }
+          };
 
           return (
             <div
@@ -203,9 +221,9 @@ export function StepReview({
               <div className="flex items-center gap-2">
                 <InlineInput
                   type="number"
-                  value={unitPrice}
+                  value={displayPrice}
                   className="edit-price"
-                  onSave={(val) => updateItem(itemId, { price: Math.max(0, Number(val)) })}
+                  onSave={handlePriceSave}
                 />
                 {isEditing && (
                   <button

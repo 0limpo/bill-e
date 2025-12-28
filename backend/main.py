@@ -214,16 +214,19 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
                 session['total'] = ocr_result.get('total', 0)
                 session['subtotal'] = ocr_result.get('subtotal', 0)
                 session['tip'] = ocr_result.get('tip', 0)
+                session['price_mode'] = ocr_result.get('price_mode', 'unitario')
 
                 # Convertir items al formato de sesión
                 session_items = []
                 for i, item in enumerate(ocr_result.get('items', [])):
                     quantity = item.get('quantity', 1)
                     price = item['price']
+                    price_as_shown = item.get('price_as_shown', price)
                     session_items.append({
                         'id': f"item-{i}",
                         'name': item['name'],
-                        'price': price,
+                        'price': price,  # Precio unitario (para cálculos)
+                        'price_as_shown': price_as_shown,  # Precio como aparece en boleta
                         'quantity': quantity,
                         'assigned_to': [],
                         'group_total': price * quantity
@@ -287,16 +290,19 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
                 session['total'] = ocr_result.get('total', 0)
                 session['subtotal'] = ocr_result.get('subtotal', 0)
                 session['tip'] = ocr_result.get('tip', 0)
+                session['price_mode'] = ocr_result.get('price_mode', 'unitario')
 
                 # Convertir items al formato de sesión
                 session_items = []
                 for i, item in enumerate(ocr_result.get('items', [])):
                     quantity = item.get('quantity', 1)
                     price = item['price']
+                    price_as_shown = item.get('price_as_shown', price)
                     session_items.append({
                         'id': f"item-{i}",
                         'name': item['name'],
-                        'price': price,
+                        'price': price,  # Precio unitario (para cálculos)
+                        'price_as_shown': price_as_shown,  # Precio como aparece en boleta
                         'quantity': quantity,
                         'assigned_to': [],
                         'group_total': price * quantity
@@ -444,6 +450,7 @@ async def get_collaborative_session(session_id: str, owner: str = None):
             "has_tip": session_data.get("has_tip", False),  # True only if receipt shows tip
             "decimal_places": session_data.get("decimal_places", 0),  # 0 for CLP, 2 for USD
             "number_format": session_data.get("number_format", {"thousands": ",", "decimal": "."}),
+            "price_mode": session_data.get("price_mode", "unitario"),  # 'unitario' o 'total_linea'
             "expires_at": session_data["expires_at"],
             "last_updated": session_data.get("last_updated"),
             "last_updated_by": session_data.get("last_updated_by"),

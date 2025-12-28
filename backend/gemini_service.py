@@ -264,8 +264,9 @@ class GeminiOCRService:
             prompt = """Extrae los datos de esta boleta y retorna JSON:
 
 {
+  "precio_modo": "unitario",
   "items": [
-    {"nombre": "Coca Cola", "cantidad": 2, "precio_unitario": 4000}
+    {"nombre": "Coca Cola", "cantidad": 2, "precio": 4000}
   ],
   "cargos": [
     {"nombre": "Propina 10%", "tipo": "percent", "valor": 10, "es_descuento": false}
@@ -275,8 +276,9 @@ class GeminiOCRService:
 }
 
 DEFINICIONES:
+- precio_modo: "unitario" si la boleta muestra precio por unidad, "total_linea" si muestra el total de la línea (cantidad × precio)
 - items: productos consumidos (comida, bebida, servicios)
-- precio_unitario: precio de UNA unidad. Si la boleta muestra total de línea, divide por cantidad
+- precio: el valor TAL CUAL aparece en la boleta (sin modificar). Si la boleta muestra $7000 para 2 cervezas, poner 7000
 - cargos: todo lo que suma o resta al subtotal DESPUÉS de los items:
   * Propinas (tip, gratuity, propina sugerida)
   * Impuestos (IVA, tax, sales tax)
@@ -313,15 +315,26 @@ Retorna SOLO el JSON, sin explicaciones."""
 
                 # Validar estructura mínima
                 if 'total' in data and 'items' in data:
+                    # Obtener modo de precio (unitario o total_linea)
+                    price_mode = data.get('precio_modo') or 'unitario'
+
                     # Convertir items de Gemini al formato interno
                     items = []
                     for item in data.get('items') or []:
-                        # Soportar tanto 'precio_unitario' (nuevo) como 'precio' (legacy)
-                        unit_price = item.get('precio_unitario') or item.get('precio') or 0
+                        # Soportar tanto 'precio' (nuevo) como 'precio_unitario' (legacy)
+                        price_from_receipt = item.get('precio') or item.get('precio_unitario') or 0
                         quantity = item.get('cantidad') or 1
+
+                        # Calcular precio unitario para cálculos internos
+                        if price_mode == 'total_linea' and quantity > 1:
+                            unit_price = price_from_receipt / quantity
+                        else:
+                            unit_price = price_from_receipt
+
                         items.append({
                             'name': item.get('nombre') or '',
-                            'price': unit_price,
+                            'price': unit_price,  # Siempre guardamos precio unitario internamente
+                            'price_as_shown': price_from_receipt,  # Precio tal cual aparece en boleta
                             'quantity': quantity
                         })
 
@@ -435,7 +448,7 @@ Retorna SOLO el JSON, sin explicaciones."""
                         'has_tip': False,  # Desactivado - propina está en charges
                         'items': items,
                         'charges': charges,
-                        'price_mode': 'original',
+                        'price_mode': price_mode,  # 'unitario' o 'total_linea'
                         'decimal_places': decimal_places,
                         'number_format': number_format,
                         'needs_review': needs_review,

@@ -18,6 +18,7 @@ export interface SessionResponse {
   subtotal: number;
   decimal_places: number;
   number_format: string;
+  price_mode: "unitario" | "total_linea";
   expires_at: string;
   last_updated: string;
   totals: { participant_id: string; total: number }[];
@@ -39,6 +40,7 @@ export interface ApiItem {
   id: string;
   name: string;
   price: number;
+  price_as_shown?: number;  // Precio como aparece en la boleta
   quantity: number;
   mode: "individual" | "grupal";
 }

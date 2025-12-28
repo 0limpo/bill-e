@@ -69,9 +69,12 @@ export default function SessionPage() {
     id: item.id,
     name: item.name,
     price: item.price,
+    price_as_shown: item.price_as_shown,
     quantity: item.quantity,
     mode: item.mode,
   }));
+
+  const priceMode = session?.price_mode || "unitario";
 
   const charges: Charge[] = (session?.charges || []).map((c) => ({
     id: c.id,
@@ -310,6 +313,7 @@ export default function SessionPage() {
             items={items}
             charges={charges}
             originalSubtotal={session?.subtotal}
+            priceMode={priceMode}
             onOriginalSubtotalChange={updateOriginalSubtotal}
             onItemsChange={handleItemsChange}
             onChargesChange={handleChargesChange}
