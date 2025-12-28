@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, type Item, type Charge } from "@/lib/billEngine";
@@ -15,22 +15,46 @@ interface InlineInputProps {
 
 function InlineInput({ type, value, onSave, className = "", placeholder }: InlineInputProps) {
   const [localVal, setLocalVal] = useState(String(value ?? ""));
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Update local value when prop changes (from server sync)
+  useEffect(() => {
+    if (!isFocused) {
+      setLocalVal(String(value ?? ""));
+    }
+  }, [value, isFocused]);
 
   const handleBlur = () => {
+    setIsFocused(false);
     const parsed = type === "number"
-      ? (parseFloat(localVal) || 0)
+      ? (parseFloat(localVal.replace(/[^\d.-]/g, "")) || 0)
       : (localVal.trim() || "Item");
     if (parsed !== value) {
       onSave(parsed);
     }
   };
 
+  const handleFocus = () => {
+    setIsFocused(true);
+    // Show raw number when focused for easy editing
+    if (type === "number") {
+      setLocalVal(String(value ?? ""));
+    }
+  };
+
+  // Display formatted when not focused, raw when focused
+  const displayValue = !isFocused && type === "number"
+    ? formatCurrency(Number(value) || 0)
+    : localVal;
+
   return (
     <input
-      type={type}
-      value={localVal}
+      type="text"
+      inputMode={type === "number" ? "decimal" : "text"}
+      value={displayValue}
       className={`inline-edit ${className}`}
       onChange={(e) => setLocalVal(e.target.value)}
+      onFocus={handleFocus}
       onBlur={handleBlur}
       onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
       placeholder={placeholder}
