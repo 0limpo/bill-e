@@ -82,6 +82,7 @@ export function StepReview({
   t,
 }: StepReviewProps) {
   const [expandedCharge, setExpandedCharge] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
@@ -150,8 +151,14 @@ export function StepReview({
           const qty = item.quantity || 1;
           const unitPrice = item.price || 0;
 
+          const isEditing = editingItemId === itemId;
+
           return (
-            <div key={itemId} className="breakdown-row group">
+            <div
+              key={itemId}
+              className={`breakdown-row ${isEditing ? "bg-secondary/50 rounded-lg -mx-2 px-2" : ""}`}
+              onClick={() => setEditingItemId(isEditing ? null : itemId)}
+            >
               {/* Left: Qty + Name */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <InlineInput
@@ -177,13 +184,19 @@ export function StepReview({
                   className="edit-price"
                   onSave={(val) => updateItem(itemId, { price: Math.max(0, Number(val)) })}
                 />
-                <button
-                  className="w-6 h-6 hidden group-hover:flex items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                  onClick={() => deleteItem(itemId)}
-                  title={t("items.deleteItem")}
-                >
-                  ×
-                </button>
+                {isEditing && (
+                  <button
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteItem(itemId);
+                      setEditingItemId(null);
+                    }}
+                    title={t("items.deleteItem")}
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             </div>
           );
