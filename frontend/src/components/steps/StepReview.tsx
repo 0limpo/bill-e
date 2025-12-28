@@ -227,14 +227,14 @@ export function StepReview({
 
               {/* Expanded options */}
               {isExpanded && (
-                <div className="bg-secondary/30 rounded-xl p-3 mb-2 ml-4">
+                <div className="bg-secondary/30 rounded-xl p-3 mb-2">
                   {/* Name + Value */}
                   <div className="flex items-center gap-2 mb-3">
                     <input
                       type="text"
                       value={charge.name}
                       onChange={(e) => updateCharge(charge.id, { name: e.target.value })}
-                      className="flex-1 bg-background rounded-lg px-3 py-2 text-sm outline-none"
+                      className="flex-1 min-w-0 bg-background rounded-lg px-3 py-2 text-sm outline-none"
                       placeholder={t("charges.charge")}
                     />
                     <input
@@ -242,7 +242,7 @@ export function StepReview({
                       inputMode="decimal"
                       value={charge.value}
                       onChange={(e) => updateCharge(charge.id, { value: parseFloat(e.target.value) || 0 })}
-                      className="w-20 text-right bg-background rounded-lg px-3 py-2 text-sm outline-none"
+                      className="w-16 shrink-0 text-right bg-background rounded-lg px-3 py-2 text-sm outline-none"
                     />
                   </div>
 
