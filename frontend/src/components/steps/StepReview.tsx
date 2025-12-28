@@ -217,14 +217,21 @@ export function StepReview({
         {/* Verification indicator */}
         {originalSubtotal !== undefined && originalSubtotal > 0 && (
           Math.abs(subtotal - originalSubtotal) < 1 ? (
-            <div className="flex items-center gap-2 py-2 px-3 bg-green-500/10 rounded-lg text-green-600 text-sm">
-              <span className="text-base">✓</span>
-              <span>{t("verify.match")}</span>
+            <div className="verify-success">
+              <div className="verify-checkmark">
+                <svg viewBox="0 0 52 52" className="w-16 h-16">
+                  <circle className="verify-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" strokeWidth="2"/>
+                  <path className="verify-check" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16"/>
+                </svg>
+              </div>
+              <p className="text-green-500 text-sm font-medium mt-2">{t("verify.match")}</p>
             </div>
           ) : (
             <div className="flex items-center gap-2 py-2 px-3 bg-orange-500/10 rounded-lg text-orange-500 text-sm">
               <span className="text-base">≠</span>
-              <span>{t("verify.mismatch")} ({fmt(originalSubtotal)})</span>
+              <span>
+                {t("verify.mismatch")} ({subtotal > originalSubtotal ? "+" : ""}{fmt(subtotal - originalSubtotal)})
+              </span>
             </div>
           )
         )}
