@@ -348,8 +348,28 @@ Retorna SOLO el JSON, sin explicaciones."""
                             'distribution': distribution
                         })
 
-                    # === VALIDACIÓN POST-OCR ===
+                    # === POST-PROCESAMIENTO: Convertir propinas fijas a porcentaje ===
                     subtotal = data.get('subtotal') or 0
+                    if subtotal > 0:
+                        common_percentages = [10, 15, 18, 20]
+                        tip_keywords = ['propina', 'tip', 'gratuity', 'servicio']
+
+                        for charge in charges:
+                            # Solo procesar cargos fijos que parecen propinas
+                            if charge['valueType'] == 'fixed' and not charge['isDiscount']:
+                                is_tip = any(kw in charge['name'].lower() for kw in tip_keywords)
+                                if is_tip and charge['value'] > 0:
+                                    # Verificar si es un porcentaje común del subtotal
+                                    for pct in common_percentages:
+                                        expected = subtotal * pct / 100
+                                        # Tolerancia del 1% para redondeos
+                                        if abs(charge['value'] - expected) / expected < 0.01:
+                                            logger.info(f"   Convirtiendo propina {charge['value']} → {pct}% del subtotal {subtotal}")
+                                            charge['valueType'] = 'percent'
+                                            charge['value'] = pct
+                                            break
+
+                    # === VALIDACIÓN POST-OCR ===
                     total = data.get('total') or 0
 
                     # Calcular suma de items
