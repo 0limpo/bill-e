@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber, type Item, type Charge } from "@/lib/billEngine";
@@ -83,6 +83,8 @@ export function StepReview({
 }: StepReviewProps) {
   const [expandedCharge, setExpandedCharge] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevMatchRef = useRef<boolean | null>(null);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
@@ -95,6 +97,25 @@ export function StepReview({
   }, 0);
 
   const total = subtotal + chargesAmount;
+
+  // Check if totals match for celebration
+  const isMatch = originalSubtotal !== undefined && originalSubtotal > 0 && Math.abs(subtotal - originalSubtotal) < 1;
+
+  // Trigger celebration when totals start matching
+  useEffect(() => {
+    if (isMatch && prevMatchRef.current === false) {
+      // Transitioned from not-matching to matching
+      setShowCelebration(true);
+      const timer = setTimeout(() => setShowCelebration(false), 1500);
+      return () => clearTimeout(timer);
+    } else if (isMatch && prevMatchRef.current === null) {
+      // First render and already matching - also celebrate
+      setShowCelebration(true);
+      const timer = setTimeout(() => setShowCelebration(false), 1500);
+      return () => clearTimeout(timer);
+    }
+    prevMatchRef.current = isMatch;
+  }, [isMatch]);
 
   // Item handlers
   const updateItem = (id: string, updates: Partial<Item>) => {
@@ -216,15 +237,10 @@ export function StepReview({
 
         {/* Verification indicator */}
         {originalSubtotal !== undefined && originalSubtotal > 0 && (
-          Math.abs(subtotal - originalSubtotal) < 1 ? (
-            <div className="verify-success">
-              <div className="verify-checkmark">
-                <svg viewBox="0 0 52 52" className="w-16 h-16">
-                  <circle className="verify-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" strokeWidth="2"/>
-                  <path className="verify-check" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16"/>
-                </svg>
-              </div>
-              <p className="text-green-500 text-sm font-medium mt-2">{t("verify.match")}</p>
+          isMatch ? (
+            <div className="flex items-center gap-2 py-2 px-3 bg-green-500/10 rounded-lg text-green-500 text-sm font-medium">
+              <span className="text-base">✓</span>
+              <span>{t("verify.match")}</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 py-2 px-3 bg-orange-500/10 rounded-lg text-orange-500 text-sm">
@@ -234,6 +250,18 @@ export function StepReview({
               </span>
             </div>
           )
+        )}
+
+        {/* Floating celebration overlay */}
+        {showCelebration && (
+          <div className="verify-overlay">
+            <div className="verify-checkmark">
+              <svg viewBox="0 0 52 52" className="w-24 h-24">
+                <circle className="verify-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" strokeWidth="2"/>
+                <path className="verify-check" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16"/>
+              </svg>
+            </div>
+          </div>
         )}
 
         {/* Charges */}

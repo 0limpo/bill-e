@@ -267,13 +267,20 @@
   }
 }
 
-/* Verification success animation */
-.verify-success {
-  @apply flex flex-col items-center justify-center py-6 text-green-500;
-  animation: fadeIn 0.3s ease-out;
+/* Verification celebration overlay */
+.verify-overlay {
+  @apply fixed inset-0 flex items-center justify-center z-50 pointer-events-none;
+  animation: overlayFadeInOut 1.5s ease-out forwards;
+}
+
+.verify-overlay::before {
+  content: '';
+  @apply absolute inset-0 bg-green-500/10;
+  animation: overlayBgFade 1.5s ease-out forwards;
 }
 
 .verify-checkmark {
+  @apply text-green-500;
   animation: scaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -311,4 +318,18 @@
 
 @keyframes drawCheck {
   to { stroke-dashoffset: 0; }
+}
+
+@keyframes overlayFadeInOut {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes overlayBgFade {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
 }
