@@ -279,7 +279,7 @@ export function StepReview({
                     <button
                       onClick={() => updateCharge(charge.id, { isDiscount: true })}
                       className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        charge.isDiscount ? "bg-destructive text-white" : "bg-background"
+                        charge.isDiscount ? "bg-green-600 text-white" : "bg-background"
                       }`}
                     >
                       -{t("charges.discount")}

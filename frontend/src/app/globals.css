@@ -139,11 +139,11 @@
 
   .breakdown-row.charge {
     @apply text-muted-foreground cursor-pointer;
-    @apply hover:bg-secondary/50 -mx-4 px-4 rounded-lg transition-colors;
+    @apply hover:bg-secondary/50 rounded-lg transition-colors;
   }
 
   .breakdown-row.charge.discount {
-    @apply text-destructive;
+    @apply text-green-600;
   }
 
   /* Add button - Fintual style blue link */
