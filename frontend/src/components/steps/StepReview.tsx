@@ -104,12 +104,6 @@ export function StepReview({
 
   return (
     <div className="step-animate">
-      {/* Header - Big Total */}
-      <div className="review-header">
-        <p className="review-total-label">{t("totals.total")}</p>
-        <p className="review-total-value">{fmt(total)}</p>
-      </div>
-
       {/* Items List */}
       <div className="space-y-0">
         {items.map((item) => {
