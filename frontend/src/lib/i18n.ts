@@ -42,9 +42,13 @@ export const translations: Record<Language, Record<string, string>> = {
     "charges.charge": "Cargo",
     "charges.percent": "%",
     "charges.fixed": "$",
+    "charges.howToSplit": "¿Cómo dividir?",
     "charges.proportional": "Proporcional",
+    "charges.proportionalDesc": "Según lo que consumió cada uno",
     "charges.perPerson": "Por persona",
+    "charges.perPersonDesc": "Multiplicar por cantidad de personas",
     "charges.splitEqual": "Dividido igual",
+    "charges.splitEqualDesc": "Mismo monto para todos",
 
     // Totals
     "totals.subtotal": "Subtotal",
@@ -102,9 +106,13 @@ export const translations: Record<Language, Record<string, string>> = {
     "charges.charge": "Charge",
     "charges.percent": "%",
     "charges.fixed": "$",
+    "charges.howToSplit": "How to split?",
     "charges.proportional": "Proportional",
+    "charges.proportionalDesc": "Based on what each person ordered",
     "charges.perPerson": "Per person",
+    "charges.perPersonDesc": "Multiply by number of people",
     "charges.splitEqual": "Split equal",
+    "charges.splitEqualDesc": "Same amount for everyone",
 
     // Totals
     "totals.subtotal": "Subtotal",

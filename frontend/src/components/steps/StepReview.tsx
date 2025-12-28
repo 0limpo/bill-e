@@ -286,33 +286,41 @@ export function StepReview({
                     </button>
                   </div>
 
-                  {/* Distribution */}
-                  <div className="flex gap-2 mb-3">
-                    <button
-                      onClick={() => updateCharge(charge.id, { distribution: "proportional" })}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                        charge.distribution === "proportional" ? "bg-primary text-white" : "bg-background"
-                      }`}
-                    >
-                      {t("charges.proportional")}
-                    </button>
-                    <button
-                      onClick={() => updateCharge(charge.id, { distribution: "per_person" })}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                        charge.distribution === "per_person" ? "bg-primary text-white" : "bg-background"
-                      }`}
-                    >
-                      {t("charges.perPerson")}
-                    </button>
-                    <button
-                      onClick={() => updateCharge(charge.id, { distribution: "fixed_per_person" })}
-                      className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                        charge.distribution === "fixed_per_person" ? "bg-primary text-white" : "bg-background"
-                      }`}
-                    >
-                      {t("charges.splitEqual")}
-                    </button>
-                  </div>
+                  {/* Distribution - only show for fixed amounts */}
+                  {charge.valueType === "fixed" && (
+                    <div className="space-y-2 mb-3">
+                      <p className="text-xs text-muted-foreground">{t("charges.howToSplit")}</p>
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => updateCharge(charge.id, { distribution: "proportional" })}
+                          className={`w-full py-2 px-3 rounded-lg text-left transition-colors ${
+                            charge.distribution === "proportional" ? "bg-primary text-white" : "bg-background"
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{t("charges.proportional")}</span>
+                          <span className="block text-xs opacity-70">{t("charges.proportionalDesc")}</span>
+                        </button>
+                        <button
+                          onClick={() => updateCharge(charge.id, { distribution: "per_person" })}
+                          className={`w-full py-2 px-3 rounded-lg text-left transition-colors ${
+                            charge.distribution === "per_person" ? "bg-primary text-white" : "bg-background"
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{t("charges.perPerson")}</span>
+                          <span className="block text-xs opacity-70">{t("charges.perPersonDesc")}</span>
+                        </button>
+                        <button
+                          onClick={() => updateCharge(charge.id, { distribution: "fixed_per_person" })}
+                          className={`w-full py-2 px-3 rounded-lg text-left transition-colors ${
+                            charge.distribution === "fixed_per_person" ? "bg-primary text-white" : "bg-background"
+                          }`}
+                        >
+                          <span className="text-sm font-medium">{t("charges.splitEqual")}</span>
+                          <span className="block text-xs opacity-70">{t("charges.splitEqualDesc")}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Delete */}
                   <button
