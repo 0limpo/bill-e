@@ -241,16 +241,44 @@ export function useSession({
     async (name: string, price: number, quantity: number): Promise<boolean> => {
       if (!ownerToken) return false;
       markInteraction();
+
+      // Optimistic update FIRST with temp ID
+      const tempId = `temp-${Date.now()}`;
+      setSession((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: [...prev.items, { id: tempId, name, price, quantity, mode: "individual" as const }],
+        };
+      });
+
       try {
-        await addItem(sessionId, ownerToken, { name, price, quantity });
-        await refresh();
+        const result = await addItem(sessionId, ownerToken, { name, price, quantity });
+        // Update temp ID with real ID
+        setSession((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.map((item) =>
+              item.id === tempId ? { ...item, id: result.item.id } : item
+            ),
+          };
+        });
         return true;
       } catch (err) {
         console.error("Add item error:", err);
+        // Rollback
+        setSession((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            items: prev.items.filter((item) => item.id !== tempId),
+          };
+        });
         return false;
       }
     },
-    [sessionId, ownerToken, markInteraction, refresh]
+    [sessionId, ownerToken, markInteraction]
   );
 
   // Update item
@@ -261,26 +289,42 @@ export function useSession({
     ): Promise<boolean> => {
       if (!ownerToken) return false;
       markInteraction();
+
+      // Save old values for rollback
+      const oldItem = session?.items.find((item) => item.id === itemId);
+
+      // Optimistic update FIRST
+      setSession((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map((item) =>
+            item.id === itemId ? { ...item, ...updates } : item
+          ),
+        };
+      });
+
       try {
         await updateItem(sessionId, ownerToken, itemId, updates);
-        // Optimistic update
-        setSession((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            items: prev.items.map((item) =>
-              item.id === itemId ? { ...item, ...updates } : item
-            ),
-          };
-        });
         return true;
       } catch (err) {
         console.error("Update item error:", err);
-        await refresh();
+        // Rollback
+        if (oldItem) {
+          setSession((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              items: prev.items.map((item) =>
+                item.id === itemId ? oldItem : item
+              ),
+            };
+          });
+        }
         return false;
       }
     },
-    [sessionId, ownerToken, markInteraction, refresh]
+    [sessionId, ownerToken, session, markInteraction]
   );
 
   // Delete item
@@ -288,24 +332,38 @@ export function useSession({
     async (itemId: string): Promise<boolean> => {
       if (!ownerToken) return false;
       markInteraction();
+
+      // Save for rollback
+      const oldItem = session?.items.find((item) => item.id === itemId);
+
+      // Optimistic update FIRST
+      setSession((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.filter((item) => item.id !== itemId),
+        };
+      });
+
       try {
         await deleteItem(sessionId, itemId, ownerToken);
-        // Optimistic update
-        setSession((prev) => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            items: prev.items.filter((item) => item.id !== itemId),
-          };
-        });
         return true;
       } catch (err) {
         console.error("Delete item error:", err);
-        await refresh();
+        // Rollback
+        if (oldItem) {
+          setSession((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              items: [...prev.items, oldItem],
+            };
+          });
+        }
         return false;
       }
     },
-    [sessionId, ownerToken, markInteraction, refresh]
+    [sessionId, ownerToken, session, markInteraction]
   );
 
   // Toggle assignment with optimistic update FIRST
@@ -428,16 +486,26 @@ export function useSession({
     async (charges: ApiCharge[]): Promise<boolean> => {
       if (!ownerToken) return false;
       markInteraction();
+
+      // Save for rollback
+      const oldCharges = session?.charges;
+
+      // Optimistic update FIRST
+      setSession((prev) => (prev ? { ...prev, charges } : prev));
+
       try {
         await updateCharges(sessionId, ownerToken, charges);
-        setSession((prev) => (prev ? { ...prev, charges } : prev));
         return true;
       } catch (err) {
         console.error("Update charges error:", err);
+        // Rollback
+        if (oldCharges) {
+          setSession((prev) => (prev ? { ...prev, charges: oldCharges } : prev));
+        }
         return false;
       }
     },
-    [sessionId, ownerToken, markInteraction]
+    [sessionId, ownerToken, session, markInteraction]
   );
 
   // Finalize session
