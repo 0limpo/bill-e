@@ -197,20 +197,24 @@ export function StepReview({
 
         {/* Subtotal with verification */}
         <div className="breakdown-row subtotal">
-          <span className="flex items-center gap-2">
-            {t("totals.subtotal")}
-            {originalSubtotal !== undefined && originalSubtotal > 0 && (
-              Math.abs(subtotal - originalSubtotal) < 1 ? (
-                <span className="text-xs text-green-600">✓</span>
-              ) : (
-                <span className="text-xs text-orange-500" title={`${t("verify.originalSubtotal")}: ${fmt(originalSubtotal)}`}>
-                  ≠ {fmt(originalSubtotal)}
-                </span>
-              )
-            )}
-          </span>
+          <span>{t("totals.subtotal")}</span>
           <span>{fmt(subtotal)}</span>
         </div>
+
+        {/* Verification indicator */}
+        {originalSubtotal !== undefined && originalSubtotal > 0 && (
+          Math.abs(subtotal - originalSubtotal) < 1 ? (
+            <div className="flex items-center gap-2 py-2 px-3 bg-green-500/10 rounded-lg text-green-600 text-sm">
+              <span className="text-base">✓</span>
+              <span>{t("verify.match")}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 py-2 px-3 bg-orange-500/10 rounded-lg text-orange-500 text-sm">
+              <span className="text-base">≠</span>
+              <span>{t("verify.mismatch")} ({fmt(originalSubtotal)})</span>
+            </div>
+          )
+        )}
 
         {/* Charges */}
         {charges.map((charge) => {
