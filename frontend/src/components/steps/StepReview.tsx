@@ -353,6 +353,11 @@ export function StepReview({
           </div>
         )}
 
+        {/* Charges Section Header */}
+        <div className="mt-6 mb-2">
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
+        </div>
+
         {/* Charges */}
         {charges.map((charge) => {
           const amount = charge.valueType === "percent"

@@ -34,6 +34,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "items.deleteItem": "Eliminar",
 
     // Charges
+    "charges.sectionTitle": "Cargos y descuentos",
     "charges.addCharge": "Agregar cargo/descuento",
     "charges.tip": "Propina",
     "charges.tax": "Impuesto",
@@ -104,6 +105,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "items.deleteItem": "Delete",
 
     // Charges
+    "charges.sectionTitle": "Charges & discounts",
     "charges.addCharge": "Add charge/discount",
     "charges.tip": "Tip",
     "charges.tax": "Tax",
