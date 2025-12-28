@@ -103,6 +103,34 @@ export function StepReview({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Handle back button to clear selection instead of navigating away
+  const selectionStateRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    const hasSelection = editingItemId !== null || expandedCharge !== null;
+
+    // Push history state when selection opens (only once)
+    if (hasSelection && !selectionStateRef.current) {
+      window.history.pushState({ selectionOpen: true }, "");
+      selectionStateRef.current = true;
+    } else if (!hasSelection && selectionStateRef.current) {
+      selectionStateRef.current = false;
+    }
+  }, [editingItemId, expandedCharge]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (selectionStateRef.current) {
+        setEditingItemId(null);
+        setExpandedCharge(null);
+        selectionStateRef.current = false;
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
 
