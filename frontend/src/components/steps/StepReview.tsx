@@ -65,6 +65,7 @@ function InlineInput({ type, value, onSave, className = "", placeholder }: Inlin
 interface StepReviewProps {
   items: Item[];
   charges: Charge[];
+  originalSubtotal?: number;
   onItemsChange: (items: Item[]) => void;
   onChargesChange: (charges: Charge[]) => void;
   onNext: () => void;
@@ -74,6 +75,7 @@ interface StepReviewProps {
 export function StepReview({
   items,
   charges,
+  originalSubtotal,
   onItemsChange,
   onChargesChange,
   onNext,
@@ -193,9 +195,20 @@ export function StepReview({
           {t("items.addManualItem")}
         </button>
 
-        {/* Subtotal */}
+        {/* Subtotal with verification */}
         <div className="breakdown-row subtotal">
-          <span>{t("totals.subtotal")}</span>
+          <span className="flex items-center gap-2">
+            {t("totals.subtotal")}
+            {originalSubtotal !== undefined && originalSubtotal > 0 && (
+              Math.abs(subtotal - originalSubtotal) < 1 ? (
+                <span className="text-xs text-green-600">✓</span>
+              ) : (
+                <span className="text-xs text-orange-500" title={`${t("verify.originalSubtotal")}: ${fmt(originalSubtotal)}`}>
+                  ≠ {fmt(originalSubtotal)}
+                </span>
+              )
+            )}
+          </span>
           <span>{fmt(subtotal)}</span>
         </div>
 

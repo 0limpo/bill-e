@@ -308,6 +308,7 @@ export default function SessionPage() {
           <StepReview
             items={items}
             charges={charges}
+            originalSubtotal={session?.subtotal}
             onItemsChange={handleItemsChange}
             onChargesChange={handleChargesChange}
             onNext={() => goToStep(2)}

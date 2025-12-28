@@ -66,6 +66,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "finalized.shareWhatsApp": "Compartir",
     "finalized.breakdown": "Desglose",
 
+    // Verification
+    "verify.originalSubtotal": "Subtotal original",
+
     // Errors
     "error.noItems": "No hay items",
     "error.noParticipants": "Agrega personas primero",
@@ -129,6 +132,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "finalized.billClosed": "Bill closed",
     "finalized.shareWhatsApp": "Share",
     "finalized.breakdown": "Breakdown",
+
+    // Verification
+    "verify.originalSubtotal": "Original subtotal",
 
     // Errors
     "error.noItems": "No items",
