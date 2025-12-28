@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, type Item, type Charge } from "@/lib/billEngine";
+import { formatCurrency, formatNumber, type Item, type Charge } from "@/lib/billEngine";
 
 interface InlineInputProps {
   type: "text" | "number";
@@ -44,7 +44,7 @@ function InlineInput({ type, value, onSave, className = "", placeholder }: Inlin
 
   // Display formatted when not focused, raw when focused
   const displayValue = !isFocused && type === "number"
-    ? formatCurrency(Number(value) || 0)
+    ? formatNumber(Number(value) || 0)
     : localVal;
 
   return (

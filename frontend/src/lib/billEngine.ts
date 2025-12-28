@@ -70,9 +70,9 @@ const AVATAR_COLORS = [
 ];
 
 /**
- * Format a number as currency
+ * Format a number with thousand separators (no currency symbol)
  */
-export const formatCurrency = (
+export const formatNumber = (
   amount: number,
   decimals: number = 0,
   numberFormat: NumberFormat | null = null
@@ -84,9 +84,20 @@ export const formatCurrency = (
   const intWithSep = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, fmt.thousands);
 
   if (decPart !== undefined) {
-    return `$${intWithSep}${fmt.decimal}${decPart}`;
+    return `${intWithSep}${fmt.decimal}${decPart}`;
   }
-  return `$${intWithSep}`;
+  return intWithSep;
+};
+
+/**
+ * Format a number as currency (with $ symbol)
+ */
+export const formatCurrency = (
+  amount: number,
+  decimals: number = 0,
+  numberFormat: NumberFormat | null = null
+): string => {
+  return `$${formatNumber(amount, decimals, numberFormat)}`;
 };
 
 /**
