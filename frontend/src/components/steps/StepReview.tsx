@@ -178,7 +178,7 @@ export function StepReview({
                   onSave={(val) => updateItem(itemId, { price: Math.max(0, Number(val)) })}
                 />
                 <button
-                  className="w-6 h-6 flex items-center justify-center rounded-full text-muted-foreground opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-all pointer-events-none group-hover:pointer-events-auto"
+                  className="w-6 h-6 hidden group-hover:flex items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                   onClick={() => deleteItem(itemId)}
                   title={t("items.deleteItem")}
                 >
