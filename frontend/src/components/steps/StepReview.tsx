@@ -89,6 +89,19 @@ export function StepReview({
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const prevMatchRef = useRef<boolean | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Clear selection when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setEditingItemId(null);
+        setExpandedCharge(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Calculate totals
   const subtotal = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
@@ -108,15 +121,17 @@ export function StepReview({
   // Trigger celebration when totals start matching
   useEffect(() => {
     if (isMatch && prevMatchRef.current === false) {
-      // Transitioned from not-matching to matching
+      // Transitioned from not-matching to matching - show immediately
       setShowCelebration(true);
-      const timer = setTimeout(() => setShowCelebration(false), 3000);
+      const timer = setTimeout(() => setShowCelebration(false), 4500);
       return () => clearTimeout(timer);
     } else if (isMatch && prevMatchRef.current === null) {
-      // First render and already matching - also celebrate
-      setShowCelebration(true);
-      const timer = setTimeout(() => setShowCelebration(false), 3000);
-      return () => clearTimeout(timer);
+      // First render and already matching - delay to let user see items first
+      const delayTimer = setTimeout(() => {
+        setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 4500);
+      }, 1500);
+      return () => clearTimeout(delayTimer);
     }
     prevMatchRef.current = isMatch;
   }, [isMatch]);
@@ -167,10 +182,19 @@ export function StepReview({
 
   const fmt = (amount: number) => formatCurrency(amount);
 
+  // Clear selections when clicking on background
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    // Only clear if clicking directly on the container, not on child elements
+    if (e.target === e.currentTarget) {
+      setEditingItemId(null);
+      setExpandedCharge(null);
+    }
+  };
+
   return (
-    <div className="step-animate">
+    <div className="step-animate" ref={containerRef} onClick={handleBackgroundClick}>
       {/* Items List */}
-      <div className="space-y-0">
+      <div className="space-y-0" onClick={handleBackgroundClick}>
         {items.map((item) => {
           const itemId = item.id || item.name;
           const qty = item.quantity || 1;
@@ -198,7 +222,10 @@ export function StepReview({
             <div
               key={itemId}
               className={`breakdown-row ${isEditing ? "bg-secondary/50 rounded-lg -mx-2 px-2" : ""}`}
-              onClick={() => setEditingItemId(isEditing ? null : itemId)}
+              onClick={() => {
+                setEditingItemId(isEditing ? null : itemId);
+                setExpandedCharge(null); // Clear charge expansion when clicking item
+              }}
             >
               {/* Left: Qty + Name */}
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -244,20 +271,20 @@ export function StepReview({
         })}
 
         {/* Add Item Button */}
-        <button className="breakdown-add-btn" onClick={addItem}>
+        <button className="breakdown-add-btn" onClick={() => { addItem(); setEditingItemId(null); setExpandedCharge(null); }}>
           <Plus className="w-4 h-4" />
           {t("items.addManualItem")}
         </button>
 
         {/* Subtotal with verification */}
-        <div className="breakdown-row subtotal">
+        <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
           <span>{t("totals.subtotal")}</span>
           <span>{fmt(subtotal)}</span>
         </div>
 
         {/* Original subtotal from OCR (editable) */}
         {originalSubtotal !== undefined && originalSubtotal > 0 && (
-          <div className="breakdown-row text-muted-foreground text-sm">
+          <div className="breakdown-row text-muted-foreground text-sm" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
             <span>{t("verify.originalSubtotal")}</span>
             <InlineInput
               type="number"
@@ -271,12 +298,12 @@ export function StepReview({
         {/* Verification indicator */}
         {originalSubtotal !== undefined && originalSubtotal > 0 && (
           isMatch ? (
-            <div className="flex items-center gap-2 py-2 px-3 bg-green-500/10 rounded-lg text-green-500 text-sm font-medium">
+            <div className="flex items-center gap-2 py-2 px-3 bg-green-500/10 rounded-lg text-green-500 text-sm font-medium" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
               <span className="text-base">✓</span>
               <span>{t("verify.match")}</span>
             </div>
           ) : (
-            <div className="flex items-center gap-2 py-2 px-3 bg-orange-500/10 rounded-lg text-orange-500 text-sm">
+            <div className="flex items-center gap-2 py-2 px-3 bg-orange-500/10 rounded-lg text-orange-500 text-sm" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
               <span className="text-base">≠</span>
               <span>
                 {t("verify.mismatch")} ({subtotal > originalSubtotal ? "+" : ""}{fmt(subtotal - originalSubtotal)})
@@ -293,6 +320,7 @@ export function StepReview({
                 <circle className="verify-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" strokeWidth="2"/>
                 <path className="verify-check" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16"/>
               </svg>
+              <p className="verify-message">{t("verify.scannedCorrectly")}</p>
             </div>
           </div>
         )}
@@ -309,7 +337,10 @@ export function StepReview({
               {/* Collapsed view - click to expand */}
               <button
                 className={`breakdown-row charge w-full ${charge.isDiscount ? "discount" : ""}`}
-                onClick={() => setExpandedCharge(isExpanded ? null : charge.id)}
+                onClick={() => {
+                  setExpandedCharge(isExpanded ? null : charge.id);
+                  setEditingItemId(null); // Clear item selection when clicking charge
+                }}
               >
                 <span className="flex items-center gap-2 min-w-0 flex-1">
                   {isExpanded ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
@@ -437,13 +468,13 @@ export function StepReview({
         })}
 
         {/* Add Charge Button */}
-        <button className="breakdown-add-btn pt-2" onClick={addCharge}>
+        <button className="breakdown-add-btn pt-2" onClick={() => { addCharge(); setEditingItemId(null); }}>
           <Plus className="w-4 h-4" />
           {t("charges.addCharge")}
         </button>
 
         {/* Total Final */}
-        <div className="breakdown-row total-final">
+        <div className="breakdown-row total-final" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
           <span>{t("totals.total")}</span>
           <span className="text-primary">{fmt(total)}</span>
         </div>

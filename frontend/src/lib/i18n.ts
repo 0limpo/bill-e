@@ -70,6 +70,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "verify.originalSubtotal": "Subtotal leído de la boleta",
     "verify.match": "Suma de items coincide con la boleta",
     "verify.mismatch": "Diferencia con boleta",
+    "verify.scannedCorrectly": "Boleta leída correctamente",
 
     // Errors
     "error.noItems": "No hay items",
@@ -139,6 +140,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "verify.originalSubtotal": "Subtotal read from receipt",
     "verify.match": "Items sum matches the receipt",
     "verify.mismatch": "Difference from receipt",
+    "verify.scannedCorrectly": "Receipt scanned correctly",
 
     // Errors
     "error.noItems": "No items",

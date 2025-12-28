@@ -270,11 +270,11 @@
 /* Verification celebration overlay */
 .verify-overlay {
   @apply fixed inset-0 flex items-center justify-center z-50 pointer-events-none;
-  animation: overlayFadeInOut 3s ease-out forwards;
+  animation: overlayFadeInOut 4.5s ease-out forwards;
 }
 
 .verify-checkmark {
-  @apply text-green-500 relative;
+  @apply text-green-500 relative flex flex-col items-center;
   animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -282,7 +282,15 @@
   content: '';
   @apply absolute rounded-full bg-green-500/15;
   inset: -24px;
-  animation: glowPulse 3s ease-out forwards;
+  top: -24px;
+  bottom: auto;
+  height: 144px;
+  animation: glowPulse 4.5s ease-out forwards;
+}
+
+.verify-message {
+  @apply text-green-500 font-semibold text-lg mt-4 text-center;
+  animation: fadeInUp 0.5s ease-out 0.8s both;
 }
 
 .verify-circle {
@@ -344,5 +352,16 @@
   100% {
     opacity: 0;
     transform: scale(1.2);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
