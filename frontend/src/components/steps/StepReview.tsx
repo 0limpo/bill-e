@@ -355,7 +355,7 @@ export function StepReview({
 
         {/* Charges Section Header */}
         <div className="mt-6 mb-2">
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
+          <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
         </div>
 
         {/* Charges */}
