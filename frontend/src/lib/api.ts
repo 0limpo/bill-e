@@ -277,6 +277,23 @@ export async function updateCharges(
   });
 }
 
+/**
+ * Update original subtotal (OCR value)
+ */
+export async function updateSubtotal(
+  sessionId: string,
+  ownerToken: string,
+  subtotal: number
+): Promise<{ success: boolean }> {
+  return apiRequest(`/api/session/${sessionId}/update-totals`, {
+    method: "POST",
+    body: JSON.stringify({
+      owner_token: ownerToken,
+      subtotal,
+    }),
+  });
+}
+
 // --- Session Status Endpoints ---
 
 /**

@@ -66,6 +66,7 @@ interface StepReviewProps {
   items: Item[];
   charges: Charge[];
   originalSubtotal?: number;
+  onOriginalSubtotalChange?: (value: number) => void;
   onItemsChange: (items: Item[]) => void;
   onChargesChange: (charges: Charge[]) => void;
   onNext: () => void;
@@ -76,6 +77,7 @@ export function StepReview({
   items,
   charges,
   originalSubtotal,
+  onOriginalSubtotalChange,
   onItemsChange,
   onChargesChange,
   onNext,
@@ -106,12 +108,12 @@ export function StepReview({
     if (isMatch && prevMatchRef.current === false) {
       // Transitioned from not-matching to matching
       setShowCelebration(true);
-      const timer = setTimeout(() => setShowCelebration(false), 1500);
+      const timer = setTimeout(() => setShowCelebration(false), 3000);
       return () => clearTimeout(timer);
     } else if (isMatch && prevMatchRef.current === null) {
       // First render and already matching - also celebrate
       setShowCelebration(true);
-      const timer = setTimeout(() => setShowCelebration(false), 1500);
+      const timer = setTimeout(() => setShowCelebration(false), 3000);
       return () => clearTimeout(timer);
     }
     prevMatchRef.current = isMatch;
@@ -234,6 +236,19 @@ export function StepReview({
           <span>{t("totals.subtotal")}</span>
           <span>{fmt(subtotal)}</span>
         </div>
+
+        {/* Original subtotal from OCR (editable) */}
+        {originalSubtotal !== undefined && originalSubtotal > 0 && (
+          <div className="breakdown-row text-muted-foreground text-sm">
+            <span>{t("verify.originalSubtotal")}</span>
+            <InlineInput
+              type="number"
+              value={originalSubtotal}
+              className="edit-price text-muted-foreground"
+              onSave={(val) => onOriginalSubtotalChange?.(Math.max(0, Number(val)))}
+            />
+          </div>
+        )}
 
         {/* Verification indicator */}
         {originalSubtotal !== undefined && originalSubtotal > 0 && (

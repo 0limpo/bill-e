@@ -10,6 +10,7 @@ import {
   updateItem,
   deleteItem,
   updateCharges,
+  updateSubtotal,
   finalizeSession,
   reopenSession,
   removeParticipant,
@@ -56,6 +57,9 @@ export interface UseSessionReturn {
 
   // Charges actions
   updateSessionCharges: (charges: ApiCharge[]) => Promise<boolean>;
+
+  // Subtotal actions
+  updateOriginalSubtotal: (subtotal: number) => Promise<boolean>;
 
   // Session status
   finalize: () => Promise<boolean>;
@@ -508,6 +512,33 @@ export function useSession({
     [sessionId, ownerToken, session, markInteraction]
   );
 
+  // Update original subtotal (OCR value)
+  const updateOriginalSubtotal = useCallback(
+    async (newSubtotal: number): Promise<boolean> => {
+      if (!ownerToken) return false;
+      markInteraction();
+
+      // Save for rollback
+      const oldSubtotal = session?.subtotal;
+
+      // Optimistic update
+      setSession((prev) => (prev ? { ...prev, subtotal: newSubtotal } : prev));
+
+      try {
+        await updateSubtotal(sessionId, ownerToken, newSubtotal);
+        return true;
+      } catch (err) {
+        console.error("Update subtotal error:", err);
+        // Rollback
+        if (oldSubtotal !== undefined) {
+          setSession((prev) => (prev ? { ...prev, subtotal: oldSubtotal } : prev));
+        }
+        return false;
+      }
+    },
+    [sessionId, ownerToken, session, markInteraction]
+  );
+
   // Finalize session
   const finalize = useCallback(async (): Promise<boolean> => {
     if (!ownerToken) return false;
@@ -553,6 +584,7 @@ export function useSession({
     toggleAssignment,
     updateAssignmentQty,
     updateSessionCharges,
+    updateOriginalSubtotal,
     finalize,
     reopen,
   };

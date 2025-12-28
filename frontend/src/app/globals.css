@@ -270,30 +270,31 @@
 /* Verification celebration overlay */
 .verify-overlay {
   @apply fixed inset-0 flex items-center justify-center z-50 pointer-events-none;
-  animation: overlayFadeInOut 1.5s ease-out forwards;
-}
-
-.verify-overlay::before {
-  content: '';
-  @apply absolute inset-0 bg-green-500/10;
-  animation: overlayBgFade 1.5s ease-out forwards;
+  animation: overlayFadeInOut 3s ease-out forwards;
 }
 
 .verify-checkmark {
-  @apply text-green-500;
-  animation: scaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  @apply text-green-500 relative;
+  animation: scaleIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.verify-overlay .verify-checkmark::before {
+  content: '';
+  @apply absolute rounded-full bg-green-500/15;
+  inset: -24px;
+  animation: glowPulse 3s ease-out forwards;
 }
 
 .verify-circle {
   stroke-dasharray: 166;
   stroke-dashoffset: 166;
-  animation: drawCircle 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+  animation: drawCircle 0.8s cubic-bezier(0.65, 0, 0.45, 1) forwards;
 }
 
 .verify-check {
   stroke-dasharray: 48;
   stroke-dashoffset: 48;
-  animation: drawCheck 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.4s forwards;
+  animation: drawCheck 0.4s cubic-bezier(0.65, 0, 0.45, 1) 0.6s forwards;
 }
 
 @keyframes fadeIn {
@@ -322,14 +323,26 @@
 
 @keyframes overlayFadeInOut {
   0% { opacity: 0; }
-  20% { opacity: 1; }
-  70% { opacity: 1; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
   100% { opacity: 0; }
 }
 
-@keyframes overlayBgFade {
-  0% { opacity: 0; }
-  20% { opacity: 1; }
-  70% { opacity: 1; }
-  100% { opacity: 0; }
+@keyframes glowPulse {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2);
+  }
 }
