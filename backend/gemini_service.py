@@ -317,6 +317,7 @@ Retorna SOLO el JSON, sin explicaciones."""
                 if 'total' in data and 'items' in data:
                     # Obtener modo de precio (unitario o total_linea)
                     price_mode = data.get('precio_modo') or 'unitario'
+                    logger.info(f"📊 Gemini precio_modo: '{data.get('precio_modo')}' → usando: '{price_mode}'")
 
                     # Convertir items de Gemini al formato interno
                     items = []
@@ -401,10 +402,12 @@ Retorna SOLO el JSON, sin explicaciones."""
                         corrected_items = []
                         for it in items:
                             if it['quantity'] > 1:
+                                original_price = it.get('price_as_shown') or it['price']
                                 # Probar si dividir el precio hace que cuadre mejor
                                 corrected_items.append({
                                     'name': it['name'],
                                     'price': it['price'] / it['quantity'],
+                                    'price_as_shown': original_price,  # Preservar precio original
                                     'quantity': it['quantity']
                                 })
                             else:
@@ -421,6 +424,9 @@ Retorna SOLO el JSON, sin explicaciones."""
                             items = corrected_items
                             items_sum = corrected_sum
                             diff_ratio = corrected_diff
+                            # Actualizar price_mode ya que detectamos que eran totales de línea
+                            price_mode = 'total_linea'
+                            logger.info(f"   price_mode actualizado a 'total_linea'")
 
                         # Si aún no cuadra, marcar para revisión
                         if diff_ratio > tolerance:
@@ -463,7 +469,7 @@ Retorna SOLO el JSON, sin explicaciones."""
                     }
 
                     # Log items
-                    logger.info(f"✅ Gemini extrajo: Total=${total}, Subtotal=${subtotal}, Items={len(items)}, Charges={len(charges)}")
+                    logger.info(f"✅ Gemini extrajo: Total=${total}, Subtotal=${subtotal}, Items={len(items)}, Charges={len(charges)}, PriceMode={price_mode}")
                     logger.info(f"📦 Items:")
                     for i, it in enumerate(items):
                         line_total = it['price'] * it['quantity']
