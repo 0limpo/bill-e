@@ -213,14 +213,14 @@ export function StepReview({
                 className={`breakdown-row charge w-full ${charge.isDiscount ? "discount" : ""}`}
                 onClick={() => setExpandedCharge(isExpanded ? null : charge.id)}
               >
-                <span className="flex items-center gap-2">
-                  {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-                  {charge.name}
-                  <span className="text-xs opacity-70">
+                <span className="flex items-center gap-2 min-w-0 flex-1">
+                  {isExpanded ? <ChevronDown className="w-3 h-3 shrink-0" /> : <ChevronRight className="w-3 h-3 shrink-0" />}
+                  <span className="truncate">{charge.name}</span>
+                  <span className="text-xs opacity-70 shrink-0">
                     ({charge.value}{charge.valueType === "percent" ? "%" : "$"})
                   </span>
                 </span>
-                <span className="font-semibold">
+                <span className="font-semibold shrink-0 ml-2">
                   {charge.isDiscount ? "-" : "+"}{fmt(amount)}
                 </span>
               </button>
