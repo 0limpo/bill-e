@@ -221,8 +221,8 @@ export function StepReview({
 
   return (
     <div className="step-animate" ref={containerRef} onClick={handleBackgroundClick}>
-      {/* Items List */}
-      <div className="space-y-0" onClick={handleBackgroundClick}>
+      {/* Items Section - Gray Box */}
+      <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
         {items.map((item) => {
           const itemId = item.id || item.name;
           const qty = item.quantity || 1;
@@ -352,10 +352,12 @@ export function StepReview({
             </div>
           </div>
         )}
+      </div>
 
-        {/* Charges Section Header */}
-        <div className="mt-6 mb-2 pt-4 border-t-4 border-double border-border">
-          <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
+      {/* Charges Section - Gray Box */}
+      <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
+        <div className="mb-2">
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
         </div>
 
         {/* Charges */}
@@ -501,16 +503,16 @@ export function StepReview({
         })}
 
         {/* Add Charge Button */}
-        <button className="breakdown-add-btn pt-2" onClick={() => { addCharge(); setEditingItemId(null); }}>
+        <button className="breakdown-add-btn" onClick={() => { addCharge(); setEditingItemId(null); }}>
           <Plus className="w-4 h-4" />
           {t("charges.addCharge")}
         </button>
+      </div>
 
-        {/* Total Final */}
-        <div className="breakdown-row total-final" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
-          <span>{t("totals.total")}</span>
-          <span className="text-primary">{fmt(total)}</span>
-        </div>
+      {/* Total Final - Outside boxes, prominent */}
+      <div className="flex items-center justify-between py-4 px-2">
+        <span className="text-lg font-bold">{t("totals.total")}</span>
+        <span className="text-2xl font-bold text-primary">{fmt(total)}</span>
       </div>
 
       {/* Next Button */}
