@@ -11,6 +11,7 @@ import {
   deleteItem,
   updateCharges,
   updateSubtotal,
+  updateTotal,
   finalizeSession,
   reopenSession,
   removeParticipant,
@@ -58,8 +59,9 @@ export interface UseSessionReturn {
   // Charges actions
   updateSessionCharges: (charges: ApiCharge[]) => Promise<boolean>;
 
-  // Subtotal actions
+  // Subtotal/Total actions
   updateOriginalSubtotal: (subtotal: number) => Promise<boolean>;
+  updateOriginalTotal: (total: number) => Promise<boolean>;
 
   // Session status
   finalize: () => Promise<boolean>;
@@ -539,6 +541,33 @@ export function useSession({
     [sessionId, ownerToken, session, markInteraction]
   );
 
+  // Update original total (OCR value)
+  const updateOriginalTotal = useCallback(
+    async (newTotal: number): Promise<boolean> => {
+      if (!ownerToken) return false;
+      markInteraction();
+
+      // Save for rollback
+      const oldTotal = session?.total;
+
+      // Optimistic update
+      setSession((prev) => (prev ? { ...prev, total: newTotal } : prev));
+
+      try {
+        await updateTotal(sessionId, ownerToken, newTotal);
+        return true;
+      } catch (err) {
+        console.error("Update total error:", err);
+        // Rollback
+        if (oldTotal !== undefined) {
+          setSession((prev) => (prev ? { ...prev, total: oldTotal } : prev));
+        }
+        return false;
+      }
+    },
+    [sessionId, ownerToken, session, markInteraction]
+  );
+
   // Finalize session
   const finalize = useCallback(async (): Promise<boolean> => {
     if (!ownerToken) return false;
@@ -585,6 +614,7 @@ export function useSession({
     updateAssignmentQty,
     updateSessionCharges,
     updateOriginalSubtotal,
+    updateOriginalTotal,
     finalize,
     reopen,
   };

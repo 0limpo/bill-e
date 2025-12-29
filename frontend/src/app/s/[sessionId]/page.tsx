@@ -41,6 +41,7 @@ export default function SessionPage() {
     deleteItemById,
     updateSessionCharges,
     updateOriginalSubtotal,
+    updateOriginalTotal,
     finalize,
     markInteraction,
   } = useSession({
@@ -313,8 +314,10 @@ export default function SessionPage() {
             items={items}
             charges={charges}
             originalSubtotal={session?.subtotal}
+            originalTotal={session?.total}
             priceMode={priceMode}
             onOriginalSubtotalChange={updateOriginalSubtotal}
+            onOriginalTotalChange={updateOriginalTotal}
             onItemsChange={handleItemsChange}
             onChargesChange={handleChargesChange}
             onNext={() => goToStep(2)}

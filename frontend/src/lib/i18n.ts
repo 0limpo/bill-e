@@ -68,9 +68,12 @@ export const translations: Record<Language, Record<string, string>> = {
     "finalized.breakdown": "Desglose",
 
     // Verification
-    "verify.originalSubtotal": "Subtotal leído de la boleta",
-    "verify.match": "Suma de items coincide con la boleta",
-    "verify.mismatch": "Diferencia con boleta",
+    "verify.title": "Verificación",
+    "verify.subtitle": "Compara los valores leídos con tus cálculos",
+    "verify.receiptSubtotal": "Subtotal boleta",
+    "verify.receiptTotal": "Total boleta",
+    "verify.match": "Los valores coinciden",
+    "verify.mismatch": "Hay diferencias",
     "verify.scannedCorrectly": "Boleta leída correctamente",
 
     // Assignment
@@ -143,9 +146,12 @@ export const translations: Record<Language, Record<string, string>> = {
     "finalized.breakdown": "Breakdown",
 
     // Verification
-    "verify.originalSubtotal": "Subtotal read from receipt",
-    "verify.match": "Items sum matches the receipt",
-    "verify.mismatch": "Difference from receipt",
+    "verify.title": "Verification",
+    "verify.subtitle": "Compare scanned values with your calculations",
+    "verify.receiptSubtotal": "Receipt subtotal",
+    "verify.receiptTotal": "Receipt total",
+    "verify.match": "Values match",
+    "verify.mismatch": "There are differences",
     "verify.scannedCorrectly": "Receipt scanned correctly",
 
     // Assignment

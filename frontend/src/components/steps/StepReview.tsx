@@ -66,8 +66,10 @@ interface StepReviewProps {
   items: Item[];
   charges: Charge[];
   originalSubtotal?: number;
+  originalTotal?: number;
   priceMode?: "unitario" | "total_linea";
   onOriginalSubtotalChange?: (value: number) => void;
+  onOriginalTotalChange?: (value: number) => void;
   onItemsChange: (items: Item[]) => void;
   onChargesChange: (charges: Charge[]) => void;
   onNext: () => void;
@@ -78,8 +80,10 @@ export function StepReview({
   items,
   charges,
   originalSubtotal,
+  originalTotal,
   priceMode = "unitario",
   onOriginalSubtotalChange,
+  onOriginalTotalChange,
   onItemsChange,
   onChargesChange,
   onNext,
@@ -143,8 +147,11 @@ export function StepReview({
 
   const total = subtotal + chargesAmount;
 
-  // Check if totals match for celebration
-  const isMatch = originalSubtotal !== undefined && originalSubtotal > 0 && Math.abs(subtotal - originalSubtotal) < 1;
+  // Check if values match for celebration
+  const subtotalMatches = originalSubtotal !== undefined && originalSubtotal > 0 && Math.abs(subtotal - originalSubtotal) < 1;
+  const totalMatches = originalTotal !== undefined && originalTotal > 0 && Math.abs(total - originalTotal) < 1;
+  const hasVerificationData = (originalSubtotal !== undefined && originalSubtotal > 0) || (originalTotal !== undefined && originalTotal > 0);
+  const isMatch = subtotalMatches && (originalTotal === undefined || originalTotal === 0 || totalMatches);
 
   // Trigger celebration when totals start matching
   useEffect(() => {
@@ -304,41 +311,11 @@ export function StepReview({
           {t("items.addManualItem")}
         </button>
 
-        {/* Subtotal with verification */}
+        {/* Subtotal */}
         <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
           <span>{t("totals.subtotal")}</span>
           <span>{fmt(subtotal)}</span>
         </div>
-
-        {/* Original subtotal from OCR (editable) */}
-        {originalSubtotal !== undefined && originalSubtotal > 0 && (
-          <div className="breakdown-row text-muted-foreground text-sm" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
-            <span>{t("verify.originalSubtotal")}</span>
-            <InlineInput
-              type="number"
-              value={originalSubtotal}
-              className="edit-price text-muted-foreground"
-              onSave={(val) => onOriginalSubtotalChange?.(Math.max(0, Number(val)))}
-            />
-          </div>
-        )}
-
-        {/* Verification indicator */}
-        {originalSubtotal !== undefined && originalSubtotal > 0 && (
-          isMatch ? (
-            <div className="flex items-center gap-2 py-2 px-3 bg-green-500/10 rounded-lg text-green-500 text-sm font-medium" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
-              <span className="text-base">✓</span>
-              <span>{t("verify.match")}</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 py-2 px-3 bg-orange-500/10 rounded-lg text-orange-500 text-sm" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
-              <span className="text-base">≠</span>
-              <span>
-                {t("verify.mismatch")} ({subtotal > originalSubtotal ? "+" : ""}{fmt(subtotal - originalSubtotal)})
-              </span>
-            </div>
-          )
-        )}
 
         {/* Floating celebration overlay */}
         {showCelebration && (
@@ -508,6 +485,59 @@ export function StepReview({
           {t("charges.addCharge")}
         </button>
       </div>
+
+      {/* Verification Section - Gray Box */}
+      {hasVerificationData && (
+        <div className={`rounded-2xl p-4 mb-4 ${isMatch ? "bg-green-500/10" : "bg-secondary/30"}`}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("verify.title")}</span>
+              {isMatch && <span className="text-green-500 text-lg">✓</span>}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">{t("verify.subtitle")}</p>
+
+          {/* Subtotal comparison */}
+          {originalSubtotal !== undefined && originalSubtotal > 0 && (
+            <div className="flex items-center justify-between py-2 border-b border-border/30">
+              <span className="text-sm">{t("verify.receiptSubtotal")}</span>
+              <div className="flex items-center gap-2">
+                <InlineInput
+                  type="number"
+                  value={originalSubtotal}
+                  className="edit-price text-sm"
+                  onSave={(val) => onOriginalSubtotalChange?.(Math.max(0, Number(val)))}
+                />
+                {subtotalMatches ? (
+                  <span className="text-green-500 text-sm">✓</span>
+                ) : (
+                  <span className="text-orange-500 text-xs">({subtotal > originalSubtotal ? "+" : ""}{fmt(subtotal - originalSubtotal)})</span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Total comparison */}
+          {originalTotal !== undefined && originalTotal > 0 && (
+            <div className="flex items-center justify-between py-2">
+              <span className="text-sm">{t("verify.receiptTotal")}</span>
+              <div className="flex items-center gap-2">
+                <InlineInput
+                  type="number"
+                  value={originalTotal}
+                  className="edit-price text-sm"
+                  onSave={(val) => onOriginalTotalChange?.(Math.max(0, Number(val)))}
+                />
+                {totalMatches ? (
+                  <span className="text-green-500 text-sm">✓</span>
+                ) : (
+                  <span className="text-orange-500 text-xs">({total > originalTotal ? "+" : ""}{fmt(total - originalTotal)})</span>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Total Final - Outside boxes, prominent */}
       <div className="flex items-center justify-between py-4 px-2">

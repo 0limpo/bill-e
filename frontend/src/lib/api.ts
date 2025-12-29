@@ -16,6 +16,7 @@ export interface SessionResponse {
   assignments: Record<string, ApiAssignment[]>;
   charges: ApiCharge[];
   subtotal: number;
+  total: number;
   decimal_places: number;
   number_format: string;
   price_mode: "unitario" | "total_linea";
@@ -292,6 +293,23 @@ export async function updateSubtotal(
     body: JSON.stringify({
       owner_token: ownerToken,
       subtotal,
+    }),
+  });
+}
+
+/**
+ * Update original total (OCR value)
+ */
+export async function updateTotal(
+  sessionId: string,
+  ownerToken: string,
+  total: number
+): Promise<{ success: boolean }> {
+  return apiRequest(`/api/session/${sessionId}/update-totals`, {
+    method: "POST",
+    body: JSON.stringify({
+      owner_token: ownerToken,
+      total,
     }),
   });
 }
