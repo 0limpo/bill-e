@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +49,8 @@ export function StepAssign({
   addingParticipant = false,
 }: StepAssignProps) {
   const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>({});
+  const [showCelebration, setShowCelebration] = useState(false);
+  const prevAllAssignedRef = useRef<boolean | null>(null);
 
   const fmt = (amount: number) => formatCurrency(amount);
 
@@ -84,6 +86,17 @@ export function StepAssign({
   const remainingAmount = totalAmount - assignedAmount;
   const progressPercent = totalAmount > 0 ? (assignedAmount / totalAmount) * 100 : 0;
   const isAllAssigned = remainingAmount <= 0 && totalAmount > 0;
+
+  // Trigger celebration when all items become assigned
+  useEffect(() => {
+    if (isAllAssigned && prevAllAssignedRef.current === false) {
+      // Transitioned from not-assigned to all-assigned - show celebration
+      setShowCelebration(true);
+      const timer = setTimeout(() => setShowCelebration(false), 4500);
+      return () => clearTimeout(timer);
+    }
+    prevAllAssignedRef.current = isAllAssigned;
+  }, [isAllAssigned]);
 
   return (
     <div className="step-animate">
@@ -164,30 +177,36 @@ export function StepAssign({
       </div>
 
       {/* Progress Indicator */}
-      <div className="mb-4">
-        {isAllAssigned ? (
-          <div className="flex items-center gap-2 py-3 px-4 bg-green-500/10 rounded-xl text-green-500">
-            <span className="text-lg">✓</span>
-            <span className="font-medium">{t("assign.allAssigned")}</span>
+      {!isAllAssigned && (
+        <div className="mb-4 py-3 px-4 bg-secondary/50 rounded-xl">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-muted-foreground">{t("assign.remaining")}</span>
+            <span className="font-semibold text-foreground">{fmt(remainingAmount)}</span>
           </div>
-        ) : (
-          <div className="py-3 px-4 bg-secondary/50 rounded-xl">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">{t("assign.remaining")}</span>
-              <span className="font-semibold text-foreground">{fmt(remainingAmount)}</span>
-            </div>
-            <div className="h-2 bg-secondary rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Floating celebration overlay */}
+      {showCelebration && (
+        <div className="verify-overlay">
+          <div className="verify-checkmark">
+            <svg viewBox="0 0 52 52" className="w-24 h-24">
+              <circle className="verify-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" strokeWidth="2"/>
+              <path className="verify-check" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16"/>
+            </svg>
+            <p className="verify-message">{t("assign.allAssigned")}</p>
+          </div>
+        </div>
+      )}
 
       {/* Items List */}
-      <div className="space-y-3">
+      <div className="divide-y divide-border/50">
         {items.map((item) => {
           const itemId = item.id || item.name;
           const itemQty = item.quantity || 1;
@@ -200,54 +219,51 @@ export function StepAssign({
           const isComplete = remaining <= 0 && totalAssigned > 0;
 
           return (
-            <div key={itemId} className={`item-card transition-opacity ${isComplete ? "opacity-50" : ""}`}>
-              {/* Item Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="qty-badge">{itemQty}x</span>
-                  <span className="font-medium">{item.name}</span>
+            <div key={itemId} className={`py-4 transition-opacity ${isComplete ? "opacity-50" : ""}`}>
+              {/* Item Header - same style as Step 1 rows */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className="text-primary font-semibold tabular-nums w-8 text-center">{itemQty}</span>
+                  <span className="font-normal truncate">{item.name}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold tabular-nums">{fmt(totalPrice)}</span>
-                </div>
+                <span className="font-semibold tabular-nums text-right w-28">{fmt(totalPrice)}</span>
               </div>
 
-              {/* Mode Toggle */}
-              <div className="flex gap-2 mb-3">
+              {/* Mode Toggle - more compact */}
+              <div className="flex gap-2 mb-2 ml-11">
                 <button
-                  className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
+                  className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
                     mode === "individual"
                       ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
+                      : "bg-secondary/50 text-muted-foreground"
                   }`}
                   onClick={() => toggleMode(itemId)}
                 >
                   {t("items.individual")}
                 </button>
                 <button
-                  className={`flex-1 py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
+                  className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
                     mode === "grupal"
                       ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-secondary-foreground"
+                      : "bg-secondary/50 text-muted-foreground"
                   }`}
                   onClick={() => toggleMode(itemId)}
                 >
                   {t("items.grupal")}
                 </button>
+                {/* Quick action for grupal - inline */}
+                {mode === "grupal" && (
+                  <button
+                    className="py-1 px-3 text-xs font-medium text-primary hover:underline transition-colors"
+                    onClick={() => assignAll(itemId)}
+                  >
+                    {t("items.allTogether")}
+                  </button>
+                )}
               </div>
 
-              {/* Quick Actions for Grupal */}
-              {mode === "grupal" && (
-                <button
-                  className="w-full py-2 mb-3 text-xs font-medium text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors"
-                  onClick={() => assignAll(itemId)}
-                >
-                  {t("items.allTogether")}
-                </button>
-              )}
-
-              {/* Participants Assignment */}
-              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {/* Participants Assignment - aligned with content */}
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide ml-11">
                 {participants.map((p) => {
                   const assign = itemAssignments.find((a) => a.participant_id === p.id);
                   const qty = assign?.quantity || 0;

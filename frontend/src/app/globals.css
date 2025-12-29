@@ -153,15 +153,15 @@
     @apply flex items-center gap-2;
   }
 
-  /* Item card - for Step 2 assignment */
+  /* Item card - for Step 2 assignment (row style like Step 1) */
   .item-card {
-    @apply relative bg-card rounded-2xl p-4;
-    @apply border border-border;
+    @apply relative py-4 px-0;
+    @apply border-b border-border/50 last:border-0;
     @apply transition-all duration-200;
   }
 
   .item-card.assigned {
-    @apply border-primary/40 bg-primary/5;
+    @apply bg-primary/5 -mx-2 px-2 rounded-lg;
   }
 
   /* Delete button - hidden until hover, absolutely positioned */
@@ -280,11 +280,10 @@
 
 .verify-overlay .verify-checkmark::before {
   content: '';
-  @apply absolute rounded-full bg-green-500/15;
-  inset: -24px;
-  top: -24px;
-  bottom: auto;
-  height: 144px;
+  @apply absolute rounded-3xl bg-green-500/15;
+  inset: -32px;
+  top: -32px;
+  bottom: -24px;
   animation: glowPulse 4.5s ease-out forwards;
 }
 
