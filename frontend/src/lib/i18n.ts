@@ -69,7 +69,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Verification
     "verify.title": "Verificación",
-    "verify.subtitle": "Compara los valores leídos con tus cálculos",
+    "verify.subtitle": "Compara la boleta con la suma de items + cargos y descuentos",
     "verify.receiptSubtotal": "Subtotal boleta",
     "verify.receiptTotal": "Total boleta",
     "verify.match": "Los valores coinciden",
@@ -147,7 +147,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Verification
     "verify.title": "Verification",
-    "verify.subtitle": "Compare scanned values with your calculations",
+    "verify.subtitle": "Compare receipt with items + charges and discounts",
     "verify.receiptSubtotal": "Receipt subtotal",
     "verify.receiptTotal": "Receipt total",
     "verify.match": "Values match",
