@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, Minus, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Minus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
@@ -49,8 +49,17 @@ export function StepAssign({
   addingParticipant = false,
 }: StepAssignProps) {
   const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>({});
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const prevAllAssignedRef = useRef<boolean | null>(null);
+
+  // Open first item by default on mount
+  useEffect(() => {
+    if (items.length > 0 && expandedItemId === null) {
+      const firstItemId = items[0].id || items[0].name;
+      setExpandedItemId(firstItemId);
+    }
+  }, [items, expandedItemId]);
 
   const fmt = (amount: number) => formatCurrency(amount);
 
@@ -206,7 +215,7 @@ export function StepAssign({
       )}
 
       {/* Items List */}
-      <div className="divide-y divide-border/50">
+      <div className="bg-secondary/30 rounded-2xl p-4">
         {items.map((item) => {
           const itemId = item.id || item.name;
           const itemQty = item.quantity || 1;
@@ -215,96 +224,139 @@ export function StepAssign({
           const mode = itemModes[itemId] || "individual";
           const totalAssigned = getTotalAssigned(itemId);
           const remaining = itemQty - totalAssigned;
-
+          const isExpanded = expandedItemId === itemId;
           const isComplete = remaining <= 0 && totalAssigned > 0;
 
+          // Get assigned participants for mini-avatars
+          const assignedParticipants = participants.filter((p) =>
+            itemAssignments.some((a) => a.participant_id === p.id && a.quantity > 0)
+          );
+
           return (
-            <div key={itemId} className={`py-4 transition-opacity ${isComplete ? "opacity-50" : ""}`}>
-              {/* Item Header - same style as Step 1 rows */}
-              <div className="flex items-center justify-between mb-2">
+            <div key={itemId}>
+              {/* Collapsed Row - clickable to expand */}
+              <button
+                className={`w-full flex items-center justify-between py-3 border-b border-border/50 last:border-0 transition-opacity ${isComplete && !isExpanded ? "opacity-50" : ""}`}
+                onClick={() => setExpandedItemId(isExpanded ? null : itemId)}
+              >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="text-primary font-semibold tabular-nums w-8 text-center">{itemQty}</span>
-                  <span className="font-normal truncate">{item.name}</span>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
+                  <span className="text-primary font-semibold tabular-nums">{itemQty}</span>
+                  <span className="font-normal truncate text-left">{item.name}</span>
                 </div>
-                <span className="font-semibold tabular-nums text-right w-28">{fmt(totalPrice)}</span>
-              </div>
-
-              {/* Mode Toggle - more compact */}
-              <div className="flex gap-2 mb-2 ml-11">
-                <button
-                  className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
-                    mode === "individual"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/50 text-muted-foreground"
-                  }`}
-                  onClick={() => toggleMode(itemId)}
-                >
-                  {t("items.individual")}
-                </button>
-                <button
-                  className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
-                    mode === "grupal"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary/50 text-muted-foreground"
-                  }`}
-                  onClick={() => toggleMode(itemId)}
-                >
-                  {t("items.grupal")}
-                </button>
-                {/* Quick action for grupal - inline */}
-                {mode === "grupal" && (
-                  <button
-                    className="py-1 px-3 text-xs font-medium text-primary hover:underline transition-colors"
-                    onClick={() => assignAll(itemId)}
-                  >
-                    {t("items.allTogether")}
-                  </button>
-                )}
-              </div>
-
-              {/* Participants Assignment - aligned with content */}
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide ml-11">
-                {participants.map((p) => {
-                  const assign = itemAssignments.find((a) => a.participant_id === p.id);
-                  const qty = assign?.quantity || 0;
-                  const isAssigned = qty > 0;
-                  const canAdd = remaining > 0 || mode === "grupal";
-
-                  return (
-                    <div key={p.id} className="flex flex-col items-center gap-1 min-w-14">
-                      {/* Avatar with click to add */}
-                      <button
-                        className="relative"
-                        onClick={() => canAdd && onUpdateQty(itemId, p.id, 1)}
-                        disabled={!canAdd && !isAssigned}
-                      >
+                <div className="flex items-center gap-2">
+                  {/* Mini-avatars of assigned participants (only when collapsed) */}
+                  {!isExpanded && assignedParticipants.length > 0 && (
+                    <div className="flex -space-x-2">
+                      {assignedParticipants.slice(0, 4).map((p) => (
                         <div
-                          className={`participant-avatar ${isAssigned ? "selected" : canAdd ? "opacity-40" : "opacity-20"}`}
+                          key={p.id}
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white ring-2 ring-background"
                           style={{ backgroundColor: getAvatarColor(p.name) }}
                         >
                           {getInitials(p.name)}
                         </div>
-                        {/* Quantity badge */}
-                        {qty > 0 && (
-                          <span className="absolute -bottom-1 -right-1 min-w-5 h-5 px-1 bg-primary rounded-full flex items-center justify-center text-[11px] text-white font-bold">
-                            {qty}
-                          </span>
-                        )}
-                      </button>
-
-                      {/* Minus button (only show when assigned) */}
-                      {qty > 0 && (
-                        <button
-                          className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center hover:bg-destructive/30 transition-colors"
-                          onClick={() => onUpdateQty(itemId, p.id, -1)}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
+                      ))}
+                      {assignedParticipants.length > 4 && (
+                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium ring-2 ring-background">
+                          +{assignedParticipants.length - 4}
+                        </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
+                  )}
+                  <span className="font-semibold tabular-nums w-24 text-right">{fmt(totalPrice)}</span>
+                </div>
+              </button>
+
+              {/* Expanded View */}
+              {isExpanded && (
+                <div className="py-3 pl-7 border-b border-border/50">
+                  {/* Mode Toggle */}
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
+                        mode === "individual"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground"
+                      }`}
+                      onClick={() => toggleMode(itemId)}
+                    >
+                      {t("items.individual")}
+                    </button>
+                    <button
+                      className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
+                        mode === "grupal"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground"
+                      }`}
+                      onClick={() => toggleMode(itemId)}
+                    >
+                      {t("items.grupal")}
+                    </button>
+                    {/* Quick action for grupal */}
+                    {mode === "grupal" && (
+                      <button
+                        className="py-1.5 px-3 text-xs font-medium text-primary hover:underline transition-colors"
+                        onClick={() => assignAll(itemId)}
+                      >
+                        {t("items.allTogether")}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Remaining indicator */}
+                  {remaining > 0 && (
+                    <p className="text-xs text-muted-foreground mb-3">
+                      {t("assign.remaining")}: {remaining} de {itemQty}
+                    </p>
+                  )}
+
+                  {/* Participants Assignment */}
+                  <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                    {participants.map((p) => {
+                      const assign = itemAssignments.find((a) => a.participant_id === p.id);
+                      const qty = assign?.quantity || 0;
+                      const isAssigned = qty > 0;
+                      const canAdd = remaining > 0 || mode === "grupal";
+
+                      return (
+                        <div key={p.id} className="flex flex-col items-center gap-1 min-w-14">
+                          {/* Avatar with click to add */}
+                          <button
+                            className="relative"
+                            onClick={() => canAdd && onUpdateQty(itemId, p.id, 1)}
+                            disabled={!canAdd && !isAssigned}
+                          >
+                            <div
+                              className={`participant-avatar ${isAssigned ? "selected" : canAdd ? "opacity-40" : "opacity-20"}`}
+                              style={{ backgroundColor: getAvatarColor(p.name) }}
+                            >
+                              {getInitials(p.name)}
+                            </div>
+                            {/* Quantity badge */}
+                            {qty > 0 && (
+                              <span className="absolute -bottom-1 -right-1 min-w-5 h-5 px-1 bg-primary rounded-full flex items-center justify-center text-[11px] text-white font-bold">
+                                {qty}
+                              </span>
+                            )}
+                          </button>
+                          <span className="text-xs text-muted-foreground truncate max-w-14">{p.name.split(" ")[0]}</span>
+
+                          {/* Minus button (only show when assigned) */}
+                          {qty > 0 && (
+                            <button
+                              className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center hover:bg-destructive/30 transition-colors"
+                              onClick={() => onUpdateQty(itemId, p.id, -1)}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
