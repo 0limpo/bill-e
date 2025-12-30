@@ -186,8 +186,8 @@
   }
 
   .participant-avatar {
-    @apply w-12 h-12 rounded-full flex items-center justify-center;
-    @apply text-white font-bold text-lg;
+    @apply w-10 h-10 rounded-full flex items-center justify-center;
+    @apply text-white font-bold text-sm;
     @apply border-2 border-transparent transition-all;
   }
 

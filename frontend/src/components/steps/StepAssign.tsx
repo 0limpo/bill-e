@@ -196,9 +196,9 @@ export function StepAssign({
           <div className="flex flex-col items-center gap-1 min-w-14 shrink-0">
             <button
               onClick={() => onToggleAddParticipant?.(true)}
-              className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors border-2 border-dashed border-primary/30"
+              className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors border-2 border-dashed border-primary/30"
             >
-              <Plus className="w-6 h-6" />
+              <Plus className="w-5 h-5" />
             </button>
             <span className="text-xs text-muted-foreground">{t("participants.addShort")}</span>
           </div>
@@ -441,8 +441,8 @@ export function StepAssign({
                                     }}
                                   >
                                     <div
-                                      className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-medium text-white transition-all ${
-                                        isAssigned ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "opacity-40"
+                                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white transition-all ${
+                                        isAssigned ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : "opacity-40"
                                       }`}
                                       style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
                                     >
