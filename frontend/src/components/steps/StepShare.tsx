@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronDown, ChevronRight, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronDown, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
@@ -50,20 +50,54 @@ export function StepShare({
     return sum + total;
   }, 0);
 
-  // Get items for a participant
+  // Get items for a participant (with correct grupal division)
   const getParticipantItems = (participantId: string) => {
-    const result: { name: string; amount: number; qty: number }[] = [];
+    const result: { name: string; amount: number; qty: number; shared?: number }[] = [];
 
     Object.entries(assignments).forEach(([itemId, assigns]) => {
       const assignment = assigns.find((a) => a.participant_id === participantId);
       if (assignment && assignment.quantity > 0) {
-        const item = items.find((i) => (i.id || i.name) === itemId);
-        if (item) {
-          result.push({
-            name: item.name,
-            amount: item.price * assignment.quantity,
-            qty: Math.round(assignment.quantity),
-          });
+        const unitMatch = itemId.match(/^(.+)_unit_(\d+)$/);
+
+        if (unitMatch) {
+          // Unit-specific assignment
+          const baseItemId = unitMatch[1];
+          const unitIndex = parseInt(unitMatch[2]) + 1;
+          const item = items.find((i) => (i.id || i.name) === baseItemId);
+          if (item) {
+            const numPeopleSharing = assigns.filter(a => a.quantity > 0).length;
+            result.push({
+              name: `${item.name} (u${unitIndex})`,
+              amount: item.price / Math.max(1, numPeopleSharing),
+              qty: 1,
+              shared: numPeopleSharing > 1 ? numPeopleSharing : undefined,
+            });
+          }
+        } else {
+          const item = items.find((i) => (i.id || i.name) === itemId);
+          if (item) {
+            const totalAssigned = assigns.reduce((sum, a) => sum + (a.quantity || 0), 0);
+            const numPeopleSharing = assigns.filter(a => a.quantity > 0).length;
+            const itemQty = item.quantity || 1;
+
+            if (numPeopleSharing > 1 && totalAssigned > itemQty) {
+              // Grupal mode
+              const totalItemPrice = item.price * itemQty;
+              result.push({
+                name: item.name,
+                amount: totalItemPrice / numPeopleSharing,
+                qty: itemQty,
+                shared: numPeopleSharing,
+              });
+            } else {
+              // Individual mode
+              result.push({
+                name: item.name,
+                amount: item.price * assignment.quantity,
+                qty: Math.round(assignment.quantity),
+              });
+            }
+          }
         }
       }
     });
@@ -96,18 +130,9 @@ export function StepShare({
   return (
     <div className="step-animate">
       {/* Header */}
-      <div className="text-center mb-6">
-        <span className="text-4xl mb-2 block">🎉</span>
+      <div className="mb-6">
         <h2 className="text-xl font-bold">{t("finalized.billClosed")}</h2>
-      </div>
-
-      {/* Column Headers */}
-      <div className="flex items-center justify-between px-4 py-2 text-xs text-muted-foreground uppercase tracking-wider">
-        <span>{t("items.name")}</span>
-        <div className="flex gap-8">
-          <span>{t("totals.subtotal")}</span>
-          <span>{t("items.total")}</span>
-        </div>
+        <p className="text-muted-foreground text-sm">{t("finalized.subtitle") || "Resumen por persona"}</p>
       </div>
 
       {/* Participants List */}
@@ -118,49 +143,53 @@ export function StepShare({
           const participantItems = getParticipantItems(p.id);
 
           return (
-            <div key={p.id} className="bg-card rounded-xl overflow-hidden">
+            <div
+              key={p.id}
+              className="rounded-xl bg-secondary/40 transition-colors"
+            >
               {/* Participant Row */}
               <button
-                className="w-full flex items-center justify-between p-4 hover:bg-secondary/30 transition-colors"
+                className="w-full flex items-center justify-between p-3"
                 onClick={() => toggleExpanded(p.id)}
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-muted-foreground">
-                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                  </span>
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
                     style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
                   >
                     {getInitials(p.name)}
                   </div>
-                  <span className="font-medium">{p.name}</span>
+                  <span className="font-medium truncate">{p.name}</span>
                 </div>
-                <div className="flex gap-8 tabular-nums">
-                  <span className="text-muted-foreground">{fmt(subtotal)}</span>
-                  <span className="font-semibold">{fmt(total)}</span>
-                </div>
+                <span className="font-semibold tabular-nums text-primary">{fmt(total)}</span>
               </button>
 
               {/* Expanded Details */}
               {isExpanded && (
-                <div className="px-4 pb-4 pt-0 border-t border-border/50">
-                  <div className="pl-11 space-y-0">
+                <div className="pb-3 px-3 pt-0">
+                  <div className="pl-7 space-y-1">
                     {/* Items */}
                     {participantItems.map((item, idx) => (
-                      <div key={idx} className="breakdown-row">
-                        <span className="flex items-center gap-2">
-                          <span className="qty-badge">{item.qty}x</span>
-                          {item.name}
+                      <div key={idx} className="flex items-center justify-between py-1 text-sm">
+                        <span className="flex items-center gap-2 text-muted-foreground">
+                          {item.shared ? (
+                            <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
+                              ÷{item.shared}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/60">{item.qty}x</span>
+                          )}
+                          <span className="truncate">{item.name}</span>
                         </span>
-                        <span>{fmt(item.amount)}</span>
+                        <span className="tabular-nums shrink-0">{fmt(item.amount)}</span>
                       </div>
                     ))}
 
-                    {/* Subtotal */}
-                    <div className="breakdown-row subtotal">
-                      <span>{t("totals.subtotal")}</span>
-                      <span>{fmt(subtotal)}</span>
+                    {/* Subtotal line */}
+                    <div className="flex items-center justify-between py-1 text-sm border-t border-border/30 mt-2 pt-2">
+                      <span className="text-muted-foreground">{t("totals.subtotal")}</span>
+                      <span className="tabular-nums">{fmt(subtotal)}</span>
                     </div>
 
                     {/* Charges */}
@@ -169,15 +198,21 @@ export function StepShare({
                       .map((charge) => (
                         <div
                           key={charge.id}
-                          className={`breakdown-row charge ${charge.amount < 0 ? "discount" : ""}`}
+                          className={`flex items-center justify-between py-1 text-sm ${charge.amount < 0 ? "text-green-600" : "text-muted-foreground"}`}
                         >
                           <span>{charge.name}</span>
-                          <span>
+                          <span className="tabular-nums">
                             {charge.amount < 0 ? "-" : "+"}
                             {fmt(Math.abs(charge.amount))}
                           </span>
                         </div>
                       ))}
+
+                    {/* Total */}
+                    <div className="flex items-center justify-between py-1 text-sm font-semibold border-t border-border/30 mt-1 pt-2">
+                      <span>{t("items.total")}</span>
+                      <span className="tabular-nums text-primary">{fmt(total)}</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -186,8 +221,8 @@ export function StepShare({
         })}
       </div>
 
-      {/* Total */}
-      <div className="flex items-center justify-between p-4 mt-4 bg-primary/10 rounded-xl">
+      {/* Grand Total */}
+      <div className="flex items-center justify-between p-4 mt-4 bg-primary/15 rounded-xl">
         <span className="font-semibold">{t("totals.tableTotal")}</span>
         <span className="text-xl font-bold text-primary">{fmt(totalAmount)}</span>
       </div>
@@ -200,7 +235,7 @@ export function StepShare({
         </Button>
         <Button
           size="lg"
-          className="flex-1 h-12 font-semibold bg-green-600 hover:bg-green-700"
+          className="flex-1 h-12 font-semibold"
           onClick={shareOnWhatsApp}
         >
           <Share2 className="w-4 h-4 mr-2" />

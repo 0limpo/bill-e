@@ -145,6 +145,7 @@ export const getItemsWithUnitAssignments = (
 
 /**
  * Calculate subtotal for a participant based on their assignments
+ * Handles both individual mode (each person gets N units) and grupal mode (people share)
  */
 export const calculateSubtotal = (
   participantId: string,
@@ -155,15 +156,16 @@ export const calculateSubtotal = (
 
   Object.entries(session.assignments || {}).forEach(([assignmentKey, assigns]) => {
     const assignment = assigns.find(a => a.participant_id === participantId);
-    if (assignment) {
+    if (assignment && assignment.quantity > 0) {
       const unitMatch = assignmentKey.match(/^(.+)_unit_(\d+)$/);
 
       if (unitMatch) {
-        // Unit-specific assignment
+        // Unit-specific assignment - divide unit price among all assigned participants
         const baseItemId = unitMatch[1];
         const item = session.items.find(i => (i.id || i.name) === baseItemId);
         if (item) {
-          subtotal += item.price * (assignment.quantity || 0);
+          const numPeopleSharing = assigns.filter(a => a.quantity > 0).length;
+          subtotal += item.price / Math.max(1, numPeopleSharing);
         }
       } else {
         // Full item assignment - skip if has unit assignments
@@ -172,7 +174,19 @@ export const calculateSubtotal = (
         }
         const item = session.items.find(i => (i.id || i.name) === assignmentKey);
         if (item) {
-          subtotal += item.price * (assignment.quantity || 0);
+          // Check if multiple people are sharing this item (grupal mode)
+          const totalAssigned = assigns.reduce((sum, a) => sum + (a.quantity || 0), 0);
+          const numPeopleSharing = assigns.filter(a => a.quantity > 0).length;
+          const itemQty = item.quantity || 1;
+
+          if (numPeopleSharing > 1 && totalAssigned > itemQty) {
+            // Grupal mode: multiple people sharing, divide total price among them
+            const totalItemPrice = item.price * itemQty;
+            subtotal += totalItemPrice / numPeopleSharing;
+          } else {
+            // Individual mode: each person pays for their quantity
+            subtotal += item.price * (assignment.quantity || 0);
+          }
         }
       }
     }
