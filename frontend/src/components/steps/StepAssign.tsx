@@ -333,56 +333,57 @@ export function StepAssign({
 
               {/* Expanded View */}
               {isExpanded && (
-                <div className="py-3 pl-7 border-b border-border/50">
-                  {/* Mode Toggle */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <button
-                      type="button"
-                      className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
-                        mode === "individual"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background text-muted-foreground"
-                      }`}
-                      onClick={(e) => { e.stopPropagation(); toggleMode(itemId); }}
-                    >
-                      {t("items.individual")}
-                    </button>
-                    <button
-                      type="button"
-                      className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
-                        mode === "grupal"
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-background text-muted-foreground"
-                      }`}
-                      onClick={(e) => { e.stopPropagation(); toggleMode(itemId); }}
-                    >
-                      {t("items.grupal")}
-                    </button>
-                    {/* Per-unit toggle for grupal with qty > 1 */}
-                    {mode === "grupal" && itemQty > 1 && (
+                <div className="py-3 pl-4 border-b border-border/50">
+                  {/* Mode Toggle - segmented control style */}
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="inline-flex rounded-lg bg-background p-0.5">
                       <button
                         type="button"
-                        className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
-                          isUnitMode
+                        className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
+                          mode === "individual"
                             ? "bg-primary text-primary-foreground"
-                            : "bg-background text-muted-foreground"
+                            : "text-muted-foreground hover:text-foreground"
                         }`}
-                        onClick={(e) => { e.stopPropagation(); toggleUnitMode(itemId); }}
+                        onClick={(e) => { e.stopPropagation(); toggleMode(itemId); }}
                       >
-                        {t("items.perUnit")}
+                        {t("items.individual")}
                       </button>
-                    )}
+                      <button
+                        type="button"
+                        className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
+                          mode === "grupal"
+                            ? "bg-primary text-primary-foreground"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                        onClick={(e) => { e.stopPropagation(); toggleMode(itemId); }}
+                      >
+                        {t("items.grupal")}
+                      </button>
+                    </div>
                     {/* Quick action for grupal (not in unit mode) */}
                     {mode === "grupal" && !isUnitMode && (
                       <button
                         type="button"
-                        className="py-1.5 px-3 text-xs font-medium text-primary hover:underline transition-colors"
+                        className="text-xs text-primary hover:underline"
                         onClick={(e) => { e.stopPropagation(); assignAll(itemId); }}
                       >
                         {t("items.allTogether")}
                       </button>
                     )}
                   </div>
+
+                  {/* Per-unit toggle for grupal with qty > 1 */}
+                  {mode === "grupal" && itemQty > 1 && (
+                    <label className="flex items-center gap-2 mb-3 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isUnitMode}
+                        onChange={() => toggleUnitMode(itemId)}
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                      />
+                      <span className="text-xs text-muted-foreground">{t("items.perUnit")}</span>
+                    </label>
+                  )}
 
                   {/* Remaining indicator (not in unit mode) */}
                   {remaining > 0 && !isUnitMode && (
@@ -391,41 +392,19 @@ export function StepAssign({
                     </p>
                   )}
 
-                  {/* Per-unit assignment UI */}
+                  {/* Per-unit assignment UI - horizontal layout */}
                   {isUnitMode ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {Array.from({ length: itemQty }, (_, unitIndex) => {
                         const unitId = getUnitItemId(itemId, unitIndex);
                         const unitAssignments = assignments[unitId] || [];
-                        const unitAssignedParticipants = participants.filter((p) =>
-                          unitAssignments.some((a) => a.participant_id === p.id && a.quantity > 0)
-                        );
-                        const hasAssignments = unitAssignedParticipants.length > 0;
 
                         return (
-                          <div key={unitIndex} className="bg-background/50 rounded-lg p-3">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-medium text-muted-foreground">
-                                {t("items.unit")} {unitIndex + 1}
-                              </span>
-                              {hasAssignments && (
-                                <div className="flex -space-x-1">
-                                  {unitAssignedParticipants.slice(0, 3).map((p) => {
-                                    const pIndex = participants.findIndex((pp) => pp.id === p.id);
-                                    return (
-                                      <div
-                                        key={p.id}
-                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium text-white ring-1 ring-background"
-                                        style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
-                                      >
-                                        {getInitials(p.name)}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                          <div key={unitIndex} className="flex items-center gap-3 py-1">
+                            <span className="text-xs text-muted-foreground w-16 shrink-0">
+                              {t("items.unit")} {unitIndex + 1}
+                            </span>
+                            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-1">
                               {participants.map((p, pIndex) => {
                                 const assign = unitAssignments.find((a) => a.participant_id === p.id);
                                 const isAssigned = (assign?.quantity || 0) > 0;
@@ -434,15 +413,15 @@ export function StepAssign({
                                   <button
                                     key={p.id}
                                     type="button"
-                                    className="relative shrink-0"
+                                    className="shrink-0"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       onUpdateQty(unitId, p.id, isAssigned ? -1 : 1);
                                     }}
                                   >
                                     <div
-                                      className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium text-white transition-all ${
-                                        isAssigned ? "ring-2 ring-primary ring-offset-1 ring-offset-background" : "opacity-40"
+                                      className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-medium text-white transition-all ${
+                                        isAssigned ? "ring-2 ring-primary" : "opacity-30"
                                       }`}
                                       style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
                                     >
