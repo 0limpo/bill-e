@@ -172,13 +172,9 @@ export function StepShare({
                     {participantItems.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between py-1 text-sm">
                         <span className="flex items-center gap-2 text-muted-foreground">
-                          {item.shared ? (
-                            <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">
-                              ÷{item.shared}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground/60">{item.qty}x</span>
-                          )}
+                          <span className="text-xs text-muted-foreground/60 min-w-[2ch] text-right">
+                            {item.shared ? `÷${item.shared}` : `${item.qty}x`}
+                          </span>
                           <span className="truncate">{item.name}</span>
                         </span>
                         <span className="tabular-nums shrink-0">{fmt(item.amount)}</span>
