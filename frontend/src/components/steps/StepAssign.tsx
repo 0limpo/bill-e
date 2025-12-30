@@ -182,6 +182,10 @@ export function StepAssign({
   const progressPercent = totalAmount > 0 ? (assignedAmount / totalAmount) * 100 : 0;
   const isAllAssigned = remainingAmount <= 0 && totalAmount > 0;
 
+  // Calculate max price width for alignment
+  const maxPriceLength = Math.max(...items.map((item) => fmt((item.quantity || 1) * (item.price || 0)).length));
+  const priceWidth = `${maxPriceLength * 0.6 + 0.5}rem`;
+
   // Trigger celebration when all items become assigned
   useEffect(() => {
     if (isAllAssigned && prevAllAssignedRef.current === false) {
@@ -376,7 +380,10 @@ export function StepAssign({
                       )}
                     </div>
                   )}
-                  <span className={`font-semibold tabular-nums text-right ${isComplete ? "text-muted-foreground" : "text-foreground"}`}>{fmt(totalPrice)}</span>
+                  <span
+                    className={`font-semibold tabular-nums text-right ${isComplete ? "text-muted-foreground" : "text-foreground"}`}
+                    style={{ minWidth: priceWidth }}
+                  >{fmt(totalPrice)}</span>
                 </div>
               </button>
 
