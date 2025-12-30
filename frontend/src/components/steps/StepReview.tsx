@@ -334,7 +334,7 @@ export function StepReview({
       {/* Charges Section - Gray Box */}
       <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
         <div className="mb-2">
-          <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
+          <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
         </div>
 
         {/* Charges */}
@@ -491,7 +491,7 @@ export function StepReview({
         <div className={`rounded-2xl p-4 mb-4 ${isMatch ? "bg-green-500/10" : "bg-secondary/30"}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground uppercase tracking-wide">{t("verify.title")}</span>
+              <span className="text-xs text-foreground uppercase tracking-wide">{t("verify.title")}</span>
               {isMatch && <span className="text-green-500 text-lg">✓</span>}
             </div>
           </div>
