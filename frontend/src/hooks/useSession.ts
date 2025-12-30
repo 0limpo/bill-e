@@ -478,25 +478,22 @@ export function useSession({
         };
       });
 
-      // Then make API call in background
-      try {
-        await assignItem(
-          sessionId,
-          itemId,
-          participantId,
-          newQuantity,
-          !currentlyAssigned,
-          participant.name
-        );
-        return true;
-      } catch (err) {
+      // API call in background (fire and forget for better UX)
+      assignItem(
+        sessionId,
+        itemId,
+        participantId,
+        newQuantity,
+        !currentlyAssigned,
+        participant.name
+      ).catch((err) => {
         console.error("Assignment error:", err);
-        // Rollback on error
-        await refresh();
-        return false;
-      }
+        // Don't refresh on error - let polling sync eventually
+      });
+
+      return true;
     },
-    [sessionId, session, markInteraction, refresh]
+    [sessionId, session, markInteraction]
   );
 
   // Update assignment quantity (+1 or -1)
@@ -543,24 +540,22 @@ export function useSession({
         };
       });
 
-      // API call in background
-      try {
-        await assignItem(
-          sessionId,
-          itemId,
-          participantId,
-          newQty,
-          newQty > 0,
-          participant.name
-        );
-        return true;
-      } catch (err) {
+      // API call in background (fire and forget for better UX)
+      assignItem(
+        sessionId,
+        itemId,
+        participantId,
+        newQty,
+        newQty > 0,
+        participant.name
+      ).catch((err) => {
         console.error("Assignment error:", err);
-        await refresh();
-        return false;
-      }
+        // Don't refresh on error - let polling sync eventually
+      });
+
+      return true;
     },
-    [sessionId, session, markInteraction, refresh]
+    [sessionId, session, markInteraction]
   );
 
   // Update charges

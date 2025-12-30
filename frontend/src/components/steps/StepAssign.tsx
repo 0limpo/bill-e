@@ -102,8 +102,13 @@ export function StepAssign({
 
     if (newMode === "grupal") {
       // Auto-assign all participants when switching to grupal ("entre todos" by default)
+      // Only assign participants that are not already assigned
+      const currentAssignments = assignments[itemId] || [];
       participants.forEach((p) => {
-        onUpdateQty(itemId, p.id, 1);
+        const existing = currentAssignments.find((a) => a.participant_id === p.id);
+        if (!existing || existing.quantity === 0) {
+          onUpdateQty(itemId, p.id, 1);
+        }
       });
     } else {
       // Reset unit mode when switching to individual
