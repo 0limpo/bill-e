@@ -182,9 +182,9 @@ export function StepAssign({
   const progressPercent = totalAmount > 0 ? (assignedAmount / totalAmount) * 100 : 0;
   const isAllAssigned = remainingAmount <= 0 && totalAmount > 0;
 
-  // Calculate max price width for alignment
+  // Calculate max price width for alignment (using ch units for tabular-nums)
   const maxPriceLength = Math.max(...items.map((item) => fmt((item.quantity || 1) * (item.price || 0)).length));
-  const priceWidth = `${maxPriceLength * 0.6 + 0.5}rem`;
+  const priceWidth = `${maxPriceLength}ch`;
 
   // Trigger celebration when all items become assigned
   useEffect(() => {
