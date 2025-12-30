@@ -64,13 +64,40 @@ export function StepAssign({
 
   const fmt = (amount: number) => formatCurrency(amount);
 
+  // Clear all unit-based assignments for an item
+  const clearUnitAssignments = (itemId: string, itemQty: number) => {
+    for (let i = 0; i < itemQty; i++) {
+      const unitId = `${itemId}_unit_${i}`;
+      const unitAssignments = assignments[unitId] || [];
+      unitAssignments.forEach((a) => {
+        if (a.quantity > 0) {
+          onUpdateQty(unitId, a.participant_id, -a.quantity);
+        }
+      });
+    }
+  };
+
+  // Clear base item assignments (non-unit)
+  const clearBaseAssignments = (itemId: string) => {
+    const baseAssignments = assignments[itemId] || [];
+    baseAssignments.forEach((a) => {
+      if (a.quantity > 0) {
+        onUpdateQty(itemId, a.participant_id, -a.quantity);
+      }
+    });
+  };
+
   // Toggle mode for an item (local UI state only)
-  const toggleMode = (itemId: string) => {
+  const toggleMode = (itemId: string, itemQty: number) => {
     const currentMode = itemModes[itemId] || "individual";
     const newMode = currentMode === "individual" ? "grupal" : "individual";
     setItemModes({ ...itemModes, [itemId]: newMode });
-    // Reset unit mode when switching modes
+    // Reset unit mode and clear unit assignments when switching to individual
     if (newMode === "individual") {
+      // Clear unit assignments if they exist
+      if (unitModeItems.has(itemId)) {
+        clearUnitAssignments(itemId, itemQty);
+      }
       setUnitModeItems((prev) => {
         const next = new Set(prev);
         next.delete(itemId);
@@ -80,7 +107,17 @@ export function StepAssign({
   };
 
   // Toggle per-unit mode for grupal items
-  const toggleUnitMode = (itemId: string) => {
+  const toggleUnitMode = (itemId: string, itemQty: number) => {
+    const isCurrentlyUnitMode = unitModeItems.has(itemId);
+
+    if (isCurrentlyUnitMode) {
+      // Switching OFF unit mode: clear unit assignments
+      clearUnitAssignments(itemId, itemQty);
+    } else {
+      // Switching ON unit mode: clear base assignments
+      clearBaseAssignments(itemId);
+    }
+
     setUnitModeItems((prev) => {
       const next = new Set(prev);
       if (next.has(itemId)) {
@@ -92,8 +129,8 @@ export function StepAssign({
     });
   };
 
-  // Get unit-based item ID
-  const getUnitItemId = (itemId: string, unitIndex: number) => `${itemId}__u${unitIndex}`;
+  // Get unit-based item ID (must match billEngine.ts format)
+  const getUnitItemId = (itemId: string, unitIndex: number) => `${itemId}_unit_${unitIndex}`;
 
   // Assign all participants to an item (1 unit each)
   const assignAll = (itemId: string) => {
@@ -107,8 +144,8 @@ export function StepAssign({
 
   // Get total assigned quantity for an item (including unit-based assignments)
   const getTotalAssigned = (itemId: string, itemQty: number = 1) => {
-    // Check if this item has unit-based assignments
-    const hasUnitAssignments = Object.keys(assignments).some((k) => k.startsWith(`${itemId}__u`));
+    // Check if this item has unit-based assignments (must match billEngine.ts format)
+    const hasUnitAssignments = Object.keys(assignments).some((k) => k.startsWith(`${itemId}_unit_`));
 
     if (hasUnitAssignments) {
       // Count units that have at least one person assigned
@@ -344,7 +381,7 @@ export function StepAssign({
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
-                        onClick={(e) => { e.stopPropagation(); toggleMode(itemId); }}
+                        onClick={(e) => { e.stopPropagation(); toggleMode(itemId, itemQty); }}
                       >
                         {t("items.individual")}
                       </button>
@@ -355,7 +392,7 @@ export function StepAssign({
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
-                        onClick={(e) => { e.stopPropagation(); toggleMode(itemId); }}
+                        onClick={(e) => { e.stopPropagation(); toggleMode(itemId, itemQty); }}
                       >
                         {t("items.grupal")}
                       </button>
@@ -378,7 +415,7 @@ export function StepAssign({
                       <input
                         type="checkbox"
                         checked={isUnitMode}
-                        onChange={() => toggleUnitMode(itemId)}
+                        onChange={() => toggleUnitMode(itemId, itemQty)}
                         className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                       />
                       <span className="text-xs text-muted-foreground">{t("items.perUnit")}</span>
