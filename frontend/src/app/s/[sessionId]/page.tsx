@@ -24,7 +24,6 @@ export default function SessionPage() {
   const [joining, setJoining] = useState(false);
   const [newParticipantName, setNewParticipantName] = useState("");
   const [showAddParticipant, setShowAddParticipant] = useState(false);
-  const [addingParticipant, setAddingParticipant] = useState(false);
 
   const {
     session,
@@ -103,13 +102,14 @@ export default function SessionPage() {
     setJoining(false);
   };
 
-  const handleAddParticipant = async () => {
-    if (!newParticipantName.trim() || addingParticipant) return;
-    setAddingParticipant(true);
-    await addParticipant(newParticipantName.trim());
+  const handleAddParticipant = () => {
+    if (!newParticipantName.trim()) return;
+    const name = newParticipantName.trim();
+    // Close form immediately - optimistic update in useSession handles the rest
     setNewParticipantName("");
     setShowAddParticipant(false);
-    setAddingParticipant(false);
+    // Fire and forget - useSession has optimistic update
+    addParticipant(name);
   };
 
   const handleItemsChange = async (newItems: Item[]) => {
@@ -355,7 +355,6 @@ export default function SessionPage() {
             onAddParticipant={handleAddParticipant}
             onToggleAddParticipant={setShowAddParticipant}
             onRemoveParticipant={removeParticipantById}
-            addingParticipant={addingParticipant}
           />
         )}
 

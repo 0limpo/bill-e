@@ -230,16 +230,48 @@ export function useSession({
     async (participantId: string): Promise<boolean> => {
       if (!ownerToken) return false;
       markInteraction();
+
+      // Save for rollback
+      const oldParticipant = session?.participants.find((p) => p.id === participantId);
+      const oldAssignments = session?.assignments;
+
+      // Optimistic update FIRST
+      setSession((prev) => {
+        if (!prev) return prev;
+        // Remove participant and their assignments
+        const newAssignments = { ...prev.assignments };
+        Object.keys(newAssignments).forEach((itemId) => {
+          newAssignments[itemId] = newAssignments[itemId].filter(
+            (a) => a.participant_id !== participantId
+          );
+        });
+        return {
+          ...prev,
+          participants: prev.participants.filter((p) => p.id !== participantId),
+          assignments: newAssignments,
+        };
+      });
+
       try {
         await removeParticipant(sessionId, participantId, ownerToken);
-        await refresh();
         return true;
       } catch (err) {
         console.error("Remove participant error:", err);
+        // Rollback
+        if (oldParticipant) {
+          setSession((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              participants: [...prev.participants, oldParticipant],
+              assignments: oldAssignments || prev.assignments,
+            };
+          });
+        }
         return false;
       }
     },
-    [sessionId, ownerToken, markInteraction, refresh]
+    [sessionId, ownerToken, session, markInteraction]
   );
 
   // Add item

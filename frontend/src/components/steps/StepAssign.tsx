@@ -20,7 +20,7 @@ interface StepAssignProps {
   onBack: () => void;
   onNext: () => void;
   t: (key: string) => string;
-  // New props for participant management
+  // Props for participant management
   isOwner?: boolean;
   showAddParticipant?: boolean;
   newParticipantName?: string;
@@ -28,7 +28,6 @@ interface StepAssignProps {
   onAddParticipant?: () => void;
   onToggleAddParticipant?: (show: boolean) => void;
   onRemoveParticipant?: (participantId: string) => void;
-  addingParticipant?: boolean;
 }
 
 export function StepAssign({
@@ -46,7 +45,6 @@ export function StepAssign({
   onAddParticipant,
   onToggleAddParticipant,
   onRemoveParticipant,
-  addingParticipant = false,
 }: StepAssignProps) {
   const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>({});
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
@@ -132,11 +130,10 @@ export function StepAssign({
               placeholder={t("participants.name")}
               className="flex-1 px-4 py-3 bg-background rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary text-base"
               autoFocus
-              disabled={addingParticipant}
             />
             <button
               onClick={onAddParticipant}
-              disabled={!newParticipantName.trim() || addingParticipant}
+              disabled={!newParticipantName.trim()}
               className="px-4 py-3 rounded-xl bg-primary text-white font-medium disabled:opacity-50 flex items-center gap-2"
             >
               <Plus className="w-5 h-5" />
