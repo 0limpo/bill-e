@@ -52,14 +52,16 @@ export function StepAssign({
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const prevAllAssignedRef = useRef<boolean | null>(null);
+  const initializedRef = useRef(false);
 
-  // Open first item by default on mount
+  // Open first item by default on mount (only once)
   useEffect(() => {
-    if (items.length > 0 && expandedItemId === null) {
+    if (items.length > 0 && !initializedRef.current) {
       const firstItemId = items[0].id || items[0].name;
       setExpandedItemId(firstItemId);
+      initializedRef.current = true;
     }
-  }, [items, expandedItemId]);
+  }, [items]);
 
   const fmt = (amount: number) => formatCurrency(amount);
 
