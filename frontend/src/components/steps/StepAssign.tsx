@@ -232,7 +232,7 @@ export function StepAssign({
       )}
 
       {/* Participants Bar */}
-      <div className="flex gap-3 overflow-x-auto pb-4 mb-6 scrollbar-hide items-start">
+      <div className="flex gap-3 overflow-x-auto pt-2 pb-4 mb-6 scrollbar-hide items-start">
         {/* Add Participant Button (circle) - only for owner */}
         {isOwner && !showAddParticipant && (
           <div className="flex flex-col items-center gap-1 min-w-14 shrink-0">
@@ -446,7 +446,7 @@ export function StepAssign({
                             <span className="text-xs text-muted-foreground w-16 shrink-0">
                               {t("items.unit")} {unitIndex + 1}
                             </span>
-                            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide flex-1">
+                            <div className="flex gap-1.5 overflow-x-auto py-0.5 scrollbar-hide flex-1">
                               {participants.map((p, pIndex) => {
                                 const assign = unitAssignments.find((a) => a.participant_id === p.id);
                                 const isAssigned = (assign?.quantity || 0) > 0;
@@ -479,7 +479,7 @@ export function StepAssign({
                     </div>
                   ) : (
                     /* Regular Participants Assignment */
-                    <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                    <div className="flex gap-3 overflow-x-auto pt-1 pb-2 scrollbar-hide">
                       {participants.map((p, pIndex) => {
                         const assign = itemAssignments.find((a) => a.participant_id === p.id);
                         const qty = assign?.quantity || 0;
