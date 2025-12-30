@@ -76,12 +76,11 @@ export function StepShare({
         } else {
           const item = items.find((i) => (i.id || i.name) === itemId);
           if (item) {
-            const totalAssigned = assigns.reduce((sum, a) => sum + (a.quantity || 0), 0);
             const numPeopleSharing = assigns.filter(a => a.quantity > 0).length;
-            const itemQty = item.quantity || 1;
 
-            if (numPeopleSharing > 1 && totalAssigned > itemQty) {
-              // Grupal mode
+            if (numPeopleSharing > 1) {
+              // Shared item - divide among all participants
+              const itemQty = item.quantity || 1;
               const totalItemPrice = item.price * itemQty;
               result.push({
                 name: item.name,
@@ -90,7 +89,7 @@ export function StepShare({
                 shared: numPeopleSharing,
               });
             } else {
-              // Individual mode
+              // Individual mode - this person has it alone
               result.push({
                 name: item.name,
                 amount: item.price * assignment.quantity,

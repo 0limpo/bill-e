@@ -174,17 +174,15 @@ export const calculateSubtotal = (
         }
         const item = session.items.find(i => (i.id || i.name) === assignmentKey);
         if (item) {
-          // Check if multiple people are sharing this item (grupal mode)
-          const totalAssigned = assigns.reduce((sum, a) => sum + (a.quantity || 0), 0);
           const numPeopleSharing = assigns.filter(a => a.quantity > 0).length;
-          const itemQty = item.quantity || 1;
 
-          if (numPeopleSharing > 1 && totalAssigned > itemQty) {
-            // Grupal mode: multiple people sharing, divide total price among them
+          if (numPeopleSharing > 1) {
+            // Shared item: multiple people sharing, divide total price among them
+            const itemQty = item.quantity || 1;
             const totalItemPrice = item.price * itemQty;
             subtotal += totalItemPrice / numPeopleSharing;
           } else {
-            // Individual mode: each person pays for their quantity
+            // Individual mode: this person has it alone
             subtotal += item.price * (assignment.quantity || 0);
           }
         }
