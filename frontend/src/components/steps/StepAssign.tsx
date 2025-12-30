@@ -91,13 +91,16 @@ export function StepAssign({
   const toggleMode = (itemId: string, itemQty: number) => {
     const currentMode = itemModes[itemId] || "individual";
     const newMode = currentMode === "individual" ? "grupal" : "individual";
+
+    // Clear all assignments when switching modes to avoid confusion
+    clearBaseAssignments(itemId);
+    if (unitModeItems.has(itemId)) {
+      clearUnitAssignments(itemId, itemQty);
+    }
+
     setItemModes({ ...itemModes, [itemId]: newMode });
-    // Reset unit mode and clear unit assignments when switching to individual
+    // Reset unit mode when switching to individual
     if (newMode === "individual") {
-      // Clear unit assignments if they exist
-      if (unitModeItems.has(itemId)) {
-        clearUnitAssignments(itemId, itemQty);
-      }
       setUnitModeItems((prev) => {
         const next = new Set(prev);
         next.delete(itemId);
