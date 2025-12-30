@@ -232,7 +232,7 @@ export function StepAssign({
       )}
 
       {/* Participants Bar */}
-      <div className="flex gap-3 overflow-x-auto pt-2 pb-4 mb-6 scrollbar-hide items-start">
+      <div className="flex gap-2 overflow-x-auto pt-2 pb-4 mb-6 scrollbar-hide items-start">
         {/* Add Participant Button (circle) - only for owner */}
         {isOwner && !showAddParticipant && (
           <div className="flex flex-col items-center gap-1 min-w-14 shrink-0">
@@ -479,7 +479,7 @@ export function StepAssign({
                     </div>
                   ) : (
                     /* Regular Participants Assignment */
-                    <div className="flex gap-3 overflow-x-auto pt-1 pb-2 scrollbar-hide">
+                    <div className="flex gap-2 overflow-x-auto pt-1 pb-2 scrollbar-hide">
                       {participants.map((p, pIndex) => {
                         const assign = itemAssignments.find((a) => a.participant_id === p.id);
                         const qty = assign?.quantity || 0;
