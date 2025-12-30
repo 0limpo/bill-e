@@ -378,12 +378,12 @@ export function StepAssign({
                 <div className="py-3 pl-4 border-b border-border/50">
                   {/* Mode Toggle - segmented control style */}
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="inline-flex rounded-lg bg-background p-0.5">
+                    <div className="inline-flex rounded-lg bg-secondary p-0.5">
                       <button
                         type="button"
                         className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
                           mode === "individual"
-                            ? "bg-primary text-primary-foreground"
+                            ? "bg-background text-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                         onClick={(e) => { e.stopPropagation(); toggleMode(itemId, itemQty); }}
@@ -394,7 +394,7 @@ export function StepAssign({
                         type="button"
                         className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
                           mode === "grupal"
-                            ? "bg-primary text-primary-foreground"
+                            ? "bg-background text-foreground shadow-sm"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                         onClick={(e) => { e.stopPropagation(); toggleMode(itemId, itemQty); }}
@@ -406,7 +406,7 @@ export function StepAssign({
                     {mode === "grupal" && !isUnitMode && (
                       <button
                         type="button"
-                        className="text-xs text-primary hover:underline"
+                        className="text-xs text-muted-foreground hover:text-foreground hover:underline"
                         onClick={(e) => { e.stopPropagation(); assignAll(itemId); }}
                       >
                         {t("items.allTogether")}
