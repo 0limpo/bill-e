@@ -30,6 +30,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "items.individual": "Individual",
     "items.grupal": "Grupal",
     "items.allTogether": "Todos juntos",
+    "items.perUnit": "Por unidad",
+    "items.unit": "Unidad",
     "items.addManualItem": "Agregar item",
     "items.deleteItem": "Eliminar",
 
@@ -108,6 +110,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "items.individual": "Individual",
     "items.grupal": "Shared",
     "items.allTogether": "Everyone",
+    "items.perUnit": "Per unit",
+    "items.unit": "Unit",
     "items.addManualItem": "Add item",
     "items.deleteItem": "Delete",
 

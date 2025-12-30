@@ -47,6 +47,7 @@ export function StepAssign({
   onRemoveParticipant,
 }: StepAssignProps) {
   const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>({});
+  const [unitModeItems, setUnitModeItems] = useState<Set<string>>(new Set());
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const prevAllAssignedRef = useRef<boolean | null>(null);
@@ -68,7 +69,31 @@ export function StepAssign({
     const currentMode = itemModes[itemId] || "individual";
     const newMode = currentMode === "individual" ? "grupal" : "individual";
     setItemModes({ ...itemModes, [itemId]: newMode });
+    // Reset unit mode when switching modes
+    if (newMode === "individual") {
+      setUnitModeItems((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
   };
+
+  // Toggle per-unit mode for grupal items
+  const toggleUnitMode = (itemId: string) => {
+    setUnitModeItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  // Get unit-based item ID
+  const getUnitItemId = (itemId: string, unitIndex: number) => `${itemId}__u${unitIndex}`;
 
   // Assign all participants to an item (1 unit each)
   const assignAll = (itemId: string) => {
@@ -80,9 +105,27 @@ export function StepAssign({
     });
   };
 
-  // Get total assigned quantity for an item
-  const getTotalAssigned = (itemId: string) => {
-    return (assignments[itemId] || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
+  // Get total assigned quantity for an item (including unit-based assignments)
+  const getTotalAssigned = (itemId: string, itemQty: number = 1) => {
+    // Check if this item has unit-based assignments
+    const hasUnitAssignments = Object.keys(assignments).some((k) => k.startsWith(`${itemId}__u`));
+
+    if (hasUnitAssignments) {
+      // Count units that have at least one person assigned
+      let unitsAssigned = 0;
+      for (let i = 0; i < itemQty; i++) {
+        const unitId = getUnitItemId(itemId, i);
+        const unitAssignments = assignments[unitId] || [];
+        if (unitAssignments.some((a) => a.quantity > 0)) {
+          unitsAssigned++;
+        }
+      }
+      return unitsAssigned;
+    }
+
+    // Regular assignment - cap at item quantity for grupal
+    const totalAssigned = (assignments[itemId] || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
+    return Math.min(totalAssigned, itemQty);
   };
 
   // Calculate total amounts for progress indicator
@@ -90,10 +133,8 @@ export function StepAssign({
   const assignedAmount = items.reduce((sum, item) => {
     const itemId = item.id || item.name;
     const itemQty = item.quantity || 1;
-    const assignedQty = getTotalAssigned(itemId);
-    // Cap at item quantity to handle grupal mode (multiple people sharing 1 item)
-    const effectiveQty = Math.min(assignedQty, itemQty);
-    return sum + effectiveQty * (item.price || 0);
+    const assignedQty = getTotalAssigned(itemId, itemQty);
+    return sum + assignedQty * (item.price || 0);
   }, 0);
   const remainingAmount = totalAmount - assignedAmount;
   const progressPercent = totalAmount > 0 ? (assignedAmount / totalAmount) * 100 : 0;
@@ -224,15 +265,31 @@ export function StepAssign({
           const totalPrice = itemQty * (item.price || 0);
           const itemAssignments = assignments[itemId] || [];
           const mode = itemModes[itemId] || "individual";
-          const totalAssigned = getTotalAssigned(itemId);
+          const isUnitMode = unitModeItems.has(itemId);
+          const totalAssigned = getTotalAssigned(itemId, itemQty);
           const remaining = itemQty - totalAssigned;
           const isExpanded = expandedItemId === itemId;
           const isComplete = remaining <= 0 && totalAssigned > 0;
 
-          // Get assigned participants for mini-avatars
-          const assignedParticipants = participants.filter((p) =>
-            itemAssignments.some((a) => a.participant_id === p.id && a.quantity > 0)
-          );
+          // Get assigned participants for mini-avatars (including unit-based assignments)
+          const getAssignedParticipants = () => {
+            if (isUnitMode) {
+              // Collect all participants from all units
+              const allAssigned = new Set<string>();
+              for (let i = 0; i < itemQty; i++) {
+                const unitId = getUnitItemId(itemId, i);
+                const unitAssigns = assignments[unitId] || [];
+                unitAssigns.forEach((a) => {
+                  if (a.quantity > 0) allAssigned.add(a.participant_id);
+                });
+              }
+              return participants.filter((p) => allAssigned.has(p.id));
+            }
+            return participants.filter((p) =>
+              itemAssignments.some((a) => a.participant_id === p.id && a.quantity > 0)
+            );
+          };
+          const assignedParticipants = getAssignedParticipants();
 
           return (
             <div key={itemId}>
@@ -278,7 +335,7 @@ export function StepAssign({
               {isExpanded && (
                 <div className="py-3 pl-7 border-b border-border/50">
                   {/* Mode Toggle */}
-                  <div className="flex gap-2 mb-3">
+                  <div className="flex flex-wrap gap-2 mb-3">
                     <button
                       type="button"
                       className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
@@ -301,8 +358,22 @@ export function StepAssign({
                     >
                       {t("items.grupal")}
                     </button>
-                    {/* Quick action for grupal */}
-                    {mode === "grupal" && (
+                    {/* Per-unit toggle for grupal with qty > 1 */}
+                    {mode === "grupal" && itemQty > 1 && (
+                      <button
+                        type="button"
+                        className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
+                          isUnitMode
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background text-muted-foreground"
+                        }`}
+                        onClick={(e) => { e.stopPropagation(); toggleUnitMode(itemId); }}
+                      >
+                        {t("items.perUnit")}
+                      </button>
+                    )}
+                    {/* Quick action for grupal (not in unit mode) */}
+                    {mode === "grupal" && !isUnitMode && (
                       <button
                         type="button"
                         className="py-1.5 px-3 text-xs font-medium text-primary hover:underline transition-colors"
@@ -313,59 +384,126 @@ export function StepAssign({
                     )}
                   </div>
 
-                  {/* Remaining indicator */}
-                  {remaining > 0 && (
+                  {/* Remaining indicator (not in unit mode) */}
+                  {remaining > 0 && !isUnitMode && (
                     <p className="text-xs text-muted-foreground mb-3">
                       {t("assign.remaining")}: {remaining} de {itemQty}
                     </p>
                   )}
 
-                  {/* Participants Assignment */}
-                  <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-                    {participants.map((p, pIndex) => {
-                      const assign = itemAssignments.find((a) => a.participant_id === p.id);
-                      const qty = assign?.quantity || 0;
-                      const isAssigned = qty > 0;
-                      const canAdd = remaining > 0 || mode === "grupal";
+                  {/* Per-unit assignment UI */}
+                  {isUnitMode ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: itemQty }, (_, unitIndex) => {
+                        const unitId = getUnitItemId(itemId, unitIndex);
+                        const unitAssignments = assignments[unitId] || [];
+                        const unitAssignedParticipants = participants.filter((p) =>
+                          unitAssignments.some((a) => a.participant_id === p.id && a.quantity > 0)
+                        );
+                        const hasAssignments = unitAssignedParticipants.length > 0;
 
-                      return (
-                        <div key={p.id} className="flex flex-col items-center gap-1 min-w-14">
-                          {/* Avatar with click to add */}
-                          <button
-                            type="button"
-                            className="relative"
-                            onClick={(e) => { e.stopPropagation(); canAdd && onUpdateQty(itemId, p.id, 1); }}
-                            disabled={!canAdd && !isAssigned}
-                          >
-                            <div
-                              className={`participant-avatar ${isAssigned ? "selected" : canAdd ? "opacity-40" : "opacity-20"}`}
-                              style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
-                            >
-                              {getInitials(p.name)}
-                            </div>
-                            {/* Quantity badge */}
-                            {qty > 0 && (
-                              <span className="absolute -bottom-1 -right-1 min-w-5 h-5 px-1 bg-primary rounded-full flex items-center justify-center text-[11px] text-white font-bold">
-                                {qty}
+                        return (
+                          <div key={unitIndex} className="bg-background/50 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {t("items.unit")} {unitIndex + 1}
                               </span>
-                            )}
-                          </button>
-                          <span className="text-xs text-muted-foreground truncate max-w-14">{p.name.split(" ")[0]}</span>
+                              {hasAssignments && (
+                                <div className="flex -space-x-1">
+                                  {unitAssignedParticipants.slice(0, 3).map((p) => {
+                                    const pIndex = participants.findIndex((pp) => pp.id === p.id);
+                                    return (
+                                      <div
+                                        key={p.id}
+                                        className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-medium text-white ring-1 ring-background"
+                                        style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
+                                      >
+                                        {getInitials(p.name)}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                              {participants.map((p, pIndex) => {
+                                const assign = unitAssignments.find((a) => a.participant_id === p.id);
+                                const isAssigned = (assign?.quantity || 0) > 0;
 
-                          {/* Minus button (only show when assigned) */}
-                          {qty > 0 && (
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    className="relative shrink-0"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onUpdateQty(unitId, p.id, isAssigned ? -1 : 1);
+                                    }}
+                                  >
+                                    <div
+                                      className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-medium text-white transition-all ${
+                                        isAssigned ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : "opacity-40"
+                                      }`}
+                                      style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
+                                    >
+                                      {getInitials(p.name)}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    /* Regular Participants Assignment */
+                    <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+                      {participants.map((p, pIndex) => {
+                        const assign = itemAssignments.find((a) => a.participant_id === p.id);
+                        const qty = assign?.quantity || 0;
+                        const isAssigned = qty > 0;
+                        const canAdd = remaining > 0 || mode === "grupal";
+
+                        return (
+                          <div key={p.id} className="flex flex-col items-center gap-1 min-w-14">
+                            {/* Avatar with click to add */}
                             <button
                               type="button"
-                              className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center hover:bg-destructive/30 transition-colors"
-                              onClick={(e) => { e.stopPropagation(); onUpdateQty(itemId, p.id, -1); }}
+                              className="relative"
+                              onClick={(e) => { e.stopPropagation(); canAdd && onUpdateQty(itemId, p.id, 1); }}
+                              disabled={!canAdd && !isAssigned}
                             >
-                              <Minus className="w-3 h-3" />
+                              <div
+                                className={`participant-avatar ${isAssigned ? "selected" : canAdd ? "opacity-40" : "opacity-20"}`}
+                                style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
+                              >
+                                {getInitials(p.name)}
+                              </div>
+                              {/* Quantity badge */}
+                              {qty > 0 && (
+                                <span className="absolute -bottom-1 -right-1 min-w-5 h-5 px-1 bg-primary rounded-full flex items-center justify-center text-[11px] text-white font-bold">
+                                  {qty}
+                                </span>
+                              )}
                             </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                            <span className="text-xs text-muted-foreground truncate max-w-14">{p.name.split(" ")[0]}</span>
+
+                            {/* Minus button (only show when assigned) */}
+                            {qty > 0 && (
+                              <button
+                                type="button"
+                                className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center hover:bg-destructive/30 transition-colors"
+                                onClick={(e) => { e.stopPropagation(); onUpdateQty(itemId, p.id, -1); }}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
