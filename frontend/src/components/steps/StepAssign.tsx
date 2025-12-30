@@ -300,7 +300,7 @@ export function StepAssign({
       )}
 
       {/* Items List */}
-      <div className="bg-secondary/30 rounded-2xl p-4">
+      <div className="space-y-2">
         {items.map((item) => {
           const itemId = item.id || item.name;
           const itemQty = item.quantity || 1;
@@ -334,17 +334,24 @@ export function StepAssign({
           const assignedParticipants = getAssignedParticipants();
 
           return (
-            <div key={itemId}>
+            <div
+              key={itemId}
+              className={`rounded-xl transition-colors ${
+                isComplete
+                  ? "bg-secondary/40"
+                  : "bg-primary/15"
+              }`}
+            >
               {/* Collapsed Row - clickable to expand */}
               <button
                 type="button"
-                className={`w-full flex items-center justify-between py-3 border-b border-border/50 last:border-0 transition-opacity ${isComplete && !isExpanded ? "opacity-50" : ""}`}
+                className="w-full flex items-center justify-between p-3"
                 onClick={() => setExpandedItemId(isExpanded ? null : itemId)}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
-                  <span className="text-primary font-semibold tabular-nums">{itemQty}</span>
-                  <span className="font-normal truncate text-left">{item.name}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isComplete ? "text-muted-foreground/50" : "text-muted-foreground"} ${isExpanded ? "" : "-rotate-90"}`} />
+                  <span className={`font-semibold tabular-nums ${isComplete ? "text-muted-foreground" : "text-primary"}`}>{itemQty}</span>
+                  <span className={`font-normal truncate text-left ${isComplete ? "text-muted-foreground" : "text-foreground"}`}>{item.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Mini-avatars of assigned participants (only when collapsed) */}
@@ -355,7 +362,7 @@ export function StepAssign({
                         return (
                           <div
                             key={p.id}
-                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white ring-2 ring-background"
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white ring-2 ring-background ${isComplete ? "opacity-60" : ""}`}
                             style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
                           >
                             {getInitials(p.name)}
@@ -363,19 +370,19 @@ export function StepAssign({
                         );
                       })}
                       {assignedParticipants.length > 4 && (
-                        <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium ring-2 ring-background">
+                        <div className={`w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium ring-2 ring-background ${isComplete ? "opacity-60" : ""}`}>
                           +{assignedParticipants.length - 4}
                         </div>
                       )}
                     </div>
                   )}
-                  <span className="font-semibold tabular-nums w-24 text-right">{fmt(totalPrice)}</span>
+                  <span className={`font-semibold tabular-nums w-24 text-right ${isComplete ? "text-muted-foreground" : "text-foreground"}`}>{fmt(totalPrice)}</span>
                 </div>
               </button>
 
               {/* Expanded View */}
               {isExpanded && (
-                <div className="py-3 pl-4 border-b border-border/50">
+                <div className="pb-3 px-3 pt-0">
                   {/* Mode Toggle - segmented control style */}
                   <div className="flex items-center gap-3 mb-3">
                     <div className="inline-flex rounded-lg bg-secondary p-0.5">
