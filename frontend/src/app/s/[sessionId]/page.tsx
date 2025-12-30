@@ -160,10 +160,12 @@ export default function SessionPage() {
   const handleFinalize = async () => {
     await finalize();
     setStep(3);
+    window.scrollTo(0, 0);
   };
 
   const goToStep = (newStep: number) => {
     setStep(newStep);
+    window.scrollTo(0, 0);
   };
 
   // --- Render States ---
