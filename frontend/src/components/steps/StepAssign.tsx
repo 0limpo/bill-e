@@ -147,10 +147,12 @@ export function StepAssign({
 
   // Get total assigned quantity for an item (including unit-based assignments)
   const getTotalAssigned = (itemId: string, itemQty: number = 1) => {
-    // Check if this item has unit-based assignments (must match billEngine.ts format)
-    const hasUnitAssignments = Object.keys(assignments).some((k) => k.startsWith(`${itemId}_unit_`));
+    // Check if this item has ACTIVE unit-based assignments (quantity > 0)
+    const hasActiveUnitAssignments = Object.entries(assignments).some(([k, assigns]) =>
+      k.startsWith(`${itemId}_unit_`) && assigns.some((a) => a.quantity > 0)
+    );
 
-    if (hasUnitAssignments) {
+    if (hasActiveUnitAssignments) {
       // Count units that have at least one person assigned
       let unitsAssigned = 0;
       for (let i = 0; i < itemQty; i++) {
@@ -163,9 +165,9 @@ export function StepAssign({
       return unitsAssigned;
     }
 
-    // Regular assignment - cap at item quantity for grupal
+    // Regular assignment
     const totalAssigned = (assignments[itemId] || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
-    return Math.min(totalAssigned, itemQty);
+    return totalAssigned;
   };
 
   // Calculate total amounts for progress indicator
