@@ -91,8 +91,11 @@ export function StepAssign({
   const totalAmount = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
   const assignedAmount = items.reduce((sum, item) => {
     const itemId = item.id || item.name;
+    const itemQty = item.quantity || 1;
     const assignedQty = getTotalAssigned(itemId);
-    return sum + assignedQty * (item.price || 0);
+    // Cap at item quantity to handle grupal mode (multiple people sharing 1 item)
+    const effectiveQty = Math.min(assignedQty, itemQty);
+    return sum + effectiveQty * (item.price || 0);
   }, 0);
   const remainingAmount = totalAmount - assignedAmount;
   const progressPercent = totalAmount > 0 ? (assignedAmount / totalAmount) * 100 : 0;
