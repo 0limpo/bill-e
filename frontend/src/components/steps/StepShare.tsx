@@ -112,7 +112,7 @@ export function StepShare({
 
       {/* Participants List */}
       <div className="space-y-2">
-        {participants.map((p) => {
+        {participants.map((p, pIndex) => {
           const { subtotal, total, charges: pCharges } = calculateParticipantTotal(p.id, session);
           const isExpanded = expandedParticipants[p.id];
           const participantItems = getParticipantItems(p.id);
@@ -130,7 +130,7 @@ export function StepShare({
                   </span>
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                    style={{ backgroundColor: getAvatarColor(p.name) }}
+                    style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
                   >
                     {getInitials(p.name)}
                   </div>

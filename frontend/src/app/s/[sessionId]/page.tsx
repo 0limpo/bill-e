@@ -233,11 +233,11 @@ export default function SessionPage() {
                 Ya están en la sesión:
               </p>
               <div className="flex justify-center gap-2 flex-wrap">
-                {participants.map((p) => (
+                {participants.map((p, pIndex) => (
                   <div key={p.id} className="participant-chip">
                     <div
                       className="participant-avatar"
-                      style={{ backgroundColor: getAvatarColor(p.name) }}
+                      style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
                     >
                       {getInitials(p.name)}
                     </div>
@@ -275,7 +275,7 @@ export default function SessionPage() {
                 <div className="flex items-center gap-2">
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: getAvatarColor(currentParticipant.name) }}
+                    style={{ backgroundColor: getAvatarColor(currentParticipant.name, participants.findIndex(p => p.id === currentParticipant.id)) }}
                   >
                     {getInitials(currentParticipant.name)}
                   </div>

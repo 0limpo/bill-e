@@ -167,11 +167,11 @@ export function StepAssign({
         )}
 
         {/* Participants */}
-        {participants.map((p) => (
+        {participants.map((p, pIndex) => (
           <div key={p.id} className="participant-chip relative group shrink-0">
             <div
               className="participant-avatar"
-              style={{ backgroundColor: getAvatarColor(p.name) }}
+              style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
             >
               {getInitials(p.name)}
             </div>
@@ -254,15 +254,18 @@ export function StepAssign({
                   {/* Mini-avatars of assigned participants (only when collapsed) */}
                   {!isExpanded && assignedParticipants.length > 0 && (
                     <div className="flex -space-x-2">
-                      {assignedParticipants.slice(0, 4).map((p) => (
-                        <div
-                          key={p.id}
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white ring-2 ring-background"
-                          style={{ backgroundColor: getAvatarColor(p.name) }}
-                        >
-                          {getInitials(p.name)}
-                        </div>
-                      ))}
+                      {assignedParticipants.slice(0, 4).map((p) => {
+                        const pIndex = participants.findIndex((pp) => pp.id === p.id);
+                        return (
+                          <div
+                            key={p.id}
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white ring-2 ring-background"
+                            style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
+                          >
+                            {getInitials(p.name)}
+                          </div>
+                        );
+                      })}
                       {assignedParticipants.length > 4 && (
                         <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium ring-2 ring-background">
                           +{assignedParticipants.length - 4}
@@ -322,7 +325,7 @@ export function StepAssign({
 
                   {/* Participants Assignment */}
                   <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
-                    {participants.map((p) => {
+                    {participants.map((p, pIndex) => {
                       const assign = itemAssignments.find((a) => a.participant_id === p.id);
                       const qty = assign?.quantity || 0;
                       const isAssigned = qty > 0;
@@ -339,7 +342,7 @@ export function StepAssign({
                           >
                             <div
                               className={`participant-avatar ${isAssigned ? "selected" : canAdd ? "opacity-40" : "opacity-20"}`}
-                              style={{ backgroundColor: getAvatarColor(p.name) }}
+                              style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
                             >
                               {getInitials(p.name)}
                             </div>

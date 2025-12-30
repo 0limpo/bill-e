@@ -102,16 +102,19 @@ export const formatCurrency = (
 };
 
 /**
- * Generate a consistent color based on name
+ * Generate a consistent color based on index (preferred) or name fallback
  */
-export const getAvatarColor = (name: string): string => {
-  // Better hash distribution using djb2 algorithm
+export const getAvatarColor = (name: string, index?: number): string => {
+  // If index is provided, use it directly for guaranteed unique colors
+  if (index !== undefined) {
+    return AVATAR_COLORS[index % AVATAR_COLORS.length];
+  }
+  // Fallback to name-based hash
   let hash = 5381;
   const str = name.toLowerCase().trim();
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
   }
-  // Add length factor for better distribution with short names
   hash = hash ^ (str.length * 7919);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
