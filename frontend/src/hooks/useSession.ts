@@ -15,6 +15,7 @@ import {
   finalizeSession,
   reopenSession,
   removeParticipant,
+  updateParticipant,
   addParticipantManual,
   type SessionResponse,
   type ApiCharge,
@@ -46,6 +47,7 @@ export interface UseSessionReturn {
   join: (name: string, phone?: string) => Promise<boolean>;
   addParticipant: (name: string, phone?: string) => Promise<boolean>;
   removeParticipantById: (participantId: string) => Promise<boolean>;
+  updateParticipantName: (participantId: string, name: string) => Promise<boolean>;
 
   // Item actions
   addNewItem: (name: string, price: number, quantity: number) => Promise<boolean>;
@@ -272,6 +274,48 @@ export function useSession({
       }
     },
     [sessionId, ownerToken, session, markInteraction]
+  );
+
+  // Update participant name
+  const updateParticipantName = useCallback(
+    async (participantId: string, name: string): Promise<boolean> => {
+      markInteraction();
+
+      // Save for rollback
+      const oldName = session?.participants.find((p) => p.id === participantId)?.name;
+
+      // Optimistic update FIRST
+      setSession((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          participants: prev.participants.map((p) =>
+            p.id === participantId ? { ...p, name } : p
+          ),
+        };
+      });
+
+      try {
+        await updateParticipant(sessionId, participantId, name);
+        return true;
+      } catch (err) {
+        console.error("Update participant name error:", err);
+        // Rollback
+        if (oldName) {
+          setSession((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              participants: prev.participants.map((p) =>
+                p.id === participantId ? { ...p, name: oldName } : p
+              ),
+            };
+          });
+        }
+        return false;
+      }
+    },
+    [sessionId, session, markInteraction]
   );
 
   // Add item
@@ -639,6 +683,7 @@ export function useSession({
     join,
     addParticipant,
     removeParticipantById,
+    updateParticipantName,
     addNewItem,
     updateItemById,
     deleteItemById,

@@ -24,6 +24,8 @@ export default function SessionPage() {
   const [joining, setJoining] = useState(false);
   const [newParticipantName, setNewParticipantName] = useState("");
   const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
 
   const {
     session,
@@ -34,6 +36,7 @@ export default function SessionPage() {
     join,
     addParticipant,
     removeParticipantById,
+    updateParticipantName,
     updateAssignmentQty,
     addNewItem,
     updateItemById,
@@ -281,7 +284,41 @@ export default function SessionPage() {
                   >
                     {getInitials(currentParticipant.name)}
                   </div>
-                  <span className="text-sm text-muted-foreground">{currentParticipant.name}</span>
+                  {editingName ? (
+                    <input
+                      type="text"
+                      value={editNameValue}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      onBlur={() => {
+                        if (editNameValue.trim() && editNameValue.trim() !== currentParticipant.name) {
+                          updateParticipantName(currentParticipant.id, editNameValue.trim());
+                        }
+                        setEditingName(false);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          if (editNameValue.trim() && editNameValue.trim() !== currentParticipant.name) {
+                            updateParticipantName(currentParticipant.id, editNameValue.trim());
+                          }
+                          setEditingName(false);
+                        } else if (e.key === "Escape") {
+                          setEditingName(false);
+                        }
+                      }}
+                      className="text-sm text-muted-foreground bg-transparent border-b border-primary outline-none w-20"
+                      autoFocus
+                    />
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setEditNameValue(currentParticipant.name);
+                        setEditingName(true);
+                      }}
+                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {currentParticipant.name}
+                    </button>
+                  )}
                 </div>
               )}
 
