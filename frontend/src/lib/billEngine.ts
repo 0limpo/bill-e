@@ -105,10 +105,14 @@ export const formatCurrency = (
  * Generate a consistent color based on name
  */
 export const getAvatarColor = (name: string): string => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  // Better hash distribution using djb2 algorithm
+  let hash = 5381;
+  const str = name.toLowerCase().trim();
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
   }
+  // Add length factor for better distribution with short names
+  hash = hash ^ (str.length * 7919);
   return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 };
 
