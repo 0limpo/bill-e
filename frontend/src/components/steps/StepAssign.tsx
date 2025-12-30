@@ -99,8 +99,14 @@ export function StepAssign({
     }
 
     setItemModes({ ...itemModes, [itemId]: newMode });
-    // Reset unit mode when switching to individual
-    if (newMode === "individual") {
+
+    if (newMode === "grupal") {
+      // Auto-assign all participants when switching to grupal ("entre todos" by default)
+      participants.forEach((p) => {
+        onUpdateQty(itemId, p.id, 1);
+      });
+    } else {
+      // Reset unit mode when switching to individual
       setUnitModeItems((prev) => {
         const next = new Set(prev);
         next.delete(itemId);
