@@ -384,7 +384,7 @@ export function StepAssign({
               {isExpanded && (
                 <div className="pb-3 px-3 pt-0">
                   {/* Mode Toggle - segmented control style */}
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
                     <div className="inline-flex rounded-lg bg-secondary p-0.5">
                       <button
                         type="button"
@@ -409,30 +409,35 @@ export function StepAssign({
                         {t("items.grupal")}
                       </button>
                     </div>
-                    {/* Quick action for grupal (not in unit mode) */}
-                    {mode === "grupal" && !isUnitMode && (
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-                        onClick={(e) => { e.stopPropagation(); assignAll(itemId); }}
-                      >
-                        {t("items.allTogether")}
-                      </button>
+
+                    {/* Grupal sub-options */}
+                    {mode === "grupal" && itemQty > 1 && (
+                      <div className="inline-flex rounded-lg bg-secondary p-0.5">
+                        <button
+                          type="button"
+                          className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
+                            !isUnitMode
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                          onClick={(e) => { e.stopPropagation(); if (isUnitMode) toggleUnitMode(itemId, itemQty); assignAll(itemId); }}
+                        >
+                          {t("items.allTogether")}
+                        </button>
+                        <button
+                          type="button"
+                          className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
+                            isUnitMode
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                          onClick={(e) => { e.stopPropagation(); if (!isUnitMode) toggleUnitMode(itemId, itemQty); }}
+                        >
+                          {t("items.perUnit")}
+                        </button>
+                      </div>
                     )}
                   </div>
-
-                  {/* Per-unit toggle for grupal with qty > 1 */}
-                  {mode === "grupal" && itemQty > 1 && (
-                    <label className="flex items-center gap-2 mb-3 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={isUnitMode}
-                        onChange={() => toggleUnitMode(itemId, itemQty)}
-                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                      />
-                      <span className="text-xs text-muted-foreground">{t("items.perUnit")}</span>
-                    </label>
-                  )}
 
                   {/* Remaining indicator (not in unit mode) */}
                   {remaining > 0 && !isUnitMode && (
