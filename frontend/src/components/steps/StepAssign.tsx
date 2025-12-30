@@ -236,6 +236,7 @@ export function StepAssign({
             <div key={itemId}>
               {/* Collapsed Row - clickable to expand */}
               <button
+                type="button"
                 className={`w-full flex items-center justify-between py-3 border-b border-border/50 last:border-0 transition-opacity ${isComplete && !isExpanded ? "opacity-50" : ""}`}
                 onClick={() => setExpandedItemId(isExpanded ? null : itemId)}
               >
@@ -274,30 +275,33 @@ export function StepAssign({
                   {/* Mode Toggle */}
                   <div className="flex gap-2 mb-3">
                     <button
+                      type="button"
                       className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
                         mode === "individual"
                           ? "bg-primary text-primary-foreground"
                           : "bg-background text-muted-foreground"
                       }`}
-                      onClick={() => toggleMode(itemId)}
+                      onClick={(e) => { e.stopPropagation(); toggleMode(itemId); }}
                     >
                       {t("items.individual")}
                     </button>
                     <button
+                      type="button"
                       className={`py-1.5 px-3 text-xs font-medium rounded-lg transition-colors ${
                         mode === "grupal"
                           ? "bg-primary text-primary-foreground"
                           : "bg-background text-muted-foreground"
                       }`}
-                      onClick={() => toggleMode(itemId)}
+                      onClick={(e) => { e.stopPropagation(); toggleMode(itemId); }}
                     >
                       {t("items.grupal")}
                     </button>
                     {/* Quick action for grupal */}
                     {mode === "grupal" && (
                       <button
+                        type="button"
                         className="py-1.5 px-3 text-xs font-medium text-primary hover:underline transition-colors"
-                        onClick={() => assignAll(itemId)}
+                        onClick={(e) => { e.stopPropagation(); assignAll(itemId); }}
                       >
                         {t("items.allTogether")}
                       </button>
@@ -323,8 +327,9 @@ export function StepAssign({
                         <div key={p.id} className="flex flex-col items-center gap-1 min-w-14">
                           {/* Avatar with click to add */}
                           <button
+                            type="button"
                             className="relative"
-                            onClick={() => canAdd && onUpdateQty(itemId, p.id, 1)}
+                            onClick={(e) => { e.stopPropagation(); canAdd && onUpdateQty(itemId, p.id, 1); }}
                             disabled={!canAdd && !isAssigned}
                           >
                             <div
@@ -345,8 +350,9 @@ export function StepAssign({
                           {/* Minus button (only show when assigned) */}
                           {qty > 0 && (
                             <button
+                              type="button"
                               className="w-6 h-6 rounded-full bg-destructive/20 text-destructive flex items-center justify-center hover:bg-destructive/30 transition-colors"
-                              onClick={() => onUpdateQty(itemId, p.id, -1)}
+                              onClick={(e) => { e.stopPropagation(); onUpdateQty(itemId, p.id, -1); }}
                             >
                               <Minus className="w-3 h-3" />
                             </button>
