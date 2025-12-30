@@ -376,7 +376,7 @@ export function StepAssign({
                       )}
                     </div>
                   )}
-                  <span className={`font-semibold tabular-nums w-24 text-right ${isComplete ? "text-muted-foreground" : "text-foreground"}`}>{fmt(totalPrice)}</span>
+                  <span className={`font-semibold tabular-nums text-right ${isComplete ? "text-muted-foreground" : "text-foreground"}`}>{fmt(totalPrice)}</span>
                 </div>
               </button>
 
