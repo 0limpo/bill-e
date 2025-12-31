@@ -16,6 +16,7 @@ const getAudioContext = (): AudioContext | null => {
 
 /**
  * Play a celebration sound (Ta-Da!)
+ * Synchronized with animation: ends at ~1s when checkmark completes
  */
 export const playCelebrationSound = () => {
   const ctx = getAudioContext();
@@ -28,7 +29,7 @@ export const playCelebrationSound = () => {
 
   const now = ctx.currentTime;
 
-  // First chord (C major)
+  // First chord at 0s (C major) - syncs with circle starting to draw
   [523, 659, 784].forEach(freq => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -37,12 +38,12 @@ export const playCelebrationSound = () => {
     osc.frequency.value = freq;
     osc.type = "sine";
     gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
     osc.start(now);
-    osc.stop(now + 0.15);
+    osc.stop(now + 0.25);
   });
 
-  // Second chord (higher, E-G-C)
+  // Second chord at 0.6s (higher, E-G-C) - syncs with check starting to draw
   [659, 784, 1047].forEach(freq => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -50,10 +51,10 @@ export const playCelebrationSound = () => {
     gain.connect(ctx.destination);
     osc.frequency.value = freq;
     osc.type = "sine";
-    gain.gain.setValueAtTime(0.15, now + 0.18);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-    osc.start(now + 0.18);
-    osc.stop(now + 0.5);
+    gain.gain.setValueAtTime(0.15, now + 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+    osc.start(now + 0.6);
+    osc.stop(now + 1.0);
   });
 };
 
