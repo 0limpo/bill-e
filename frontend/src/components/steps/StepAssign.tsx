@@ -154,7 +154,7 @@ export function StepAssign({
   };
 
   // Get total assigned quantity for an item (including unit-based assignments)
-  const getTotalAssigned = (itemId: string, itemQty: number = 1) => {
+  const getTotalAssigned = (itemId: string, itemQty: number = 1, mode: "individual" | "grupal" = "individual") => {
     // Check if this item has ACTIVE unit-based assignments (quantity > 0)
     const hasActiveUnitAssignments = Object.entries(assignments).some(([k, assigns]) =>
       k.startsWith(`${itemId}_unit_`) && assigns.some((a) => a.quantity > 0)
@@ -177,8 +177,8 @@ export function StepAssign({
     const itemAssignments = assignments[itemId] || [];
     const peopleAssigned = itemAssignments.filter((a) => a.quantity > 0).length;
 
-    if (peopleAssigned > 1) {
-      // Grupal mode: multiple people sharing = item is fully assigned (count as itemQty)
+    if (mode === "grupal" && peopleAssigned > 0) {
+      // Grupal mode: people sharing = item is fully assigned (count as itemQty)
       return itemQty;
     }
 
@@ -192,7 +192,8 @@ export function StepAssign({
   const assignedAmount = items.reduce((sum, item) => {
     const itemId = item.id || item.name;
     const itemQty = item.quantity || 1;
-    const assignedQty = getTotalAssigned(itemId, itemQty);
+    const mode = itemModes[itemId] || "individual";
+    const assignedQty = getTotalAssigned(itemId, itemQty, mode);
     return sum + assignedQty * (item.price || 0);
   }, 0);
   const remainingAmount = totalAmount - assignedAmount;
@@ -380,7 +381,7 @@ export function StepAssign({
           const itemAssignments = assignments[itemId] || [];
           const mode = itemModes[itemId] || "individual";
           const isUnitMode = unitModeItems.has(itemId);
-          const totalAssigned = getTotalAssigned(itemId, itemQty);
+          const totalAssigned = getTotalAssigned(itemId, itemQty, mode);
           const remaining = itemQty - totalAssigned;
           const isExpanded = expandedItemId === itemId;
           const isComplete = remaining <= 0 && totalAssigned > 0;
