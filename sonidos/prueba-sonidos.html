@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bill-e - Prueba de Sonidos v2</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #1a1a2e;
+      color: #eee;
+    }
+    h1 { color: #4ade80; margin-bottom: 5px; }
+    h2 { color: #888; font-size: 14px; margin-top: 30px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+    .sound-btn {
+      display: block;
+      width: 100%;
+      padding: 15px 20px;
+      margin: 8px 0;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: #2d2d44;
+      color: #fff;
+      text-align: left;
+      transition: background 0.2s;
+    }
+    .sound-btn:hover { background: #3d3d5c; }
+    .sound-btn:active { background: #4ade80; color: #000; }
+    .cat5 { border-left: 4px solid #8b5cf6; }
+  </style>
+</head>
+<body>
+  <h1>Prueba de Sonidos v2</h1>
+  <p>Haz clic para escuchar:</p>
+
+  <h2>Celebración</h2>
+
+  <button class="sound-btn cat5" onclick="playCeleb1()">Confetti Pop</button>
+  <button class="sound-btn cat5" onclick="playCeleb2()">Victory Fanfare</button>
+  <button class="sound-btn cat5" onclick="playCeleb3()">Ta-Da!</button>
+  <button class="sound-btn cat5" onclick="playCeleb4()">Party Horn</button>
+  <button class="sound-btn cat5" onclick="playCeleb5()">Sparkle Magic</button>
+  <button class="sound-btn cat5" onclick="playCeleb6()">Success Jingle</button>
+  <button class="sound-btn cat5" onclick="playCeleb7()">Coin Shower</button>
+  <button class="sound-btn cat5" onclick="playCeleb8()">Fireworks</button>
+  <button class="sound-btn cat5" onclick="playCeleb9()">Happy Cheer</button>
+  <button class="sound-btn cat5" onclick="playCeleb10()">Slot Machine Win</button>
+  <button class="sound-btn cat5" onclick="playCeleb11()">Champagne Pop</button>
+  <button class="sound-btn cat5" onclick="playCeleb12()">Achievement Unlocked</button>
+
+  <script>
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Confetti Pop - burst of sparkles
+    function playCeleb1() {
+      const now = ctx.currentTime;
+      // Pop
+      const pop = ctx.createOscillator();
+      const popGain = ctx.createGain();
+      pop.connect(popGain);
+      popGain.connect(ctx.destination);
+      pop.frequency.setValueAtTime(400, now);
+      pop.frequency.exponentialRampToValueAtTime(100, now + 0.05);
+      pop.type = "sine";
+      popGain.gain.setValueAtTime(0.3, now);
+      popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      pop.start(now);
+      pop.stop(now + 0.08);
+      // Sparkles
+      for (let i = 0; i < 8; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 1500 + Math.random() * 2000;
+        osc.type = "sine";
+        const start = now + 0.05 + Math.random() * 0.15;
+        gain.gain.setValueAtTime(0.08, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.1);
+        osc.start(start);
+        osc.stop(start + 0.1);
+      }
+    }
+
+    // Victory Fanfare - triumphant brass
+    function playCeleb2() {
+      const now = ctx.currentTime;
+      const melody = [392, 392, 392, 523];
+      const times = [0, 0.15, 0.3, 0.45];
+      const durs = [0.12, 0.12, 0.12, 0.4];
+      melody.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sawtooth";
+        const start = now + times[i];
+        gain.gain.setValueAtTime(0.08, start);
+        gain.gain.setValueAtTime(0.08, start + durs[i] * 0.8);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + durs[i]);
+        osc.start(start);
+        osc.stop(start + durs[i]);
+      });
+    }
+
+    // Ta-Da! - classic reveal
+    function playCeleb3() {
+      const now = ctx.currentTime;
+      // First chord
+      [523, 659, 784].forEach(freq => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      });
+      // Second chord (higher)
+      [659, 784, 1047].forEach(freq => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        gain.gain.setValueAtTime(0.15, now + 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.start(now + 0.18);
+        osc.stop(now + 0.5);
+      });
+    }
+
+    // Party Horn - kazoo style
+    function playCeleb4() {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(350, now);
+      osc.frequency.linearRampToValueAtTime(500, now + 0.3);
+      osc.frequency.setValueAtTime(500, now + 0.3);
+      osc.type = "sawtooth";
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.setValueAtTime(0.1, now + 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    }
+
+    // Sparkle Magic - twinkling stars
+    function playCeleb5() {
+      const now = ctx.currentTime;
+      const notes = [1319, 1568, 2093, 1760, 2349, 2093];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "sine";
+        const start = now + i * 0.08;
+        gain.gain.setValueAtTime(0.12, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.2);
+        osc.start(start);
+        osc.stop(start + 0.2);
+      });
+    }
+
+    // Success Jingle - happy melody
+    function playCeleb6() {
+      const now = ctx.currentTime;
+      const notes = [523, 659, 784, 1047];
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "triangle";
+        const start = now + i * 0.1;
+        gain.gain.setValueAtTime(0.18, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+        osc.start(start);
+        osc.stop(start + 0.15);
+      });
+    }
+
+    // Coin Shower - multiple coins
+    function playCeleb7() {
+      const now = ctx.currentTime;
+      for (let i = 0; i < 6; i++) {
+        [1319, 1568].forEach((freq, j) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.value = freq;
+          osc.type = "square";
+          const start = now + i * 0.08 + j * 0.04;
+          gain.gain.setValueAtTime(0.06, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.08);
+          osc.start(start);
+          osc.stop(start + 0.08);
+        });
+      }
+    }
+
+    // Fireworks - whoosh and burst
+    function playCeleb8() {
+      const now = ctx.currentTime;
+      // Whoosh up
+      const whoosh = ctx.createOscillator();
+      const whooshGain = ctx.createGain();
+      whoosh.connect(whooshGain);
+      whooshGain.connect(ctx.destination);
+      whoosh.frequency.setValueAtTime(200, now);
+      whoosh.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+      whoosh.type = "sawtooth";
+      whooshGain.gain.setValueAtTime(0.08, now);
+      whooshGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      whoosh.start(now);
+      whoosh.stop(now + 0.2);
+      // Burst
+      for (let i = 0; i < 10; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800 + Math.random() * 1500;
+        osc.type = "sine";
+        const start = now + 0.2 + Math.random() * 0.1;
+        gain.gain.setValueAtTime(0.1, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+        osc.start(start);
+        osc.stop(start + 0.15);
+      }
+    }
+
+    // Happy Cheer - yay!
+    function playCeleb9() {
+      const now = ctx.currentTime;
+      // Rising sweep
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.exponentialRampToValueAtTime(900, now + 0.15);
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.2);
+      // Bright finish
+      [880, 1047, 1319].forEach(freq => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.frequency.value = freq;
+        o.type = "sine";
+        g.gain.setValueAtTime(0.1, now + 0.15);
+        g.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        o.start(now + 0.15);
+        o.stop(now + 0.4);
+      });
+    }
+
+    // Slot Machine Win - jackpot!
+    function playCeleb10() {
+      const now = ctx.currentTime;
+      for (let i = 0; i < 8; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 800 + i * 100;
+        osc.type = "square";
+        const start = now + i * 0.06;
+        gain.gain.setValueAtTime(0.08, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.1);
+        osc.start(start);
+        osc.stop(start + 0.1);
+      }
+    }
+
+    // Champagne Pop - cork and fizz
+    function playCeleb11() {
+      const now = ctx.currentTime;
+      // Pop
+      const pop = ctx.createOscillator();
+      const popGain = ctx.createGain();
+      pop.connect(popGain);
+      popGain.connect(ctx.destination);
+      pop.frequency.setValueAtTime(300, now);
+      pop.frequency.exponentialRampToValueAtTime(80, now + 0.04);
+      pop.type = "sine";
+      popGain.gain.setValueAtTime(0.4, now);
+      popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      pop.start(now);
+      pop.stop(now + 0.06);
+      // Fizz (noise-like with high frequencies)
+      for (let i = 0; i < 15; i++) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 3000 + Math.random() * 4000;
+        osc.type = "sine";
+        const start = now + 0.05 + i * 0.02;
+        gain.gain.setValueAtTime(0.03, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.08);
+        osc.start(start);
+        osc.stop(start + 0.08);
+      }
+    }
+
+    // Achievement Unlocked - gaming style
+    function playCeleb12() {
+      const now = ctx.currentTime;
+      // Intro notes
+      [659, 784].forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "square";
+        const start = now + i * 0.1;
+        gain.gain.setValueAtTime(0.08, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.08);
+        osc.start(start);
+        osc.stop(start + 0.08);
+      });
+      // Final chord
+      [1047, 1319, 1568].forEach(freq => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = "square";
+        gain.gain.setValueAtTime(0.06, now + 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc.start(now + 0.25);
+        osc.stop(now + 0.5);
+      });
+    }
+  </script>
+</body>
+</html>

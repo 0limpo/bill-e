@@ -15,7 +15,7 @@ const getAudioContext = (): AudioContext | null => {
 };
 
 /**
- * Play a celebration sound (ascending chime)
+ * Play a celebration sound (Ta-Da!)
  */
 export const playCelebrationSound = () => {
   const ctx = getAudioContext();
@@ -28,28 +28,32 @@ export const playCelebrationSound = () => {
 
   const now = ctx.currentTime;
 
-  // Create a pleasant ascending chime
-  const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+  // First chord (C major)
+  [523, 659, 784].forEach(freq => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.start(now);
+    osc.stop(now + 0.15);
+  });
 
-  frequencies.forEach((freq, i) => {
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    oscillator.frequency.value = freq;
-    oscillator.type = "sine";
-
-    const startTime = now + i * 0.1;
-    const duration = 0.3;
-
-    gainNode.gain.setValueAtTime(0, startTime);
-    gainNode.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
-    oscillator.start(startTime);
-    oscillator.stop(startTime + duration);
+  // Second chord (higher, E-G-C)
+  [659, 784, 1047].forEach(freq => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    osc.type = "sine";
+    gain.gain.setValueAtTime(0.15, now + 0.18);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    osc.start(now + 0.18);
+    osc.stop(now + 0.5);
   });
 };
 
