@@ -184,7 +184,16 @@ export function StepAssign({
     }
 
     // Regular assignment
-    const totalAssigned = (assignments[itemId] || []).reduce((sum, a) => sum + (a.quantity || 0), 0);
+    const itemAssignments = assignments[itemId] || [];
+    const peopleAssigned = itemAssignments.filter((a) => a.quantity > 0).length;
+
+    if (peopleAssigned > 1) {
+      // Grupal mode: multiple people sharing = item is fully assigned (count as itemQty)
+      return itemQty;
+    }
+
+    // Individual mode: sum up quantities
+    const totalAssigned = itemAssignments.reduce((sum, a) => sum + (a.quantity || 0), 0);
     return totalAssigned;
   };
 
