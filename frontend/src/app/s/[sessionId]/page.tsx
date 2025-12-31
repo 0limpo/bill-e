@@ -394,6 +394,8 @@ export default function SessionPage() {
             onAddParticipant={handleAddParticipant}
             onToggleAddParticipant={setShowAddParticipant}
             onRemoveParticipant={removeParticipantById}
+            currentParticipantId={currentParticipant?.id}
+            onUpdateParticipantName={updateParticipantName}
           />
         )}
 

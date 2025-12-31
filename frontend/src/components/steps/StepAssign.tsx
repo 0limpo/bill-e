@@ -28,6 +28,9 @@ interface StepAssignProps {
   onAddParticipant?: () => void;
   onToggleAddParticipant?: (show: boolean) => void;
   onRemoveParticipant?: (participantId: string) => void;
+  // Props for editable name
+  currentParticipantId?: string;
+  onUpdateParticipantName?: (participantId: string, newName: string) => void;
 }
 
 export function StepAssign({
@@ -45,11 +48,15 @@ export function StepAssign({
   onAddParticipant,
   onToggleAddParticipant,
   onRemoveParticipant,
+  currentParticipantId,
+  onUpdateParticipantName,
 }: StepAssignProps) {
   const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>({});
   const [unitModeItems, setUnitModeItems] = useState<Set<string>>(new Set());
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState("");
   const prevAllAssignedRef = useRef<boolean | null>(null);
   const initializedRef = useRef(false);
 
@@ -262,27 +269,68 @@ export function StepAssign({
         )}
 
         {/* Participants */}
-        {participants.map((p, pIndex) => (
-          <div key={p.id} className="participant-chip relative group shrink-0">
-            <div
-              className="participant-avatar"
-              style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
-            >
-              {getInitials(p.name)}
-            </div>
-            <span className="participant-name">{p.name}</span>
+        {participants.map((p, pIndex) => {
+          const isCurrentUser = p.id === currentParticipantId;
+          const isEditing = editingParticipantId === p.id;
 
-            {/* Delete button (only for owner, visible on hover) */}
-            {isOwner && onRemoveParticipant && (
-              <button
-                onClick={() => onRemoveParticipant(p.id)}
-                className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          return (
+            <div key={p.id} className="participant-chip relative group shrink-0">
+              <div
+                className="participant-avatar"
+                style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
               >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        ))}
+                {getInitials(p.name)}
+              </div>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={editNameValue}
+                  onChange={(e) => setEditNameValue(e.target.value)}
+                  onBlur={() => {
+                    if (editNameValue.trim() && editNameValue.trim() !== p.name) {
+                      onUpdateParticipantName?.(p.id, editNameValue.trim());
+                    }
+                    setEditingParticipantId(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (editNameValue.trim() && editNameValue.trim() !== p.name) {
+                        onUpdateParticipantName?.(p.id, editNameValue.trim());
+                      }
+                      setEditingParticipantId(null);
+                    } else if (e.key === "Escape") {
+                      setEditingParticipantId(null);
+                    }
+                  }}
+                  className="participant-name bg-transparent border-b border-primary outline-none w-16 text-center"
+                  autoFocus
+                />
+              ) : (
+                <button
+                  onClick={() => {
+                    if (isCurrentUser && onUpdateParticipantName) {
+                      setEditNameValue(p.name);
+                      setEditingParticipantId(p.id);
+                    }
+                  }}
+                  className={`participant-name ${isCurrentUser && onUpdateParticipantName ? "hover:text-foreground cursor-pointer" : "cursor-default"}`}
+                >
+                  {p.name}
+                </button>
+              )}
+
+              {/* Delete button (only for owner, visible on hover) */}
+              {isOwner && onRemoveParticipant && !isEditing && (
+                <button
+                  onClick={() => onRemoveParticipant(p.id)}
+                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Progress Indicator */}
