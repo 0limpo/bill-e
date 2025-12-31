@@ -107,17 +107,7 @@ export function StepAssign({
 
     setItemModes({ ...itemModes, [itemId]: newMode });
 
-    if (newMode === "grupal") {
-      // Auto-assign all participants when switching to grupal ("entre todos" by default)
-      // Only assign participants that are not already assigned
-      const currentAssignments = assignments[itemId] || [];
-      participants.forEach((p) => {
-        const existing = currentAssignments.find((a) => a.participant_id === p.id);
-        if (!existing || existing.quantity === 0) {
-          onUpdateQty(itemId, p.id, 1);
-        }
-      });
-    } else {
+    if (newMode === "individual") {
       // Reset unit mode when switching to individual
       setUnitModeItems((prev) => {
         const next = new Set(prev);
@@ -496,7 +486,7 @@ export function StepAssign({
                     </div>
 
                     {/* Grupal sub-options */}
-                    {mode === "grupal" && itemQty > 1 && (
+                    {mode === "grupal" && (
                       <div className="inline-flex rounded-lg bg-secondary p-0.5">
                         <button
                           type="button"
@@ -509,17 +499,19 @@ export function StepAssign({
                         >
                           {t("items.allTogether")}
                         </button>
-                        <button
-                          type="button"
-                          className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
-                            isUnitMode
-                              ? "bg-background text-foreground shadow-sm"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                          onClick={(e) => { e.stopPropagation(); if (!isUnitMode) toggleUnitMode(itemId, itemQty); }}
-                        >
-                          {t("items.perUnit")}
-                        </button>
+                        {itemQty > 1 && (
+                          <button
+                            type="button"
+                            className={`py-1 px-3 text-xs font-medium rounded-md transition-colors ${
+                              isUnitMode
+                                ? "bg-background text-foreground shadow-sm"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                            onClick={(e) => { e.stopPropagation(); if (!isUnitMode) toggleUnitMode(itemId, itemQty); }}
+                          >
+                            {t("items.perUnit")}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
