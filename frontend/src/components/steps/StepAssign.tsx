@@ -282,14 +282,29 @@ export function StepAssign({
           const isCurrentUser = p.id === currentParticipantId;
           const isEditing = editingParticipantId === p.id;
 
+          const canEdit = isCurrentUser && onUpdateParticipantName;
+          const startEditing = () => {
+            if (canEdit) {
+              setEditNameValue(p.name);
+              setEditingParticipantId(p.id);
+            }
+          };
+
           return (
             <div key={p.id} className="participant-chip relative group shrink-0">
-              <div
-                className="participant-avatar"
-                style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
+              <button
+                type="button"
+                onClick={startEditing}
+                className={canEdit ? "cursor-pointer" : "cursor-default"}
+                disabled={!canEdit}
               >
-                {getInitials(p.name)}
-              </div>
+                <div
+                  className="participant-avatar"
+                  style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
+                >
+                  {getInitials(p.name)}
+                </div>
+              </button>
               {isEditing ? (
                 <input
                   type="text"
@@ -316,20 +331,15 @@ export function StepAssign({
                 />
               ) : (
                 <button
-                  onClick={() => {
-                    if (isCurrentUser && onUpdateParticipantName) {
-                      setEditNameValue(p.name);
-                      setEditingParticipantId(p.id);
-                    }
-                  }}
-                  className={`participant-name ${isCurrentUser && onUpdateParticipantName ? "hover:text-foreground cursor-pointer" : "cursor-default"}`}
+                  onClick={startEditing}
+                  className={`participant-name ${canEdit ? "hover:text-foreground cursor-pointer" : "cursor-default"}`}
                 >
                   {p.name}
                 </button>
               )}
 
-              {/* Delete button (only for owner, visible on hover) */}
-              {isOwner && onRemoveParticipant && !isEditing && (
+              {/* Delete button (only for owner, not for self, visible on hover) */}
+              {isOwner && onRemoveParticipant && !isEditing && !isCurrentUser && (
                 <button
                   onClick={() => onRemoveParticipant(p.id)}
                   className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
