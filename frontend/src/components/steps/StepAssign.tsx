@@ -11,6 +11,7 @@ import {
   type Participant,
   type Assignment,
 } from "@/lib/billEngine";
+import { playCelebrationSound } from "@/lib/sounds";
 
 interface StepAssignProps {
   items: Item[];
@@ -209,6 +210,7 @@ export function StepAssign({
     if (isAllAssigned && prevAllAssignedRef.current === false) {
       // Transitioned from not-assigned to all-assigned - show celebration
       setShowCelebration(true);
+      playCelebrationSound();
       const timer = setTimeout(() => setShowCelebration(false), 4500);
       return () => clearTimeout(timer);
     }

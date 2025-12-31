@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber, type Item, type Charge } from "@/lib/billEngine";
+import { playCelebrationSound } from "@/lib/sounds";
 
 interface InlineInputProps {
   type: "text" | "number";
@@ -158,12 +159,14 @@ export function StepReview({
     if (isMatch && prevMatchRef.current === false) {
       // Transitioned from not-matching to matching - show immediately
       setShowCelebration(true);
+      playCelebrationSound();
       const timer = setTimeout(() => setShowCelebration(false), 4500);
       return () => clearTimeout(timer);
     } else if (isMatch && prevMatchRef.current === null) {
       // First render and already matching - delay to let user see items first
       const delayTimer = setTimeout(() => {
         setShowCelebration(true);
+        playCelebrationSound();
         setTimeout(() => setShowCelebration(false), 4500);
       }, 1500);
       return () => clearTimeout(delayTimer);
