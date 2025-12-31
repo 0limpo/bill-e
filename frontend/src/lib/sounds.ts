@@ -29,7 +29,7 @@ export const playCelebrationSound = () => {
 
   const now = ctx.currentTime;
 
-  // First chord at 0s (C major) - syncs with circle starting to draw
+  // First chord (C major) - starts at 0.5s
   [523, 659, 784].forEach(freq => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -37,13 +37,13 @@ export const playCelebrationSound = () => {
     gain.connect(ctx.destination);
     osc.frequency.value = freq;
     osc.type = "sine";
-    gain.gain.setValueAtTime(0.12, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-    osc.start(now);
-    osc.stop(now + 0.25);
+    gain.gain.setValueAtTime(0.12, now + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+    osc.start(now + 0.5);
+    osc.stop(now + 0.7);
   });
 
-  // Second chord at 0.6s (higher, E-G-C) - syncs with check starting to draw
+  // Second chord (higher, E-G-C) - starts at 0.65s, ends at 1.0s
   [659, 784, 1047].forEach(freq => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -51,9 +51,9 @@ export const playCelebrationSound = () => {
     gain.connect(ctx.destination);
     osc.frequency.value = freq;
     osc.type = "sine";
-    gain.gain.setValueAtTime(0.15, now + 0.6);
+    gain.gain.setValueAtTime(0.15, now + 0.65);
     gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
-    osc.start(now + 0.6);
+    osc.start(now + 0.65);
     osc.stop(now + 1.0);
   });
 };
