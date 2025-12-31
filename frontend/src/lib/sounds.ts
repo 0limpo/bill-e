@@ -38,12 +38,12 @@ export const playCelebrationSound = () => {
     osc.frequency.value = freq;
     osc.type = "sine";
     gain.gain.setValueAtTime(0.3, now + 0.5);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
     osc.start(now + 0.5);
-    osc.stop(now + 0.75);
+    osc.stop(now + 0.7);
   });
 
-  // Second chord (higher, E-G-C) - starts at 0.65s, ends at 1.3s (when message appears)
+  // Second chord (higher, E-G-C) - starts at 0.65s, ends at 1.0s
   [659, 784, 1047].forEach(freq => {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -52,9 +52,9 @@ export const playCelebrationSound = () => {
     osc.frequency.value = freq;
     osc.type = "sine";
     gain.gain.setValueAtTime(0.35, now + 0.65);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.3);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
     osc.start(now + 0.65);
-    osc.stop(now + 1.3);
+    osc.stop(now + 1.0);
   });
 };
 
