@@ -99,7 +99,7 @@ export function useSession({
       setSession(data);
       lastUpdate.current = data.last_updated;
 
-      // Restore current participant from localStorage
+      // Restore current participant from localStorage or set owner
       const stored = localStorage.getItem(`bill-e-participant-${sessionId}`);
       if (stored) {
         const parsed = JSON.parse(stored);
@@ -108,6 +108,14 @@ export function useSession({
           setCurrentParticipant({ id: parsed.id, name: stillExists.name });
         } else {
           localStorage.removeItem(`bill-e-participant-${sessionId}`);
+        }
+      }
+
+      // If owner and no current participant, set owner as current participant
+      if (data.is_owner && !stored) {
+        const ownerParticipant = data.participants.find((p) => p.role === "owner");
+        if (ownerParticipant) {
+          setCurrentParticipant({ id: ownerParticipant.id, name: ownerParticipant.name });
         }
       }
     } catch (err) {
