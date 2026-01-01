@@ -207,7 +207,7 @@ export function StepShare({
                     {/* Total */}
                     <div className="flex items-center justify-between py-1 text-sm font-semibold border-t border-border/30 mt-1 pt-2">
                       <span>{t("items.total")}</span>
-                      <span className="tabular-nums text-primary">{fmt(total)}</span>
+                      <span className="tabular-nums text-foreground">{fmt(total)}</span>
                     </div>
                   </div>
                 </div>
@@ -220,7 +220,7 @@ export function StepShare({
       {/* Grand Total */}
       <div className="flex items-center justify-between p-4 mt-4 bg-primary/15 rounded-xl">
         <span className="font-semibold">{t("totals.tableTotal")}</span>
-        <span className="text-xl font-bold text-primary">{fmt(totalAmount)}</span>
+        <span className="text-xl font-bold text-foreground">{fmt(totalAmount)}</span>
       </div>
 
       {/* Action Buttons */}
