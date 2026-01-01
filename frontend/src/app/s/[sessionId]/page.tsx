@@ -263,49 +263,33 @@ export default function SessionPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-3">
+        <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            {/* Step Indicator with labels */}
-            <div className="flex items-center gap-1">
-              {[
-                { num: 1, label: t("steps.review") },
-                { num: 2, label: t("steps.assign") },
-                { num: 3, label: t("steps.share") },
-              ].map((s) => (
+            {/* Step numbers grouped */}
+            <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-1">
+              {[1, 2, 3].map((s) => (
                 <button
-                  key={s.num}
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors ${
-                    s.num === step
-                      ? "bg-primary/15"
-                      : s.num < step
-                      ? "hover:bg-secondary/50"
-                      : ""
+                  key={s}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                    s === step
+                      ? "bg-primary text-white shadow-md"
+                      : s < step
+                      ? "bg-muted-foreground/20 text-muted-foreground hover:bg-muted-foreground/30"
+                      : "text-muted-foreground/40"
                   }`}
-                  onClick={() => s.num <= step && goToStep(s.num)}
-                  disabled={s.num > step}
+                  onClick={() => s <= step && goToStep(s)}
+                  disabled={s > step}
                 >
-                  <span
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                      s.num === step
-                        ? "bg-primary text-white"
-                        : s.num < step
-                        ? "bg-muted-foreground/30 text-muted-foreground"
-                        : "bg-muted text-muted-foreground/50"
-                    }`}
-                  >
-                    {s.num}
-                  </span>
-                  <span
-                    className={`text-sm font-medium ${
-                      s.num === step
-                        ? "text-foreground"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {s.label}
-                  </span>
+                  {s}
                 </button>
               ))}
+            </div>
+
+            {/* Active step label - centered */}
+            <div className="flex-1 text-center">
+              <span className="text-lg font-semibold text-foreground">
+                {step === 1 ? t("steps.review") : step === 2 ? t("steps.assign") : t("steps.share")}
+              </span>
             </div>
 
             {/* Right side: Avatar + Language */}
@@ -321,7 +305,7 @@ export default function SessionPage() {
                   title={currentParticipant.name}
                 >
                   <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
                     style={{ backgroundColor: getAvatarColor(currentParticipant.name, participants.findIndex(p => p.id === currentParticipant.id)) }}
                   >
                     {getInitials(currentParticipant.name)}
