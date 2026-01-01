@@ -63,12 +63,12 @@ export default function SessionPage() {
     setLang(detectLanguage());
   }, []);
 
-  // Auto-advance to step 3 if finalized
+  // Auto-advance to step 3 if finalized (owner only)
   useEffect(() => {
-    if (session?.status === "finalized") {
+    if (isOwner && session?.status === "finalized") {
       setStep(3);
     }
-  }, [session?.status]);
+  }, [isOwner, session?.status]);
 
 
   const t = getTranslator(lang);
