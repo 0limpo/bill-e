@@ -82,6 +82,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "assign.remaining": "Falta por asignar",
     "assign.allAssigned": "Todo asignado",
 
+    // Editor (participant view)
+    "editor.hostVerifying": "El host está verificando la cuenta. Puedes ver los items mientras esperas.",
+    "editor.noItemsYet": "Aún no hay items escaneados",
+    "steps.goToAssign": "Ir a asignar items",
+
     // Errors
     "error.noItems": "No hay items",
     "error.noParticipants": "Agrega personas primero",
@@ -161,6 +166,11 @@ export const translations: Record<Language, Record<string, string>> = {
     // Assignment
     "assign.remaining": "Remaining to assign",
     "assign.allAssigned": "All assigned",
+
+    // Editor (participant view)
+    "editor.hostVerifying": "The host is verifying the bill. You can see the items while you wait.",
+    "editor.noItemsYet": "No items scanned yet",
+    "steps.goToAssign": "Go to assign items",
 
     // Errors
     "error.noItems": "No items",

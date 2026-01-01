@@ -9,7 +9,7 @@ import { StepReview } from "@/components/steps/StepReview";
 import { StepAssign } from "@/components/steps/StepAssign";
 import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
-import { getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
+import { formatCurrency, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
 
 export default function SessionPage() {
   const params = useParams();
@@ -277,7 +277,10 @@ export default function SessionPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center justify-center relative">
+          <div className="flex items-center justify-between">
+            {/* Left spacer - matches right column width */}
+            <div className="w-10" />
+
             {/* Stepper */}
             <div className="flex items-center">
               {[
@@ -328,18 +331,18 @@ export default function SessionPage() {
               ))}
             </div>
 
-            {/* Language Toggle */}
-            <button
-              className="absolute right-0 top-0 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setLang(lang === "es" ? "en" : "es")}
-            >
-              {lang === "es" ? "EN" : "ES"}
-            </button>
-
-            {/* Role indicator */}
-            <span className="absolute right-0 bottom-0 text-xs text-primary/60">
-              {isOwner ? "Host" : currentParticipant?.name || "Editor"}
-            </span>
+            {/* Right column: Language + Role */}
+            <div className="flex flex-col items-end gap-1 w-10">
+              <button
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => setLang(lang === "es" ? "en" : "es")}
+              >
+                {lang === "es" ? "EN" : "ES"}
+              </button>
+              <span className="text-xs text-primary/60">
+                {isOwner ? "Host" : currentParticipant?.name || "Editor"}
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -363,16 +366,86 @@ export default function SessionPage() {
           />
         )}
 
-        {/* Step 1: Waiting (for participants) */}
+        {/* Step 1: Read-only view (for participants) */}
         {step === 1 && !isOwner && (
-          <div className="text-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              Esperando a que el host verifique la cuenta...
-            </p>
-            <Button variant="outline" className="mt-6" onClick={() => goToStep(2)}>
-              Ir a asignar items
-            </Button>
+          <div className="step-animate">
+            {/* Info banner */}
+            <div className="bg-primary/10 rounded-xl p-3 mb-4 flex items-center gap-3">
+              <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                {t("editor.hostVerifying")}
+              </p>
+            </div>
+
+            {/* Read-only items list */}
+            <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
+              {items.length === 0 ? (
+                <p className="text-center text-muted-foreground py-4">
+                  {t("editor.noItemsYet")}
+                </p>
+              ) : (
+                items.map((item) => {
+                  const qty = item.quantity || 1;
+                  const unitPrice = item.price || 0;
+                  const lineTotal = unitPrice * qty;
+                  const displayPrice = priceMode === "total_linea" ? lineTotal : unitPrice;
+
+                  return (
+                    <div key={item.id || item.name} className="breakdown-row">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-primary font-semibold w-8 text-center">{qty}</span>
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                      <span className="font-semibold tabular-nums">{formatCurrency(displayPrice)}</span>
+                    </div>
+                  );
+                })
+              )}
+
+              {/* Subtotal */}
+              {items.length > 0 && (
+                <div className="breakdown-row subtotal">
+                  <span>{t("totals.subtotal")}</span>
+                  <span>{formatCurrency(items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0))}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Charges (read-only) */}
+            {charges.length > 0 && (
+              <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
+                <div className="mb-2">
+                  <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
+                </div>
+                {charges.map((charge) => {
+                  const subtotal = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
+                  const amount = charge.valueType === "percent"
+                    ? (subtotal * charge.value) / 100
+                    : charge.value;
+
+                  return (
+                    <div key={charge.id} className={`breakdown-row charge ${charge.isDiscount ? "discount" : ""}`}>
+                      <span className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="truncate">{charge.name}</span>
+                        <span className="text-xs opacity-70 shrink-0">
+                          ({charge.value}{charge.valueType === "percent" ? "%" : "$"})
+                        </span>
+                      </span>
+                      <span className="font-semibold shrink-0 ml-2">
+                        {charge.isDiscount ? "-" : "+"}{formatCurrency(amount)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Continue button */}
+            <div className="mt-8">
+              <Button size="lg" className="w-full h-12 text-base font-semibold" onClick={() => goToStep(2)}>
+                {t("steps.goToAssign")}
+              </Button>
+            </div>
           </div>
         )}
 
