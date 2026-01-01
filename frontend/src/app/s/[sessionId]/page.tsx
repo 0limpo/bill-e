@@ -384,6 +384,7 @@ export default function SessionPage() {
             participants={participants}
             assignments={assignments}
             onUpdateQty={updateAssignmentQty}
+            onUpdateItemMode={(itemId, mode) => updateItemById(itemId, { mode })}
             onBack={() => goToStep(1)}
             onNext={isOwner ? handleFinalize : () => goToStep(3)}
             t={t}

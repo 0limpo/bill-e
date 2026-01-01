@@ -377,7 +377,9 @@ export function useSession({
       itemId: string,
       updates: Partial<{ name: string; price: number; quantity: number; mode: "individual" | "grupal" }>
     ): Promise<boolean> => {
-      if (!ownerToken) return false;
+      // Mode can be changed by anyone, other fields require owner
+      const onlyModeChange = Object.keys(updates).length === 1 && "mode" in updates;
+      if (!ownerToken && !onlyModeChange) return false;
       markInteraction();
 
       // Save old values for rollback
@@ -395,7 +397,7 @@ export function useSession({
       });
 
       try {
-        await updateItem(sessionId, ownerToken, itemId, updates);
+        await updateItem(sessionId, ownerToken || null, itemId, updates);
         return true;
       } catch (err) {
         console.error("Update item error:", err);

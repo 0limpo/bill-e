@@ -208,7 +208,7 @@ export async function addItem(
  */
 export async function updateItem(
   sessionId: string,
-  ownerToken: string,
+  ownerToken: string | null,
   itemId: string,
   updates: Partial<{ name: string; price: number; quantity: number; mode: "individual" | "grupal" }>
 ): Promise<{ success: boolean }> {

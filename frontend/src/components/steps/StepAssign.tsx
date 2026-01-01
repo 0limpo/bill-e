@@ -18,6 +18,7 @@ interface StepAssignProps {
   participants: Participant[];
   assignments: Record<string, Assignment[]>;
   onUpdateQty: (itemId: string, participantId: string, delta: number) => void;
+  onUpdateItemMode?: (itemId: string, mode: "individual" | "grupal") => void;
   onBack: () => void;
   onNext: () => void;
   t: (key: string) => string;
@@ -39,6 +40,7 @@ export function StepAssign({
   participants,
   assignments,
   onUpdateQty,
+  onUpdateItemMode,
   onBack,
   onNext,
   t,
@@ -52,7 +54,17 @@ export function StepAssign({
   currentParticipantId,
   onUpdateParticipantName,
 }: StepAssignProps) {
-  const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>({});
+  // Initialize modes from persisted item.mode values
+  const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>(() => {
+    const initial: Record<string, "individual" | "grupal"> = {};
+    items.forEach((item) => {
+      const itemId = item.id || item.name;
+      if (item.mode) {
+        initial[itemId] = item.mode;
+      }
+    });
+    return initial;
+  });
   const [unitModeItems, setUnitModeItems] = useState<Set<string>>(new Set());
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -67,6 +79,21 @@ export function StepAssign({
       const firstItemId = items[0].id || items[0].name;
       setExpandedItemId(firstItemId);
       initializedRef.current = true;
+    }
+  }, [items]);
+
+  // Sync itemModes from items when they change (e.g., navigating back to this step)
+  useEffect(() => {
+    const newModes: Record<string, "individual" | "grupal"> = {};
+    items.forEach((item) => {
+      const itemId = item.id || item.name;
+      if (item.mode) {
+        newModes[itemId] = item.mode;
+      }
+    });
+    // Only update if there are modes to sync
+    if (Object.keys(newModes).length > 0) {
+      setItemModes((prev) => ({ ...prev, ...newModes }));
     }
   }, [items]);
 
@@ -95,7 +122,7 @@ export function StepAssign({
     });
   };
 
-  // Toggle mode for an item (local UI state only)
+  // Toggle mode for an item and persist to backend
   const toggleMode = (itemId: string, itemQty: number) => {
     const currentMode = itemModes[itemId] || "individual";
     const newMode = currentMode === "individual" ? "grupal" : "individual";
@@ -107,6 +134,9 @@ export function StepAssign({
     }
 
     setItemModes({ ...itemModes, [itemId]: newMode });
+
+    // Persist mode change to backend
+    onUpdateItemMode?.(itemId, newMode);
 
     if (newMode === "individual") {
       // Reset unit mode when switching to individual
