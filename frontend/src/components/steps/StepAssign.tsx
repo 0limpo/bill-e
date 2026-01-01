@@ -70,7 +70,17 @@ export function StepAssign({
     });
     return initial;
   });
-  const [unitModeItems, setUnitModeItems] = useState<Set<string>>(new Set());
+  // Initialize unitModeItems from existing unit-based assignments
+  const [unitModeItems, setUnitModeItems] = useState<Set<string>>(() => {
+    const itemsWithUnits = new Set<string>();
+    Object.entries(assignments).forEach(([key, assigns]) => {
+      const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
+      if (unitMatch && assigns && assigns.some((a) => a.quantity > 0)) {
+        itemsWithUnits.add(unitMatch[1]);
+      }
+    });
+    return itemsWithUnits;
+  });
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
@@ -101,6 +111,25 @@ export function StepAssign({
       setItemModes((prev) => ({ ...prev, ...newModes }));
     }
   }, [items]);
+
+  // Sync unitModeItems from assignments when they change (e.g., polling updates)
+  useEffect(() => {
+    const itemsWithUnits = new Set<string>();
+    Object.entries(assignments).forEach(([key, assigns]) => {
+      const unitMatch = key.match(/^(.+)_unit_(\d+)$/);
+      if (unitMatch && assigns && assigns.some((a) => a.quantity > 0)) {
+        itemsWithUnits.add(unitMatch[1]);
+      }
+    });
+    // Only update if different
+    setUnitModeItems((prev) => {
+      if (prev.size !== itemsWithUnits.size) return itemsWithUnits;
+      for (const id of itemsWithUnits) {
+        if (!prev.has(id)) return itemsWithUnits;
+      }
+      return prev;
+    });
+  }, [assignments]);
 
   const fmt = (amount: number) => formatCurrency(amount);
 
