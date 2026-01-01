@@ -278,6 +278,11 @@ export default function SessionPage() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center justify-center relative">
+            {/* Role indicator */}
+            <span className="absolute left-0 text-xs font-medium text-muted-foreground bg-secondary px-2 py-1 rounded-full">
+              {isOwner ? "Host" : currentParticipant?.name || "Editor"}
+            </span>
+
             {/* Stepper */}
             <div className="flex items-center">
               {[
