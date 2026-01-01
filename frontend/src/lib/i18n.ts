@@ -82,6 +82,13 @@ export const translations: Record<Language, Record<string, string>> = {
     "assign.remaining": "Falta por asignar",
     "assign.allAssigned": "Todo asignado",
 
+    // Join screen
+    "join.title": "Únete a la sesión",
+    "join.selectExisting": "¿Eres uno de ellos?",
+    "join.or": "o",
+    "join.newName": "Únete con otro nombre",
+    "join.joinNew": "Unirme",
+
     // Editor (participant view)
     "editor.hostVerifying": "El host está verificando la cuenta. Puedes ver los items mientras esperas.",
     "editor.hostReady": "El host terminó de verificar. ¡Puedes asignar items!",
@@ -168,6 +175,13 @@ export const translations: Record<Language, Record<string, string>> = {
     // Assignment
     "assign.remaining": "Remaining to assign",
     "assign.allAssigned": "All assigned",
+
+    // Join screen
+    "join.title": "Join the session",
+    "join.selectExisting": "Are you one of them?",
+    "join.or": "or",
+    "join.newName": "Join with a different name",
+    "join.joinNew": "Join",
 
     // Editor (participant view)
     "editor.hostVerifying": "The host is verifying the bill. You can see the items while you wait.",

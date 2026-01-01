@@ -36,6 +36,7 @@ export default function SessionPage() {
     currentParticipant,
     hostStep,
     join,
+    selectParticipant,
     addParticipant,
     removeParticipantById,
     updateParticipantName,
@@ -226,16 +227,55 @@ export default function SessionPage() {
 
   // Need to join (not owner and no current participant)
   if (!isOwner && !currentParticipant) {
+    // Filter out the owner from selectable participants (editors only)
+    const selectableParticipants = (session?.participants || []).filter((p) => p.role !== "owner");
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold mb-2">Bill-e</h1>
-            <p className="text-muted-foreground">Únete a la sesión</p>
+            <p className="text-muted-foreground">{t("join.title")}</p>
           </div>
 
+          {/* Option 1: Select existing participant */}
+          {selectableParticipants.length > 0 && (
+            <div className="bg-card rounded-2xl p-6 border border-border mb-4">
+              <p className="text-sm font-medium mb-4 text-center">
+                {t("join.selectExisting")}
+              </p>
+              <div className="flex justify-center gap-3 flex-wrap">
+                {selectableParticipants.map((p, pIndex) => (
+                  <button
+                    key={p.id}
+                    onClick={() => selectParticipant(p.id, p.name)}
+                    className="participant-chip hover:opacity-80 transition-opacity cursor-pointer"
+                  >
+                    <div
+                      className="participant-avatar"
+                      style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
+                    >
+                      {getInitials(p.name)}
+                    </div>
+                    <span className="participant-name">{p.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Divider */}
+          {selectableParticipants.length > 0 && (
+            <div className="flex items-center gap-3 my-4">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">{t("join.or")}</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
+
+          {/* Option 2: Create new participant */}
           <div className="bg-card rounded-2xl p-6 border border-border">
-            <label className="block text-sm font-medium mb-2">Tu nombre</label>
+            <label className="block text-sm font-medium mb-2">{t("join.newName")}</label>
             <input
               type="text"
               value={joinName}
@@ -243,7 +283,7 @@ export default function SessionPage() {
               onKeyDown={(e) => e.key === "Enter" && handleJoin()}
               placeholder="Ej: Carlos"
               className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary mb-4"
-              autoFocus
+              autoFocus={selectableParticipants.length === 0}
             />
             <Button
               onClick={handleJoin}
@@ -253,35 +293,13 @@ export default function SessionPage() {
               {joining ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                "Unirme"
+                t("join.joinNew")
               )}
             </Button>
             {joinError && (
               <p className="text-destructive text-sm mt-3 text-center">{joinError}</p>
             )}
           </div>
-
-          {/* Show who's already in */}
-          {participants.length > 0 && (
-            <div className="mt-6">
-              <p className="text-sm text-muted-foreground text-center mb-3">
-                Ya están en la sesión:
-              </p>
-              <div className="flex justify-center gap-2 flex-wrap">
-                {participants.map((p, pIndex) => (
-                  <div key={p.id} className="participant-chip">
-                    <div
-                      className="participant-avatar"
-                      style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
-                    >
-                      {getInitials(p.name)}
-                    </div>
-                    <span className="participant-name">{p.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );

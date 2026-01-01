@@ -47,6 +47,7 @@ export interface UseSessionReturn {
 
   // Participant actions
   join: (name: string, phone?: string) => Promise<boolean>;
+  selectParticipant: (participantId: string, name: string) => void;
   addParticipant: (name: string, phone?: string) => Promise<boolean>;
   removeParticipantById: (participantId: string) => Promise<boolean>;
   updateParticipantName: (participantId: string, name: string) => Promise<boolean>;
@@ -212,6 +213,18 @@ export function useSession({
       }
     },
     [sessionId, markInteraction, refresh]
+  );
+
+  // Select existing participant (without creating new one)
+  const selectParticipant = useCallback(
+    (participantId: string, name: string) => {
+      setCurrentParticipant({ id: participantId, name });
+      localStorage.setItem(
+        `bill-e-participant-${sessionId}`,
+        JSON.stringify({ id: participantId, name })
+      );
+    },
+    [sessionId]
   );
 
   // Add participant (owner only)
@@ -707,6 +720,7 @@ export function useSession({
     refresh,
     markInteraction,
     join,
+    selectParticipant,
     addParticipant,
     removeParticipantById,
     updateParticipantName,
