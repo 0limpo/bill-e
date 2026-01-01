@@ -168,7 +168,7 @@ export function StepShare({
               {/* Expanded Details */}
               {isExpanded && (
                 <div className="pb-3 px-3 pt-0">
-                  <div className="pl-7 space-y-1">
+                  <div className="pl-3 space-y-1">
                     {/* Items */}
                     {participantItems.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between py-1 text-sm">
