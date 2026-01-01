@@ -328,18 +328,18 @@ export default function SessionPage() {
               ))}
             </div>
 
-            {/* Language Toggle + Role */}
-            <div className="absolute right-0 flex flex-col items-end gap-0.5">
-              <button
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setLang(lang === "es" ? "en" : "es")}
-              >
-                {lang === "es" ? "EN" : "ES"}
-              </button>
-              <span className="text-xs text-primary/60">
-                {isOwner ? "Host" : currentParticipant?.name || "Editor"}
-              </span>
-            </div>
+            {/* Language Toggle */}
+            <button
+              className="absolute right-0 top-0 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setLang(lang === "es" ? "en" : "es")}
+            >
+              {lang === "es" ? "EN" : "ES"}
+            </button>
+
+            {/* Role indicator */}
+            <span className="absolute right-0 bottom-0 text-xs text-primary/60">
+              {isOwner ? "Host" : currentParticipant?.name || "Editor"}
+            </span>
           </div>
         </div>
       </header>
