@@ -264,9 +264,9 @@ export default function SessionPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-center relative">
             {/* Stepper */}
-            <div className="flex items-center flex-1">
+            <div className="flex items-center">
               {[
                 { num: 1, label: t("steps.review") },
                 { num: 2, label: t("steps.assign") },
@@ -317,7 +317,7 @@ export default function SessionPage() {
 
             {/* Language Toggle */}
             <button
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="absolute right-0 text-sm text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setLang(lang === "es" ? "en" : "es")}
             >
               {lang === "es" ? "EN" : "ES"}
