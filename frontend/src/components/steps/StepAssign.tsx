@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, ChevronDown, Minus, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Minus, Plus, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
@@ -267,7 +267,7 @@ export function StepAssign({
               disabled={!newParticipantName.trim()}
               className="px-4 py-3 rounded-xl bg-primary text-white font-medium disabled:opacity-50 flex items-center gap-2"
             >
-              <Plus className="w-5 h-5" />
+              <Check className="w-5 h-5" />
             </button>
             <button
               onClick={() => onToggleAddParticipant?.(false)}
