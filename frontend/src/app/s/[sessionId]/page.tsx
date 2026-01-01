@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -70,13 +70,15 @@ export default function SessionPage() {
     }
   }, [session?.status]);
 
-  // Auto-advance editors when host moves to a higher step
+  // Auto-advance editors only when host's step increases (not when editor navigates back)
+  const prevHostStep = useRef(hostStep);
   useEffect(() => {
-    if (!isOwner && hostStep > step) {
+    if (!isOwner && hostStep > prevHostStep.current) {
       setStep(hostStep);
       window.scrollTo(0, 0);
     }
-  }, [isOwner, hostStep, step]);
+    prevHostStep.current = hostStep;
+  }, [isOwner, hostStep]);
 
   const t = getTranslator(lang);
 
