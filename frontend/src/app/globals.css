@@ -215,23 +215,6 @@
     @apply text-xs font-medium;
   }
 
-  /* Step indicator */
-  .step-indicator {
-    @apply flex items-center gap-1;
-  }
-
-  .step-dot {
-    @apply h-1.5 w-8 rounded-full transition-colors;
-  }
-
-  .step-dot.active {
-    @apply bg-primary;
-  }
-
-  .step-dot.inactive {
-    @apply bg-muted;
-  }
-
   /* Review header - big total */
   .review-header {
     @apply text-center py-8 border-b border-border mb-6;

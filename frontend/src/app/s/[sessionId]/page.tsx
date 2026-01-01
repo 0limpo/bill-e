@@ -265,61 +265,98 @@ export default function SessionPage() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-foreground">Bill-e</h1>
-              {isOwner && (
-                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                  Host
-                </span>
-              )}
+            {/* Step Indicator with labels */}
+            <div className="flex items-center gap-1">
+              {[
+                { num: 1, label: t("steps.review") },
+                { num: 2, label: t("steps.assign") },
+                { num: 3, label: t("steps.share") },
+              ].map((s) => (
+                <button
+                  key={s.num}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-colors ${
+                    s.num === step
+                      ? "bg-primary/15"
+                      : s.num < step
+                      ? "hover:bg-secondary/50"
+                      : ""
+                  }`}
+                  onClick={() => s.num <= step && goToStep(s.num)}
+                  disabled={s.num > step}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                      s.num === step
+                        ? "bg-primary text-white"
+                        : s.num < step
+                        ? "bg-muted-foreground/30 text-muted-foreground"
+                        : "bg-muted text-muted-foreground/50"
+                    }`}
+                  >
+                    {s.num}
+                  </span>
+                  <span
+                    className={`text-sm font-medium ${
+                      s.num === step
+                        ? "text-foreground"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                </button>
+              ))}
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Current user */}
+            {/* Right side: Avatar + Language */}
+            <div className="flex items-center gap-2">
+              {/* Current user avatar */}
               {currentParticipant && (
-                <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setEditNameValue(currentParticipant.name);
+                    setEditingName(true);
+                  }}
+                  className="relative group"
+                  title={currentParticipant.name}
+                >
                   <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
                     style={{ backgroundColor: getAvatarColor(currentParticipant.name, participants.findIndex(p => p.id === currentParticipant.id)) }}
                   >
                     {getInitials(currentParticipant.name)}
                   </div>
-                  {editingName ? (
-                    <input
-                      type="text"
-                      value={editNameValue}
-                      onChange={(e) => setEditNameValue(e.target.value)}
-                      onBlur={() => {
-                        if (editNameValue.trim() && editNameValue.trim() !== currentParticipant.name) {
-                          updateParticipantName(currentParticipant.id, editNameValue.trim());
-                        }
-                        setEditingName(false);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          if (editNameValue.trim() && editNameValue.trim() !== currentParticipant.name) {
-                            updateParticipantName(currentParticipant.id, editNameValue.trim());
-                          }
-                          setEditingName(false);
-                        } else if (e.key === "Escape") {
-                          setEditingName(false);
-                        }
-                      }}
-                      className="text-sm text-muted-foreground bg-transparent border-b border-primary outline-none w-20"
-                      autoFocus
-                    />
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setEditNameValue(currentParticipant.name);
-                        setEditingName(true);
-                      }}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {currentParticipant.name}
-                    </button>
+                  {isOwner && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-background" />
                   )}
-                </div>
+                </button>
+              )}
+
+              {/* Name edit modal */}
+              {editingName && currentParticipant && (
+                <input
+                  type="text"
+                  value={editNameValue}
+                  onChange={(e) => setEditNameValue(e.target.value)}
+                  onBlur={() => {
+                    if (editNameValue.trim() && editNameValue.trim() !== currentParticipant.name) {
+                      updateParticipantName(currentParticipant.id, editNameValue.trim());
+                    }
+                    setEditingName(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (editNameValue.trim() && editNameValue.trim() !== currentParticipant.name) {
+                        updateParticipantName(currentParticipant.id, editNameValue.trim());
+                      }
+                      setEditingName(false);
+                    } else if (e.key === "Escape") {
+                      setEditingName(false);
+                    }
+                  }}
+                  className="text-sm bg-secondary px-2 py-1 rounded outline-none w-24"
+                  autoFocus
+                />
               )}
 
               {/* Language Toggle */}
@@ -330,17 +367,6 @@ export default function SessionPage() {
                 {lang === "es" ? "EN" : "ES"}
               </button>
             </div>
-          </div>
-
-          {/* Step Indicator */}
-          <div className="step-indicator mt-3">
-            {[1, 2, 3].map((s) => (
-              <button
-                key={s}
-                className={`step-dot ${s === step ? "active" : "inactive"}`}
-                onClick={() => s <= step && goToStep(s)}
-              />
-            ))}
           </div>
         </div>
       </header>
