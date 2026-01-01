@@ -77,9 +77,10 @@ export function StepShare({
           const item = items.find((i) => (i.id || i.name) === itemId);
           if (item) {
             const numPeopleSharing = assigns.filter(a => a.quantity > 0).length;
+            const isGrupalMode = item.mode === "grupal";
 
-            if (numPeopleSharing > 1) {
-              // Shared item - divide among all participants
+            if (isGrupalMode && numPeopleSharing > 1) {
+              // Grupal mode - divide total among all participants
               const itemQty = item.quantity || 1;
               const totalItemPrice = item.price * itemQty;
               result.push({
@@ -89,7 +90,7 @@ export function StepShare({
                 shared: numPeopleSharing,
               });
             } else {
-              // Individual mode - this person has it alone
+              // Individual mode - each person pays for their own quantity
               result.push({
                 name: item.name,
                 amount: item.price * assignment.quantity,
@@ -161,7 +162,7 @@ export function StepShare({
                   </div>
                   <span className="font-medium truncate">{p.name}</span>
                 </div>
-                <span className="font-semibold tabular-nums text-primary">{fmt(total)}</span>
+                <span className="font-semibold tabular-nums text-foreground">{fmt(total)}</span>
               </button>
 
               {/* Expanded Details */}
@@ -172,7 +173,7 @@ export function StepShare({
                     {participantItems.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between py-1 text-sm">
                         <span className="flex items-center gap-2 text-muted-foreground">
-                          <span className="text-xs bg-secondary/80 text-foreground/70 px-1.5 py-0.5 rounded min-w-[2.5ch] text-center">
+                          <span className="text-xs bg-secondary/80 text-foreground px-1.5 py-0.5 rounded min-w-[2.5ch] text-center">
                             {item.shared ? `÷${item.shared}` : `${item.qty}x`}
                           </span>
                           <span className="truncate">{item.name}</span>
