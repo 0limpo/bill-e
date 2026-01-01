@@ -46,6 +46,7 @@ export default function SessionPage() {
     updateOriginalSubtotal,
     updateOriginalTotal,
     finalize,
+    reopen,
     markInteraction,
   } = useSession({
     sessionId,
@@ -171,7 +172,11 @@ export default function SessionPage() {
     window.scrollTo(0, 0);
   };
 
-  const goToStep = (newStep: number) => {
+  const goToStep = async (newStep: number) => {
+    // If owner goes back from step 3, reopen the session
+    if (isOwner && step === 3 && newStep < 3) {
+      await reopen();
+    }
     setStep(newStep);
     window.scrollTo(0, 0);
   };
