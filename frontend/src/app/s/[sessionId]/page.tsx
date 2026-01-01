@@ -468,10 +468,15 @@ export default function SessionPage() {
               </div>
             )}
 
-            {/* Continue button */}
+            {/* Continue button - only enabled when host is on step 2+ */}
             <div className="mt-8">
-              <Button size="lg" className="w-full h-12 text-base font-semibold" onClick={() => goToStep(2)}>
-                {t("steps.goToAssign")}
+              <Button
+                size="lg"
+                className="w-full h-12 text-base font-semibold"
+                onClick={() => goToStep(2)}
+                disabled={hostStep < 2}
+              >
+                {hostStep < 2 ? t("editor.waitingForHost") : t("steps.goToAssign")}
               </Button>
             </div>
           </div>
