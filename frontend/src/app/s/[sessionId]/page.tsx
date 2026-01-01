@@ -265,35 +265,58 @@ export default function SessionPage() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            {/* Step numbers grouped */}
-            <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-1">
-              {[1, 2, 3].map((s) => (
-                <button
-                  key={s}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                    s === step
-                      ? "bg-primary text-white shadow-md"
-                      : s < step
-                      ? "bg-muted-foreground/20 text-muted-foreground hover:bg-muted-foreground/30"
-                      : "text-muted-foreground/40"
-                  }`}
-                  onClick={() => s <= step && goToStep(s)}
-                  disabled={s > step}
-                >
-                  {s}
-                </button>
+            {/* Stepper */}
+            <div className="flex items-center flex-1">
+              {[
+                { num: 1, label: t("steps.review") },
+                { num: 2, label: t("steps.assign") },
+                { num: 3, label: t("steps.share") },
+              ].map((s, idx) => (
+                <div key={s.num} className="flex items-center">
+                  {/* Step */}
+                  <button
+                    className="flex flex-col items-center gap-1.5"
+                    onClick={() => s.num <= step && goToStep(s.num)}
+                    disabled={s.num > step}
+                  >
+                    {/* Circle */}
+                    <span
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold transition-all ${
+                        s.num === step
+                          ? "bg-primary text-white shadow-[0_0_0_4px_rgba(59,130,246,0.2)]"
+                          : s.num < step
+                          ? "bg-primary/30 text-primary"
+                          : "bg-secondary text-muted-foreground/40"
+                      }`}
+                    >
+                      {s.num}
+                    </span>
+                    {/* Label */}
+                    <span
+                      className={`text-sm font-medium flex items-center gap-1 ${
+                        s.num === step
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {s.num < step && <span className="text-primary text-xs">✓</span>}
+                      {s.label}
+                    </span>
+                  </button>
+                  {/* Line between steps */}
+                  {idx < 2 && (
+                    <div
+                      className={`w-8 h-0.5 mx-1.5 mb-6 rounded-full ${
+                        s.num < step ? "bg-primary/50" : "bg-secondary"
+                      }`}
+                    />
+                  )}
+                </div>
               ))}
             </div>
 
-            {/* Active step label - centered */}
-            <div className="flex-1 text-center">
-              <span className="text-lg font-semibold text-foreground">
-                {step === 1 ? t("steps.review") : step === 2 ? t("steps.assign") : t("steps.share")}
-              </span>
-            </div>
-
             {/* Right side: Avatar + Language */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {/* Current user avatar */}
               {currentParticipant && (
                 <button
@@ -301,7 +324,7 @@ export default function SessionPage() {
                     setEditNameValue(currentParticipant.name);
                     setEditingName(true);
                   }}
-                  className="relative group"
+                  className="relative"
                   title={currentParticipant.name}
                 >
                   <div
@@ -316,7 +339,7 @@ export default function SessionPage() {
                 </button>
               )}
 
-              {/* Name edit modal */}
+              {/* Name edit input */}
               {editingName && currentParticipant && (
                 <input
                   type="text"
