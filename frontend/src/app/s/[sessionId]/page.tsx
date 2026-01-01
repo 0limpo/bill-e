@@ -166,7 +166,9 @@ export default function SessionPage() {
 
   const handleFinalize = async () => {
     await finalize();
-    // Host stays on step 2, celebration plays, then clicks to advance
+    setStep(3);
+    window.scrollTo(0, 0);
+    updateHostStep(3);
   };
 
   const goToStep = async (newStep: number) => {
@@ -493,13 +495,7 @@ export default function SessionPage() {
             onUpdateQty={updateAssignmentQty}
             onUpdateItemMode={(itemId, mode) => updateItemById(itemId, { mode })}
             onBack={() => goToStep(1)}
-            onNext={
-              isOwner
-                ? session?.status === "finalized"
-                  ? () => goToStep(3)
-                  : handleFinalize
-                : () => goToStep(3)
-            }
+            onNext={isOwner ? handleFinalize : () => goToStep(3)}
             t={t}
             isOwner={isOwner}
             showAddParticipant={showAddParticipant}
@@ -511,13 +507,7 @@ export default function SessionPage() {
             currentParticipantId={currentParticipant?.id}
             onUpdateParticipantName={updateParticipantName}
             nextDisabled={!isOwner && session?.status !== "finalized"}
-            nextLabel={
-              isOwner && session?.status === "finalized"
-                ? t("steps.viewResults")
-                : !isOwner && session?.status !== "finalized"
-                ? t("editor.waitingForHost")
-                : undefined
-            }
+            nextLabel={!isOwner && session?.status !== "finalized" ? t("editor.waitingForHost") : undefined}
           />
         )}
 
