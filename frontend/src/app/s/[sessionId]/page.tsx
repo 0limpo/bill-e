@@ -520,6 +520,8 @@ export default function SessionPage() {
             onRemoveParticipant={removeParticipantById}
             currentParticipantId={currentParticipant?.id}
             onUpdateParticipantName={updateParticipantName}
+            nextDisabled={!isOwner && session?.status !== "finalized"}
+            nextLabel={!isOwner && session?.status !== "finalized" ? t("editor.waitingForHost") : undefined}
           />
         )}
 
@@ -532,6 +534,7 @@ export default function SessionPage() {
             assignments={assignments}
             onBack={() => goToStep(2)}
             t={t}
+            isOwner={isOwner}
           />
         )}
       </main>

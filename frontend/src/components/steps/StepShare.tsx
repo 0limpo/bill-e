@@ -22,6 +22,7 @@ interface StepShareProps {
   assignments: Record<string, Assignment[]>;
   onBack: () => void;
   t: (key: string) => string;
+  isOwner?: boolean;
 }
 
 export function StepShare({
@@ -31,6 +32,7 @@ export function StepShare({
   assignments,
   onBack,
   t,
+  isOwner = false,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
 
@@ -219,18 +221,20 @@ export function StepShare({
 
       {/* Action Buttons */}
       <div className="flex gap-3 mt-8">
-        <Button variant="outline" size="lg" className="flex-1 h-12" onClick={onBack}>
+        <Button variant="outline" size="lg" className={isOwner ? "flex-1 h-12" : "w-full h-12"} onClick={onBack}>
           <ChevronLeft className="w-4 h-4 mr-2" />
           {t("steps.back")}
         </Button>
-        <Button
-          size="lg"
-          className="flex-1 h-12 font-semibold"
-          onClick={shareOnWhatsApp}
-        >
-          <Share2 className="w-4 h-4 mr-2" />
-          {t("finalized.shareWhatsApp")}
-        </Button>
+        {isOwner && (
+          <Button
+            size="lg"
+            className="flex-1 h-12 font-semibold"
+            onClick={shareOnWhatsApp}
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            {t("finalized.shareWhatsApp")}
+          </Button>
+        )}
       </div>
     </div>
   );

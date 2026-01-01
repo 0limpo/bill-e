@@ -33,6 +33,9 @@ interface StepAssignProps {
   // Props for editable name
   currentParticipantId?: string;
   onUpdateParticipantName?: (participantId: string, newName: string) => void;
+  // Props for editor navigation control
+  nextDisabled?: boolean;
+  nextLabel?: string;
 }
 
 export function StepAssign({
@@ -53,6 +56,8 @@ export function StepAssign({
   onRemoveParticipant,
   currentParticipantId,
   onUpdateParticipantName,
+  nextDisabled = false,
+  nextLabel,
 }: StepAssignProps) {
   // Initialize modes from persisted item.mode values
   const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>(() => {
@@ -654,9 +659,14 @@ export function StepAssign({
           <ChevronLeft className="w-4 h-4 mr-2" />
           {t("steps.back")}
         </Button>
-        <Button size="lg" className="flex-1 h-12 font-semibold" onClick={onNext}>
-          {t("steps.continue")}
-          <ChevronRight className="w-4 h-4 ml-2" />
+        <Button
+          size="lg"
+          className="flex-1 h-12 font-semibold"
+          onClick={onNext}
+          disabled={nextDisabled}
+        >
+          {nextLabel || t("steps.continue")}
+          {!nextDisabled && <ChevronRight className="w-4 h-4 ml-2" />}
         </Button>
       </div>
     </div>
