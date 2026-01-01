@@ -95,6 +95,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.waitingForHost": "Esperando al host...",
     "editor.noItemsYet": "Aún no hay items escaneados",
     "steps.goToAssign": "Ir a asignar items",
+    "steps.viewResults": "Ver resultados",
 
     // Errors
     "error.noItems": "No hay items",
@@ -189,6 +190,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.waitingForHost": "Waiting for host...",
     "editor.noItemsYet": "No items scanned yet",
     "steps.goToAssign": "Go to assign items",
+    "steps.viewResults": "View results",
 
     // Errors
     "error.noItems": "No items",
