@@ -315,65 +315,13 @@ export default function SessionPage() {
               ))}
             </div>
 
-            {/* Right side: Avatar + Language */}
-            <div className="flex items-center gap-3">
-              {/* Current user avatar */}
-              {currentParticipant && (
-                <button
-                  onClick={() => {
-                    setEditNameValue(currentParticipant.name);
-                    setEditingName(true);
-                  }}
-                  className="relative"
-                  title={currentParticipant.name}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                    style={{ backgroundColor: getAvatarColor(currentParticipant.name, participants.findIndex(p => p.id === currentParticipant.id)) }}
-                  >
-                    {getInitials(currentParticipant.name)}
-                  </div>
-                  {isOwner && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-primary rounded-full border-2 border-background" />
-                  )}
-                </button>
-              )}
-
-              {/* Name edit input */}
-              {editingName && currentParticipant && (
-                <input
-                  type="text"
-                  value={editNameValue}
-                  onChange={(e) => setEditNameValue(e.target.value)}
-                  onBlur={() => {
-                    if (editNameValue.trim() && editNameValue.trim() !== currentParticipant.name) {
-                      updateParticipantName(currentParticipant.id, editNameValue.trim());
-                    }
-                    setEditingName(false);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      if (editNameValue.trim() && editNameValue.trim() !== currentParticipant.name) {
-                        updateParticipantName(currentParticipant.id, editNameValue.trim());
-                      }
-                      setEditingName(false);
-                    } else if (e.key === "Escape") {
-                      setEditingName(false);
-                    }
-                  }}
-                  className="text-sm bg-secondary px-2 py-1 rounded outline-none w-24"
-                  autoFocus
-                />
-              )}
-
-              {/* Language Toggle */}
-              <button
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setLang(lang === "es" ? "en" : "es")}
-              >
-                {lang === "es" ? "EN" : "ES"}
-              </button>
-            </div>
+            {/* Language Toggle */}
+            <button
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              onClick={() => setLang(lang === "es" ? "en" : "es")}
+            >
+              {lang === "es" ? "EN" : "ES"}
+            </button>
           </div>
         </div>
       </header>
