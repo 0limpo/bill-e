@@ -34,6 +34,7 @@ export default function SessionPage() {
     error,
     isOwner,
     currentParticipant,
+    hostStep,
     join,
     addParticipant,
     removeParticipantById,
@@ -48,6 +49,7 @@ export default function SessionPage() {
     finalize,
     reopen,
     markInteraction,
+    updateHostStep,
   } = useSession({
     sessionId,
     ownerToken,
@@ -66,6 +68,14 @@ export default function SessionPage() {
       setStep(3);
     }
   }, [session?.status]);
+
+  // Auto-advance editors when host moves to a higher step
+  useEffect(() => {
+    if (!isOwner && hostStep > step) {
+      setStep(hostStep);
+      window.scrollTo(0, 0);
+    }
+  }, [isOwner, hostStep, step]);
 
   const t = getTranslator(lang);
 
@@ -170,6 +180,8 @@ export default function SessionPage() {
     await finalize();
     setStep(3);
     window.scrollTo(0, 0);
+    // Update host step so editors know we're on step 3
+    updateHostStep(3);
   };
 
   const goToStep = async (newStep: number) => {
@@ -179,6 +191,11 @@ export default function SessionPage() {
     }
     setStep(newStep);
     window.scrollTo(0, 0);
+
+    // Update host step so editors can follow along
+    if (isOwner) {
+      updateHostStep(newStep);
+    }
   };
 
   // --- Render States ---
@@ -370,11 +387,22 @@ export default function SessionPage() {
         {step === 1 && !isOwner && (
           <div className="step-animate">
             {/* Info banner */}
-            <div className="bg-primary/10 rounded-xl p-3 mb-4 flex items-center gap-3">
-              <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
-              <p className="text-sm text-muted-foreground">
-                {t("editor.hostVerifying")}
-              </p>
+            <div className={`rounded-xl p-3 mb-4 flex items-center gap-3 ${hostStep > 1 ? "bg-green-500/10" : "bg-primary/10"}`}>
+              {hostStep > 1 ? (
+                <>
+                  <span className="text-green-500 text-lg">✓</span>
+                  <p className="text-sm text-muted-foreground">
+                    {t("editor.hostReady")}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                  <p className="text-sm text-muted-foreground">
+                    {t("editor.hostVerifying")}
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Read-only items list */}

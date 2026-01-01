@@ -84,6 +84,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Editor (participant view)
     "editor.hostVerifying": "El host está verificando la cuenta. Puedes ver los items mientras esperas.",
+    "editor.hostReady": "El host terminó de verificar. ¡Puedes asignar items!",
     "editor.noItemsYet": "Aún no hay items escaneados",
     "steps.goToAssign": "Ir a asignar items",
 
@@ -169,6 +170,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Editor (participant view)
     "editor.hostVerifying": "The host is verifying the bill. You can see the items while you wait.",
+    "editor.hostReady": "The host finished verifying. You can assign items!",
     "editor.noItemsYet": "No items scanned yet",
     "steps.goToAssign": "Go to assign items",
 

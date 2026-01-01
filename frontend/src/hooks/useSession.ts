@@ -17,6 +17,7 @@ import {
   removeParticipant,
   updateParticipant,
   addParticipantManual,
+  updateHostStep as apiUpdateHostStep,
   type SessionResponse,
   type ApiCharge,
   type PollResponse,
@@ -38,6 +39,7 @@ export interface UseSessionReturn {
   error: string | null;
   isOwner: boolean;
   currentParticipant: { id: string; name: string } | null;
+  hostStep: number;  // Track which step the host is on
 
   // Actions
   refresh: () => Promise<void>;
@@ -68,6 +70,7 @@ export interface UseSessionReturn {
   // Session status
   finalize: () => Promise<boolean>;
   reopen: () => Promise<boolean>;
+  updateHostStep: (step: number) => Promise<boolean>;
 }
 
 // --- Hook ---
@@ -150,6 +153,7 @@ export function useSession({
               assignments: data.assignments,
               items: data.items,
               status: data.status,
+              host_step: data.host_step ?? prev.host_step,
               totals: data.totals,
               charges: data.charges,
               number_format: data.number_format || prev.number_format,
@@ -677,12 +681,29 @@ export function useSession({
     }
   }, [sessionId, ownerToken, markInteraction]);
 
+  // Update host step (owner only)
+  const updateHostStep = useCallback(async (step: number): Promise<boolean> => {
+    if (!ownerToken) return false;
+    markInteraction();
+    try {
+      await apiUpdateHostStep(sessionId, ownerToken, step);
+      setSession((prev) => (prev ? { ...prev, host_step: step } : prev));
+      return true;
+    } catch (err) {
+      console.error("Update host step error:", err);
+      return false;
+    }
+  }, [sessionId, ownerToken, markInteraction]);
+
+  const hostStep = session?.host_step ?? 1;
+
   return {
     session,
     loading,
     error,
     isOwner,
     currentParticipant,
+    hostStep,
     refresh,
     markInteraction,
     join,
@@ -699,5 +720,6 @@ export function useSession({
     updateOriginalTotal,
     finalize,
     reopen,
+    updateHostStep,
   };
 }

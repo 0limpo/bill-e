@@ -440,6 +440,7 @@ async def get_collaborative_session(session_id: str, owner: str = None):
         response = {
             "session_id": session_id,
             "status": session_data["status"],
+            "host_step": session_data.get("host_step", 1),  # Track host's current step
             "items": session_data["items"],
             "participants": session_data["participants"],
             "assignments": session_data["assignments"],
@@ -542,6 +543,46 @@ async def finalize_session_endpoint(session_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/session/{session_id}/host-step")
+async def update_host_step(session_id: str, request: Request):
+    """Update which step the host is currently on (owner only)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+        step = data.get("step")
+
+        if not owner_token:
+            raise HTTPException(status_code=400, detail="Token de owner requerido")
+
+        if step not in [1, 2, 3]:
+            raise HTTPException(status_code=400, detail="Step debe ser 1, 2 o 3")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        # Update the host step
+        session_data["host_step"] = step
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        # Save to Redis
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "host_step": step}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/session/{session_id}/reopen")
 async def reopen_session_endpoint(session_id: str, request: Request):
     """Reopen a finalized session (owner only)."""
@@ -606,6 +647,7 @@ async def poll_session(session_id: str, last_update: str = None):
             "assignments": session_data["assignments"],
             "items": session_data["items"],  # Include items for mode/name/price sync
             "status": session_data["status"],
+            "host_step": session_data.get("host_step", 1),  # Track host's current step
             "totals": session_data.get("totals"),  # Include totals for finalized state
             "tip_mode": session_data.get("tip_mode", "percent"),
             "tip_value": session_data.get("tip_value", 10.0),

@@ -50,6 +50,7 @@ def create_collaborative_session(
         "owner_token": owner_token,
         "owner_phone": owner_phone,
         "status": SessionStatus.ASSIGNING.value,
+        "host_step": 1,  # Track which step the host is on (1=Review, 2=Assign, 3=Share)
         "created_at": datetime.now().isoformat(),
         "expires_at": (datetime.now() + timedelta(hours=24)).isoformat(),
         "items": items,

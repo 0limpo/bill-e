@@ -11,6 +11,7 @@ export interface SessionResponse {
   id: string;
   is_owner: boolean;
   status: "assigning" | "finalized";
+  host_step: number;  // 1=Review, 2=Assign, 3=Share
   participants: ApiParticipant[];
   items: ApiItem[];
   assignments: Record<string, ApiAssignment[]>;
@@ -66,6 +67,7 @@ export interface PollResponse {
   assignments: Record<string, ApiAssignment[]>;
   items: ApiItem[];
   status: "assigning" | "finalized";
+  host_step: number;  // 1=Review, 2=Assign, 3=Share
   totals: { participant_id: string; total: number }[];
   charges: ApiCharge[];
   tip_mode?: string;
@@ -339,6 +341,20 @@ export async function reopenSession(
   return apiRequest(`/api/session/${sessionId}/reopen`, {
     method: "POST",
     body: JSON.stringify({ owner_token: ownerToken }),
+  });
+}
+
+/**
+ * Update host's current step (owner only)
+ */
+export async function updateHostStep(
+  sessionId: string,
+  ownerToken: string,
+  step: number
+): Promise<{ success: boolean; host_step: number }> {
+  return apiRequest(`/api/session/${sessionId}/host-step`, {
+    method: "POST",
+    body: JSON.stringify({ owner_token: ownerToken, step }),
   });
 }
 
