@@ -22,6 +22,7 @@ export default function SessionPage() {
   const [lang, setLang] = useState<Language>("es");
   const [joinName, setJoinName] = useState("");
   const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
   const [newParticipantName, setNewParticipantName] = useState("");
   const [showAddParticipant, setShowAddParticipant] = useState(false);
   const [editingName, setEditingName] = useState(false);
@@ -101,7 +102,11 @@ export default function SessionPage() {
   const handleJoin = async () => {
     if (!joinName.trim()) return;
     setJoining(true);
-    await join(joinName.trim());
+    setJoinError(null);
+    const success = await join(joinName.trim());
+    if (!success) {
+      setJoinError("No se pudo unir. La sesión puede estar finalizada o no existe.");
+    }
     setJoining(false);
   };
 
@@ -229,6 +234,9 @@ export default function SessionPage() {
                 "Unirme"
               )}
             </Button>
+            {joinError && (
+              <p className="text-destructive text-sm mt-3 text-center">{joinError}</p>
+            )}
           </div>
 
           {/* Show who's already in */}
