@@ -488,7 +488,28 @@ export default function SessionPage() {
 
         {/* Step 2: Assign */}
         {step === 2 && (
-          <StepAssign
+          <>
+            {/* Info banner for editors */}
+            {!isOwner && (
+              <div className={`rounded-xl p-3 mb-4 flex items-center gap-3 ${session?.status === "finalized" ? "bg-green-500/10" : "bg-primary/10"}`}>
+                {session?.status === "finalized" ? (
+                  <>
+                    <span className="text-green-500 text-lg">✓</span>
+                    <p className="text-sm text-muted-foreground">
+                      {t("editor.hostFinalized")}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                    <p className="text-sm text-muted-foreground">
+                      {t("editor.hostAssigning")}
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
+            <StepAssign
             items={items}
             participants={participants}
             assignments={assignments}
@@ -508,7 +529,8 @@ export default function SessionPage() {
             onUpdateParticipantName={updateParticipantName}
             nextDisabled={!isOwner && session?.status !== "finalized"}
             nextLabel={!isOwner && session?.status !== "finalized" ? t("editor.waitingForHost") : undefined}
-          />
+            />
+          </>
         )}
 
         {/* Step 3: Share */}
