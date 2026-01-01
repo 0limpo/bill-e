@@ -249,12 +249,6 @@ export function StepAssign({
 
   return (
     <div className="step-animate">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold">{t("steps.assignTitle")}</h2>
-        <p className="text-muted-foreground text-sm">{t("steps.assignSubtitle")}</p>
-      </div>
-
       {/* Add Participant Input (expanded) */}
       {isOwner && showAddParticipant && (
         <div className="mb-4 p-3 bg-secondary/50 rounded-xl">

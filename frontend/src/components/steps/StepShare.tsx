@@ -129,12 +129,6 @@ export function StepShare({
 
   return (
     <div className="step-animate">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold">{t("finalized.billClosed")}</h2>
-        <p className="text-muted-foreground text-sm">{t("finalized.subtitle") || "Resumen por persona"}</p>
-      </div>
-
       {/* Participants List */}
       <div className="space-y-2">
         {participants.map((p, pIndex) => {
