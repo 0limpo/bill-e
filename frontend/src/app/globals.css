@@ -76,11 +76,11 @@
     --card-foreground: #121214;
     --primary: #3F7BF6;
     --primary-foreground: #FFFFFF;
-    --secondary: #EBEBEB;          /* Subtle gray for sections */
+    --secondary: #FFFFFF;          /* White for bg-secondary sections */
     --secondary-foreground: #121214;
     --muted: #F4F4F4;
     --muted-foreground: #6B7280;
-    --accent: #EBEBEB;
+    --accent: #FFFFFF;             /* White for accents */
     --accent-foreground: #121214;
     --destructive: #EF4444;
     --destructive-foreground: #FFFFFF;
@@ -122,11 +122,11 @@
   --card-foreground: #121214;
   --primary: #3F7BF6;
   --primary-foreground: #FFFFFF;
-  --secondary: #EBEBEB;
+  --secondary: #FFFFFF;
   --secondary-foreground: #121214;
   --muted: #F4F4F4;
   --muted-foreground: #6B7280;
-  --accent: #EBEBEB;
+  --accent: #FFFFFF;
   --accent-foreground: #121214;
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
