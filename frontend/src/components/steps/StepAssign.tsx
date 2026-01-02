@@ -471,8 +471,8 @@ export function StepAssign({
               key={itemId}
               className={`rounded-xl transition-colors ${
                 isComplete
-                  ? "bg-secondary/40"
-                  : "bg-primary/15"
+                  ? "bg-muted"
+                  : "bg-card"
               }`}
             >
               {/* Collapsed Row - clickable to expand */}
