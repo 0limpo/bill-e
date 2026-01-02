@@ -558,6 +558,7 @@ export default function SessionPage() {
             onBack={() => goToStep(2)}
             t={t}
             isOwner={isOwner}
+            sessionId={sessionId}
           />
         )}
       </main>

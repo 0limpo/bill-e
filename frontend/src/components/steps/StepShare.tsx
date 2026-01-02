@@ -23,6 +23,7 @@ interface StepShareProps {
   onBack: () => void;
   t: (key: string) => string;
   isOwner?: boolean;
+  sessionId?: string;
 }
 
 export function StepShare({
@@ -33,6 +34,7 @@ export function StepShare({
   onBack,
   t,
   isOwner = false,
+  sessionId,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
 
@@ -116,14 +118,25 @@ export function StepShare({
 
   // Share on WhatsApp
   const shareOnWhatsApp = () => {
-    let message = `🧾 *Bill-e - ${t("finalized.billClosed")}*\n\n`;
+    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "https://bill-e.vercel.app";
+    const billEPhone = "+56944578000"; // Bill-e WhatsApp number
+
+    let message = `🧾 *Resumen de la cuenta*\n\n`;
 
     participants.forEach((p) => {
       const { total } = calculateParticipantTotal(p.id, session);
       message += `• ${p.name}: ${fmt(total)}\n`;
     });
 
-    message += `\n*${t("totals.total")}: ${fmt(totalAmount)}*`;
+    message += `\n💰 *Total: ${fmt(totalAmount)}*\n\n`;
+
+    if (sessionId) {
+      message += `🔗 Ver detalle:\n${frontendUrl}/s/${sessionId}\n\n`;
+    }
+
+    message += `━━━━━━━━━━━━━━━━━━\n`;
+    message += `📲 ¿Quieres dividir tu cuenta fácil?\n`;
+    message += `Agrega a Bill-e: wa.me/${billEPhone.replace("+", "")}`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
