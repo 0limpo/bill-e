@@ -66,7 +66,54 @@
   --ring: #3F7BF6;
 }
 
-/* Light theme (optional, if needed later) */
+/* Light theme - Auto-detect from system preference */
+@media (prefers-color-scheme: light) {
+  :root {
+    --background: #FFFFFF;
+    --foreground: #121214;
+    --card: #F9FAFB;
+    --card-foreground: #121214;
+    --primary: #3F7BF6;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F3F4F6;
+    --secondary-foreground: #121214;
+    --muted: #F3F4F6;
+    --muted-foreground: #6B7280;
+    --accent: #F3F4F6;
+    --accent-foreground: #121214;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --success: #10B981;
+    --warning: #F59E0B;
+    --border: #E5E7EB;
+    --input: #F3F4F6;
+    --ring: #3F7BF6;
+  }
+}
+
+/* Manual override classes (optional) */
+.dark {
+  --background: #121214;
+  --foreground: #F3F4F6;
+  --card: #1C1C1E;
+  --card-foreground: #F3F4F6;
+  --primary: #3F7BF6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #27272A;
+  --secondary-foreground: #F3F4F6;
+  --muted: #27272A;
+  --muted-foreground: #9CA3AF;
+  --accent: #27272A;
+  --accent-foreground: #F3F4F6;
+  --destructive: #FF453A;
+  --destructive-foreground: #FFFFFF;
+  --success: #34C759;
+  --warning: #FF9F0A;
+  --border: #2C2C2E;
+  --input: #27272A;
+  --ring: #3F7BF6;
+}
+
 .light {
   --background: #FFFFFF;
   --foreground: #121214;
