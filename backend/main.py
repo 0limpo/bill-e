@@ -236,10 +236,11 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
 
                 session['items'] = session_items
 
-                # Guardar sesión actualizada
+                # Guardar sesión actualizada (preserve TTL or 24h)
+                existing_ttl = redis_client.ttl(f"session:{session_id}")
                 redis_client.setex(
                     f"session:{session_id}",
-                    3600,
+                    existing_ttl if existing_ttl > 0 else 86400,
                     json.dumps(session)
                 )
 
@@ -312,10 +313,11 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
 
                 session['items'] = session_items
 
-                # Guardar sesión actualizada
+                # Guardar sesión actualizada (preserve TTL or 24h)
+                existing_ttl = redis_client.ttl(f"session:{session_id}")
                 redis_client.setex(
                     f"session:{session_id}",
-                    3600,
+                    existing_ttl if existing_ttl > 0 else 86400,
                     json.dumps(session)
                 )
 
@@ -350,10 +352,11 @@ async def update_session(session_id: str, request: Request):
             if not existing_session:
                 raise HTTPException(status_code=404, detail="Sesión no encontrada")
             
-            # Actualizar sesión
+            # Actualizar sesión (preserve TTL or 24h)
+            existing_ttl = redis_client.ttl(f"session:{session_id}")
             redis_client.setex(
                 f"session:{session_id}",
-                3600,  # Renovar por 1 hora más
+                existing_ttl if existing_ttl > 0 else 86400,
                 json.dumps(session_data)
             )
         

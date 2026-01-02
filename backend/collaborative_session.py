@@ -80,7 +80,7 @@ def create_collaborative_session(
 
     redis_client.setex(
         f"session:{session_id}",
-        7200,
+        86400,  # 24 hours
         json.dumps(session_data)
     )
 
