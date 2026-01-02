@@ -146,6 +146,110 @@ def verify_owner_device(
         return {"valid": False, "error": "device_mismatch"}
 
 
+# --- Editor Device Tracking ---
+
+EDITOR_FREE_SESSIONS = 2  # Free sessions before paywall
+
+def check_editor_device_limit(
+    redis_client,
+    device_id: str,
+    session_id: str
+) -> Dict[str, Any]:
+    """
+    Check if editor device has exceeded free session limit.
+    Returns {"allowed": True, "sessions_used": N} if OK.
+    Returns {"allowed": False, "sessions_used": N, "limit_reached": True} if limit exceeded.
+    """
+    device_key = f"editor_device:{device_id}"
+
+    # Get current sessions for this device
+    sessions_json = redis_client.get(device_key)
+    sessions = json.loads(sessions_json) if sessions_json else []
+
+    # Already in this session? Always allow
+    if session_id in sessions:
+        return {
+            "allowed": True,
+            "sessions_used": len(sessions),
+            "is_returning": True
+        }
+
+    # Check if premium (stored in device data)
+    device_data_key = f"editor_device_data:{device_id}"
+    device_data_json = redis_client.get(device_data_key)
+    device_data = json.loads(device_data_json) if device_data_json else {}
+
+    if device_data.get("is_premium"):
+        return {
+            "allowed": True,
+            "sessions_used": len(sessions),
+            "is_premium": True
+        }
+
+    # Check limit
+    if len(sessions) >= EDITOR_FREE_SESSIONS:
+        return {
+            "allowed": False,
+            "sessions_used": len(sessions),
+            "limit_reached": True,
+            "free_limit": EDITOR_FREE_SESSIONS
+        }
+
+    return {
+        "allowed": True,
+        "sessions_used": len(sessions),
+        "remaining": EDITOR_FREE_SESSIONS - len(sessions)
+    }
+
+
+def register_editor_session(
+    redis_client,
+    device_id: str,
+    session_id: str
+) -> Dict[str, Any]:
+    """
+    Register a session for an editor device.
+    Call this after successfully joining a session.
+    """
+    device_key = f"editor_device:{device_id}"
+
+    # Get current sessions
+    sessions_json = redis_client.get(device_key)
+    sessions = json.loads(sessions_json) if sessions_json else []
+
+    # Add session if not already present
+    if session_id not in sessions:
+        sessions.append(session_id)
+        # Store permanently (no TTL)
+        redis_client.set(device_key, json.dumps(sessions))
+
+    return {
+        "sessions_used": len(sessions),
+        "remaining": max(0, EDITOR_FREE_SESSIONS - len(sessions))
+    }
+
+
+def set_editor_premium(
+    redis_client,
+    device_id: str,
+    phone: str = None
+) -> Dict[str, Any]:
+    """
+    Mark an editor device as premium (after payment).
+    """
+    device_data_key = f"editor_device_data:{device_id}"
+
+    device_data = {
+        "is_premium": True,
+        "premium_since": datetime.now().isoformat(),
+        "phone": phone
+    }
+
+    redis_client.set(device_data_key, json.dumps(device_data))
+
+    return {"success": True, "is_premium": True}
+
+
 def add_participant(
     redis_client,
     session_id: str,

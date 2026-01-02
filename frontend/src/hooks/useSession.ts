@@ -46,7 +46,7 @@ export interface UseSessionReturn {
   markInteraction: () => void;
 
   // Participant actions
-  join: (name: string, phone?: string) => Promise<boolean>;
+  join: (name: string, phone?: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
   selectParticipant: (participantId: string, name: string) => void;
   addParticipant: (name: string, phone?: string) => Promise<boolean>;
   removeParticipantById: (participantId: string) => Promise<boolean>;
@@ -193,23 +193,37 @@ export function useSession({
     await loadSessionData();
   }, [loadSessionData]);
 
-  // Join session
+  // Join session - returns result with status info
   const join = useCallback(
-    async (name: string, phone?: string): Promise<boolean> => {
+    async (name: string, phone?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
       markInteraction();
       try {
         const result = await joinSession(sessionId, name, phone);
-        const participant = result.participant;
-        setCurrentParticipant({ id: participant.id, name: participant.name });
-        localStorage.setItem(
-          `bill-e-participant-${sessionId}`,
-          JSON.stringify({ id: participant.id, name: participant.name })
-        );
-        await refresh();
-        return true;
+
+        // Check if limit reached
+        if (result.status === "limit_reached") {
+          return {
+            success: false,
+            limitReached: true,
+            sessionsUsed: result.sessions_used || 0
+          };
+        }
+
+        // Success
+        if (result.participant) {
+          setCurrentParticipant({ id: result.participant.id, name: result.participant.name });
+          localStorage.setItem(
+            `bill-e-participant-${sessionId}`,
+            JSON.stringify({ id: result.participant.id, name: result.participant.name })
+          );
+          await refresh();
+          return { success: true };
+        }
+
+        return { success: false };
       } catch (err) {
         console.error("Join error:", err);
-        return false;
+        return { success: false };
       }
     },
     [sessionId, markInteraction, refresh]

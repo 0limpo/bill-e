@@ -492,18 +492,39 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
 @app.post("/api/session/{session_id}/join")
 async def join_session(session_id: str, request: Request):
     try:
+        from collaborative_session import check_editor_device_limit, register_editor_session
+
         data = await request.json()
         name = data.get("name", "").strip()
         phone = data.get("phone", "").strip() or "N/A"  # Phone is now optional
+        device_id = data.get("device_id", "").strip()
 
         if not name:
             raise HTTPException(status_code=400, detail="El nombre es requerido")
-        # Phone validation removed - now optional
+
+        # Check device limit if device_id provided
+        if device_id:
+            limit_check = check_editor_device_limit(redis_client, device_id, session_id)
+
+            if not limit_check.get("allowed"):
+                # Limit reached - return paywall status
+                return {
+                    "status": "limit_reached",
+                    "sessions_used": limit_check.get("sessions_used", 0),
+                    "free_limit": limit_check.get("free_limit", 2),
+                    "requires_payment": True
+                }
 
         result = add_participant(redis_client, session_id, name, phone)
 
         if "error" in result:
             raise HTTPException(status_code=result.get("code", 400), detail=result["error"])
+
+        # Register session for device tracking (if device_id provided and not returning)
+        if device_id and not result.get("is_existing"):
+            device_status = register_editor_session(redis_client, device_id, session_id)
+            result["sessions_used"] = device_status.get("sessions_used", 0)
+            result["sessions_remaining"] = device_status.get("remaining", 0)
 
         return result
     except HTTPException:

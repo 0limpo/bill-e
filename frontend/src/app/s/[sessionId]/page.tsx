@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { Loader2, Phone, Lock } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
 import { StepReview } from "@/components/steps/StepReview";
@@ -10,7 +10,6 @@ import { StepAssign } from "@/components/steps/StepAssign";
 import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
-import { requestEditorCode, verifyEditorCode } from "@/lib/api";
 
 export default function SessionPage() {
   const params = useParams();
@@ -31,13 +30,9 @@ export default function SessionPage() {
   const [editingName, setEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
 
-  // Editor verification flow
-  const [verifyStep, setVerifyStep] = useState<"phone" | "code" | "paywall" | "verified">("phone");
-  const [editorPhone, setEditorPhone] = useState("");
-  const [verifyCode, setVerifyCodeState] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [freeRemaining, setFreeRemaining] = useState<number | null>(null);
+  // Editor limit tracking (device_id based)
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [sessionsUsed, setSessionsUsed] = useState(0);
 
   const {
     session,
@@ -113,10 +108,16 @@ export default function SessionPage() {
     if (!joinName.trim()) return;
     setJoining(true);
     setJoinError(null);
-    const success = await join(joinName.trim());
-    if (!success) {
+
+    const result = await join(joinName.trim());
+
+    if (result.limitReached) {
+      setSessionsUsed(result.sessionsUsed || 0);
+      setShowPaywall(true);
+    } else if (!result.success) {
       setJoinError("No se pudo unir. La sesión puede estar finalizada o no existe.");
     }
+
     setJoining(false);
   };
 
@@ -242,157 +243,8 @@ export default function SessionPage() {
     // Filter out the owner from selectable participants (editors only)
     const selectableParticipants = (session?.participants || []).filter((p) => p.role !== "owner");
 
-    // Handler to request verification code
-    const handleRequestCode = async () => {
-      if (!editorPhone.trim()) return;
-      setVerifying(true);
-      setVerifyError(null);
-      try {
-        const result = await requestEditorCode(editorPhone, sessionId);
-        if (result.status === "premium") {
-          setVerifyStep("verified");
-        } else if (result.status === "paywall") {
-          setVerifyStep("paywall");
-        } else {
-          setFreeRemaining(result.free_remaining ?? null);
-          setVerifyStep("code");
-        }
-      } catch (err) {
-        setVerifyError(err instanceof Error ? err.message : "Error");
-      } finally {
-        setVerifying(false);
-      }
-    };
-
-    // Handler to verify the code
-    const handleVerifyCode = async () => {
-      if (!verifyCode.trim()) return;
-      setVerifying(true);
-      setVerifyError(null);
-      try {
-        const result = await verifyEditorCode(editorPhone, verifyCode, sessionId);
-        setFreeRemaining(result.free_remaining);
-        setVerifyStep("verified");
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "Error";
-        if (msg.includes("Invalid")) {
-          setVerifyError(t("phoneVerify.invalidCode"));
-        } else if (msg.includes("expired")) {
-          setVerifyError(t("phoneVerify.codeExpired"));
-        } else {
-          setVerifyError(msg);
-        }
-      } finally {
-        setVerifying(false);
-      }
-    };
-
-    // Step 1: Phone input
-    if (verifyStep === "phone") {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="w-full max-w-sm">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Phone className="w-8 h-8 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold mb-2">{t("phoneVerify.title")}</h1>
-              <p className="text-muted-foreground">{t("phoneVerify.subtitle")}</p>
-            </div>
-
-            <div className="bg-card rounded-2xl p-6 border border-border">
-              <label className="block text-sm font-medium mb-2">{t("phoneVerify.phone")}</label>
-              <input
-                type="tel"
-                value={editorPhone}
-                onChange={(e) => setEditorPhone(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRequestCode()}
-                placeholder={t("phoneVerify.phonePlaceholder")}
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary mb-4"
-                autoFocus
-              />
-              <Button
-                onClick={handleRequestCode}
-                disabled={!editorPhone.trim() || verifying}
-                className="w-full h-12 font-semibold"
-              >
-                {verifying ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  t("phoneVerify.sendCode")
-                )}
-              </Button>
-              {verifyError && (
-                <p className="text-destructive text-sm mt-3 text-center">{verifyError}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Step 2: Code input
-    if (verifyStep === "code") {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-          <div className="w-full max-w-sm">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Lock className="w-8 h-8 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold mb-2">{t("phoneVerify.codeSent")}</h1>
-              <p className="text-muted-foreground">{editorPhone}</p>
-              {freeRemaining !== null && (
-                <p className="text-sm text-primary mt-2">
-                  {t("phoneVerify.freeRemaining").replace("{count}", String(freeRemaining))}
-                </p>
-              )}
-            </div>
-
-            <div className="bg-card rounded-2xl p-6 border border-border">
-              <label className="block text-sm font-medium mb-2">{t("phoneVerify.enterCode")}</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={4}
-                value={verifyCode}
-                onChange={(e) => setVerifyCodeState(e.target.value.replace(/\D/g, ""))}
-                onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
-                placeholder="1234"
-                className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary mb-4 text-center text-2xl tracking-widest"
-                autoFocus
-              />
-              <Button
-                onClick={handleVerifyCode}
-                disabled={verifyCode.length !== 4 || verifying}
-                className="w-full h-12 font-semibold"
-              >
-                {verifying ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  t("phoneVerify.verifyCode")
-                )}
-              </Button>
-              {verifyError && (
-                <p className="text-destructive text-sm mt-3 text-center">{verifyError}</p>
-              )}
-              <button
-                onClick={() => {
-                  setVerifyCodeState("");
-                  handleRequestCode();
-                }}
-                className="w-full text-sm text-muted-foreground mt-4 hover:text-foreground"
-              >
-                {t("phoneVerify.resendCode")}
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Step 3: Paywall
-    if (verifyStep === "paywall") {
+    // Paywall screen (shown when free session limit reached)
+    if (showPaywall) {
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="w-full max-w-sm">
@@ -427,7 +279,7 @@ export default function SessionPage() {
       );
     }
 
-    // Step 4: Verified - show original join flow
+    // Join screen - shown directly without phone verification
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm">

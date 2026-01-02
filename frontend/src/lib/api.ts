@@ -144,6 +144,18 @@ export async function pollSession(
 
 // --- Participant Endpoints ---
 
+export interface JoinSessionResponse {
+  participant?: ApiParticipant;
+  is_existing?: boolean;
+  is_owner?: boolean;
+  sessions_used?: number;
+  sessions_remaining?: number;
+  // Limit reached response
+  status?: "limit_reached";
+  free_limit?: number;
+  requires_payment?: boolean;
+}
+
 /**
  * Join a session as a participant
  */
@@ -151,10 +163,11 @@ export async function joinSession(
   sessionId: string,
   name: string,
   phone?: string
-): Promise<{ participant: ApiParticipant }> {
+): Promise<JoinSessionResponse> {
+  const deviceId = getDeviceId();
   return apiRequest(`/api/session/${sessionId}/join`, {
     method: "POST",
-    body: JSON.stringify({ name, phone }),
+    body: JSON.stringify({ name, phone, device_id: deviceId }),
   });
 }
 
