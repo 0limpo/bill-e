@@ -70,7 +70,7 @@
 /* Style: Samsung/Google - gray background, white cards */
 @media (prefers-color-scheme: light) {
   :root {
-    --background: #F4F4F4;         /* Light gray background */
+    --background: #E8E8E8;         /* More visible gray background */
     --foreground: #121214;
     --card: #FFFFFF;               /* White cards */
     --card-foreground: #121214;
@@ -78,7 +78,7 @@
     --primary-foreground: #FFFFFF;
     --secondary: #FFFFFF;          /* White for bg-secondary sections */
     --secondary-foreground: #121214;
-    --muted: #F4F4F4;
+    --muted: #E8E8E8;
     --muted-foreground: #6B7280;
     --accent: #FFFFFF;             /* White for accents */
     --accent-foreground: #121214;
@@ -86,7 +86,7 @@
     --destructive-foreground: #FFFFFF;
     --success: #10B981;
     --warning: #F59E0B;
-    --border: #E0E0E0;
+    --border: #D0D0D0;             /* Slightly darker border */
     --input: #FFFFFF;              /* White inputs */
     --ring: #3F7BF6;
   }
@@ -116,7 +116,7 @@
 }
 
 .light {
-  --background: #F4F4F4;
+  --background: #E8E8E8;
   --foreground: #121214;
   --card: #FFFFFF;
   --card-foreground: #121214;
@@ -124,7 +124,7 @@
   --primary-foreground: #FFFFFF;
   --secondary: #FFFFFF;
   --secondary-foreground: #121214;
-  --muted: #F4F4F4;
+  --muted: #E8E8E8;
   --muted-foreground: #6B7280;
   --accent: #FFFFFF;
   --accent-foreground: #121214;
@@ -132,7 +132,7 @@
   --destructive-foreground: #FFFFFF;
   --success: #10B981;
   --warning: #F59E0B;
-  --border: #E0E0E0;
+  --border: #D0D0D0;
   --input: #FFFFFF;
   --ring: #3F7BF6;
 }
