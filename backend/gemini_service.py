@@ -160,6 +160,44 @@ class GeminiOCRService:
             logger.error(f"❌ Error inicializando Gemini: {str(e)}")
             self.model = None
 
+    def is_receipt(self, image_bytes: bytes) -> bool:
+        """
+        Quick validation to check if image is a receipt/bill.
+        Uses minimal tokens for cost efficiency.
+
+        Args:
+            image_bytes: Bytes of the image
+
+        Returns:
+            True if image appears to be a receipt, False otherwise
+        """
+        if not self.model:
+            logger.error("Gemini model no disponible para validación")
+            return True  # Allow through if can't validate
+
+        try:
+            import PIL.Image
+            import io
+            image = PIL.Image.open(io.BytesIO(image_bytes))
+
+            # Minimal prompt for quick validation
+            prompt = "Is this image a receipt, bill, invoice, or restaurant check? Answer only YES or NO."
+
+            logger.info("🔍 Validando si imagen es boleta...")
+            response = self.model.generate_content([prompt, image])
+
+            if response and response.text:
+                answer = response.text.strip().upper()
+                is_valid = "YES" in answer or "SÍ" in answer or "SI" in answer
+                logger.info(f"{'✅' if is_valid else '❌'} Validación: {answer} -> {'Es boleta' if is_valid else 'No es boleta'}")
+                return is_valid
+
+            return True  # Allow through if unclear
+
+        except Exception as e:
+            logger.error(f"❌ Error en validación de imagen: {str(e)}")
+            return True  # Allow through on error
+
     def process_image(self, image_bytes: bytes) -> Optional[str]:
         """
         Procesa una imagen de boleta usando Gemini.
@@ -502,7 +540,20 @@ Retorna SOLO el JSON, sin explicaciones."""
 gemini_service = GeminiOCRService()
 
 
-def process_image(image_bytes: bytes):
+def validate_receipt(image_bytes: bytes) -> bool:
+    """
+    Quick validation to check if image is a receipt.
+
+    Args:
+        image_bytes: Bytes of the image
+
+    Returns:
+        True if image appears to be a receipt, False otherwise
+    """
+    return gemini_service.is_receipt(image_bytes)
+
+
+def process_image(image_bytes: bytes, skip_validation: bool = False):
     """
     Procesa imagen con Gemini OCR.
     Reemplaza process_image_parallel de ocr_enhanced.py.

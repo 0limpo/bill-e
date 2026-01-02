@@ -210,6 +210,36 @@ TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "id": "Terjadi kesalahan. Coba lagi.",
     },
 
+    "error_rate_limit": {
+        "es": "Has enviado muchas fotos. Intenta de nuevo en {minutes} minutos.",
+        "en": "You've sent too many photos. Try again in {minutes} minutes.",
+        "pt": "Voce enviou muitas fotos. Tente novamente em {minutes} minutos.",
+        "zh": "您发送了太多照片。请在{minutes}分钟后重试。",
+        "hi": "आपने बहुत सारी फोटो भेजी हैं। {minutes} मिनट में फिर कोशिश करें।",
+        "fr": "Tu as envoye trop de photos. Reessaie dans {minutes} minutes.",
+        "ar": "أرسلت صور كثيرة. حاول مرة أخرى بعد {minutes} دقيقة.",
+        "bn": "অনেক ছবি পাঠিয়েছ। {minutes} মিনিট পরে আবার চেষ্টা করো।",
+        "ru": "Вы отправили слишком много фото. Попробуйте через {minutes} минут.",
+        "ja": "写真を送りすぎました。{minutes}分後にお試しください。",
+        "de": "Du hast zu viele Fotos gesendet. Versuche es in {minutes} Minuten erneut.",
+        "id": "Kamu kirim terlalu banyak foto. Coba lagi dalam {minutes} menit.",
+    },
+
+    "error_not_receipt": {
+        "es": "Esta imagen no parece ser una boleta. Por favor envia una foto de tu cuenta o recibo.",
+        "en": "This image doesn't look like a receipt. Please send a photo of your bill or receipt.",
+        "pt": "Esta imagem nao parece ser um recibo. Por favor envie uma foto da sua conta.",
+        "zh": "这张图片似乎不是收据。请发送账单或收据的照片。",
+        "hi": "यह इमेज रसीद नहीं लगती। कृपया अपने बिल या रसीद की फोटो भेजें।",
+        "fr": "Cette image ne semble pas etre un ticket. Envoie une photo de l'addition.",
+        "ar": "هذه الصورة لا تبدو فاتورة. أرسل صورة للحساب أو الإيصال.",
+        "bn": "এটা রসিদ মনে হচ্ছে না। তোমার বিল বা রসিদের ছবি পাঠাও।",
+        "ru": "Это изображение не похоже на чек. Пожалуйста, отправьте фото счета.",
+        "ja": "これはレシートではないようです。請求書またはレシートの写真を送ってください。",
+        "de": "Dieses Bild scheint keine Rechnung zu sein. Bitte sende ein Foto deiner Rechnung.",
+        "id": "Gambar ini bukan struk. Kirim foto tagihan atau strukmu.",
+    },
+
     # -------------------------------------------------------------------------
     # Welcome message
     # -------------------------------------------------------------------------
