@@ -352,17 +352,17 @@ export default function SessionPage() {
               <input
                 type="text"
                 inputMode="numeric"
-                maxLength={6}
+                maxLength={4}
                 value={verifyCode}
                 onChange={(e) => setVerifyCodeState(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => e.key === "Enter" && handleVerifyCode()}
-                placeholder={t("phoneVerify.codePlaceholder")}
+                placeholder="1234"
                 className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary mb-4 text-center text-2xl tracking-widest"
                 autoFocus
               />
               <Button
                 onClick={handleVerifyCode}
-                disabled={verifyCode.length !== 6 || verifying}
+                disabled={verifyCode.length !== 4 || verifying}
                 className="w-full h-12 font-semibold"
               >
                 {verifying ? (

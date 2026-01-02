@@ -1188,8 +1188,8 @@ async def request_editor_code(request: Request):
         if user.free_bills_used >= FREE_SESSIONS_LIMIT:
             return {"status": "paywall", "message": "Free sessions exhausted"}
 
-        # Generate 6-digit code
-        code = str(random.randint(100000, 999999))
+        # Generate 4-digit code
+        code = str(random.randint(1000, 9999))
 
         # Save pending code
         user.pending_code = code
