@@ -582,42 +582,26 @@ def format_collaborative_message(
     status_emoji = "✅" if quality_score == 100 else "⚠️"
     status_text = "Totales verificados" if quality_score == 100 else "Revisar totales"
 
-    # Build URLs for both variants (A and B) for testing
-    owner_url_vB = f"{owner_url}&v=B" if "?" in owner_url else f"{owner_url}?v=B"
-    editor_url_vB = f"{editor_url}?v=B"
+    # Add v=B parameter to URLs
+    owner_url_final = f"{owner_url}&v=B" if "?" in owner_url else f"{owner_url}?v=B"
+    editor_url_final = f"{editor_url}?v=B"
 
-    message = f"""🧾 ¡Boleta procesada!
+    message = f"""🧾 *¡Boleta procesada!*
 
-{status_emoji} *{status_text}*
+{status_emoji} {status_text}
 
 💰 Total: ${total:,.0f}
-📊 Subtotal: ${subtotal:,.0f}
-🎁 Propina: ${tip:,.0f} ({tip_percent:.0f}%)
-📝 Items: {items_count}
+📝 {items_count} items
 
 ━━━━━━━━━━━━━━━━━━
 
 📌 *Tu link de anfitrión* (guárdalo):
-
-🅰️ Versión A (estable):
-{owner_url}
-
-🅱️ Versión B (nueva):
-{owner_url_vB}
-
-━━━━━━━━━━━━━━━━━━
+{owner_url_final}
 
 🔗 *Link para compartir* con tus amigos:
+{editor_url_final}
 
-🅰️ Versión A (estable):
-{editor_url}
-
-🅱️ Versión B (nueva):
-{editor_url_vB}
-
-━━━━━━━━━━━━━━━━━━
-
-⏰ La sesión expira en 24 horas"""
+⏰ Expira en 24 horas"""
 
     return message
 
