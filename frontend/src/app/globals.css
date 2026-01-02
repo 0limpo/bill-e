@@ -67,26 +67,27 @@
 }
 
 /* Light theme - Auto-detect from system preference */
+/* Style: Samsung/Google - gray background, white cards */
 @media (prefers-color-scheme: light) {
   :root {
-    --background: #FFFFFF;
+    --background: #F4F4F4;         /* Light gray background */
     --foreground: #121214;
-    --card: #F3F4F6;              /* Was #F9FAFB - more visible */
+    --card: #FFFFFF;               /* White cards */
     --card-foreground: #121214;
     --primary: #3F7BF6;
     --primary-foreground: #FFFFFF;
-    --secondary: #E5E7EB;          /* Was #F3F4F6 - more intense */
+    --secondary: #EBEBEB;          /* Subtle gray for sections */
     --secondary-foreground: #121214;
-    --muted: #E5E7EB;              /* Was #F3F4F6 - more intense */
+    --muted: #F4F4F4;
     --muted-foreground: #6B7280;
-    --accent: #E5E7EB;             /* Was #F3F4F6 - more intense */
+    --accent: #EBEBEB;
     --accent-foreground: #121214;
     --destructive: #EF4444;
     --destructive-foreground: #FFFFFF;
     --success: #10B981;
     --warning: #F59E0B;
-    --border: #D1D5DB;             /* Was #E5E7EB - more visible */
-    --input: #E5E7EB;              /* Was #F3F4F6 - more intense */
+    --border: #E0E0E0;
+    --input: #FFFFFF;              /* White inputs */
     --ring: #3F7BF6;
   }
 }
@@ -115,24 +116,24 @@
 }
 
 .light {
-  --background: #FFFFFF;
+  --background: #F4F4F4;
   --foreground: #121214;
-  --card: #F3F4F6;
+  --card: #FFFFFF;
   --card-foreground: #121214;
   --primary: #3F7BF6;
   --primary-foreground: #FFFFFF;
-  --secondary: #E5E7EB;
+  --secondary: #EBEBEB;
   --secondary-foreground: #121214;
-  --muted: #E5E7EB;
+  --muted: #F4F4F4;
   --muted-foreground: #6B7280;
-  --accent: #E5E7EB;
+  --accent: #EBEBEB;
   --accent-foreground: #121214;
   --destructive: #EF4444;
   --destructive-foreground: #FFFFFF;
   --success: #10B981;
   --warning: #F59E0B;
-  --border: #D1D5DB;
-  --input: #E5E7EB;
+  --border: #E0E0E0;
+  --input: #FFFFFF;
   --ring: #3F7BF6;
 }
 
