@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
 import uuid
+import random
 from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
@@ -1140,6 +1141,187 @@ async def split_item(session_id: str, request: Request):
 
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# EDITOR VERIFICATION ENDPOINTS
+# =====================================================
+
+FREE_SESSIONS_LIMIT = 2  # Number of free sessions for editors
+
+@app.post("/api/editor/request-code")
+async def request_editor_code(request: Request):
+    """
+    Request a verification code for editor access.
+    - If premium: returns status "premium" (no code needed)
+    - If free sessions available: sends code via WhatsApp
+    - If no free sessions: returns status "paywall"
+    """
+    try:
+        data = await request.json()
+        phone = data.get("phone", "").strip()
+        session_id = data.get("session_id", "").strip()
+
+        if not phone or not session_id:
+            raise HTTPException(status_code=400, detail="Phone and session_id required")
+
+        # Normalize phone number (remove spaces, ensure + prefix)
+        phone = phone.replace(" ", "").replace("-", "")
+        if not phone.startswith("+"):
+            phone = "+" + phone
+
+        # Get or create user profile
+        user = Database.get_or_create_user(phone)
+
+        # Check if premium
+        if user.is_premium:
+            if user.premium_until and user.premium_until > datetime.now():
+                return {"status": "premium", "message": "Premium user, no code needed"}
+            else:
+                # Premium expired
+                user.is_premium = False
+                Database.save_user(user)
+
+        # Check free sessions
+        if user.free_bills_used >= FREE_SESSIONS_LIMIT:
+            return {"status": "paywall", "message": "Free sessions exhausted"}
+
+        # Generate 6-digit code
+        code = str(random.randint(100000, 999999))
+
+        # Save pending code
+        user.pending_code = code
+        user.pending_code_expires = datetime.now() + timedelta(minutes=10)
+        user.pending_session_id = session_id
+        Database.save_user(user)
+
+        # Send code via WhatsApp
+        try:
+            from webhook_whatsapp import send_whatsapp_message
+            import asyncio
+
+            message = f"🔐 Tu código de Bill-e: *{code}*\n\nVálido por 10 minutos."
+            await send_whatsapp_message(phone, message)
+
+            return {
+                "status": "code_sent",
+                "message": "Code sent via WhatsApp",
+                "free_remaining": FREE_SESSIONS_LIMIT - user.free_bills_used
+            }
+        except Exception as e:
+            print(f"Error sending WhatsApp: {e}")
+            raise HTTPException(status_code=500, detail="Error sending code")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/editor/verify-code")
+async def verify_editor_code(request: Request):
+    """
+    Verify the code and grant access to the session.
+    Increments free_bills_used counter on success.
+    """
+    try:
+        data = await request.json()
+        phone = data.get("phone", "").strip()
+        code = data.get("code", "").strip()
+        session_id = data.get("session_id", "").strip()
+
+        if not phone or not code or not session_id:
+            raise HTTPException(status_code=400, detail="Phone, code and session_id required")
+
+        # Normalize phone
+        phone = phone.replace(" ", "").replace("-", "")
+        if not phone.startswith("+"):
+            phone = "+" + phone
+
+        # Get user
+        user = Database.get_user(phone)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Check code
+        if not user.pending_code:
+            raise HTTPException(status_code=400, detail="No pending code")
+
+        if user.pending_code != code:
+            raise HTTPException(status_code=400, detail="Invalid code")
+
+        if user.pending_code_expires and user.pending_code_expires < datetime.now():
+            raise HTTPException(status_code=400, detail="Code expired")
+
+        if user.pending_session_id != session_id:
+            raise HTTPException(status_code=400, detail="Code not for this session")
+
+        # Success! Clear code and increment counter
+        user.pending_code = None
+        user.pending_code_expires = None
+        user.pending_session_id = None
+        user.free_bills_used += 1
+        user.last_active = datetime.now()
+        Database.save_user(user)
+
+        return {
+            "status": "verified",
+            "message": "Code verified successfully",
+            "free_remaining": FREE_SESSIONS_LIMIT - user.free_bills_used
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/editor/status")
+async def get_editor_status(phone: str, session_id: str):
+    """
+    Check editor status for a session.
+    Returns: premium, free (with remaining count), or paywall
+    """
+    try:
+        # Normalize phone
+        phone = phone.replace(" ", "").replace("-", "")
+        if not phone.startswith("+"):
+            phone = "+" + phone
+
+        user = Database.get_user(phone)
+
+        if not user:
+            # New user - has free sessions
+            return {
+                "status": "needs_code",
+                "free_remaining": FREE_SESSIONS_LIMIT,
+                "is_premium": False
+            }
+
+        # Check premium
+        if user.is_premium:
+            if user.premium_until and user.premium_until > datetime.now():
+                return {
+                    "status": "premium",
+                    "is_premium": True
+                }
+
+        # Check free sessions
+        if user.free_bills_used >= FREE_SESSIONS_LIMIT:
+            return {
+                "status": "paywall",
+                "free_remaining": 0,
+                "is_premium": False
+            }
+
+        return {
+            "status": "needs_code",
+            "free_remaining": FREE_SESSIONS_LIMIT - user.free_bills_used,
+            "is_premium": False
+        }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

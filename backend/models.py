@@ -44,13 +44,17 @@ class SessionData(BaseModel):
 class UserProfile(BaseModel):
     phone: str
     created_at: datetime = Field(default_factory=datetime.now)
-    free_bills_used: int = 0
+    free_bills_used: int = 0  # For editors: counts sessions joined
     is_premium: bool = False
     premium_until: Optional[datetime] = None
     pricing_variant: PricingVariant
     country_code: Optional[str] = None
     total_bills_divided: int = 0
     last_active: datetime = Field(default_factory=datetime.now)
+    # Editor verification
+    pending_code: Optional[str] = None  # 6-digit code
+    pending_code_expires: Optional[datetime] = None
+    pending_session_id: Optional[str] = None  # Session they're trying to join
 
 class ConversionEvent(BaseModel):
     phone: str

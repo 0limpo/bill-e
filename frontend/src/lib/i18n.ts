@@ -89,6 +89,30 @@ export const translations: Record<Language, Record<string, string>> = {
     "join.newName": "Únete con otro nombre",
     "join.joinNew": "Unirme",
 
+    // Editor phone verification
+    "phoneVerify.title": "Verifica tu número",
+    "phoneVerify.subtitle": "Ingresa tu número de WhatsApp para continuar",
+    "phoneVerify.phone": "Número de WhatsApp",
+    "phoneVerify.phonePlaceholder": "+56 9 1234 5678",
+    "phoneVerify.sendCode": "Enviar código",
+    "phoneVerify.codeSent": "Te enviamos un código por WhatsApp",
+    "phoneVerify.enterCode": "Ingresa el código",
+    "phoneVerify.codePlaceholder": "123456",
+    "phoneVerify.verifyCode": "Verificar",
+    "phoneVerify.freeRemaining": "Te quedan {count} sesiones gratis",
+    "phoneVerify.resendCode": "Reenviar código",
+    "phoneVerify.invalidCode": "Código inválido",
+    "phoneVerify.codeExpired": "Código expirado",
+
+    // Paywall
+    "paywall.title": "Sesiones gratis agotadas",
+    "paywall.subtitle": "Has usado tus 2 sesiones gratis",
+    "paywall.unlock": "Desbloquea acceso ilimitado",
+    "paywall.price": "Por solo $990 CLP",
+    "paywall.benefits": "• Únete a todas las cuentas que quieras\n• Sin códigos de verificación\n• Acceso de por vida",
+    "paywall.pay": "Pagar ahora",
+    "paywall.later": "Quizás después",
+
     // Editor (participant view)
     "editor.hostVerifying": "El host está verificando la cuenta. Puedes ver los items mientras esperas.",
     "editor.hostReady": "El host terminó de verificar. ¡Puedes asignar items!",
@@ -189,6 +213,30 @@ export const translations: Record<Language, Record<string, string>> = {
     "join.or": "or",
     "join.newName": "Join with a different name",
     "join.joinNew": "Join",
+
+    // Editor phone verification
+    "phoneVerify.title": "Verify your number",
+    "phoneVerify.subtitle": "Enter your WhatsApp number to continue",
+    "phoneVerify.phone": "WhatsApp number",
+    "phoneVerify.phonePlaceholder": "+1 234 567 8900",
+    "phoneVerify.sendCode": "Send code",
+    "phoneVerify.codeSent": "We sent you a code via WhatsApp",
+    "phoneVerify.enterCode": "Enter the code",
+    "phoneVerify.codePlaceholder": "123456",
+    "phoneVerify.verifyCode": "Verify",
+    "phoneVerify.freeRemaining": "You have {count} free sessions left",
+    "phoneVerify.resendCode": "Resend code",
+    "phoneVerify.invalidCode": "Invalid code",
+    "phoneVerify.codeExpired": "Code expired",
+
+    // Paywall
+    "paywall.title": "Free sessions used up",
+    "paywall.subtitle": "You've used your 2 free sessions",
+    "paywall.unlock": "Unlock unlimited access",
+    "paywall.price": "For only $0.99 USD",
+    "paywall.benefits": "• Join all the bills you want\n• No verification codes\n• Lifetime access",
+    "paywall.pay": "Pay now",
+    "paywall.later": "Maybe later",
 
     // Editor (participant view)
     "editor.hostVerifying": "The host is verifying the bill. You can see the items while you wait.",

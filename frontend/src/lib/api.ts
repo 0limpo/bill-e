@@ -456,3 +456,62 @@ export function createPollingController(
     },
   };
 }
+
+// --- Editor Verification Endpoints ---
+
+export interface EditorStatusResponse {
+  status: "premium" | "needs_code" | "paywall";
+  free_remaining?: number;
+  is_premium: boolean;
+}
+
+export interface RequestCodeResponse {
+  status: "premium" | "code_sent" | "paywall";
+  message: string;
+  free_remaining?: number;
+}
+
+export interface VerifyCodeResponse {
+  status: "verified";
+  message: string;
+  free_remaining: number;
+}
+
+/**
+ * Check editor status (premium, needs code, or paywall)
+ */
+export async function getEditorStatus(
+  phone: string,
+  sessionId: string
+): Promise<EditorStatusResponse> {
+  return apiRequest<EditorStatusResponse>(
+    `/api/editor/status?phone=${encodeURIComponent(phone)}&session_id=${sessionId}`
+  );
+}
+
+/**
+ * Request verification code via WhatsApp
+ */
+export async function requestEditorCode(
+  phone: string,
+  sessionId: string
+): Promise<RequestCodeResponse> {
+  return apiRequest<RequestCodeResponse>("/api/editor/request-code", {
+    method: "POST",
+    body: JSON.stringify({ phone, session_id: sessionId }),
+  });
+}
+
+/**
+ * Verify the code received via WhatsApp
+ */
+export async function verifyEditorCode(
+  phone: string,
+  code: string,
+  sessionId: string
+): Promise<VerifyCodeResponse> {
+  return apiRequest<VerifyCodeResponse>("/api/editor/verify-code", {
+    method: "POST",
+    body: JSON.stringify({ phone, code, session_id: sessionId }),
+  });
+}
