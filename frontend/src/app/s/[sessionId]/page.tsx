@@ -454,9 +454,10 @@ export default function SessionPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-3">
-          <div className="relative flex items-center justify-end min-h-[72px]">
-            {/* Stepper - absolutely centered */}
-            <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
+          <div className="flex items-center">
+            {/* Stepper container - takes remaining space, centers content */}
+            <div className="flex-1 flex justify-center">
+              <div className="flex items-center">
               {[
                 { num: 1, label: t("steps.review") },
                 { num: 2, label: t("steps.assign") },
@@ -503,10 +504,11 @@ export default function SessionPage() {
                   )}
                 </div>
               ))}
+              </div>
             </div>
 
             {/* Right column: Language + Role + Sessions */}
-            <div className="flex flex-col items-end gap-0.5 z-10">
+            <div className="flex flex-col items-end gap-0.5">
               <button
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setLang(lang === "es" ? "en" : "es")}
