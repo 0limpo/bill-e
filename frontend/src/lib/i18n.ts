@@ -107,10 +107,13 @@ export const translations: Record<Language, Record<string, string>> = {
     // Paywall
     "paywall.title": "Sesiones gratis agotadas",
     "paywall.subtitle": "Has usado tus 2 sesiones gratis",
-    "paywall.unlock": "Desbloquea acceso ilimitado",
-    "paywall.price": "Por solo $990 CLP",
-    "paywall.benefits": "• Únete a todas las cuentas que quieras\n• Sin códigos de verificación\n• Acceso de por vida",
-    "paywall.pay": "Pagar ahora",
+    "paywall.packageName": "Pack Bill-e",
+    "paywall.bestValue": "Mejor valor",
+    "paywall.hostSessions": "20 sesiones como anfitrión",
+    "paywall.editorSessions": "30 sesiones como invitado",
+    "paywall.noExpiry": "Sin fecha de expiración",
+    "paywall.pay": "Comprar pack",
+    "paywall.comingSoon": "Próximamente",
     "paywall.later": "Quizás después",
 
     // Editor (participant view)
@@ -232,10 +235,13 @@ export const translations: Record<Language, Record<string, string>> = {
     // Paywall
     "paywall.title": "Free sessions used up",
     "paywall.subtitle": "You've used your 2 free sessions",
-    "paywall.unlock": "Unlock unlimited access",
-    "paywall.price": "For only $0.99 USD",
-    "paywall.benefits": "• Join all the bills you want\n• No verification codes\n• Lifetime access",
-    "paywall.pay": "Pay now",
+    "paywall.packageName": "Bill-e Pack",
+    "paywall.bestValue": "Best value",
+    "paywall.hostSessions": "20 sessions as host",
+    "paywall.editorSessions": "30 sessions as guest",
+    "paywall.noExpiry": "No expiration date",
+    "paywall.pay": "Buy pack",
+    "paywall.comingSoon": "Coming soon",
     "paywall.later": "Maybe later",
 
     // Editor (participant view)
