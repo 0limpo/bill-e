@@ -455,8 +455,8 @@ export default function SessionPage() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Left spacer - matches right column width */}
-            <div className="w-10" />
+            {/* Left column - flex-1 for balanced centering */}
+            <div className="flex-1" />
 
             {/* Stepper */}
             <div className="flex items-center">
@@ -509,7 +509,7 @@ export default function SessionPage() {
             </div>
 
             {/* Right column: Language + Role + Sessions */}
-            <div className="flex flex-col items-end gap-0.5 min-w-10">
+            <div className="flex-1 flex flex-col items-end gap-0.5">
               <button
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setLang(lang === "es" ? "en" : "es")}
