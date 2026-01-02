@@ -51,6 +51,7 @@ try:
         create_collaborative_session,
         get_session as get_collab_session,
         verify_owner,
+        verify_owner_device,
         add_participant,
         update_assignment,
         finalize_session,
@@ -428,14 +429,27 @@ async def create_collaborative_session_endpoint(request: Request):
 
 
 @app.get("/api/session/{session_id}/collaborative")
-async def get_collaborative_session(session_id: str, owner: str = None):
+async def get_collaborative_session(session_id: str, owner: str = None, device_id: str = None):
     try:
         session_data = get_collab_session(redis_client, session_id)
 
         if not session_data:
             raise HTTPException(status_code=404, detail="Sesion no encontrada o expirada")
 
-        is_owner = owner and verify_owner(session_data, owner)
+        is_owner = False
+        if owner:
+            # If device_id provided, use strict device verification
+            if device_id:
+                device_result = verify_owner_device(redis_client, session_id, session_data, owner, device_id)
+                if not device_result["valid"]:
+                    if device_result["error"] == "device_mismatch":
+                        raise HTTPException(status_code=403, detail="session_active_elsewhere")
+                    else:
+                        raise HTTPException(status_code=403, detail="No autorizado")
+                is_owner = True
+            else:
+                # Legacy: no device_id, just verify token
+                is_owner = verify_owner(session_data, owner)
 
         response = {
             "session_id": session_id,

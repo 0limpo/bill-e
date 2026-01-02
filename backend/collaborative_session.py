@@ -104,6 +104,48 @@ def verify_owner(session_data: Dict, owner_token: str) -> bool:
     return session_data.get("owner_token") == owner_token
 
 
+def verify_owner_device(
+    redis_client,
+    session_id: str,
+    session_data: Dict,
+    owner_token: str,
+    device_id: str
+) -> Dict[str, Any]:
+    """
+    Verify owner token and device_id.
+    Returns {"valid": True} if OK, or {"valid": False, "error": "..."} if not.
+
+    On first access, registers the device_id.
+    On subsequent access, checks if device_id matches.
+    """
+    # First verify the owner token
+    if not verify_owner(session_data, owner_token):
+        return {"valid": False, "error": "invalid_token"}
+
+    # Check device_id
+    current_device = session_data.get("owner_device_id")
+
+    if current_device is None:
+        # First access - register this device
+        session_data["owner_device_id"] = device_id
+        session_data["last_updated"] = datetime.now().isoformat()
+
+        # Save to Redis
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"valid": True, "registered": True}
+
+    elif current_device == device_id:
+        # Same device - OK
+        return {"valid": True}
+
+    else:
+        # Different device - reject
+        return {"valid": False, "error": "device_mismatch"}
+
+
 def add_participant(
     redis_client,
     session_id: str,

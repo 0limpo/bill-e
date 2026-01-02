@@ -201,11 +201,21 @@ export default function SessionPage() {
 
   // Error
   if (error) {
+    const isDeviceMismatch = error.includes("session_active_elsewhere");
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="text-center">
-          <p className="text-destructive text-lg mb-4">{error}</p>
-          <Button onClick={() => window.location.reload()}>Reintentar</Button>
+        <div className="text-center max-w-sm">
+          {isDeviceMismatch ? (
+            <>
+              <div className="text-5xl mb-4">📱</div>
+              <h2 className="text-xl font-bold mb-2">{t("error.sessionActiveElsewhere")}</h2>
+              <p className="text-muted-foreground mb-6">{t("error.sessionActiveElsewhereDesc")}</p>
+            </>
+          ) : (
+            <p className="text-destructive text-lg mb-4">{error}</p>
+          )}
+          <Button onClick={() => window.location.reload()}>{t("error.retry")}</Button>
         </div>
       </div>
     );

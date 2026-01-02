@@ -80,6 +80,19 @@ export interface PollResponse {
 
 // --- Helper ---
 
+/**
+ * Get or create a unique device ID for this browser
+ */
+export function getDeviceId(): string {
+  const DEVICE_ID_KEY = "bill-e-device-id";
+  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, deviceId);
+  }
+  return deviceId;
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -109,9 +122,11 @@ export async function loadSession(
   sessionId: string,
   ownerToken?: string
 ): Promise<SessionResponse> {
-  const url = ownerToken
-    ? `/api/session/${sessionId}/collaborative?owner=${ownerToken}`
-    : `/api/session/${sessionId}/collaborative`;
+  let url = `/api/session/${sessionId}/collaborative`;
+  if (ownerToken) {
+    const deviceId = getDeviceId();
+    url += `?owner=${ownerToken}&device_id=${deviceId}`;
+  }
   return apiRequest<SessionResponse>(url);
 }
 

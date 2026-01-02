@@ -102,6 +102,9 @@ export const translations: Record<Language, Record<string, string>> = {
     // Errors
     "error.noItems": "No hay items",
     "error.noParticipants": "Agrega personas primero",
+    "error.sessionActiveElsewhere": "Sesión activa en otro dispositivo",
+    "error.sessionActiveElsewhereDesc": "El link de anfitrión solo puede usarse en un dispositivo a la vez. Cierra la sesión en el otro dispositivo para continuar aquí.",
+    "error.retry": "Reintentar",
   },
   en: {
     // App
@@ -199,6 +202,9 @@ export const translations: Record<Language, Record<string, string>> = {
     // Errors
     "error.noItems": "No items",
     "error.noParticipants": "Add people first",
+    "error.sessionActiveElsewhere": "Session active on another device",
+    "error.sessionActiveElsewhereDesc": "The host link can only be used on one device at a time. Close the session on the other device to continue here.",
+    "error.retry": "Retry",
   },
 };
 
