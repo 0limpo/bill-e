@@ -208,14 +208,19 @@ export default function SessionPage() {
         <div className="text-center max-w-sm">
           {isDeviceMismatch ? (
             <>
-              <div className="text-5xl mb-4">📱</div>
+              <div className="text-5xl mb-4">🔒</div>
               <h2 className="text-xl font-bold mb-2">{t("error.sessionActiveElsewhere")}</h2>
               <p className="text-muted-foreground mb-6">{t("error.sessionActiveElsewhereDesc")}</p>
+              <Button onClick={() => window.location.href = `/s/${sessionId}`}>
+                {t("error.joinAsGuest")}
+              </Button>
             </>
           ) : (
-            <p className="text-destructive text-lg mb-4">{error}</p>
+            <>
+              <p className="text-destructive text-lg mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>{t("error.retry")}</Button>
+            </>
           )}
-          <Button onClick={() => window.location.reload()}>{t("error.retry")}</Button>
         </div>
       </div>
     );
