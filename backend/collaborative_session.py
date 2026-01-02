@@ -298,7 +298,7 @@ def set_editor_premium(
 
 # --- Host Session Tracking (by phone number) ---
 
-HOST_FREE_SESSIONS = 2  # Free sessions before paywall
+HOST_FREE_SESSIONS = 1  # Free sessions before paywall
 
 
 def check_host_session_limit(

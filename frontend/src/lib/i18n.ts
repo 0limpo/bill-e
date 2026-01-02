@@ -106,11 +106,11 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Paywall
     "paywall.title": "Sesiones gratis agotadas",
-    "paywall.subtitle": "Has usado tus 2 sesiones gratis",
+    "paywall.subtitle": "Has usado tus sesiones gratis",
     "paywall.packageName": "Pack Bill-e",
     "paywall.bestValue": "Mejor valor",
     "paywall.hostSessions": "20 sesiones como anfitrión",
-    "paywall.editorSessions": "30 sesiones como invitado",
+    "paywall.editorSessions": "Ilimitado como invitado",
     "paywall.expiry": "Válido por 1 año",
     "paywall.pay": "Comprar pack",
     "paywall.comingSoon": "Próximamente",
@@ -234,11 +234,11 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Paywall
     "paywall.title": "Free sessions used up",
-    "paywall.subtitle": "You've used your 2 free sessions",
+    "paywall.subtitle": "You've used your free sessions",
     "paywall.packageName": "Bill-e Pack",
     "paywall.bestValue": "Best value",
     "paywall.hostSessions": "20 sessions as host",
-    "paywall.editorSessions": "30 sessions as guest",
+    "paywall.editorSessions": "Unlimited as guest",
     "paywall.expiry": "Valid for 1 year",
     "paywall.pay": "Buy pack",
     "paywall.comingSoon": "Coming soon",
