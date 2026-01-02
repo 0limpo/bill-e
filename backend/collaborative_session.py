@@ -180,11 +180,29 @@ def check_editor_device_limit(
     device_data = json.loads(device_data_json) if device_data_json else {}
 
     if device_data.get("is_premium"):
-        return {
-            "allowed": True,
-            "sessions_used": len(sessions),
-            "is_premium": True
-        }
+        # Check if premium has expired
+        premium_expires = device_data.get("premium_expires")
+        if premium_expires:
+            expiry_date = datetime.fromisoformat(premium_expires)
+            if datetime.now() > expiry_date:
+                # Premium expired - treat as free user
+                pass
+            else:
+                # Premium active - unlimited sessions
+                return {
+                    "allowed": True,
+                    "sessions_used": len(sessions),
+                    "is_premium": True,
+                    "unlimited": True
+                }
+        else:
+            # No expiry set (legacy) - allow
+            return {
+                "allowed": True,
+                "sessions_used": len(sessions),
+                "is_premium": True,
+                "unlimited": True
+            }
 
     # Check limit
     if len(sessions) >= EDITOR_FREE_SESSIONS:
@@ -210,6 +228,7 @@ def register_editor_session(
     """
     Register a session for an editor device.
     Call this after successfully joining a session.
+    For premium users, still track for analytics but return unlimited.
     """
     device_key = f"editor_device:{device_id}"
 
@@ -217,11 +236,28 @@ def register_editor_session(
     sessions_json = redis_client.get(device_key)
     sessions = json.loads(sessions_json) if sessions_json else []
 
-    # Add session if not already present
+    # Add session if not already present (track for analytics)
     if session_id not in sessions:
         sessions.append(session_id)
         # Store permanently (no TTL)
         redis_client.set(device_key, json.dumps(sessions))
+
+    # Check if premium (for return value)
+    device_data_key = f"editor_device_data:{device_id}"
+    device_data_json = redis_client.get(device_data_key)
+    device_data = json.loads(device_data_json) if device_data_json else {}
+
+    if device_data.get("is_premium"):
+        # Check expiry
+        premium_expires = device_data.get("premium_expires")
+        if premium_expires:
+            expiry_date = datetime.fromisoformat(premium_expires)
+            if datetime.now() <= expiry_date:
+                return {
+                    "sessions_used": len(sessions),
+                    "unlimited": True,
+                    "is_premium": True
+                }
 
     return {
         "sessions_used": len(sessions),
@@ -236,18 +272,28 @@ def set_editor_premium(
 ) -> Dict[str, Any]:
     """
     Mark an editor device as premium (after payment).
+    Premium lasts 1 year with unlimited editor sessions.
     """
     device_data_key = f"editor_device_data:{device_id}"
+
+    # Set expiry to 1 year from now
+    expiry = (datetime.now() + timedelta(days=365)).isoformat()
 
     device_data = {
         "is_premium": True,
         "premium_since": datetime.now().isoformat(),
+        "premium_expires": expiry,
         "phone": phone
     }
 
     redis_client.set(device_data_key, json.dumps(device_data))
 
-    return {"success": True, "is_premium": True}
+    return {
+        "success": True,
+        "is_premium": True,
+        "unlimited": True,
+        "expires": expiry
+    }
 
 
 # --- Host Session Tracking (by phone number) ---
