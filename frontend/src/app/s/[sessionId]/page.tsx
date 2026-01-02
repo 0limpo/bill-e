@@ -18,8 +18,10 @@ export default function SessionPage() {
 
   const sessionId = params.sessionId as string;
   const ownerToken = searchParams.get("owner");
+  const viewMode = searchParams.get("view");
+  const isViewOnly = viewMode === "results";
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(isViewOnly ? 3 : 1);
   const [lang, setLang] = useState<Language>("es");
   const [joinName, setJoinName] = useState("");
   const [joining, setJoining] = useState(false);
@@ -235,8 +237,8 @@ export default function SessionPage() {
     );
   }
 
-  // Need to join (not owner and no current participant)
-  if (!isOwner && !currentParticipant) {
+  // Need to join (not owner and no current participant, unless view-only mode)
+  if (!isOwner && !currentParticipant && !isViewOnly) {
     // Filter out the owner from selectable participants (editors only)
     const selectableParticipants = (session?.participants || []).filter((p) => p.role !== "owner");
 

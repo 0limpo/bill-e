@@ -131,7 +131,7 @@ export function StepShare({
     message += `\n💰 *Total: ${fmt(totalAmount)}*\n\n`;
 
     if (sessionId) {
-      message += `🔗 Ver detalle:\n${frontendUrl}/s/${sessionId}\n\n`;
+      message += `🔗 Ver detalle:\n${frontendUrl}/s/${sessionId}?view=results\n\n`;
     }
 
     message += `━━━━━━━━━━━━━━━━━━\n`;
