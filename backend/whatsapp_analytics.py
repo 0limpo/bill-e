@@ -490,9 +490,10 @@ class WhatsAppAnalytics:
             ocr_requests = int(self.redis.get(f"whatsapp:ocr:total:{date}") or 0)
             ocr_cost = ocr_requests * 0.0015
 
-            # WhatsApp costs (estimate $0.005 per message, 2 messages per flow)
+            # WhatsApp Business API Chile: ~$0.0088 USD per utility/user-initiated message
+            # Estimate 2 messages per flow (receipt response + session link)
             messages = ocr_requests * 2  # Approx
-            whatsapp_cost = messages * 0.005
+            whatsapp_cost = messages * 0.0088
 
             total_cost += (ocr_cost + whatsapp_cost)
 

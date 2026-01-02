@@ -708,12 +708,12 @@ async def send_whatsapp_message(phone_number: str, message: str):
             if success:
                 print(f"✅ Mensaje enviado a {phone_number}")
 
-                # Track cost (WhatsApp pricing: ~$0.005 per message for user-initiated)
+                # Track cost (WhatsApp Business API Chile: ~$0.0088 USD per utility message)
                 if analytics_available:
                     analytics.track_cost(
                         service='whatsapp',
                         operation='send_message',
-                        cost_usd=0.005,
+                        cost_usd=0.0088,
                         units=1
                     )
             else:
