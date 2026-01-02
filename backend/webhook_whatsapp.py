@@ -393,14 +393,14 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
         'confidence': bill_data.get('confidence', 'medium')
     }
 
-    # Guardar en Redis con TTL de 2 horas
+    # Guardar en Redis con TTL de 24 horas
     try:
         redis_client.setex(
             f"session:{session_id}",
-            7200,  # 2 horas
+            86400,  # 24 horas
             json.dumps(session_data)
         )
-        print(f"✅ Sesión creada: {session_id} (2 horas TTL)")
+        print(f"✅ Sesión creada: {session_id} (24 horas TTL)")
     except Exception as e:
         print(f"❌ Error guardando sesión: {str(e)}")
         raise
@@ -506,7 +506,7 @@ def format_success_message_simple(ocr_result: dict, session_id: str) -> str:
     message += f"{frontend_url}/s/{session_id}\n\n"
 
     # Footer
-    message += f"⏰ Link válido por 2 horas"
+    message += f"⏰ Link válido por 24 horas"
 
     return message
 
