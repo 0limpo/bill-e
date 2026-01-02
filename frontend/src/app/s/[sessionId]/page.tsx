@@ -525,8 +525,8 @@ export default function SessionPage() {
                   {/* Step */}
                   <button
                     className="flex flex-col items-center gap-1.5"
-                    onClick={() => s.num <= step && goToStep(s.num)}
-                    disabled={s.num > step}
+                    onClick={() => !isViewOnly && s.num <= step && goToStep(s.num)}
+                    disabled={isViewOnly || s.num > step}
                   >
                     {/* Circle */}
                     <span
@@ -752,7 +752,7 @@ export default function SessionPage() {
             charges={charges}
             participants={participants}
             assignments={assignments}
-            onBack={() => goToStep(2)}
+            onBack={isViewOnly ? undefined : () => goToStep(2)}
             t={t}
             isOwner={isOwner}
             sessionId={sessionId}
