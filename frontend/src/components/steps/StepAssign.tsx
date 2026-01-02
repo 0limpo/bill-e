@@ -482,9 +482,9 @@ export function StepAssign({
                 onClick={() => setExpandedItemId(isExpanded ? null : itemId)}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <ChevronDown className={`w-4 h-4 transition-transform ${isComplete ? "text-muted-foreground/50" : "text-muted-foreground"} ${isExpanded ? "" : "-rotate-90"}`} />
-                  <span className={`font-semibold tabular-nums ${isComplete ? "text-muted-foreground" : "text-primary"}`}>{itemQty}</span>
-                  <span className={`font-normal truncate text-left ${isComplete ? "text-muted-foreground" : "text-foreground"}`}>{item.name}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isComplete ? "text-muted-foreground/40" : "text-muted-foreground"} ${isExpanded ? "" : "-rotate-90"}`} />
+                  <span className={`font-semibold tabular-nums ${isComplete ? "text-muted-foreground/60" : "text-primary"}`}>{itemQty}</span>
+                  <span className={`font-normal truncate text-left ${isComplete ? "text-muted-foreground/60" : "text-foreground"}`}>{item.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   {/* Mini-avatars of assigned participants (only when collapsed) */}
@@ -510,7 +510,7 @@ export function StepAssign({
                     </div>
                   )}
                   <span
-                    className={`font-semibold tabular-nums text-right ${isComplete ? "text-muted-foreground" : "text-foreground"}`}
+                    className={`font-semibold tabular-nums text-right ${isComplete ? "text-muted-foreground/60" : "text-foreground"}`}
                     style={{ minWidth: priceWidth }}
                   >{fmt(totalPrice)}</span>
                 </div>
