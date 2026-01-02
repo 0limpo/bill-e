@@ -154,7 +154,7 @@ export function StepShare({
           return (
             <div
               key={p.id}
-              className="rounded-xl bg-secondary/40 transition-colors"
+              className="rounded-xl bg-card transition-colors"
             >
               {/* Participant Row */}
               <button

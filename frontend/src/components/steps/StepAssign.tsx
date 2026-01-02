@@ -285,7 +285,7 @@ export function StepAssign({
     <div className="step-animate">
       {/* Add Participant Input (expanded) */}
       {isOwner && showAddParticipant && (
-        <div className="mb-4 p-3 bg-secondary/50 rounded-xl">
+        <div className="mb-4 p-3 bg-card rounded-xl">
           <div className="flex gap-2">
             <input
               type="text"
@@ -405,7 +405,7 @@ export function StepAssign({
 
       {/* Progress Indicator */}
       {!isAllAssigned && (
-        <div className="mb-4 py-3 px-4 bg-secondary/50 rounded-xl">
+        <div className="mb-4 py-3 px-4 bg-card rounded-xl">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">{t("assign.remaining")}</span>
             <span className="font-semibold text-foreground">{fmt(remainingAmount)}</span>

@@ -70,7 +70,7 @@
 /* Style: Samsung/Google - gray background, white cards */
 @media (prefers-color-scheme: light) {
   :root {
-    --background: #DEDEDE;         /* More contrast with white cards */
+    --background: #EFEFEF;         /* Soft gray background */
     --foreground: #121214;
     --card: #FFFFFF;               /* White cards */
     --card-foreground: #121214;
@@ -78,7 +78,7 @@
     --primary-foreground: #FFFFFF;
     --secondary: #FFFFFF;          /* White for bg-secondary sections */
     --secondary-foreground: #121214;
-    --muted: #DEDEDE;
+    --muted: #EFEFEF;
     --muted-foreground: #6B7280;
     --accent: #FFFFFF;             /* White for accents */
     --accent-foreground: #121214;
@@ -116,7 +116,7 @@
 }
 
 .light {
-  --background: #DEDEDE;
+  --background: #EFEFEF;
   --foreground: #121214;
   --card: #FFFFFF;
   --card-foreground: #121214;
@@ -124,7 +124,7 @@
   --primary-foreground: #FFFFFF;
   --secondary: #FFFFFF;
   --secondary-foreground: #121214;
-  --muted: #DEDEDE;
+  --muted: #EFEFEF;
   --muted-foreground: #6B7280;
   --accent: #FFFFFF;
   --accent-foreground: #121214;
