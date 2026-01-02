@@ -491,6 +491,11 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
                 response["host_sessions_used"] = host_limit_info.get("sessions_used", 0)
                 response["host_sessions_limit"] = HOST_FREE_SESSIONS
                 response["host_is_premium"] = host_limit_info.get("is_premium", False)
+            else:
+                # No phone - show default (0/1) for free users
+                response["host_sessions_used"] = 0
+                response["host_sessions_limit"] = HOST_FREE_SESSIONS
+                response["host_is_premium"] = False
 
             if session_data["status"] == SessionStatus.FINALIZED.value:
                 response["totals"] = session_data.get("totals", [])
