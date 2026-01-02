@@ -58,6 +58,8 @@ try:
         finalize_session,
         calculate_totals,
         get_participant_summary,
+        check_host_session_limit,
+        HOST_FREE_SESSIONS,
         SessionStatus
     )
     collaborative_available = True
@@ -481,6 +483,14 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
             response["subtotal"] = session_data["subtotal"]
             response["tip"] = session_data["tip"]
             response["owner_phone"] = session_data.get("owner_phone")
+
+            # Include host session count info
+            owner_phone = session_data.get("owner_phone")
+            if owner_phone:
+                host_limit_info = check_host_session_limit(redis_client, owner_phone, session_id)
+                response["host_sessions_used"] = host_limit_info.get("sessions_used", 0)
+                response["host_sessions_limit"] = HOST_FREE_SESSIONS
+                response["host_is_premium"] = host_limit_info.get("is_premium", False)
 
             if session_data["status"] == SessionStatus.FINALIZED.value:
                 response["totals"] = session_data.get("totals", [])

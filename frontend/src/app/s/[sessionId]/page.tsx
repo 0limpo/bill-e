@@ -453,7 +453,7 @@ export default function SessionPage() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-4">
+        <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Left spacer - matches right column width */}
             <div className="w-10" />
@@ -474,7 +474,7 @@ export default function SessionPage() {
                   >
                     {/* Circle */}
                     <span
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-base font-bold transition-all ${
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all ${
                         s.num === step
                           ? "bg-primary text-white shadow-[0_0_0_4px_rgba(59,130,246,0.2)]"
                           : s.num < step
@@ -486,7 +486,7 @@ export default function SessionPage() {
                     </span>
                     {/* Label */}
                     <span
-                      className={`text-sm font-medium flex items-center gap-1 ${
+                      className={`text-base font-medium flex items-center gap-1 ${
                         s.num === step
                           ? "text-foreground"
                           : "text-muted-foreground"
@@ -508,8 +508,8 @@ export default function SessionPage() {
               ))}
             </div>
 
-            {/* Right column: Language + Role */}
-            <div className="flex flex-col items-end gap-1 w-10">
+            {/* Right column: Language + Role + Sessions */}
+            <div className="flex flex-col items-end gap-0.5 min-w-10">
               <button
                 className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                 onClick={() => setLang(lang === "es" ? "en" : "es")}
@@ -519,6 +519,14 @@ export default function SessionPage() {
               <span className="text-xs text-primary/60">
                 {isOwner ? "Host" : currentParticipant?.name || "Editor"}
               </span>
+              {isOwner && session?.host_sessions_limit && !session?.host_is_premium && (
+                <span className="text-[10px] text-muted-foreground/60">
+                  {session.host_sessions_used}/{session.host_sessions_limit}
+                </span>
+              )}
+              {isOwner && session?.host_is_premium && (
+                <span className="text-[10px] text-primary/60">Premium</span>
+              )}
             </div>
           </div>
         </div>

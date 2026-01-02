@@ -28,6 +28,10 @@ export interface SessionResponse {
   tip_value?: number;
   tip_percentage?: number;
   has_tip?: boolean;
+  // Host session tracking (only for owners)
+  host_sessions_used?: number;
+  host_sessions_limit?: number;
+  host_is_premium?: boolean;
 }
 
 export interface ApiParticipant {
