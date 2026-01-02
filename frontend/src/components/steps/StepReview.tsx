@@ -232,7 +232,7 @@ export function StepReview({
   return (
     <div className="step-animate" ref={containerRef} onClick={handleBackgroundClick}>
       {/* Items Section - Gray Box */}
-      <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
+      <div className="bg-card rounded-2xl p-4 mb-4">
         {items.map((item) => {
           const itemId = item.id || item.name;
           const qty = item.quantity || 1;
@@ -335,7 +335,7 @@ export function StepReview({
       </div>
 
       {/* Charges Section - Gray Box */}
-      <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
+      <div className="bg-card rounded-2xl p-4 mb-4">
         <div className="mb-2">
           <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
         </div>
@@ -371,7 +371,7 @@ export function StepReview({
 
               {/* Expanded options */}
               {isExpanded && (
-                <div className="bg-secondary/30 rounded-xl p-3 mb-2">
+                <div className="bg-card rounded-xl p-3 mb-2">
                   {/* Name + Value */}
                   <div className="flex items-center gap-2 mb-3">
                     <input
@@ -491,7 +491,7 @@ export function StepReview({
 
       {/* Verification Section - Gray Box */}
       {hasVerificationData && (
-        <div className={`rounded-2xl p-4 mb-4 ${isMatch ? "bg-green-500/10" : "bg-secondary/30"}`}>
+        <div className={`rounded-2xl p-4 mb-4 ${isMatch ? "bg-green-500/10" : "bg-card"}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-xs text-foreground uppercase tracking-wide">{t("verify.title")}</span>

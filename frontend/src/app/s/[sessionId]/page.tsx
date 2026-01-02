@@ -566,7 +566,7 @@ export default function SessionPage() {
             </div>
 
             {/* Read-only items list */}
-            <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
+            <div className="bg-card rounded-2xl p-4 mb-4">
               {items.length === 0 ? (
                 <p className="text-center text-muted-foreground py-4">
                   {t("editor.noItemsYet")}
@@ -601,7 +601,7 @@ export default function SessionPage() {
 
             {/* Charges (read-only) */}
             {charges.length > 0 && (
-              <div className="bg-secondary/30 rounded-2xl p-4 mb-4">
+              <div className="bg-card rounded-2xl p-4 mb-4">
                 <div className="mb-2">
                   <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
                 </div>
