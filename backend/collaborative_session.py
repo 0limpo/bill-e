@@ -250,6 +250,149 @@ def set_editor_premium(
     return {"success": True, "is_premium": True}
 
 
+# --- Host Session Tracking (by phone number) ---
+
+HOST_FREE_SESSIONS = 2  # Free sessions before paywall
+
+
+def check_host_session_limit(
+    redis_client,
+    phone: str,
+    session_id: str
+) -> Dict[str, Any]:
+    """
+    Check if host phone has exceeded free session limit.
+    Returns {"allowed": True, "sessions_used": N} if OK.
+    Returns {"allowed": False, "sessions_used": N, "limit_reached": True} if limit exceeded.
+    """
+    # Normalize phone number
+    phone_normalized = re.sub(r'[^\d]', '', phone)
+    host_key = f"host_phone:{phone_normalized}"
+
+    # Get current sessions for this phone
+    sessions_json = redis_client.get(host_key)
+    sessions = json.loads(sessions_json) if sessions_json else []
+
+    # Already finalized this session? Always allow (re-finalize)
+    if session_id in sessions:
+        return {
+            "allowed": True,
+            "sessions_used": len(sessions),
+            "is_returning": True
+        }
+
+    # Check if premium (stored in host data)
+    host_data_key = f"host_phone_data:{phone_normalized}"
+    host_data_json = redis_client.get(host_data_key)
+    host_data = json.loads(host_data_json) if host_data_json else {}
+
+    if host_data.get("is_premium"):
+        # Check remaining premium sessions
+        premium_sessions_remaining = host_data.get("sessions_remaining", 0)
+        if premium_sessions_remaining > 0:
+            return {
+                "allowed": True,
+                "sessions_used": len(sessions),
+                "is_premium": True,
+                "premium_remaining": premium_sessions_remaining
+            }
+        # Premium expired (no sessions left)
+        return {
+            "allowed": False,
+            "sessions_used": len(sessions),
+            "premium_expired": True
+        }
+
+    # Check free limit
+    if len(sessions) >= HOST_FREE_SESSIONS:
+        return {
+            "allowed": False,
+            "sessions_used": len(sessions),
+            "limit_reached": True,
+            "free_limit": HOST_FREE_SESSIONS
+        }
+
+    return {
+        "allowed": True,
+        "sessions_used": len(sessions),
+        "remaining": HOST_FREE_SESSIONS - len(sessions)
+    }
+
+
+def register_host_session(
+    redis_client,
+    phone: str,
+    session_id: str
+) -> Dict[str, Any]:
+    """
+    Register a session for a host phone.
+    Call this after successfully finalizing a session.
+    """
+    # Normalize phone number
+    phone_normalized = re.sub(r'[^\d]', '', phone)
+    host_key = f"host_phone:{phone_normalized}"
+
+    # Get current sessions
+    sessions_json = redis_client.get(host_key)
+    sessions = json.loads(sessions_json) if sessions_json else []
+
+    # Add session if not already present
+    if session_id not in sessions:
+        sessions.append(session_id)
+        # Store permanently (no TTL)
+        redis_client.set(host_key, json.dumps(sessions))
+
+        # If premium, decrement remaining sessions
+        host_data_key = f"host_phone_data:{phone_normalized}"
+        host_data_json = redis_client.get(host_data_key)
+        host_data = json.loads(host_data_json) if host_data_json else {}
+
+        if host_data.get("is_premium") and host_data.get("sessions_remaining", 0) > 0:
+            host_data["sessions_remaining"] -= 1
+            redis_client.set(host_data_key, json.dumps(host_data))
+
+    return {
+        "sessions_used": len(sessions),
+        "remaining": max(0, HOST_FREE_SESSIONS - len(sessions))
+    }
+
+
+def set_host_premium(
+    redis_client,
+    phone: str,
+    host_sessions: int = 20,
+    editor_sessions: int = 30
+) -> Dict[str, Any]:
+    """
+    Mark a host phone as premium (after payment).
+    Also sets editor premium for the same phone.
+    """
+    phone_normalized = re.sub(r'[^\d]', '', phone)
+    host_data_key = f"host_phone_data:{phone_normalized}"
+
+    # Set expiry to 1 year from now
+    expiry = (datetime.now() + timedelta(days=365)).isoformat()
+
+    host_data = {
+        "is_premium": True,
+        "premium_since": datetime.now().isoformat(),
+        "premium_expires": expiry,
+        "sessions_remaining": host_sessions,
+        "editor_sessions_remaining": editor_sessions,
+        "phone": phone
+    }
+
+    redis_client.set(host_data_key, json.dumps(host_data))
+
+    return {
+        "success": True,
+        "is_premium": True,
+        "host_sessions": host_sessions,
+        "editor_sessions": editor_sessions,
+        "expires": expiry
+    }
+
+
 def add_participant(
     redis_client,
     session_id: str,
@@ -362,6 +505,19 @@ def finalize_session(
     if session_data["status"] == SessionStatus.FINALIZED.value:
         return {"error": "La sesion ya fue finalizada", "code": 400}
 
+    # Check host session limit before finalizing
+    owner_phone = session_data.get("owner_phone", "")
+    if owner_phone:
+        limit_check = check_host_session_limit(redis_client, owner_phone, session_id)
+        if not limit_check.get("allowed"):
+            return {
+                "error": "limit_reached",
+                "code": 402,  # Payment Required
+                "sessions_used": limit_check.get("sessions_used", 0),
+                "free_limit": limit_check.get("free_limit", HOST_FREE_SESSIONS),
+                "requires_payment": True
+            }
+
     totals = calculate_totals(session_data)
 
     session_data["status"] = SessionStatus.FINALIZED.value
@@ -374,10 +530,18 @@ def finalize_session(
     if ttl > 0:
         redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
 
+    # Register this session for the host (count it)
+    if owner_phone:
+        host_status = register_host_session(redis_client, owner_phone, session_id)
+    else:
+        host_status = {}
+
     return {
         "success": True,
         "totals": totals,
-        "session": session_data
+        "session": session_data,
+        "host_sessions_used": host_status.get("sessions_used", 0),
+        "host_sessions_remaining": host_status.get("remaining", 0)
     }
 
 

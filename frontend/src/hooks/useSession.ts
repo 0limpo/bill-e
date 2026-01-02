@@ -69,7 +69,7 @@ export interface UseSessionReturn {
   updateOriginalTotal: (total: number) => Promise<boolean>;
 
   // Session status
-  finalize: () => Promise<boolean>;
+  finalize: () => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
   reopen: () => Promise<boolean>;
   updateHostStep: (step: number) => Promise<boolean>;
 }
@@ -681,16 +681,31 @@ export function useSession({
   );
 
   // Finalize session
-  const finalize = useCallback(async (): Promise<boolean> => {
-    if (!ownerToken) return false;
+  const finalize = useCallback(async (): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
+    if (!ownerToken) return { success: false };
     markInteraction();
     try {
-      await finalizeSession(sessionId, ownerToken);
+      const result = await finalizeSession(sessionId, ownerToken);
+
+      // Check if limit was reached
+      if (result.error === "limit_reached" || result.requires_payment) {
+        return {
+          success: false,
+          limitReached: true,
+          sessionsUsed: result.sessions_used || 0
+        };
+      }
+
       setSession((prev) => (prev ? { ...prev, status: "finalized" } : prev));
-      return true;
-    } catch (err) {
+      return { success: true };
+    } catch (err: unknown) {
       console.error("Finalize error:", err);
-      return false;
+      // Check if error is limit_reached (402 Payment Required)
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (errorMessage.includes("limit_reached") || errorMessage.includes("402")) {
+        return { success: false, limitReached: true };
+      }
+      return { success: false };
     }
   }, [sessionId, ownerToken, markInteraction]);
 

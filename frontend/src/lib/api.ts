@@ -349,10 +349,20 @@ export async function updateTotal(
 /**
  * Finalize/close the bill
  */
+export interface FinalizeSessionResponse {
+  success?: boolean;
+  error?: string;
+  sessions_used?: number;
+  free_limit?: number;
+  requires_payment?: boolean;
+  host_sessions_used?: number;
+  host_sessions_remaining?: number;
+}
+
 export async function finalizeSession(
   sessionId: string,
   ownerToken: string
-): Promise<{ success: boolean }> {
+): Promise<FinalizeSessionResponse> {
   return apiRequest(`/api/session/${sessionId}/finalize`, {
     method: "POST",
     body: JSON.stringify({ owner_token: ownerToken }),
