@@ -273,8 +273,8 @@ export default function SessionPage() {
                   <span className="text-sm">{t("paywall.editorSessions")}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">⏳</span>
-                  <span className="text-sm text-muted-foreground">{t("paywall.noExpiry")}</span>
+                  <span className="text-lg">📅</span>
+                  <span className="text-sm text-muted-foreground">{t("paywall.expiry")}</span>
                 </div>
               </div>
 
