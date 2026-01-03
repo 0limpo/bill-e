@@ -148,7 +148,7 @@ export default function LandingPage() {
       />
 
       {/* Logo */}
-      <div className="text-center mb-12">
+      <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center mb-4">
           <span className="inline-flex items-center justify-center w-10 h-10 bg-primary rounded-full font-bold text-white leading-none" style={{ fontSize: '1.75rem' }}>B</span>
           <span className="font-bold text-foreground" style={{ fontSize: '1.75rem', marginLeft: '2px' }}>ill-e</span>
@@ -168,13 +168,13 @@ export default function LandingPage() {
         ) : (
           <div className="flex gap-3">
             <button
-              className="flex-1 h-14 text-base font-semibold bg-card hover:bg-card/80 border border-border rounded-xl transition-colors"
+              className="flex-1 h-12 text-base font-semibold bg-card hover:bg-primary/10 border border-primary/30 hover:border-primary/50 rounded-xl transition-colors text-foreground"
               onClick={() => cameraInputRef.current?.click()}
             >
               Cámara
             </button>
             <button
-              className="flex-1 h-14 text-base font-semibold bg-card hover:bg-card/80 border border-border rounded-xl transition-colors"
+              className="flex-1 h-12 text-base font-semibold bg-card hover:bg-primary/10 border border-primary/30 hover:border-primary/50 rounded-xl transition-colors text-foreground"
               onClick={() => galleryInputRef.current?.click()}
             >
               Galería
@@ -190,43 +190,43 @@ export default function LandingPage() {
       </div>
 
       {/* Steps */}
-      <div className="mt-16 w-full max-w-md space-y-3">
-        <div className="bg-card rounded-2xl p-4 border border-border flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+      <div className="mt-8 w-full max-w-md space-y-2">
+        <div className="bg-card rounded-xl p-3 border border-border flex items-start gap-3">
+          <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm">
             1
           </div>
           <div>
-            <p className="font-medium text-foreground">Escanea y verifica</p>
-            <p className="text-sm text-muted-foreground">Toma foto de la boleta y revisa los items</p>
+            <p className="font-medium text-foreground text-sm">Escanea y verifica</p>
+            <p className="text-xs text-muted-foreground">Toma foto de la boleta y revisa los items</p>
           </div>
         </div>
-        <div className="bg-card rounded-2xl p-4 border border-border flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+        <div className="bg-card rounded-xl p-3 border border-border flex items-start gap-3">
+          <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm">
             2
           </div>
           <div>
-            <p className="font-medium text-foreground">Agrega participantes y asigna</p>
-            <p className="text-sm text-muted-foreground">Indica quién consumió qué</p>
+            <p className="font-medium text-foreground text-sm">Agrega participantes y asigna</p>
+            <p className="text-xs text-muted-foreground">Indica quién consumió qué</p>
           </div>
         </div>
-        <div className="bg-card rounded-2xl p-4 border border-border flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+        <div className="bg-card rounded-xl p-3 border border-border flex items-start gap-3">
+          <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold text-sm">
             3
           </div>
           <div>
-            <p className="font-medium text-foreground">Revisa y comparte</p>
-            <p className="text-sm text-muted-foreground">Ve el detalle de cada persona y comparte el link</p>
+            <p className="font-medium text-foreground text-sm">Revisa y comparte</p>
+            <p className="text-xs text-muted-foreground">Ve el detalle de cada persona y comparte el link</p>
           </div>
         </div>
       </div>
 
       {/* Install Prompt */}
-      <div className="mt-10">
+      <div className="mt-6">
         <InstallPrompt />
       </div>
 
       {/* Footer */}
-      <footer className="mt-10 text-center">
+      <footer className="mt-6 text-center">
         <p className="text-xs text-muted-foreground">
           Hecho con ❤️ para dividir cuentas sin dramas
         </p>
