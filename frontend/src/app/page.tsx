@@ -167,20 +167,18 @@ export default function LandingPage() {
           </div>
         ) : (
           <div className="flex gap-3">
-            <Button
-              size="lg"
-              className="flex-1 h-14 text-base font-semibold bg-slate-600 hover:bg-slate-500"
+            <button
+              className="flex-1 h-14 text-base font-semibold bg-card hover:bg-card/80 border border-border rounded-xl transition-colors"
               onClick={() => cameraInputRef.current?.click()}
             >
               Cámara
-            </Button>
-            <Button
-              size="lg"
-              className="flex-1 h-14 text-base font-semibold bg-slate-600 hover:bg-slate-500"
+            </button>
+            <button
+              className="flex-1 h-14 text-base font-semibold bg-card hover:bg-card/80 border border-border rounded-xl transition-colors"
               onClick={() => galleryInputRef.current?.click()}
             >
               Galería
-            </Button>
+            </button>
           </div>
         )}
 
@@ -192,34 +190,32 @@ export default function LandingPage() {
       </div>
 
       {/* Steps */}
-      <div className="mt-16 w-full max-w-md">
-        <div className="bg-card rounded-2xl p-6 border border-border space-y-5">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-              1
-            </div>
-            <div>
-              <p className="font-medium text-foreground">Escanea y verifica</p>
-              <p className="text-sm text-muted-foreground">Toma foto de la boleta y revisa los items</p>
-            </div>
+      <div className="mt-16 w-full max-w-md space-y-3">
+        <div className="bg-card rounded-2xl p-4 border border-border flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+            1
           </div>
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-              2
-            </div>
-            <div>
-              <p className="font-medium text-foreground">Agrega participantes y asigna</p>
-              <p className="text-sm text-muted-foreground">Indica quién consumió qué</p>
-            </div>
+          <div>
+            <p className="font-medium text-foreground">Escanea y verifica</p>
+            <p className="text-sm text-muted-foreground">Toma foto de la boleta y revisa los items</p>
           </div>
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-              3
-            </div>
-            <div>
-              <p className="font-medium text-foreground">Revisa y comparte</p>
-              <p className="text-sm text-muted-foreground">Ve el detalle de cada persona y comparte el link</p>
-            </div>
+        </div>
+        <div className="bg-card rounded-2xl p-4 border border-border flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+            2
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Agrega participantes y asigna</p>
+            <p className="text-sm text-muted-foreground">Indica quién consumió qué</p>
+          </div>
+        </div>
+        <div className="bg-card rounded-2xl p-4 border border-border flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+            3
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Revisa y comparte</p>
+            <p className="text-sm text-muted-foreground">Ve el detalle de cada persona y comparte el link</p>
           </div>
         </div>
       </div>

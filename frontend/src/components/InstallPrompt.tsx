@@ -70,7 +70,7 @@ export function InstallPrompt() {
     return (
       <button
         onClick={handleInstall}
-        className="flex items-center gap-3 px-4 py-3 bg-slate-600 hover:bg-slate-500 rounded-xl transition-colors w-full max-w-sm"
+        className="flex items-center gap-3 px-4 py-3 bg-card hover:bg-card/80 border border-border rounded-xl transition-colors w-full max-w-sm"
       >
         <span className="text-2xl">📲</span>
         <div className="text-left">
@@ -122,7 +122,7 @@ export function InstallPrompt() {
     <div className="w-full max-w-sm">
       <button
         onClick={() => setShowInstructions(!showInstructions)}
-        className="flex items-center gap-3 px-4 py-3 bg-slate-600 hover:bg-slate-500 rounded-xl transition-colors w-full"
+        className="flex items-center gap-3 px-4 py-3 bg-card hover:bg-card/80 border border-border rounded-xl transition-colors w-full"
       >
         <span className="text-2xl">{browserInstructions.icon}</span>
         <div className="text-left flex-1">
