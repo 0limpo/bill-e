@@ -150,8 +150,8 @@ export default function LandingPage() {
       {/* Logo */}
       <div className="text-center mb-12">
         <div className="inline-flex items-center justify-center mb-4">
-          <span className="inline-flex items-center justify-center w-9 h-9 bg-primary rounded-full font-bold text-white" style={{ fontSize: '1.625rem' }}>B</span>
-          <span className="font-bold text-foreground" style={{ fontSize: '1.5rem', marginLeft: '2px' }}>ill-e</span>
+          <span className="inline-flex items-center justify-center w-10 h-10 bg-primary rounded-full font-bold text-white leading-none" style={{ fontSize: '1.75rem' }}>B</span>
+          <span className="font-bold text-foreground" style={{ fontSize: '1.75rem', marginLeft: '2px' }}>ill-e</span>
         </div>
         <p className="text-lg text-muted-foreground">
           Divide cuentas fácilmente
@@ -192,32 +192,34 @@ export default function LandingPage() {
       </div>
 
       {/* Steps */}
-      <div className="mt-16 w-full max-w-md space-y-4">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-            1
+      <div className="mt-16 w-full max-w-md">
+        <div className="bg-card rounded-2xl p-6 border border-border space-y-5">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+              1
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Escanea y verifica</p>
+              <p className="text-sm text-muted-foreground">Toma foto de la boleta y revisa los items</p>
+            </div>
           </div>
-          <div>
-            <p className="font-medium text-foreground">Escanea y verifica</p>
-            <p className="text-sm text-muted-foreground">Toma foto de la boleta y revisa los items</p>
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+              2
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Agrega participantes y asigna</p>
+              <p className="text-sm text-muted-foreground">Indica quién consumió qué</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-            2
-          </div>
-          <div>
-            <p className="font-medium text-foreground">Agrega participantes y asigna</p>
-            <p className="text-sm text-muted-foreground">Indica quién consumió qué</p>
-          </div>
-        </div>
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
-            3
-          </div>
-          <div>
-            <p className="font-medium text-foreground">Revisa y comparte</p>
-            <p className="text-sm text-muted-foreground">Ve el detalle de cada persona y comparte el link</p>
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+              3
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Revisa y comparte</p>
+              <p className="text-sm text-muted-foreground">Ve el detalle de cada persona y comparte el link</p>
+            </div>
           </div>
         </div>
       </div>
