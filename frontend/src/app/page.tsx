@@ -133,18 +133,10 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      {/* Hidden file inputs */}
+      {/* Hidden file input - opens gallery with camera as first option */}
       <input
         type="file"
         ref={fileInputRef}
-        onChange={handleFileSelect}
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-      />
-      <input
-        type="file"
-        id="gallery-input"
         onChange={handleFileSelect}
         accept="image/*"
         className="hidden"
@@ -152,8 +144,9 @@ export default function LandingPage() {
 
       {/* Logo */}
       <div className="text-center mb-12">
-        <div className="text-6xl mb-4">🧾</div>
-        <h1 className="text-4xl font-bold text-foreground mb-2">Bill-e</h1>
+        <h1 className="text-5xl font-bold text-foreground mb-2">
+          <span className="text-primary">B</span>-e
+        </h1>
         <p className="text-lg text-muted-foreground">
           Divide cuentas fácilmente
         </p>
@@ -179,14 +172,6 @@ export default function LandingPage() {
           )}
         </Button>
 
-        <button
-          onClick={() => document.getElementById('gallery-input')?.click()}
-          disabled={isLoading}
-          className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-        >
-          o subir imagen existente
-        </button>
-
         {error && (
           <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
             <p className="text-sm text-destructive text-center">{error}</p>
@@ -194,19 +179,34 @@ export default function LandingPage() {
         )}
       </div>
 
-      {/* Features */}
-      <div className="mt-16 grid grid-cols-3 gap-6 text-center max-w-md">
-        <div>
-          <div className="text-2xl mb-2">📸</div>
-          <p className="text-xs text-muted-foreground">Escanea la boleta</p>
+      {/* Steps */}
+      <div className="mt-16 w-full max-w-md space-y-4">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+            1
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Escanea y verifica</p>
+            <p className="text-sm text-muted-foreground">Toma foto de la boleta y revisa los items</p>
+          </div>
         </div>
-        <div>
-          <div className="text-2xl mb-2">👥</div>
-          <p className="text-xs text-muted-foreground">Asigna items</p>
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+            2
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Agrega participantes y asigna</p>
+            <p className="text-sm text-muted-foreground">Indica quién consumió qué</p>
+          </div>
         </div>
-        <div>
-          <div className="text-2xl mb-2">💬</div>
-          <p className="text-xs text-muted-foreground">Comparte por WhatsApp</p>
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-semibold">
+            3
+          </div>
+          <div>
+            <p className="font-medium text-foreground">Revisa y comparte</p>
+            <p className="text-sm text-muted-foreground">Ve el detalle de cada persona y comparte el link</p>
+          </div>
         </div>
       </div>
 
