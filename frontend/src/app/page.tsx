@@ -17,6 +17,36 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+// Compress like WhatsApp: ~1600px, 70% quality
+async function compressImage(base64: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const maxSize = 1600;
+      let { width, height } = img;
+
+      // Scale down if larger than maxSize
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = (height / width) * maxSize;
+          width = maxSize;
+        } else {
+          width = (width / height) * maxSize;
+          height = maxSize;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = base64;
+  });
+}
+
 
 export default function LandingPage() {
   const router = useRouter();
@@ -35,11 +65,12 @@ export default function LandingPage() {
 
     setIsLoading(true);
     setError(null);
-    setStatus("Preparando imagen...");
 
     try {
-      // Convert to base64
-      const base64 = await fileToBase64(file);
+      // Convert and compress image (like WhatsApp)
+      setStatus("Comprimiendo imagen...");
+      const rawBase64 = await fileToBase64(file);
+      const base64 = await compressImage(rawBase64);
 
       // Step 1: Create empty session
       setStatus("Conectando al servidor...");
