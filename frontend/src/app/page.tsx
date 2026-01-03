@@ -150,8 +150,8 @@ export default function LandingPage() {
       {/* Logo */}
       <div className="text-center mb-12">
         <div className="inline-flex items-center justify-center mb-4">
-          <span className="inline-flex items-center justify-center w-11 h-11 bg-primary rounded-full text-xl font-bold text-white">B</span>
-          <span className="text-4xl font-bold text-foreground ml-0.5">ill-e</span>
+          <span className="inline-flex items-center justify-center w-9 h-9 bg-primary rounded-full font-bold text-white" style={{ fontSize: '1.625rem' }}>B</span>
+          <span className="font-bold text-foreground" style={{ fontSize: '1.5rem', marginLeft: '2px' }}>ill-e</span>
         </div>
         <p className="text-lg text-muted-foreground">
           Divide cuentas fácilmente
@@ -169,18 +169,17 @@ export default function LandingPage() {
           <div className="flex gap-3">
             <Button
               size="lg"
-              className="flex-1 h-14 text-base font-semibold"
+              className="flex-1 h-14 text-base font-semibold bg-slate-600 hover:bg-slate-500"
               onClick={() => cameraInputRef.current?.click()}
             >
-              📷 Cámara
+              Cámara
             </Button>
             <Button
               size="lg"
-              variant="outline"
-              className="flex-1 h-14 text-base font-semibold"
+              className="flex-1 h-14 text-base font-semibold bg-slate-600 hover:bg-slate-500"
               onClick={() => galleryInputRef.current?.click()}
             >
-              🖼️ Galería
+              Galería
             </Button>
           </div>
         )}
