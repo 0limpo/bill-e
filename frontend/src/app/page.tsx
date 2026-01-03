@@ -129,7 +129,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 py-8">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 pt-6 pb-8">
       {/* Hidden file inputs */}
       <input
         type="file"
@@ -150,8 +150,8 @@ export default function LandingPage() {
       {/* Logo */}
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center mb-2">
-          <span className="inline-flex items-center justify-center w-10 h-10 bg-primary rounded-full font-bold text-white leading-none" style={{ fontSize: '1.625rem' }}>B</span>
-          <span className="font-bold text-foreground" style={{ fontSize: '1.625rem', marginLeft: '2px' }}>ill-e</span>
+          <span className="inline-flex items-center justify-center w-11 h-11 bg-primary rounded-full font-bold text-white leading-none" style={{ fontSize: '1.875rem' }}>B</span>
+          <span className="font-bold text-foreground" style={{ fontSize: '1.875rem', marginLeft: '2px' }}>ill-e</span>
         </div>
         <p className="text-base text-muted-foreground">
           Divide cuentas fácilmente
@@ -168,13 +168,13 @@ export default function LandingPage() {
         ) : (
           <div className="flex gap-3">
             <button
-              className="flex-1 h-12 text-base font-semibold bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors text-foreground"
+              className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => cameraInputRef.current?.click()}
             >
               Cámara
             </button>
             <button
-              className="flex-1 h-12 text-base font-semibold bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors text-foreground"
+              className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => galleryInputRef.current?.click()}
             >
               Galería
