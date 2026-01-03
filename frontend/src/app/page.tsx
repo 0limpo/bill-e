@@ -1,10 +1,49 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { createCollaborativeSession } from "@/lib/api";
+
+// Helper to manage recent session in localStorage
+const RECENT_SESSION_KEY = "bill-e-recent-session";
+const SESSION_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+
+interface RecentSession {
+  sessionId: string;
+  ownerToken: string;
+  createdAt: number;
+}
+
+function saveRecentSession(sessionId: string, ownerToken: string) {
+  const data: RecentSession = { sessionId, ownerToken, createdAt: Date.now() };
+  localStorage.setItem(RECENT_SESSION_KEY, JSON.stringify(data));
+}
+
+function getRecentSession(): RecentSession | null {
+  try {
+    const stored = localStorage.getItem(RECENT_SESSION_KEY);
+    if (!stored) return null;
+    const data: RecentSession = JSON.parse(stored);
+    if (Date.now() - data.createdAt > SESSION_MAX_AGE) {
+      localStorage.removeItem(RECENT_SESSION_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function getTimeAgo(timestamp: number): string {
+  const minutes = Math.floor((Date.now() - timestamp) / 60000);
+  if (minutes < 1) return "hace un momento";
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours}h`;
+  return "hace más de 24h";
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://bill-e-backend-lfwp.onrender.com";
 
@@ -56,6 +95,12 @@ export default function LandingPage() {
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [inputKey, setInputKey] = useState(0);
+  const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
+
+  // Load recent session on mount
+  useEffect(() => {
+    setRecentSession(getRecentSession());
+  }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,6 +158,9 @@ export default function LandingPage() {
         raw_text: data.raw_text || "",
         decimal_places: data.decimal_places || 0,
       });
+
+      // Save session for "continue" feature
+      saveRecentSession(session.session_id, session.owner_token);
 
       // Redirect to session
       router.push(`/s/${session.session_id}?owner=${session.owner_token}`);
@@ -196,6 +244,21 @@ export default function LandingPage() {
           <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
             <p className="text-sm text-destructive text-center">{error}</p>
           </div>
+        )}
+
+        {/* Continue recent session */}
+        {recentSession && !isLoading && (
+          <button
+            className="mt-4 w-full p-3 bg-card hover:bg-card/80 border border-border rounded-xl transition-colors flex items-center gap-3"
+            onClick={() => router.push(`/s/${recentSession.sessionId}?owner=${recentSession.ownerToken}`)}
+          >
+            <span className="text-xl">📋</span>
+            <div className="text-left flex-1">
+              <p className="text-sm font-medium text-foreground">Continuar sesión</p>
+              <p className="text-xs text-muted-foreground">{getTimeAgo(recentSession.createdAt)}</p>
+            </div>
+            <span className="text-muted-foreground">→</span>
+          </button>
         )}
       </div>
 

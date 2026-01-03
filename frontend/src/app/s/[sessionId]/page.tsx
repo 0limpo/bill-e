@@ -11,14 +11,41 @@ import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
 
+// Check localStorage for owner token
+function getStoredOwnerToken(sessionId: string): string | null {
+  try {
+    const stored = localStorage.getItem("bill-e-recent-session");
+    if (!stored) return null;
+    const data = JSON.parse(stored);
+    if (data.sessionId === sessionId) {
+      return data.ownerToken;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function SessionPage() {
   const params = useParams();
   const searchParams = useSearchParams();
 
   const sessionId = params.sessionId as string;
-  const ownerToken = searchParams.get("owner");
+  const urlOwnerToken = searchParams.get("owner");
   const viewMode = searchParams.get("view");
   const isViewOnly = viewMode === "results";
+
+  // Use URL token first, fallback to localStorage
+  const [ownerToken, setOwnerToken] = useState<string | null>(urlOwnerToken);
+
+  useEffect(() => {
+    if (!urlOwnerToken) {
+      const storedToken = getStoredOwnerToken(sessionId);
+      if (storedToken) {
+        setOwnerToken(storedToken);
+      }
+    }
+  }, [sessionId, urlOwnerToken]);
 
   const [step, setStep] = useState(isViewOnly ? 3 : 1);
   const [lang, setLang] = useState<Language>("es");
