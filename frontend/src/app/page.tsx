@@ -173,13 +173,25 @@ export default function LandingPage() {
           <div className="flex gap-3">
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
-              onClick={() => { log("Cámara click"); cameraInputRef.current?.click(); }}
+              onClick={() => {
+                log("Cámara click");
+                if (cameraInputRef.current) {
+                  cameraInputRef.current.value = "";
+                  cameraInputRef.current.click();
+                }
+              }}
             >
               Cámara
             </button>
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
-              onClick={() => { log("Galería click"); galleryInputRef.current?.click(); }}
+              onClick={() => {
+                log("Galería click");
+                if (galleryInputRef.current) {
+                  galleryInputRef.current.value = "";
+                  galleryInputRef.current.click();
+                }
+              }}
             >
               Galería
             </button>
