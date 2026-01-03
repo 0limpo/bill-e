@@ -179,13 +179,6 @@ export default function SessionPage() {
   const handleFinalize = async () => {
     const result = await finalize();
 
-    // Check if host has reached their session limit
-    if (result.limitReached) {
-      setSessionsUsed(result.sessionsUsed || 0);
-      setShowPaywall(true);
-      return;
-    }
-
     if (result.success) {
       setStep(3);
       window.scrollTo(0, 0);
@@ -383,65 +376,6 @@ export default function SessionPage() {
               <p className="text-destructive text-sm mt-3 text-center">{joinError}</p>
             )}
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- Host Paywall (shown when host session limit reached) ---
-  if (isOwner && showPaywall) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-8">
-            <div className="text-5xl mb-4">📦</div>
-            <h1 className="text-2xl font-bold mb-2">{t("paywall.title")}</h1>
-            <p className="text-muted-foreground">{t("paywall.subtitle")}</p>
-          </div>
-
-          {/* Package Card */}
-          <div className="bg-card rounded-2xl p-6 border-2 border-primary mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-lg">{t("paywall.packageName")}</h2>
-              <span className="bg-primary/10 text-primary text-xs font-semibold px-2 py-1 rounded-full">
-                {t("paywall.bestValue")}
-              </span>
-            </div>
-
-            <div className="space-y-2 mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🏠</span>
-                <span className="text-sm">{t("paywall.hostSessions")}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">👥</span>
-                <span className="text-sm">{t("paywall.editorSessions")}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">📅</span>
-                <span className="text-sm text-muted-foreground">{t("paywall.expiry")}</span>
-              </div>
-            </div>
-
-            <div className="flex items-baseline gap-1 mb-4">
-              <span className="text-3xl font-bold">$1.490</span>
-              <span className="text-muted-foreground text-sm">CLP</span>
-            </div>
-
-            <Button className="w-full h-12 font-semibold" disabled>
-              {t("paywall.pay")}
-            </Button>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              {t("paywall.comingSoon")}
-            </p>
-          </div>
-
-          <button
-            onClick={() => setShowPaywall(false)}
-            className="w-full text-sm text-muted-foreground hover:text-foreground"
-          >
-            {t("paywall.later")}
-          </button>
         </div>
       </div>
     );
