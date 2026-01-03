@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export default function LandingPage() {
   const [showMessage, setShowMessage] = useState(false);
@@ -63,6 +64,11 @@ export default function LandingPage() {
           <div className="text-2xl mb-2">💬</div>
           <p className="text-xs text-muted-foreground">Comparte por WhatsApp</p>
         </div>
+      </div>
+
+      {/* Install Prompt */}
+      <div className="mt-10">
+        <InstallPrompt />
       </div>
 
       {/* Footer */}
