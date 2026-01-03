@@ -17,21 +17,6 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-async function compressImage(base64: string, maxWidth = 1200): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const ratio = Math.min(maxWidth / img.width, 1);
-      canvas.width = img.width * ratio;
-      canvas.height = img.height * ratio;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.8));
-    };
-    img.src = base64;
-  });
-}
 
 export default function LandingPage() {
   const router = useRouter();
@@ -53,9 +38,8 @@ export default function LandingPage() {
     setStatus("Preparando imagen...");
 
     try {
-      // Convert and compress image
-      const rawBase64 = await fileToBase64(file);
-      const base64 = await compressImage(rawBase64);
+      // Convert to base64
+      const base64 = await fileToBase64(file);
 
       // Step 1: Create empty session
       setStatus("Conectando al servidor...");
