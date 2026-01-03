@@ -400,6 +400,71 @@ export async function updateHostStep(
   });
 }
 
+// --- Session Creation ---
+
+export interface CreateSessionResponse {
+  session_id: string;
+  expires_at: string;
+  frontend_url: string;
+}
+
+export interface OCRResponse {
+  success: boolean;
+  items: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
+  subtotal: number;
+  total: number;
+  tip?: number;
+  charges?: ApiCharge[];
+  raw_text?: string;
+}
+
+/**
+ * Create a new empty session
+ */
+export async function createSession(): Promise<CreateSessionResponse> {
+  return apiRequest<CreateSessionResponse>("/api/session", {
+    method: "POST",
+  });
+}
+
+/**
+ * Process receipt image with OCR
+ */
+export async function processOCR(
+  sessionId: string,
+  imageBase64: string
+): Promise<OCRResponse> {
+  return apiRequest<OCRResponse>(`/api/session/${sessionId}/ocr`, {
+    method: "POST",
+    body: JSON.stringify({ image: imageBase64 }),
+  });
+}
+
+/**
+ * Create collaborative session with OCR data
+ */
+export async function createCollaborativeSession(
+  data: {
+    owner_phone?: string;
+    items: Array<{ name: string; price: number; quantity: number }>;
+    total: number;
+    subtotal: number;
+    tip?: number;
+    charges?: ApiCharge[];
+    raw_text?: string;
+    decimal_places?: number;
+  }
+): Promise<{ session_id: string; owner_token: string; frontend_url: string }> {
+  return apiRequest("/api/session/collaborative", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // --- Analytics ---
 
 /**

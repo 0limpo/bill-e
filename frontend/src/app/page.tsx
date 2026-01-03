@@ -1,21 +1,101 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { createCollaborativeSession } from "@/lib/api";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://bill-e-backend-lfwp.onrender.com";
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function LandingPage() {
-  const [showMessage, setShowMessage] = useState(false);
+  const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCreateSession = () => {
-    setShowMessage(true);
-    // TODO: Connect to backend to create session
-    // const session = await createSession();
-    // router.push(`/s/${session.id}?owner=${session.owner_token}`);
+  const handleScanClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Convert to base64
+      const base64 = await fileToBase64(file);
+
+      // Step 1: Create empty session
+      const sessionResponse = await fetch(`${API_URL}/api/session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!sessionResponse.ok) {
+        throw new Error("Error creando sesión");
+      }
+
+      const sessionData = await sessionResponse.json();
+      const sessionId = sessionData.session_id;
+
+      // Step 2: Process with OCR
+      const ocrResponse = await fetch(`${API_URL}/api/session/${sessionId}/ocr`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64 }),
+      });
+
+      if (!ocrResponse.ok) {
+        throw new Error("Error procesando la imagen");
+      }
+
+      const ocrData = await ocrResponse.json();
+
+      // Step 3: Create collaborative session with OCR data
+      const session = await createCollaborativeSession({
+        items: ocrData.items || [],
+        total: ocrData.total || 0,
+        subtotal: ocrData.subtotal || 0,
+        tip: ocrData.tip || 0,
+        charges: ocrData.charges || [],
+        raw_text: ocrData.raw_text || "",
+        decimal_places: ocrData.decimal_places || 0,
+      });
+
+      // Redirect to session
+      router.push(`/s/${session.session_id}?owner=${session.owner_token}`);
+    } catch (err) {
+      console.error("Error:", err);
+      setError(err instanceof Error ? err.message : "Error al procesar");
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+      />
+
       {/* Logo */}
       <div className="text-center mb-12">
         <div className="text-6xl mb-4">🧾</div>
@@ -30,22 +110,24 @@ export default function LandingPage() {
         <Button
           size="lg"
           className="w-full h-14 text-lg font-semibold"
-          onClick={handleCreateSession}
+          onClick={handleScanClick}
+          disabled={isLoading}
         >
-          Crear sesión
+          {isLoading ? (
+            <span className="flex items-center gap-2">
+              <span className="animate-spin">⏳</span>
+              Procesando...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              📷 Escanear boleta
+            </span>
+          )}
         </Button>
 
-        {showMessage && (
-          <div className="mt-6 p-4 bg-card rounded-xl border border-border text-center">
-            <p className="text-sm text-muted-foreground">
-              Próximamente: Conectar con el backend para crear sesiones.
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              Por ahora, usa una URL existente como:
-            </p>
-            <code className="text-xs text-primary block mt-1">
-              /s/tu-session-id?owner=tu-token
-            </code>
+        {error && (
+          <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-sm text-destructive text-center">{error}</p>
           </div>
         )}
       </div>
