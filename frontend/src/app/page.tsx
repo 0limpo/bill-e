@@ -55,38 +55,20 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-
-  const addLog = (msg: string) => {
-    console.log(msg);
-    setDebugLogs(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${msg}`]);
-  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    addLog(`handleFileSelect called, files: ${e.target.files?.length || 0}`);
-
     const file = e.target.files?.[0];
-
-    // Reset input to allow re-selection of same file
     e.target.value = "";
 
-    if (!file) {
-      addLog("No file selected");
-      return;
-    }
+    if (!file) return;
 
-    addLog(`File: ${file.name}, ${file.type}, ${file.size} bytes`);
     setIsLoading(true);
     setError(null);
 
     try {
-      // Convert and compress image (like WhatsApp)
       setStatus("Comprimiendo imagen...");
-      addLog("Starting compression...");
       const rawBase64 = await fileToBase64(file);
-      addLog(`Base64 length: ${rawBase64.length}`);
       const base64 = await compressImage(rawBase64);
-      addLog(`Compressed: ${base64.length}`);
 
       // Step 1: Create empty session
       setStatus("Conectando al servidor...");
@@ -188,19 +170,13 @@ export default function LandingPage() {
           <div className="flex gap-3">
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
-              onClick={() => {
-                addLog("Camera btn clicked");
-                cameraInputRef.current?.click();
-              }}
+              onClick={() => cameraInputRef.current?.click()}
             >
               Cámara
             </button>
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
-              onClick={() => {
-                addLog("Gallery btn clicked");
-                galleryInputRef.current?.click();
-              }}
+              onClick={() => galleryInputRef.current?.click()}
             >
               Galería
             </button>
@@ -256,15 +232,6 @@ export default function LandingPage() {
           Hecho con ❤️
         </p>
       </footer>
-
-      {/* Debug panel - temporary */}
-      {debugLogs.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 p-2 text-xs font-mono max-h-32 overflow-y-auto">
-          {debugLogs.map((log, i) => (
-            <div key={i}>{log}</div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
