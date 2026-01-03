@@ -50,21 +50,13 @@ async function compressImage(base64: string): Promise<string> {
 
 export default function LandingPage() {
   const router = useRouter();
-  const cameraInputRef = useRef<HTMLInputElement>(null);
-  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const [showOptions, setShowOptions] = useState(false);
 
-  const handleCameraClick = () => {
-    setShowOptions(false);
-    cameraInputRef.current?.click();
-  };
-
-  const handleGalleryClick = () => {
-    setShowOptions(false);
-    galleryInputRef.current?.click();
+  const handleScanClick = () => {
+    fileInputRef.current?.click();
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,18 +133,10 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      {/* Hidden file inputs */}
+      {/* Hidden file input - no capture to show gallery with camera option */}
       <input
         type="file"
-        ref={cameraInputRef}
-        onChange={handleFileSelect}
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-      />
-      <input
-        type="file"
-        ref={galleryInputRef}
+        ref={fileInputRef}
         onChange={handleFileSelect}
         accept="image/*"
         className="hidden"
@@ -160,8 +144,9 @@ export default function LandingPage() {
 
       {/* Logo */}
       <div className="text-center mb-12">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-full mb-4">
-          <span className="text-4xl font-bold text-white">B</span>
+        <div className="inline-flex items-center justify-center mb-4">
+          <span className="inline-flex items-center justify-center w-11 h-11 bg-primary rounded-full text-xl font-bold text-white">B</span>
+          <span className="text-4xl font-bold text-foreground ml-0.5">ill-e</span>
         </div>
         <p className="text-lg text-muted-foreground">
           Divide cuentas fácilmente
@@ -169,11 +154,11 @@ export default function LandingPage() {
       </div>
 
       {/* CTA */}
-      <div className="w-full max-w-sm relative">
+      <div className="w-full max-w-sm">
         <Button
           size="lg"
           className="w-full h-14 text-lg font-semibold"
-          onClick={() => setShowOptions(!showOptions)}
+          onClick={handleScanClick}
           disabled={isLoading}
         >
           {isLoading ? (
@@ -187,26 +172,6 @@ export default function LandingPage() {
             </span>
           )}
         </Button>
-
-        {/* Options menu */}
-        {showOptions && !isLoading && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-xl overflow-hidden shadow-lg z-10">
-            <button
-              onClick={handleCameraClick}
-              className="w-full px-4 py-3 text-left hover:bg-secondary/50 transition-colors flex items-center gap-3"
-            >
-              <span className="text-xl">📷</span>
-              <span>Tomar foto</span>
-            </button>
-            <button
-              onClick={handleGalleryClick}
-              className="w-full px-4 py-3 text-left hover:bg-secondary/50 transition-colors flex items-center gap-3 border-t border-border"
-            >
-              <span className="text-xl">🖼️</span>
-              <span>Elegir de galería</span>
-            </button>
-          </div>
-        )}
 
         {error && (
           <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
