@@ -155,7 +155,7 @@ export default function LandingPage() {
         ref={cameraInputRef}
         onChange={handleFileSelect}
         accept="image/*"
-        capture="environment"
+        capture
         className="hidden"
       />
       <input
