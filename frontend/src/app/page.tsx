@@ -160,9 +160,9 @@ export default function LandingPage() {
 
       {/* Logo */}
       <div className="text-center mb-12">
-        <h1 className="text-5xl font-bold text-foreground mb-2">
-          <span className="text-primary">B</span>-e
-        </h1>
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-full mb-4">
+          <span className="text-4xl font-bold text-white">B</span>
+        </div>
         <p className="text-lg text-muted-foreground">
           Divide cuentas fácilmente
         </p>
