@@ -55,9 +55,15 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+
+  const addLog = (msg: string) => {
+    console.log(msg);
+    setDebugLogs(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${msg}`]);
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("handleFileSelect called", e.target.files);
+    addLog(`handleFileSelect called, files: ${e.target.files?.length || 0}`);
 
     const file = e.target.files?.[0];
 
@@ -65,22 +71,22 @@ export default function LandingPage() {
     e.target.value = "";
 
     if (!file) {
-      console.log("No file selected");
+      addLog("No file selected");
       return;
     }
 
-    console.log("File selected:", file.name, file.type, file.size);
+    addLog(`File: ${file.name}, ${file.type}, ${file.size} bytes`);
     setIsLoading(true);
     setError(null);
 
     try {
       // Convert and compress image (like WhatsApp)
       setStatus("Comprimiendo imagen...");
-      console.log("Starting compression...");
+      addLog("Starting compression...");
       const rawBase64 = await fileToBase64(file);
-      console.log("Base64 length:", rawBase64.length);
+      addLog(`Base64 length: ${rawBase64.length}`);
       const base64 = await compressImage(rawBase64);
-      console.log("Compressed base64 length:", base64.length);
+      addLog(`Compressed: ${base64.length}`);
 
       // Step 1: Create empty session
       setStatus("Conectando al servidor...");
@@ -141,9 +147,6 @@ export default function LandingPage() {
     }
   };
 
-  // Debug: log when component mounts
-  console.log("LandingPage rendered, refs:", { camera: cameraInputRef.current, gallery: galleryInputRef.current });
-
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 pt-6 pb-8">
       {/* Hidden file inputs */}
@@ -186,7 +189,7 @@ export default function LandingPage() {
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => {
-                console.log("Camera button clicked");
+                addLog("Camera btn clicked");
                 cameraInputRef.current?.click();
               }}
             >
@@ -195,7 +198,7 @@ export default function LandingPage() {
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => {
-                console.log("Gallery button clicked");
+                addLog("Gallery btn clicked");
                 galleryInputRef.current?.click();
               }}
             >
@@ -253,6 +256,15 @@ export default function LandingPage() {
           Hecho con ❤️
         </p>
       </footer>
+
+      {/* Debug panel - temporary */}
+      {debugLogs.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 p-2 text-xs font-mono max-h-32 overflow-y-auto">
+          {debugLogs.map((log, i) => (
+            <div key={i}>{log}</div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
