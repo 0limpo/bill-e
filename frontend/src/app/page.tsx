@@ -56,11 +56,8 @@ export default function LandingPage() {
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [inputKey, setInputKey] = useState(0);
-  const [debug, setDebug] = useState<string[]>([]);
-  const log = (m: string) => setDebug(p => [...p.slice(-4), `${new Date().toLocaleTimeString()}: ${m}`]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    log(`onChange: ${e.target.files?.length || 0} files`);
     const file = e.target.files?.[0];
     e.target.value = "";
 
@@ -177,7 +174,6 @@ export default function LandingPage() {
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => {
-                log("Cámara click");
                 setInputKey(k => k + 1);
                 setTimeout(() => cameraInputRef.current?.click(), 50);
               }}
@@ -187,7 +183,6 @@ export default function LandingPage() {
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => {
-                log("Galería click");
                 setInputKey(k => k + 1);
                 setTimeout(() => galleryInputRef.current?.click(), 50);
               }}
@@ -246,12 +241,6 @@ export default function LandingPage() {
           Hecho con ❤️
         </p>
       </footer>
-
-      {debug.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-black/90 text-green-400 p-2 text-xs font-mono">
-          {debug.map((d, i) => <div key={i}>{d}</div>)}
-        </div>
-      )}
     </div>
   );
 }
