@@ -86,13 +86,20 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      {/* Hidden file input */}
+      {/* Hidden file inputs */}
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileSelect}
         accept="image/*"
         capture="environment"
+        className="hidden"
+      />
+      <input
+        type="file"
+        id="gallery-input"
+        onChange={handleFileSelect}
+        accept="image/*"
         className="hidden"
       />
 
@@ -124,6 +131,14 @@ export default function LandingPage() {
             </span>
           )}
         </Button>
+
+        <button
+          onClick={() => document.getElementById('gallery-input')?.click()}
+          disabled={isLoading}
+          className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+        >
+          o subir imagen existente
+        </button>
 
         {error && (
           <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
