@@ -17,10 +17,27 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+async function compressImage(base64: string, maxWidth = 1200): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ratio = Math.min(maxWidth / img.width, 1);
+      canvas.width = img.width * ratio;
+      canvas.height = img.height * ratio;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = base64;
+  });
+}
+
 export default function LandingPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const handleScanClick = () => {
@@ -33,25 +50,30 @@ export default function LandingPage() {
 
     setIsLoading(true);
     setError(null);
+    setStatus("Preparando imagen...");
 
     try {
-      // Convert to base64
-      const base64 = await fileToBase64(file);
+      // Convert and compress image
+      const rawBase64 = await fileToBase64(file);
+      const base64 = await compressImage(rawBase64);
 
       // Step 1: Create empty session
+      setStatus("Conectando al servidor...");
       const sessionResponse = await fetch(`${API_URL}/api/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
 
       if (!sessionResponse.ok) {
-        throw new Error("Error creando sesión");
+        const errorText = await sessionResponse.text();
+        throw new Error(`Error creando sesión: ${errorText}`);
       }
 
       const sessionData = await sessionResponse.json();
       const sessionId = sessionData.session_id;
 
       // Step 2: Process with OCR
+      setStatus("Analizando boleta...");
       const ocrResponse = await fetch(`${API_URL}/api/session/${sessionId}/ocr`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -59,28 +81,38 @@ export default function LandingPage() {
       });
 
       if (!ocrResponse.ok) {
-        throw new Error("Error procesando la imagen");
+        const errorText = await ocrResponse.text();
+        throw new Error(`Error en OCR: ${errorText}`);
       }
 
       const ocrData = await ocrResponse.json();
+      const data = ocrData.data || ocrData;
 
       // Step 3: Create collaborative session with OCR data
+      setStatus("Creando sesión...");
       const session = await createCollaborativeSession({
-        items: ocrData.items || [],
-        total: ocrData.total || 0,
-        subtotal: ocrData.subtotal || 0,
-        tip: ocrData.tip || 0,
-        charges: ocrData.charges || [],
-        raw_text: ocrData.raw_text || "",
-        decimal_places: ocrData.decimal_places || 0,
+        items: data.items || [],
+        total: data.total || 0,
+        subtotal: data.subtotal || 0,
+        tip: data.tip || 0,
+        charges: data.charges || [],
+        raw_text: data.raw_text || "",
+        decimal_places: data.decimal_places || 0,
       });
 
       // Redirect to session
       router.push(`/s/${session.session_id}?owner=${session.owner_token}`);
     } catch (err) {
       console.error("Error:", err);
-      setError(err instanceof Error ? err.message : "Error al procesar");
+      const message = err instanceof Error ? err.message : "Error al procesar";
+      // Simplify error message for users
+      if (message.includes("Failed to fetch") || message.includes("NetworkError")) {
+        setError("Error de conexión. El servidor puede estar iniciando, intenta de nuevo en 30 segundos.");
+      } else {
+        setError(message);
+      }
       setIsLoading(false);
+      setStatus("");
     }
   };
 
@@ -123,7 +155,7 @@ export default function LandingPage() {
           {isLoading ? (
             <span className="flex items-center gap-2">
               <span className="animate-spin">⏳</span>
-              Procesando...
+              {status || "Procesando..."}
             </span>
           ) : (
             <span className="flex items-center gap-2">
