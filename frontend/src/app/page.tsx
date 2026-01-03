@@ -228,7 +228,7 @@ export default function LandingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="absolute bottom-6 text-center">
+      <footer className="mt-10 text-center">
         <p className="text-xs text-muted-foreground">
           Hecho con ❤️ para dividir cuentas sin dramas
         </p>
