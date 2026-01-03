@@ -57,21 +57,30 @@ export default function LandingPage() {
   const [error, setError] = useState<string | null>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("handleFileSelect called", e.target.files);
+
     const file = e.target.files?.[0];
 
     // Reset input to allow re-selection of same file
     e.target.value = "";
 
-    if (!file) return;
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
 
+    console.log("File selected:", file.name, file.type, file.size);
     setIsLoading(true);
     setError(null);
 
     try {
       // Convert and compress image (like WhatsApp)
       setStatus("Comprimiendo imagen...");
+      console.log("Starting compression...");
       const rawBase64 = await fileToBase64(file);
+      console.log("Base64 length:", rawBase64.length);
       const base64 = await compressImage(rawBase64);
+      console.log("Compressed base64 length:", base64.length);
 
       // Step 1: Create empty session
       setStatus("Conectando al servidor...");
@@ -132,6 +141,9 @@ export default function LandingPage() {
     }
   };
 
+  // Debug: log when component mounts
+  console.log("LandingPage rendered, refs:", { camera: cameraInputRef.current, gallery: galleryInputRef.current });
+
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 pt-6 pb-8">
       {/* Hidden file inputs */}
@@ -173,13 +185,19 @@ export default function LandingPage() {
           <div className="flex gap-3">
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={() => {
+                console.log("Camera button clicked");
+                cameraInputRef.current?.click();
+              }}
             >
               Cámara
             </button>
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
-              onClick={() => galleryInputRef.current?.click()}
+              onClick={() => {
+                console.log("Gallery button clicked");
+                galleryInputRef.current?.click();
+              }}
             >
               Galería
             </button>
