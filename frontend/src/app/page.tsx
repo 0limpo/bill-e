@@ -50,14 +50,11 @@ async function compressImage(base64: string): Promise<string> {
 
 export default function LandingPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-
-  const handleScanClick = () => {
-    fileInputRef.current?.click();
-  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -133,10 +130,18 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
-      {/* Hidden file input - no capture to show gallery with camera option */}
+      {/* Hidden file inputs */}
       <input
         type="file"
-        ref={fileInputRef}
+        ref={cameraInputRef}
+        onChange={handleFileSelect}
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={galleryInputRef}
         onChange={handleFileSelect}
         accept="image/*"
         className="hidden"
@@ -155,23 +160,30 @@ export default function LandingPage() {
 
       {/* CTA */}
       <div className="w-full max-w-sm">
-        <Button
-          size="lg"
-          className="w-full h-14 text-lg font-semibold"
-          onClick={handleScanClick}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin">⏳</span>
-              {status || "Procesando..."}
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              📷 Escanear boleta
-            </span>
-          )}
-        </Button>
+        {isLoading ? (
+          <div className="h-14 flex items-center justify-center gap-2 text-muted-foreground">
+            <span className="animate-spin">⏳</span>
+            {status || "Procesando..."}
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <Button
+              size="lg"
+              className="flex-1 h-14 text-base font-semibold"
+              onClick={() => cameraInputRef.current?.click()}
+            >
+              📷 Cámara
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="flex-1 h-14 text-base font-semibold"
+              onClick={() => galleryInputRef.current?.click()}
+            >
+              🖼️ Galería
+            </Button>
+          </div>
+        )}
 
         {error && (
           <div className="mt-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
