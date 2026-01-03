@@ -55,6 +55,7 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [inputKey, setInputKey] = useState(0);
   const [debug, setDebug] = useState<string[]>([]);
   const log = (m: string) => setDebug(p => [...p.slice(-4), `${new Date().toLocaleTimeString()}: ${m}`]);
 
@@ -134,8 +135,9 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 pt-6 pb-8">
-      {/* Hidden file inputs */}
+      {/* Hidden file inputs - key forces re-render to fix onChange issues */}
       <input
+        key={`camera-${inputKey}`}
         type="file"
         ref={cameraInputRef}
         onChange={handleFileSelect}
@@ -144,6 +146,7 @@ export default function LandingPage() {
         className="hidden"
       />
       <input
+        key={`gallery-${inputKey}`}
         type="file"
         ref={galleryInputRef}
         onChange={handleFileSelect}
@@ -175,10 +178,8 @@ export default function LandingPage() {
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => {
                 log("Cámara click");
-                if (cameraInputRef.current) {
-                  cameraInputRef.current.value = "";
-                  cameraInputRef.current.click();
-                }
+                setInputKey(k => k + 1);
+                setTimeout(() => cameraInputRef.current?.click(), 50);
               }}
             >
               Cámara
@@ -187,10 +188,8 @@ export default function LandingPage() {
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => {
                 log("Galería click");
-                if (galleryInputRef.current) {
-                  galleryInputRef.current.value = "";
-                  galleryInputRef.current.click();
-                }
+                setInputKey(k => k + 1);
+                setTimeout(() => galleryInputRef.current?.click(), 50);
               }}
             >
               Galería
