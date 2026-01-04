@@ -1367,9 +1367,11 @@ async def create_payment_order(request: CreatePaymentRequest):
         payment_url = build_payment_url(flow_response)
 
         return {
+            "success": True,
             "payment_url": payment_url,
             "commerce_order": commerce_order,
-            "amount": amount
+            "amount": amount,
+            "flow_order": flow_response.get("flowOrder")
         }
 
     except HTTPException:
