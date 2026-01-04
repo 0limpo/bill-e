@@ -99,7 +99,7 @@ def create_payment(
         "urlConfirmation": url_confirmation,
         "urlReturn": url_return,
         "currency": "CLP",
-        "paymentMethod": 9,  # 9 = All payment methods
+        "paymentMethod": 1,  # 1 = Webpay only (credit/debit cards)
     }
 
     if optional_data:
