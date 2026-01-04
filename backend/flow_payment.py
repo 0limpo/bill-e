@@ -57,7 +57,7 @@ def create_payment(
     url_confirmation: str,
     url_return: str,
     optional_data: Dict = None,
-    email: str = "pago@bill-e.cl"  # Default email, Flow will ask user for real one
+    email: str = "cliente@gmail.com"  # Placeholder - Flow will ask user for real email
 ) -> Dict[str, Any]:
     """
     Create a payment order in Flow.cl.
