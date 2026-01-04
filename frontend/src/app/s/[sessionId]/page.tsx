@@ -653,6 +653,7 @@ export default function SessionPage() {
             onUpdateParticipantName={updateParticipantName}
             nextDisabled={!isOwner && session?.status !== "finalized"}
             nextLabel={!isOwner && session?.status !== "finalized" ? t("editor.waitingForHost") : undefined}
+            sessionId={sessionId}
             />
           </>
         )}

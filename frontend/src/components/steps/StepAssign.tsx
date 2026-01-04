@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, ChevronDown, Minus, Plus, X, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Minus, Plus, X, Check, Share2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
@@ -36,6 +36,8 @@ interface StepAssignProps {
   // Props for editor navigation control
   nextDisabled?: boolean;
   nextLabel?: string;
+  // Session ID for share link
+  sessionId?: string;
 }
 
 export function StepAssign({
@@ -58,6 +60,7 @@ export function StepAssign({
   onUpdateParticipantName,
   nextDisabled = false,
   nextLabel,
+  sessionId,
 }: StepAssignProps) {
   // Initialize modes from persisted item.mode values
   const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>(() => {
@@ -85,8 +88,34 @@ export function StepAssign({
   const [showCelebration, setShowCelebration] = useState(false);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
+  const [showSharePopup, setShowSharePopup] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const prevAllAssignedRef = useRef<boolean | null>(null);
   const initializedRef = useRef(false);
+
+  // Generate editor link
+  const getEditorLink = () => {
+    const frontendUrl = typeof window !== "undefined" ? window.location.origin : "https://bill-e.vercel.app";
+    return `${frontendUrl}/s/${sessionId}`;
+  };
+
+  const copyEditorLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getEditorLink());
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const input = document.createElement("input");
+      input.value = getEditorLink();
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
 
   // Open first item by default on mount (only once)
   useEffect(() => {
@@ -401,6 +430,63 @@ export function StepAssign({
             </div>
           );
         })}
+
+        {/* Share Editor Link Button (only for owner) */}
+        {isOwner && sessionId && (
+          <div className="flex flex-col items-center gap-1 min-w-14 shrink-0 relative">
+            <button
+              onClick={() => setShowSharePopup(!showSharePopup)}
+              className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors"
+            >
+              <Share2 className="w-5 h-5" />
+            </button>
+            <span className="text-xs text-muted-foreground">Invitar</span>
+
+            {/* Share Popup */}
+            {showSharePopup && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowSharePopup(false)}
+                />
+                {/* Popup */}
+                <div className="absolute top-14 right-0 z-50 w-72 p-4 bg-card border border-border rounded-xl shadow-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-foreground">Invitar editores</h3>
+                    <button
+                      onClick={() => setShowSharePopup(false)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Comparte este link para que te ayuden a asignar los consumos. No podrán editar items ni avanzar de paso.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={getEditorLink()}
+                      readOnly
+                      className="flex-1 px-3 py-2 bg-background rounded-lg text-sm text-foreground border border-border truncate"
+                    />
+                    <button
+                      onClick={copyEditorLink}
+                      className={`px-3 py-2 rounded-lg font-medium text-sm transition-colors ${
+                        linkCopied
+                          ? "bg-green-500/20 text-green-600"
+                          : "bg-primary text-white hover:bg-primary/90"
+                      }`}
+                    >
+                      {linkCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Progress Indicator */}
