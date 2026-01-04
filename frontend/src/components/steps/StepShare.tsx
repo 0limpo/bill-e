@@ -119,7 +119,6 @@ export function StepShare({
   // Share on WhatsApp
   const shareOnWhatsApp = () => {
     const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "https://bill-e.vercel.app";
-    const billEPhone = "+56944578000"; // Bill-e WhatsApp number
 
     let message = `🧾 *Resumen de la cuenta*\n\n`;
 
@@ -128,15 +127,11 @@ export function StepShare({
       message += `• ${p.name}: ${fmt(total)}\n`;
     });
 
-    message += `\n💰 *Total: ${fmt(totalAmount)}*\n\n`;
+    message += `\n💰 *Total: ${fmt(totalAmount)}*`;
 
     if (sessionId) {
-      message += `🔗 Ver detalle:\n${frontendUrl}/s/${sessionId}?view=results\n\n`;
+      message += `\n\n🔗 Ver detalle:\n${frontendUrl}/s/${sessionId}?view=results`;
     }
-
-    message += `━━━━━━━━━━━━━━━━━━\n`;
-    message += `📲 ¿Quieres dividir tu cuenta fácil?\n`;
-    message += `Agrega a Bill-e: wa.me/${billEPhone.replace("+", "")}`;
 
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
