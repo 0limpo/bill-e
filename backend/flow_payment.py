@@ -15,6 +15,7 @@ import os
 FLOW_API_KEY = os.getenv("FLOW_API_KEY", "")
 FLOW_SECRET_KEY = os.getenv("FLOW_SECRET_KEY", "")
 FLOW_API_URL = os.getenv("FLOW_API_URL", "https://www.flow.cl/api")
+FLOW_DEFAULT_EMAIL = os.getenv("FLOW_DEFAULT_EMAIL", "")  # Email registered in Flow merchant account
 
 # Price configuration
 PREMIUM_PRICE_CLP = int(os.getenv("PREMIUM_PRICE_CLP", "1990"))
@@ -57,7 +58,7 @@ def create_payment(
     url_confirmation: str,
     url_return: str,
     optional_data: Dict = None,
-    email: str = "cliente@gmail.com"  # Placeholder - Flow will ask user for real email
+    email: str = None  # If None, uses FLOW_DEFAULT_EMAIL from env
 ) -> Dict[str, Any]:
     """
     Create a payment order in Flow.cl.
@@ -84,12 +85,17 @@ def create_payment(
     if amount < 350:
         raise ValueError("Minimum payment amount is 350 CLP")
 
+    # Use provided email or default from environment
+    payment_email = email or FLOW_DEFAULT_EMAIL
+    if not payment_email:
+        raise ValueError("FLOW_DEFAULT_EMAIL not configured")
+
     params = {
         "apiKey": FLOW_API_KEY,
         "commerceOrder": commerce_order,
         "subject": subject,
         "amount": amount,
-        "email": email,
+        "email": payment_email,
         "urlConfirmation": url_confirmation,
         "urlReturn": url_return,
         "currency": "CLP",

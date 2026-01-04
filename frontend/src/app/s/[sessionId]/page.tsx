@@ -497,16 +497,11 @@ export default function SessionPage() {
 
             <div className="space-y-2 mb-4">
               <div className="flex items-center gap-2">
-                <span className="text-lg">🏠</span>
-                <span className="text-sm">{t("paywall.hostSessions")}</span>
+                <span className="text-lg">✨</span>
+                <span className="text-sm font-medium">{t("paywall.unlimited")}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">👥</span>
-                <span className="text-sm">{t("paywall.editorSessions")}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-lg">📅</span>
-                <span className="text-sm text-muted-foreground">{t("paywall.expiry")}</span>
+              <div className="flex items-center gap-2 pl-7">
+                <span className="text-sm text-muted-foreground">{t("paywall.unlimitedDesc")}</span>
               </div>
             </div>
 
