@@ -5,6 +5,7 @@ import {
   loadSession,
   pollSession,
   joinSession,
+  selectExistingParticipant,
   assignItem,
   addItem,
   updateItem,
@@ -47,7 +48,7 @@ export interface UseSessionReturn {
 
   // Participant actions
   join: (name: string, phone?: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
-  selectParticipant: (participantId: string, name: string) => void;
+  selectParticipant: (participantId: string, name: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
   addParticipant: (name: string, phone?: string) => Promise<boolean>;
   removeParticipantById: (participantId: string) => Promise<boolean>;
   updateParticipantName: (participantId: string, name: string) => Promise<boolean>;
@@ -229,14 +230,33 @@ export function useSession({
     [sessionId, markInteraction, refresh]
   );
 
-  // Select existing participant (without creating new one)
+  // Select existing participant (checks device limit first)
   const selectParticipant = useCallback(
-    (participantId: string, name: string) => {
-      setCurrentParticipant({ id: participantId, name });
-      localStorage.setItem(
-        `bill-e-participant-${sessionId}`,
-        JSON.stringify({ id: participantId, name })
-      );
+    async (participantId: string, name: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
+      try {
+        // Check device limit via API
+        const result = await selectExistingParticipant(sessionId, participantId);
+
+        // Check if limit reached
+        if (result.status === "limit_reached") {
+          return {
+            success: false,
+            limitReached: true,
+            sessionsUsed: result.sessions_used || 0
+          };
+        }
+
+        // Success - save participant locally
+        setCurrentParticipant({ id: participantId, name });
+        localStorage.setItem(
+          `bill-e-participant-${sessionId}`,
+          JSON.stringify({ id: participantId, name })
+        );
+        return { success: true };
+      } catch (err) {
+        console.error("Select participant error:", err);
+        return { success: false };
+      }
     },
     [sessionId]
   );

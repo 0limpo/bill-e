@@ -175,6 +175,28 @@ export async function joinSession(
   });
 }
 
+export interface SelectParticipantResponse {
+  status: "ok" | "limit_reached";
+  sessions_used?: number;
+  sessions_remaining?: number;
+  free_limit?: number;
+  requires_payment?: boolean;
+}
+
+/**
+ * Select an existing participant (checks device limit)
+ */
+export async function selectExistingParticipant(
+  sessionId: string,
+  participantId: string
+): Promise<SelectParticipantResponse> {
+  const deviceId = getDeviceId();
+  return apiRequest<SelectParticipantResponse>(`/api/session/${sessionId}/select-participant`, {
+    method: "POST",
+    body: JSON.stringify({ participant_id: participantId, device_id: deviceId }),
+  });
+}
+
 /**
  * Update participant name
  */
@@ -459,9 +481,10 @@ export async function createCollaborativeSession(
     decimal_places?: number;
   }
 ): Promise<{ session_id: string; owner_token: string; frontend_url: string }> {
+  const deviceId = getDeviceId();
   return apiRequest("/api/session/collaborative", {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify({ ...data, device_id: deviceId }),
   });
 }
 

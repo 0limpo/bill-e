@@ -64,6 +64,7 @@ export default function SessionPage() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [premiumPrice] = useState(1990); // Default, could fetch from API
+  const [selectingParticipant, setSelectingParticipant] = useState<string | null>(null);
 
   const {
     session,
@@ -386,14 +387,29 @@ export default function SessionPage() {
                 {selectableParticipants.map((p, pIndex) => (
                   <button
                     key={p.id}
-                    onClick={() => selectParticipant(p.id, p.name)}
-                    className="participant-chip hover:opacity-80 transition-opacity cursor-pointer"
+                    onClick={async () => {
+                      setSelectingParticipant(p.id);
+                      const result = await selectParticipant(p.id, p.name);
+                      setSelectingParticipant(null);
+                      if (result.limitReached) {
+                        setSessionsUsed(result.sessionsUsed || 0);
+                        setShowPaywall(true);
+                      }
+                    }}
+                    disabled={selectingParticipant !== null}
+                    className={`participant-chip hover:opacity-80 transition-opacity cursor-pointer ${
+                      selectingParticipant === p.id ? "opacity-50" : ""
+                    }`}
                   >
                     <div
                       className="participant-avatar"
                       style={{ backgroundColor: getAvatarColor(p.name, pIndex) }}
                     >
-                      {getInitials(p.name)}
+                      {selectingParticipant === p.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        getInitials(p.name)
+                      )}
                     </div>
                     <span className="participant-name">{p.name}</span>
                   </button>

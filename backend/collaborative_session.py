@@ -28,7 +28,8 @@ def create_collaborative_session(
     decimal_places: int = 0,
     has_tip: bool = False,
     number_format: Dict = None,
-    price_mode: str = "unitario"
+    price_mode: str = "unitario",
+    device_id: str = ""
 ) -> Dict[str, Any]:
     session_id = str(uuid.uuid4())[:8]
     owner_token = str(uuid.uuid4())
@@ -49,6 +50,7 @@ def create_collaborative_session(
         "session_id": session_id,
         "owner_token": owner_token,
         "owner_phone": owner_phone,
+        "owner_device_id": device_id,
         "status": SessionStatus.ASSIGNING.value,
         "host_step": 1,  # Track which step the host is on (1=Review, 2=Assign, 3=Share)
         "created_at": datetime.now().isoformat(),
@@ -439,6 +441,144 @@ def set_host_premium(
     }
 
 
+# --- Host tracking by device_id (for web users without phone) ---
+
+def check_host_device_limit(
+    redis_client,
+    device_id: str,
+    session_id: str
+) -> Dict[str, Any]:
+    """
+    Check if host device has exceeded free session limit.
+    Returns {"allowed": True, "sessions_used": N} if OK.
+    Returns {"allowed": False, "sessions_used": N, "limit_reached": True} if limit exceeded.
+    """
+    device_key = f"host_device:{device_id}"
+
+    # Get current sessions for this device
+    sessions_json = redis_client.get(device_key)
+    sessions = json.loads(sessions_json) if sessions_json else []
+
+    # Already finalized this session? Always allow (re-finalize)
+    if session_id in sessions:
+        return {
+            "allowed": True,
+            "sessions_used": len(sessions),
+            "is_returning": True
+        }
+
+    # Check if premium (stored in device data)
+    device_data_key = f"host_device_data:{device_id}"
+    device_data_json = redis_client.get(device_data_key)
+    device_data = json.loads(device_data_json) if device_data_json else {}
+
+    if device_data.get("is_premium"):
+        # Check if premium has expired
+        premium_expires = device_data.get("premium_expires")
+        if premium_expires:
+            expiry_date = datetime.fromisoformat(premium_expires)
+            if datetime.now() > expiry_date:
+                # Premium expired - treat as free user
+                pass
+            else:
+                # Check remaining premium sessions
+                premium_sessions_remaining = device_data.get("sessions_remaining", 0)
+                if premium_sessions_remaining > 0:
+                    return {
+                        "allowed": True,
+                        "sessions_used": len(sessions),
+                        "is_premium": True,
+                        "premium_remaining": premium_sessions_remaining
+                    }
+                # No sessions left
+                return {
+                    "allowed": False,
+                    "sessions_used": len(sessions),
+                    "premium_expired": True
+                }
+
+    # Check free limit
+    if len(sessions) >= HOST_FREE_SESSIONS:
+        return {
+            "allowed": False,
+            "sessions_used": len(sessions),
+            "limit_reached": True,
+            "free_limit": HOST_FREE_SESSIONS
+        }
+
+    return {
+        "allowed": True,
+        "sessions_used": len(sessions),
+        "remaining": HOST_FREE_SESSIONS - len(sessions)
+    }
+
+
+def register_host_device_session(
+    redis_client,
+    device_id: str,
+    session_id: str
+) -> Dict[str, Any]:
+    """
+    Register a session for a host device.
+    Call this after successfully finalizing a session.
+    """
+    device_key = f"host_device:{device_id}"
+
+    # Get current sessions
+    sessions_json = redis_client.get(device_key)
+    sessions = json.loads(sessions_json) if sessions_json else []
+
+    # Add session if not already present
+    if session_id not in sessions:
+        sessions.append(session_id)
+        # Store permanently (no TTL)
+        redis_client.set(device_key, json.dumps(sessions))
+
+        # If premium, decrement remaining sessions
+        device_data_key = f"host_device_data:{device_id}"
+        device_data_json = redis_client.get(device_data_key)
+        device_data = json.loads(device_data_json) if device_data_json else {}
+
+        if device_data.get("is_premium") and device_data.get("sessions_remaining", 0) > 0:
+            device_data["sessions_remaining"] -= 1
+            redis_client.set(device_data_key, json.dumps(device_data))
+
+    return {
+        "sessions_used": len(sessions),
+        "remaining": max(0, HOST_FREE_SESSIONS - len(sessions))
+    }
+
+
+def set_host_device_premium(
+    redis_client,
+    device_id: str,
+    host_sessions: int = 20
+) -> Dict[str, Any]:
+    """
+    Mark a host device as premium (after payment).
+    """
+    device_data_key = f"host_device_data:{device_id}"
+
+    # Set expiry to 1 year from now
+    expiry = (datetime.now() + timedelta(days=365)).isoformat()
+
+    device_data = {
+        "is_premium": True,
+        "sessions_remaining": host_sessions,
+        "premium_expires": expiry,
+        "activated_at": datetime.now().isoformat()
+    }
+
+    redis_client.set(device_data_key, json.dumps(device_data))
+
+    return {
+        "success": True,
+        "device_id": device_id,
+        "sessions_remaining": host_sessions,
+        "expires": expiry
+    }
+
+
 def add_participant(
     redis_client,
     session_id: str,
@@ -552,17 +692,24 @@ def finalize_session(
         return {"error": "La sesion ya fue finalizada", "code": 400}
 
     # Check host session limit before finalizing
+    # Priority: phone > device_id (for web users without phone)
     owner_phone = session_data.get("owner_phone", "")
+    owner_device_id = session_data.get("owner_device_id", "")
+
+    limit_check = None
     if owner_phone:
         limit_check = check_host_session_limit(redis_client, owner_phone, session_id)
-        if not limit_check.get("allowed"):
-            return {
-                "error": "limit_reached",
-                "code": 402,  # Payment Required
-                "sessions_used": limit_check.get("sessions_used", 0),
-                "free_limit": limit_check.get("free_limit", HOST_FREE_SESSIONS),
-                "requires_payment": True
-            }
+    elif owner_device_id:
+        limit_check = check_host_device_limit(redis_client, owner_device_id, session_id)
+
+    if limit_check and not limit_check.get("allowed"):
+        return {
+            "error": "limit_reached",
+            "code": 402,  # Payment Required
+            "sessions_used": limit_check.get("sessions_used", 0),
+            "free_limit": limit_check.get("free_limit", HOST_FREE_SESSIONS),
+            "requires_payment": True
+        }
 
     totals = calculate_totals(session_data)
 
@@ -577,10 +724,11 @@ def finalize_session(
         redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
 
     # Register this session for the host (count it)
+    host_status = {}
     if owner_phone:
         host_status = register_host_session(redis_client, owner_phone, session_id)
-    else:
-        host_status = {}
+    elif owner_device_id:
+        host_status = register_host_device_session(redis_client, owner_device_id, session_id)
 
     return {
         "success": True,

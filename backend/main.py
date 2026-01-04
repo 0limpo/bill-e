@@ -451,7 +451,8 @@ async def create_collaborative_session_endpoint(request: Request):
             tip=data.get("tip", 0),
             raw_text=data.get("raw_text", ""),
             charges=data.get("charges", []),
-            decimal_places=data.get("decimal_places", 0)
+            decimal_places=data.get("decimal_places", 0),
+            device_id=data.get("device_id", "")
         )
         return result
     except Exception as e:
@@ -509,14 +510,23 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
             response["owner_phone"] = session_data.get("owner_phone")
 
             # Include host session count info
+            # Priority: phone > device_id
+            from collaborative_session import check_host_device_limit
             owner_phone = session_data.get("owner_phone")
+            owner_device_id = session_data.get("owner_device_id")
+
             if owner_phone:
                 host_limit_info = check_host_session_limit(redis_client, owner_phone, session_id)
                 response["host_sessions_used"] = host_limit_info.get("sessions_used", 0)
                 response["host_sessions_limit"] = HOST_FREE_SESSIONS
                 response["host_is_premium"] = host_limit_info.get("is_premium", False)
+            elif owner_device_id:
+                host_limit_info = check_host_device_limit(redis_client, owner_device_id, session_id)
+                response["host_sessions_used"] = host_limit_info.get("sessions_used", 0)
+                response["host_sessions_limit"] = HOST_FREE_SESSIONS
+                response["host_is_premium"] = host_limit_info.get("is_premium", False)
             else:
-                # No phone - show default (0/1) for free users
+                # No phone or device_id - show default (0/1) for free users
                 response["host_sessions_used"] = 0
                 response["host_sessions_limit"] = HOST_FREE_SESSIONS
                 response["host_is_premium"] = False
@@ -569,6 +579,51 @@ async def join_session(session_id: str, request: Request):
             result["sessions_remaining"] = device_status.get("remaining", 0)
 
         return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/select-participant")
+async def select_existing_participant(session_id: str, request: Request):
+    """
+    Select an existing participant (for editors).
+    This checks the device limit before allowing selection.
+    """
+    try:
+        from collaborative_session import check_editor_device_limit, register_editor_session
+
+        data = await request.json()
+        participant_id = data.get("participant_id", "").strip()
+        device_id = data.get("device_id", "").strip()
+
+        if not participant_id:
+            raise HTTPException(status_code=400, detail="participant_id es requerido")
+
+        # Check device limit if device_id provided
+        if device_id:
+            limit_check = check_editor_device_limit(redis_client, device_id, session_id)
+
+            if not limit_check.get("allowed"):
+                # Limit reached - return paywall status
+                return {
+                    "status": "limit_reached",
+                    "sessions_used": limit_check.get("sessions_used", 0),
+                    "free_limit": limit_check.get("free_limit", 2),
+                    "requires_payment": True
+                }
+
+            # Register session for device tracking (if not already in this session)
+            if not limit_check.get("is_returning"):
+                device_status = register_editor_session(redis_client, device_id, session_id)
+                return {
+                    "status": "ok",
+                    "sessions_used": device_status.get("sessions_used", 0),
+                    "sessions_remaining": device_status.get("remaining", 0)
+                }
+
+        return {"status": "ok"}
     except HTTPException:
         raise
     except Exception as e:
