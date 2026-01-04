@@ -59,6 +59,8 @@ try:
         calculate_totals,
         get_participant_summary,
         check_host_session_limit,
+        set_editor_premium,
+        set_host_premium,
         HOST_FREE_SESSIONS,
         SessionStatus
     )
@@ -66,6 +68,28 @@ try:
 except ImportError as e:
     print(f"Warning: Collaborative sessions not available: {e}")
     collaborative_available = False
+
+# Importar Payment Integration (Flow.cl)
+try:
+    from flow_payment import (
+        create_payment as flow_create_payment,
+        get_payment_status as flow_get_payment_status,
+        build_payment_url,
+        get_premium_price,
+        FlowPaymentStatus
+    )
+    payment_available = True
+except ImportError as e:
+    print(f"Warning: Payment integration not available: {e}")
+    payment_available = False
+
+# Importar SimpleAPI para boletas
+try:
+    from simpleapi_boleta import emit_boleta_async
+    boleta_available = True
+except ImportError as e:
+    print(f"Warning: Boleta integration not available: {e}")
+    boleta_available = False
 
 load_dotenv()
 
@@ -1182,6 +1206,286 @@ async def split_item(session_id: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# PAYMENT ENDPOINTS (Flow.cl + SimpleAPI)
+# =====================================================
+
+class CreatePaymentRequest(BaseModel):
+    user_type: str  # "editor" or "host"
+    device_id: Optional[str] = None
+    phone: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+@app.post("/api/payment/create")
+async def create_payment_order(request: CreatePaymentRequest):
+    """
+    Create a payment order for premium access.
+    Simplified flow: no email required, Flow collects it.
+
+    Returns:
+        {
+            "payment_url": "https://www.flow.cl/app/web/pay.php?token=XXX",
+            "commerce_order": "bille_pay_XXXXXXXX",
+            "amount": 1990
+        }
+    """
+    if not payment_available:
+        raise HTTPException(status_code=503, detail="Payment service unavailable")
+
+    try:
+        # Validate request
+        if request.user_type not in ["editor", "host"]:
+            raise HTTPException(status_code=400, detail="Invalid user_type")
+
+        if request.user_type == "editor" and not request.device_id:
+            raise HTTPException(status_code=400, detail="device_id required for editor")
+
+        # Generate unique commerce order ID
+        commerce_order = f"bille_{uuid.uuid4().hex[:12]}"
+
+        # Build callback URLs
+        backend_url = os.getenv("BACKEND_URL", "https://bill-e-backend-lfwp.onrender.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+
+        url_confirmation = f"{backend_url}/api/payment/webhook"
+
+        # Build return URL with session context
+        if request.session_id:
+            url_return = f"{frontend_url}/payment/success?session={request.session_id}"
+        else:
+            url_return = f"{frontend_url}/payment/success"
+
+        # Get configured price
+        amount = get_premium_price()
+
+        # Create payment in Flow
+        flow_response = flow_create_payment(
+            commerce_order=commerce_order,
+            subject="Bill-e Premium - 1 año",
+            amount=amount,
+            url_confirmation=url_confirmation,
+            url_return=url_return,
+            optional_data={
+                "user_type": request.user_type,
+                "device_id": request.device_id,
+                "phone": request.phone,
+                "session_id": request.session_id
+            }
+        )
+
+        # Store payment record in Redis
+        payment_record = {
+            "commerce_order": commerce_order,
+            "flow_order": flow_response.get("flowOrder"),
+            "token": flow_response.get("token"),
+            "status": "pending",
+            "amount": amount,
+            "currency": "CLP",
+            "user_type": request.user_type,
+            "device_id": request.device_id,
+            "phone": request.phone,
+            "session_id": request.session_id,
+            "created_at": datetime.now().isoformat(),
+            "paid_at": None,
+            "premium_expires": None,
+            "boleta_status": None
+        }
+
+        # Store with 7-day TTL
+        redis_client.setex(
+            f"payment:{commerce_order}",
+            604800,  # 7 days
+            json.dumps(payment_record)
+        )
+
+        # Also index by token for webhook lookup
+        redis_client.setex(
+            f"payment_token:{flow_response.get('token')}",
+            604800,
+            commerce_order
+        )
+
+        # Build full payment URL
+        payment_url = build_payment_url(flow_response)
+
+        return {
+            "payment_url": payment_url,
+            "commerce_order": commerce_order,
+            "amount": amount
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Payment creation error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/payment/webhook")
+async def payment_webhook(request: Request):
+    """
+    Flow.cl webhook callback.
+
+    Flow sends POST with { token: "XXX" }
+    We call getStatus to verify and get payment details.
+    Then activate premium and emit boleta.
+    """
+    if not payment_available:
+        raise HTTPException(status_code=503, detail="Payment service unavailable")
+
+    try:
+        # Parse form data (Flow sends as form-urlencoded)
+        form_data = await request.form()
+        token = form_data.get("token")
+
+        if not token:
+            # Try JSON body as fallback
+            try:
+                body = await request.json()
+                token = body.get("token")
+            except:
+                pass
+
+        if not token:
+            print("Webhook received without token")
+            raise HTTPException(status_code=400, detail="Token required")
+
+        print(f"Payment webhook received for token: {token}")
+
+        # Get commerce_order from token index
+        commerce_order = redis_client.get(f"payment_token:{token}")
+        if not commerce_order:
+            print(f"No payment found for token: {token}")
+            raise HTTPException(status_code=404, detail="Payment not found")
+
+        if isinstance(commerce_order, bytes):
+            commerce_order = commerce_order.decode('utf-8')
+
+        # Get payment record
+        payment_json = redis_client.get(f"payment:{commerce_order}")
+        if not payment_json:
+            raise HTTPException(status_code=404, detail="Payment record not found")
+
+        payment = json.loads(payment_json)
+
+        # Get payment status from Flow
+        flow_status = flow_get_payment_status(token)
+        print(f"Flow status response: {flow_status}")
+
+        # Update payment record
+        payment["flow_payment_data"] = flow_status
+
+        # Check payment status (2 = PAID in Flow)
+        if flow_status.get("status") == FlowPaymentStatus.PAID:
+            payment["status"] = "paid"
+            payment["paid_at"] = datetime.now().isoformat()
+
+            # Get payer email from Flow response
+            payer_email = flow_status.get("payer", "")
+
+            # Activate premium based on user type
+            user_type = payment.get("user_type")
+            device_id = payment.get("device_id")
+            phone = payment.get("phone")
+
+            premium_expires = None
+
+            if user_type == "editor" and device_id:
+                # Activate editor premium
+                premium_result = set_editor_premium(redis_client, device_id, phone)
+                premium_expires = premium_result.get("expires")
+                print(f"Editor premium activated for device: {device_id}")
+
+            elif user_type == "host" and phone:
+                # Activate host premium
+                premium_result = set_host_premium(redis_client, phone)
+                premium_expires = premium_result.get("expires")
+                print(f"Host premium activated for phone: {phone}")
+
+            else:
+                print(f"Warning: Could not activate premium - user_type={user_type}, device_id={device_id}, phone={phone}")
+
+            payment["premium_expires"] = premium_expires
+
+            # Emit boleta electrónica (non-blocking - premium already activated)
+            if boleta_available:
+                try:
+                    boleta_result = emit_boleta_async(
+                        redis_client=redis_client,
+                        payment_id=commerce_order,
+                        monto_total=payment.get("amount", 0),
+                        descripcion="Bill-e Premium - 1 año",
+                        commerce_order=commerce_order,
+                        email_receptor=payer_email
+                    )
+                    payment["boleta_status"] = "success" if boleta_result.get("success") else "failed"
+                    payment["boleta_folio"] = boleta_result.get("folio")
+                except Exception as boleta_error:
+                    print(f"Boleta error (non-critical): {boleta_error}")
+                    payment["boleta_status"] = "error"
+
+        elif flow_status.get("status") == FlowPaymentStatus.REJECTED:
+            payment["status"] = "rejected"
+
+        elif flow_status.get("status") == FlowPaymentStatus.CANCELLED:
+            payment["status"] = "cancelled"
+
+        # Save updated payment record
+        ttl = redis_client.ttl(f"payment:{commerce_order}")
+        redis_client.setex(
+            f"payment:{commerce_order}",
+            ttl if ttl > 0 else 604800,
+            json.dumps(payment)
+        )
+
+        return {"status": "ok"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Webhook error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/payment/status/{commerce_order}")
+async def get_payment_status_endpoint(commerce_order: str):
+    """
+    Check payment status by commerce order ID.
+    Frontend polls this after redirect to confirm payment.
+    """
+    try:
+        payment_json = redis_client.get(f"payment:{commerce_order}")
+
+        if not payment_json:
+            raise HTTPException(status_code=404, detail="Payment not found")
+
+        payment = json.loads(payment_json)
+
+        return {
+            "commerce_order": commerce_order,
+            "status": payment.get("status"),
+            "amount": payment.get("amount"),
+            "paid_at": payment.get("paid_at"),
+            "premium_expires": payment.get("premium_expires"),
+            "user_type": payment.get("user_type"),
+            "session_id": payment.get("session_id")
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/payment/price")
+async def get_payment_price():
+    """Get current premium price."""
+    if payment_available:
+        return {"price": get_premium_price(), "currency": "CLP"}
+    return {"price": 1990, "currency": "CLP"}
 
 
 # =====================================================

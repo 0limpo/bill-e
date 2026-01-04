@@ -10,6 +10,7 @@ import { StepAssign } from "@/components/steps/StepAssign";
 import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
+import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
 
 // Check localStorage for owner token
 function getStoredOwnerToken(sessionId: string): string | null {
@@ -60,6 +61,9 @@ export default function SessionPage() {
   // Editor limit tracking (device_id based)
   const [showPaywall, setShowPaywall] = useState(false);
   const [sessionsUsed, setSessionsUsed] = useState(0);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [premiumPrice] = useState(1990); // Default, could fetch from API
 
   const {
     session,
@@ -280,6 +284,22 @@ export default function SessionPage() {
 
     // Paywall screen (shown when free session limit reached)
     if (showPaywall) {
+      const handlePayment = async () => {
+        setPaymentLoading(true);
+        setPaymentError(null);
+        try {
+          await startPaymentFlow({
+            user_type: "editor",
+            session_id: sessionId,
+          });
+          // Redirect happens in startPaymentFlow
+        } catch (err) {
+          console.error("Payment error:", err);
+          setPaymentError(err instanceof Error ? err.message : "Error al iniciar el pago");
+          setPaymentLoading(false);
+        }
+      };
+
       return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="w-full max-w-sm">
@@ -314,16 +334,26 @@ export default function SessionPage() {
               </div>
 
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-3xl font-bold">$1.490</span>
-                <span className="text-muted-foreground text-sm">CLP</span>
+                <span className="text-3xl font-bold">{formatPriceCLP(premiumPrice)}</span>
               </div>
 
-              <Button className="w-full h-12 font-semibold" disabled>
-                {t("paywall.pay")}
+              <Button
+                className="w-full h-12 font-semibold"
+                onClick={handlePayment}
+                disabled={paymentLoading}
+              >
+                {paymentLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  t("paywall.pay")
+                )}
               </Button>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                {t("paywall.comingSoon")}
-              </p>
+
+              {paymentError && (
+                <p className="text-destructive text-sm text-center mt-2">
+                  {paymentError}
+                </p>
+              )}
             </div>
 
             <button
