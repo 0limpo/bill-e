@@ -96,7 +96,12 @@ export default function SessionPage() {
     setLang(detectLanguage());
   }, []);
 
-
+  // If session is already finalized, go directly to step 3
+  useEffect(() => {
+    if (session?.status === "finalized" && step !== 3) {
+      setStep(3);
+    }
+  }, [session?.status, step]);
 
   const t = getTranslator(lang);
 
