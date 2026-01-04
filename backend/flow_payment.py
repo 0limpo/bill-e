@@ -99,7 +99,7 @@ def create_payment(
         "urlConfirmation": url_confirmation,
         "urlReturn": url_return,
         "currency": "CLP",
-        "paymentMethod": 1,  # 1 = Webpay only (credit/debit cards)
+        "paymentMethod": 9,  # 9 = All payment methods (cuotas disabled in Flow dashboard)
     }
 
     if optional_data:
