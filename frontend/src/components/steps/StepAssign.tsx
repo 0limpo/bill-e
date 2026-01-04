@@ -442,16 +442,16 @@ export function StepAssign({
             </button>
             <span className="text-xs text-muted-foreground">Invitar</span>
 
-            {/* Share Popup */}
+            {/* Share Popup - Fixed position modal */}
             {showSharePopup && (
-              <>
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 {/* Backdrop */}
                 <div
-                  className="fixed inset-0 z-40"
+                  className="absolute inset-0 bg-black/50"
                   onClick={() => setShowSharePopup(false)}
                 />
                 {/* Popup */}
-                <div className="absolute top-14 right-0 z-50 w-72 p-4 bg-card border border-border rounded-xl shadow-lg">
+                <div className="relative w-full max-w-sm p-4 bg-card border border-border rounded-xl shadow-lg">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-semibold text-foreground">Invitar editores</h3>
                     <button
@@ -461,7 +461,7 @@ export function StepAssign({
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-3">
+                  <p className="text-sm text-muted-foreground mb-4">
                     Comparte este link para que te ayuden a asignar los consumos. No podrán editar items ni avanzar de paso.
                   </p>
                   <div className="flex gap-2">
@@ -483,7 +483,7 @@ export function StepAssign({
                     </button>
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </div>
         )}
