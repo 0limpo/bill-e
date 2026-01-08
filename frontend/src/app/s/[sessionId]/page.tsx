@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
@@ -30,6 +30,7 @@ function getStoredOwnerToken(sessionId: string): string | null {
 export default function SessionPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const sessionId = params.sessionId as string;
   const urlOwnerToken = searchParams.get("owner");
