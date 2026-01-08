@@ -269,51 +269,11 @@ function PaymentPageContent() {
 
             {/* MercadoPago Wallet Tab Content */}
             <div className={activeTab === "mercadopago" ? "block" : "hidden"}>
-              <div className="bg-[#FFE600] rounded-xl p-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#00B1EA] rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="white">
-                      <path d="M12.5 2C9.46 2 7 4.46 7 7.5c0 1.33.47 2.55 1.26 3.5H5.5C3.57 11 2 12.57 2 14.5c0 1.93 1.57 3.5 3.5 3.5h.5v2c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-2h.5c1.93 0 3.5-1.57 3.5-3.5 0-1.93-1.57-3.5-3.5-3.5h-2.76c.79-.95 1.26-2.17 1.26-3.5C17 4.46 14.54 2 11.5 2h1z"/>
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-gray-900 font-bold text-lg">Mercado Pago</h2>
-                    <p className="text-gray-700 text-sm">Saldo, creditos o tarjetas guardadas</p>
-                  </div>
-                </div>
-              </div>
               <div id="walletBrick_container"></div>
             </div>
 
             {/* Webpay Tab Content */}
             <div className={activeTab === "webpay" ? "block" : "hidden"}>
-              <div className="bg-gradient-to-r from-[#EC1C24] to-[#D4171D] rounded-xl p-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                    <svg className="w-6 h-6 text-[#EC1C24]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-white font-bold text-lg">Webpay Plus</h2>
-                    <p className="text-white/80 text-sm">Tarjeta de credito o debito bancaria</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bank logos */}
-              <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                <p className="text-gray-400 text-xs text-center mb-3">Bancos disponibles</p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">Santander</div>
-                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">BCI</div>
-                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">Banco de Chile</div>
-                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">BancoEstado</div>
-                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">Scotiabank</div>
-                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">Itau</div>
-                </div>
-              </div>
-
               <button
                 onClick={handleWebpayRedirect}
                 className="w-full bg-[#EC1C24] hover:bg-[#D4171D] text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
