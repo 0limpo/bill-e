@@ -358,7 +358,7 @@ function PaymentPageContent() {
               <button
                 onClick={handleMercadoPagoRedirect}
                 disabled={!mpInitPoint}
-                className="w-full bg-[#FFE600] hover:bg-[#FFE600]/90 disabled:opacity-50 font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-[#FFE600] hover:bg-[#FFE600]/90 disabled:opacity-50 font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-1"
               >
                 <span className="text-[#2D3277]">mercado</span>
                 <span className="text-[#00B1EA]">pago</span>
