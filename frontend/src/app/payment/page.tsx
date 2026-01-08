@@ -288,26 +288,33 @@ function PaymentPageContent() {
         {/* Payment forms */}
         {(status === "ready" || status === "error") && (
           <>
-            {/* Card Payment Brick */}
+            {/* Wallet Brick - MercadoPago (Primary option) */}
             <div className="mb-6">
-              <h2 className="text-sm font-medium text-gray-400 mb-3">Pagar con tarjeta</h2>
-              <div id="cardPaymentBrick_container"></div>
+              <div className="bg-[#00b1ea] rounded-xl p-4 mb-3">
+                <div className="flex items-center gap-3 mb-2">
+                  <svg className="w-8 h-8" viewBox="0 0 48 48" fill="white">
+                    <path d="M24 4C12.954 4 4 12.954 4 24s8.954 20 20 20 20-8.954 20-20S35.046 4 24 4zm0 36c-8.837 0-16-7.163-16-16S15.163 8 24 8s16 7.163 16 16-7.163 16-16 16z"/>
+                    <path d="M24 12c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 20c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8z"/>
+                  </svg>
+                  <div>
+                    <h2 className="text-white font-bold text-lg">MercadoPago</h2>
+                    <p className="text-white/80 text-sm">Saldo, créditos o tarjetas guardadas</p>
+                  </div>
+                </div>
+              </div>
+              <div id="walletBrick_container"></div>
             </div>
 
             {/* Divider */}
             <div className="flex items-center gap-4 my-6">
               <div className="flex-1 h-px bg-gray-700"></div>
-              <span className="text-gray-500 text-sm">o</span>
+              <span className="text-gray-500 text-sm">o paga con tarjeta</span>
               <div className="flex-1 h-px bg-gray-700"></div>
             </div>
 
-            {/* Wallet Brick */}
+            {/* Card Payment Brick */}
             <div>
-              <h2 className="text-sm font-medium text-gray-400 mb-3">Pagar con MercadoPago</h2>
-              <div id="walletBrick_container"></div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Usa tu saldo, créditos o tarjetas guardadas
-              </p>
+              <div id="cardPaymentBrick_container"></div>
             </div>
           </>
         )}
