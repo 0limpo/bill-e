@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getMPPublicKey, createMPPreference } from "@/lib/api";
-import { storePendingPayment } from "@/lib/payment";
+import { createPayment, storePendingPayment } from "@/lib/payment";
 
 declare global {
   interface Window {
@@ -12,7 +12,7 @@ declare global {
 }
 
 type PaymentStatus = "loading" | "ready" | "redirecting" | "error";
-type PaymentTab = "mercadopago" | "credit" | "debit";
+type PaymentTab = "mercadopago" | "webpay";
 
 function PaymentPageContent() {
   const searchParams = useSearchParams();
@@ -54,7 +54,7 @@ function PaymentPageContent() {
         // Get public key
         const pkResponse = await getMPPublicKey();
 
-        // Create preference for Wallet Brick (no filter = all methods)
+        // Create preference for Wallet Brick
         const prefResponse = await createMPPreference({
           user_type: userType,
           session_id: sessionId,
@@ -133,36 +133,34 @@ function PaymentPageContent() {
     renderWalletBrick();
   }, [status, mpInstance, preferenceId, activeTab]);
 
-  // Handle redirect to Checkout Pro for credit/debit cards
-  const handleCardRedirect = async (cardType: "credit_card" | "debit_card") => {
+  // Handle redirect to Flow.cl for Webpay
+  const handleWebpayRedirect = async () => {
     setStatus("redirecting");
     try {
-      // Create preference with payment method filter
-      const prefResponse = await createMPPreference({
+      // Create Flow payment order
+      const result = await createPayment({
         user_type: userType,
         session_id: sessionId,
-        payment_method_filter: cardType,
       });
+
+      if (!result.success || !result.payment_url) {
+        throw new Error("Error al crear orden de pago");
+      }
 
       // Store pending payment info
       storePendingPayment({
-        commerce_order: prefResponse.commerce_order,
+        commerce_order: result.commerce_order,
         session_id: sessionId,
         owner_token: ownerToken,
         user_type: userType,
         created_at: new Date().toISOString(),
       });
 
-      // Redirect to MercadoPago Checkout Pro
-      const redirectUrl = prefResponse.init_point || prefResponse.sandbox_init_point;
-      if (redirectUrl) {
-        window.location.href = redirectUrl;
-      } else {
-        throw new Error("No redirect URL received");
-      }
+      // Redirect to Flow.cl (which shows Webpay bank selection)
+      window.location.href = result.payment_url;
     } catch (err: any) {
-      console.error("Redirect error:", err);
-      setError(err.message || "Error processing payment");
+      console.error("Webpay redirect error:", err);
+      setError(err.message || "Error al procesar pago");
       setStatus("error");
     }
   };
@@ -213,7 +211,7 @@ function PaymentPageContent() {
         {status === "redirecting" && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-400">Redirigiendo a MercadoPago...</p>
+            <p className="text-gray-400">Redirigiendo a Webpay...</p>
           </div>
         )}
 
@@ -253,10 +251,10 @@ function PaymentPageContent() {
                 </div>
               </button>
               <button
-                onClick={() => setActiveTab("credit")}
+                onClick={() => setActiveTab("webpay")}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-                  activeTab === "credit"
-                    ? "bg-[#00B1EA] text-white"
+                  activeTab === "webpay"
+                    ? "bg-[#EC1C24] text-white"
                     : "text-gray-400 hover:text-white hover:bg-gray-700"
                 }`}
               >
@@ -264,22 +262,7 @@ function PaymentPageContent() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
-                  <span>Credito</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab("debit")}
-                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-                  activeTab === "debit"
-                    ? "bg-[#00B1EA] text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  <span>Debito</span>
+                  <span>Webpay</span>
                 </div>
               </button>
             </div>
@@ -302,61 +285,46 @@ function PaymentPageContent() {
               <div id="walletBrick_container"></div>
             </div>
 
-            {/* Credit Card Tab Content */}
-            <div className={activeTab === "credit" ? "block" : "hidden"}>
-              <div className="bg-gray-800 rounded-xl p-4 mb-4">
+            {/* Webpay Tab Content */}
+            <div className={activeTab === "webpay" ? "block" : "hidden"}>
+              <div className="bg-gradient-to-r from-[#EC1C24] to-[#D4171D] rounded-xl p-4 mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6 text-[#EC1C24]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-white font-bold text-lg">Tarjeta de Credito</h2>
-                    <p className="text-gray-400 text-sm">Visa, Mastercard, American Express</p>
+                    <h2 className="text-white font-bold text-lg">Webpay Plus</h2>
+                    <p className="text-white/80 text-sm">Tarjeta de credito o debito bancaria</p>
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => handleCardRedirect("credit_card")}
-                className="w-full bg-[#00B1EA] hover:bg-[#0095c8] text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-                Pagar con Tarjeta de Credito
-              </button>
-              <p className="text-gray-500 text-xs text-center mt-3">
-                Seras redirigido a MercadoPago para completar el pago de forma segura
-              </p>
-            </div>
 
-            {/* Debit Card Tab Content */}
-            <div className={activeTab === "debit" ? "block" : "hidden"}>
+              {/* Bank logos */}
               <div className="bg-gray-800 rounded-xl p-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h2 className="text-white font-bold text-lg">Tarjeta de Debito</h2>
-                    <p className="text-gray-400 text-sm">Redcompra, Visa Debito, Mastercard Debito</p>
-                  </div>
+                <p className="text-gray-400 text-xs text-center mb-3">Bancos disponibles</p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">Santander</div>
+                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">BCI</div>
+                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">Banco de Chile</div>
+                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">BancoEstado</div>
+                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">Scotiabank</div>
+                  <div className="bg-white rounded-lg px-3 py-2 text-xs font-bold text-gray-700">Itau</div>
                 </div>
               </div>
+
               <button
-                onClick={() => handleCardRedirect("debit_card")}
-                className="w-full bg-[#00B1EA] hover:bg-[#0095c8] text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+                onClick={handleWebpayRedirect}
+                className="w-full bg-[#EC1C24] hover:bg-[#D4171D] text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
-                Pagar con Tarjeta de Debito
+                Pagar con Webpay
               </button>
               <p className="text-gray-500 text-xs text-center mt-3">
-                Seras redirigido a MercadoPago para completar el pago de forma segura
+                Seras redirigido a Webpay para seleccionar tu banco
               </p>
             </div>
           </>
@@ -368,7 +336,7 @@ function PaymentPageContent() {
             <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Pago seguro procesado por MercadoPago
+            Pago seguro procesado por {activeTab === "mercadopago" ? "MercadoPago" : "Transbank"}
           </p>
         </div>
       </div>
