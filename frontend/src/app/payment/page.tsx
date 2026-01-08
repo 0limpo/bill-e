@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getMPPublicKey, createMPPreference, processMPCardPayment } from "@/lib/api";
 import { createPayment, storePendingPayment } from "@/lib/payment";
+import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
 
 declare global {
   interface Window {
@@ -27,6 +28,8 @@ function PaymentPageContent() {
   const [preferenceId, setPreferenceId] = useState<string>("");
   const [mpInstance, setMpInstance] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<PaymentTab>("mercadopago");
+  const [lang] = useState<Language>(() => detectLanguage());
+  const t = getTranslator(lang);
 
   const walletBrickRef = useRef<boolean>(false);
   const cardBrickRef = useRef<boolean>(false);
@@ -88,9 +91,9 @@ function PaymentPageContent() {
 
         await waitForSDK();
 
-        // Initialize MercadoPago
+        // Initialize MercadoPago with detected language
         const mp = new window.MercadoPago(pkResponse.public_key, {
-          locale: "es-CL",
+          locale: lang === "en" ? "en-US" : "es-CL",
         });
         setMpInstance(mp);
 
@@ -257,7 +260,7 @@ function PaymentPageContent() {
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Volver
+          {t("payment.back")}
         </button>
       </div>
 
@@ -266,32 +269,32 @@ function PaymentPageContent() {
         {/* Product info */}
         <div className="bg-card rounded-xl p-4 mb-6">
           <div className="flex justify-between items-start mb-2">
-            <h1 className="text-xl font-bold">Bill-e Premium</h1>
-            <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">1 ano</span>
+            <h1 className="text-xl font-bold">{t("payment.productName")}</h1>
+            <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">{t("payment.productDuration")}</span>
           </div>
-          <p className="text-muted-foreground text-sm mb-3">Uso ilimitado como anfitrion e invitado</p>
-          <div className="text-3xl font-bold">${amount.toLocaleString("es-CL")}</div>
+          <p className="text-muted-foreground text-sm mb-3">{t("payment.productDesc")}</p>
+          <div className="text-3xl font-bold">${amount.toLocaleString(lang === "en" ? "en-US" : "es-CL")}</div>
         </div>
 
         {/* Status messages */}
         {status === "loading" && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Cargando metodos de pago...</p>
+            <p className="text-muted-foreground">{t("payment.loadingMethods")}</p>
           </div>
         )}
 
         {status === "redirecting" && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Redirigiendo a Webpay...</p>
+            <p className="text-muted-foreground">{t("payment.redirectingWebpay")}</p>
           </div>
         )}
 
         {status === "processing" && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Procesando pago...</p>
+            <p className="text-muted-foreground">{t("payment.processing")}</p>
           </div>
         )}
 
@@ -302,8 +305,8 @@ function PaymentPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-success text-lg font-medium">Pago exitoso!</p>
-            <p className="text-muted-foreground text-sm mt-2">Redirigiendo...</p>
+            <p className="text-success text-lg font-medium">{t("payment.success")}</p>
+            <p className="text-muted-foreground text-sm mt-2">{t("payment.successRedirecting")}</p>
           </div>
         )}
 
@@ -317,7 +320,7 @@ function PaymentPageContent() {
               }}
               className="mt-3 text-sm text-primary hover:underline"
             >
-              Intentar de nuevo
+              {t("payment.retry")}
             </button>
           </div>
         )}
@@ -345,7 +348,7 @@ function PaymentPageContent() {
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
-                Webpay
+                {t("payment.tabWebpay")}
               </button>
               <button
                 onClick={() => setActiveTab("tarjeta")}
@@ -355,7 +358,7 @@ function PaymentPageContent() {
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
-                Tarjeta
+                {t("payment.tabCard")}
               </button>
             </div>
 
@@ -373,10 +376,10 @@ function PaymentPageContent() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
-                Pagar con Webpay
+                {t("payment.payWithWebpay")}
               </button>
               <p className="text-muted-foreground text-xs text-center mt-3">
-                Seras redirigido a Webpay para seleccionar tu banco
+                {t("payment.webpayRedirectNote")}
               </p>
             </div>
 
@@ -393,7 +396,7 @@ function PaymentPageContent() {
             <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            Pago seguro procesado por {activeTab === "webpay" ? "Transbank" : "MercadoPago"}
+            {t("payment.poweredBy")} {activeTab === "webpay" ? "Transbank" : "MercadoPago"}
           </p>
         </div>
       </div>
@@ -403,11 +406,13 @@ function PaymentPageContent() {
 
 // Loading fallback for Suspense
 function PaymentLoading() {
+  const lang = detectLanguage();
+  const t = getTranslator(lang);
   return (
     <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-muted-foreground">Cargando...</p>
+        <p className="text-muted-foreground">{t("payment.loadingMethods")}</p>
       </div>
     </div>
   );
