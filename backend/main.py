@@ -1570,6 +1570,7 @@ class MPPreferenceRequest(BaseModel):
     device_id: Optional[str] = None
     phone: Optional[str] = None
     session_id: Optional[str] = None
+    payment_method_filter: Optional[str] = None  # "credit_card" or "debit_card" for Checkout Pro redirect
 
 
 class MPCardPaymentRequest(BaseModel):
@@ -1647,7 +1648,8 @@ async def create_mp_preference(request: MPPreferenceRequest):
                 "device_id": request.device_id,
                 "phone": request.phone,
                 "session_id": request.session_id
-            }
+            },
+            payment_method_filter=request.payment_method_filter
         )
 
         # Store payment record in Redis

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { getMPPublicKey, createMPPreference, processMPCardPayment } from "@/lib/api";
+import { getMPPublicKey, createMPPreference } from "@/lib/api";
 import { storePendingPayment } from "@/lib/payment";
 
 declare global {
@@ -11,7 +11,7 @@ declare global {
   }
 }
 
-type PaymentStatus = "loading" | "ready" | "processing" | "success" | "error";
+type PaymentStatus = "loading" | "ready" | "redirecting" | "error";
 type PaymentTab = "mercadopago" | "credit" | "debit";
 
 function PaymentPageContent() {
@@ -24,15 +24,10 @@ function PaymentPageContent() {
 
   const [status, setStatus] = useState<PaymentStatus>("loading");
   const [error, setError] = useState<string>("");
-  const [publicKey, setPublicKey] = useState<string>("");
   const [preferenceId, setPreferenceId] = useState<string>("");
-  const [commerceOrder, setCommerceOrder] = useState<string>("");
   const [mpInstance, setMpInstance] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<PaymentTab>("mercadopago");
 
-  // Track which bricks have been rendered
-  const creditBrickRef = useRef<any>(null);
-  const debitBrickRef = useRef<any>(null);
   const walletBrickRef = useRef<boolean>(false);
 
   const amount = 1990; // CLP
@@ -52,22 +47,20 @@ function PaymentPageContent() {
     };
   }, []);
 
-  // Initialize MercadoPago and create preference
+  // Initialize MercadoPago and create preference for Wallet Brick
   useEffect(() => {
     const init = async () => {
       try {
         // Get public key
         const pkResponse = await getMPPublicKey();
-        setPublicKey(pkResponse.public_key);
 
-        // Create preference for Wallet Brick
+        // Create preference for Wallet Brick (no filter = all methods)
         const prefResponse = await createMPPreference({
           user_type: userType,
           session_id: sessionId,
         });
 
         setPreferenceId(prefResponse.preference_id);
-        setCommerceOrder(prefResponse.commerce_order);
 
         // Store pending payment info
         storePendingPayment({
@@ -111,105 +104,6 @@ function PaymentPageContent() {
     init();
   }, [sessionId, userType, ownerToken]);
 
-  // Helper function to create card brick with specific payment method type
-  const createCardBrick = async (
-    containerId: string,
-    cardType: "credit_card" | "debit_card"
-  ) => {
-    const bricks = mpInstance.bricks();
-
-    return await bricks.create("cardPayment", containerId, {
-      initialization: {
-        amount: amount,
-      },
-      customization: {
-        visual: {
-          style: {
-            theme: "dark",
-          },
-        },
-        paymentMethods: {
-          maxInstallments: 1,
-          types: {
-            included: [cardType],
-          },
-        },
-      },
-      callbacks: {
-        onReady: () => {
-          console.log(`${cardType} Brick ready`);
-        },
-        onSubmit: async (cardFormData: any) => {
-          console.log("Card form submitted:", cardFormData);
-          setStatus("processing");
-
-          try {
-            const result = await processMPCardPayment({
-              token: cardFormData.token,
-              transaction_amount: amount,
-              installments: cardFormData.installments || 1,
-              payment_method_id: cardFormData.payment_method_id,
-              issuer_id: cardFormData.issuer_id,
-              payer_email: cardFormData.payer.email,
-              user_type: userType,
-              session_id: sessionId,
-            });
-
-            if (result.success) {
-              setStatus("success");
-              setTimeout(() => {
-                router.push(`/payment/success?session=${sessionId}&status=approved&order=${result.commerce_order}`);
-              }, 1500);
-            } else {
-              setError(result.status_detail || "Payment rejected");
-              setStatus("error");
-            }
-          } catch (err: any) {
-            console.error("Payment error:", err);
-            setError(err.message || "Payment failed");
-            setStatus("error");
-          }
-        },
-        onError: (error: any) => {
-          console.error("Brick error:", error);
-          setError(error.message || "Payment form error");
-        },
-      },
-    });
-  };
-
-  // Render Credit Card Brick when tab is active
-  useEffect(() => {
-    if (status !== "ready" || !mpInstance || activeTab !== "credit" || creditBrickRef.current) return;
-
-    const renderCreditBrick = async () => {
-      try {
-        creditBrickRef.current = await createCardBrick("creditCardBrick_container", "credit_card");
-      } catch (err: any) {
-        console.error("Credit Brick render error:", err);
-        setError(err.message || "Error rendering credit card form");
-      }
-    };
-
-    renderCreditBrick();
-  }, [status, mpInstance, activeTab]);
-
-  // Render Debit Card Brick when tab is active
-  useEffect(() => {
-    if (status !== "ready" || !mpInstance || activeTab !== "debit" || debitBrickRef.current) return;
-
-    const renderDebitBrick = async () => {
-      try {
-        debitBrickRef.current = await createCardBrick("debitCardBrick_container", "debit_card");
-      } catch (err: any) {
-        console.error("Debit Brick render error:", err);
-        setError(err.message || "Error rendering debit card form");
-      }
-    };
-
-    renderDebitBrick();
-  }, [status, mpInstance, activeTab]);
-
   // Render Wallet Brick when tab is active
   useEffect(() => {
     if (status !== "ready" || !mpInstance || !preferenceId || activeTab !== "mercadopago" || walletBrickRef.current) return;
@@ -238,6 +132,40 @@ function PaymentPageContent() {
 
     renderWalletBrick();
   }, [status, mpInstance, preferenceId, activeTab]);
+
+  // Handle redirect to Checkout Pro for credit/debit cards
+  const handleCardRedirect = async (cardType: "credit_card" | "debit_card") => {
+    setStatus("redirecting");
+    try {
+      // Create preference with payment method filter
+      const prefResponse = await createMPPreference({
+        user_type: userType,
+        session_id: sessionId,
+        payment_method_filter: cardType,
+      });
+
+      // Store pending payment info
+      storePendingPayment({
+        commerce_order: prefResponse.commerce_order,
+        session_id: sessionId,
+        owner_token: ownerToken,
+        user_type: userType,
+        created_at: new Date().toISOString(),
+      });
+
+      // Redirect to MercadoPago Checkout Pro
+      const redirectUrl = prefResponse.init_point || prefResponse.sandbox_init_point;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+      } else {
+        throw new Error("No redirect URL received");
+      }
+    } catch (err: any) {
+      console.error("Redirect error:", err);
+      setError(err.message || "Error processing payment");
+      setStatus("error");
+    }
+  };
 
   const handleBack = () => {
     if (sessionId) {
@@ -268,9 +196,9 @@ function PaymentPageContent() {
         <div className="bg-gray-900 rounded-xl p-4 mb-6">
           <div className="flex justify-between items-start mb-2">
             <h1 className="text-xl font-bold">Bill-e Premium</h1>
-            <span className="bg-blue-600 text-xs px-2 py-1 rounded-full">1 año</span>
+            <span className="bg-blue-600 text-xs px-2 py-1 rounded-full">1 ano</span>
           </div>
-          <p className="text-gray-400 text-sm mb-3">Uso ilimitado como anfitrión e invitado</p>
+          <p className="text-gray-400 text-sm mb-3">Uso ilimitado como anfitrion e invitado</p>
           <div className="text-3xl font-bold">${amount.toLocaleString("es-CL")}</div>
         </div>
 
@@ -278,26 +206,14 @@ function PaymentPageContent() {
         {status === "loading" && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-400">Cargando métodos de pago...</p>
+            <p className="text-gray-400">Cargando metodos de pago...</p>
           </div>
         )}
 
-        {status === "processing" && (
+        {status === "redirecting" && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-400">Procesando pago...</p>
-          </div>
-        )}
-
-        {status === "success" && (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-green-400 text-lg font-medium">¡Pago exitoso!</p>
-            <p className="text-gray-400 text-sm mt-2">Redirigiendo...</p>
+            <p className="text-gray-400">Redirigiendo a MercadoPago...</p>
           </div>
         )}
 
@@ -348,7 +264,7 @@ function PaymentPageContent() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
-                  <span>Crédito</span>
+                  <span>Credito</span>
                 </div>
               </button>
               <button
@@ -363,7 +279,7 @@ function PaymentPageContent() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                   </svg>
-                  <span>Débito</span>
+                  <span>Debito</span>
                 </div>
               </button>
             </div>
@@ -379,7 +295,7 @@ function PaymentPageContent() {
                   </div>
                   <div>
                     <h2 className="text-gray-900 font-bold text-lg">Mercado Pago</h2>
-                    <p className="text-gray-700 text-sm">Saldo, créditos o tarjetas guardadas</p>
+                    <p className="text-gray-700 text-sm">Saldo, creditos o tarjetas guardadas</p>
                   </div>
                 </div>
               </div>
@@ -396,12 +312,23 @@ function PaymentPageContent() {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-white font-bold text-lg">Tarjeta de Crédito</h2>
+                    <h2 className="text-white font-bold text-lg">Tarjeta de Credito</h2>
                     <p className="text-gray-400 text-sm">Visa, Mastercard, American Express</p>
                   </div>
                 </div>
               </div>
-              <div id="creditCardBrick_container"></div>
+              <button
+                onClick={() => handleCardRedirect("credit_card")}
+                className="w-full bg-[#00B1EA] hover:bg-[#0095c8] text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+                Pagar con Tarjeta de Credito
+              </button>
+              <p className="text-gray-500 text-xs text-center mt-3">
+                Seras redirigido a MercadoPago para completar el pago de forma segura
+              </p>
             </div>
 
             {/* Debit Card Tab Content */}
@@ -414,12 +341,23 @@ function PaymentPageContent() {
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-white font-bold text-lg">Tarjeta de Débito</h2>
-                    <p className="text-gray-400 text-sm">Redcompra, Visa Débito, Mastercard Débito</p>
+                    <h2 className="text-white font-bold text-lg">Tarjeta de Debito</h2>
+                    <p className="text-gray-400 text-sm">Redcompra, Visa Debito, Mastercard Debito</p>
                   </div>
                 </div>
               </div>
-              <div id="debitCardBrick_container"></div>
+              <button
+                onClick={() => handleCardRedirect("debit_card")}
+                className="w-full bg-[#00B1EA] hover:bg-[#0095c8] text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+                Pagar con Tarjeta de Debito
+              </button>
+              <p className="text-gray-500 text-xs text-center mt-3">
+                Seras redirigido a MercadoPago para completar el pago de forma segura
+              </p>
             </div>
           </>
         )}

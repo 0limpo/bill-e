@@ -42,10 +42,11 @@ def create_preference(
     failure_url: str,
     pending_url: str,
     external_reference: str,
-    metadata: Dict = None
+    metadata: Dict = None,
+    payment_method_filter: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Create a payment preference for Wallet Brick.
+    Create a payment preference for Wallet Brick or Checkout Pro.
 
     Args:
         commerce_order: Unique order ID
@@ -57,6 +58,7 @@ def create_preference(
         pending_url: Redirect URL on pending
         external_reference: Our reference ID
         metadata: Additional metadata
+        payment_method_filter: Optional filter - "credit_card" or "debit_card" to restrict payment types
 
     Returns:
         Preference response with id, init_point, etc.
@@ -86,6 +88,30 @@ def create_preference(
         "expiration_date_from": datetime.now().isoformat(),
         "expiration_date_to": (datetime.now() + timedelta(hours=24)).isoformat(),
     }
+
+    # Filter payment methods if specified
+    if payment_method_filter == "credit_card":
+        # Exclude debit cards and other methods - only allow credit cards
+        preference_data["payment_methods"] = {
+            "excluded_payment_types": [
+                {"id": "debit_card"},
+                {"id": "ticket"},
+                {"id": "atm"},
+                {"id": "bank_transfer"}
+            ],
+            "installments": 1
+        }
+    elif payment_method_filter == "debit_card":
+        # Exclude credit cards and other methods - only allow debit cards
+        preference_data["payment_methods"] = {
+            "excluded_payment_types": [
+                {"id": "credit_card"},
+                {"id": "ticket"},
+                {"id": "atm"},
+                {"id": "bank_transfer"}
+            ],
+            "installments": 1
+        }
 
     if metadata:
         preference_data["metadata"] = metadata
