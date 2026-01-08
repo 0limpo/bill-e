@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getMPPublicKey, createMPPreference, processMPCardPayment } from "@/lib/api";
 import { storePendingPayment } from "@/lib/payment";
@@ -13,7 +13,7 @@ declare global {
 
 type PaymentStatus = "loading" | "ready" | "processing" | "success" | "error";
 
-export default function PaymentPage() {
+function PaymentPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -323,5 +323,26 @@ export default function PaymentPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function PaymentLoading() {
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-gray-400">Cargando...</p>
+      </div>
+    </div>
+  );
+}
+
+// Wrapper with Suspense for useSearchParams
+export default function PaymentPage() {
+  return (
+    <Suspense fallback={<PaymentLoading />}>
+      <PaymentPageContent />
+    </Suspense>
   );
 }
