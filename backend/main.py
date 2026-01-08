@@ -99,6 +99,7 @@ try:
         get_payment as mp_get_payment,
         get_public_key as mp_get_public_key,
         get_premium_price as mp_get_premium_price,
+        verify_webhook_signature as mp_verify_signature,
         MPPaymentStatus
     )
     mercadopago_available = True
@@ -1802,13 +1803,22 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
 @app.post("/api/mercadopago/webhook")
 async def mp_webhook(request: Request):
     """
-    MercadoPago webhook (IPN) callback.
+    MercadoPago webhook callback.
     Called when payment status changes.
+
+    Security:
+    1. Verify webhook signature (HMAC-SHA256)
+    2. Always fetch payment from MP API (never trust webhook payload directly)
+    3. Only activate premium after confirming status=approved
     """
     if not mercadopago_available:
         raise HTTPException(status_code=503, detail="MercadoPago not available")
 
     try:
+        # Get headers for signature verification
+        x_signature = request.headers.get("x-signature", "")
+        x_request_id = request.headers.get("x-request-id", "")
+
         # Get query params (MercadoPago sends type and data.id)
         params = dict(request.query_params)
 
@@ -1832,6 +1842,12 @@ async def mp_webhook(request: Request):
         if not payment_id:
             print(f"Webhook received but no payment_id found: {params}, {body}")
             return {"status": "ok", "message": "No payment_id"}
+
+        # Verify webhook signature
+        data_id = str(body.get("data", {}).get("id", payment_id))
+        if not mp_verify_signature(x_signature, x_request_id, data_id):
+            print(f"Invalid webhook signature for payment {payment_id}")
+            raise HTTPException(status_code=401, detail="Invalid signature")
 
         # Get payment details from MercadoPago
         mp_payment = mp_get_payment(str(payment_id))

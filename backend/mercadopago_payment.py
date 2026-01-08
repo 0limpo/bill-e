@@ -4,6 +4,8 @@ Supports both Card Payment Brick (embedded) and Wallet Brick (redirect)
 """
 
 import os
+import hmac
+import hashlib
 import mercadopago
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
@@ -11,6 +13,7 @@ from datetime import datetime, timedelta
 # Configuration from environment
 MP_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
 MP_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY", "")
+MP_WEBHOOK_SECRET = os.getenv("MERCADOPAGO_WEBHOOK_SECRET", "")
 
 # Price configuration (shared with Flow)
 PREMIUM_PRICE_CLP = int(os.getenv("PREMIUM_PRICE_CLP", "1990"))
@@ -206,3 +209,78 @@ class MPPaymentStatus:
     @staticmethod
     def is_failed(status: str) -> bool:
         return status in ["rejected", "cancelled", "refunded", "charged_back"]
+
+
+def verify_webhook_signature(
+    x_signature: str,
+    x_request_id: str,
+    data_id: str
+) -> bool:
+    """
+    Verify MercadoPago webhook signature.
+
+    MercadoPago sends:
+    - x-signature header: "ts=timestamp,v1=hash"
+    - x-request-id header: unique request ID
+    - data.id in the body: payment ID
+
+    We need to:
+    1. Extract ts and v1 from x-signature
+    2. Build template string: "id:[data.id];request-id:[x-request-id];ts:[ts];"
+    3. HMAC-SHA256 with webhook secret
+    4. Compare with v1
+
+    Args:
+        x_signature: x-signature header value
+        x_request_id: x-request-id header value
+        data_id: data.id from webhook body
+
+    Returns:
+        True if signature is valid, False otherwise
+    """
+    if not MP_WEBHOOK_SECRET:
+        # If no secret configured, skip validation (log warning)
+        print("WARNING: MERCADOPAGO_WEBHOOK_SECRET not configured, skipping signature validation")
+        return True
+
+    if not x_signature or not x_request_id:
+        print("Missing signature headers")
+        return False
+
+    try:
+        # Parse x-signature: "ts=1234567890,v1=abc123..."
+        parts = {}
+        for part in x_signature.split(","):
+            if "=" in part:
+                key, value = part.split("=", 1)
+                parts[key] = value
+
+        ts = parts.get("ts")
+        v1 = parts.get("v1")
+
+        if not ts or not v1:
+            print(f"Invalid x-signature format: {x_signature}")
+            return False
+
+        # Build the manifest string
+        # Format: "id:[data.id];request-id:[x-request-id];ts:[ts];"
+        manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
+
+        # Calculate HMAC-SHA256
+        calculated_hash = hmac.new(
+            MP_WEBHOOK_SECRET.encode(),
+            manifest.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        # Compare signatures
+        is_valid = hmac.compare_digest(calculated_hash, v1)
+
+        if not is_valid:
+            print(f"Signature mismatch. Expected: {v1}, Got: {calculated_hash}")
+
+        return is_valid
+
+    except Exception as e:
+        print(f"Error verifying webhook signature: {e}")
+        return False
