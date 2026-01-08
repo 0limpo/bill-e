@@ -325,53 +325,45 @@ function PaymentPageContent() {
         {/* Payment forms */}
         {(status === "ready" || status === "error") && (
           <>
-            {/* Payment method tabs */}
-            <div className="flex rounded-xl overflow-hidden mb-6 bg-gray-800">
-              <button
-                onClick={() => setActiveTab("mercadopago")}
-                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-                  activeTab === "mercadopago"
-                    ? "bg-[#00B1EA] text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12.5 2C9.46 2 7 4.46 7 7.5c0 1.33.47 2.55 1.26 3.5H5.5C3.57 11 2 12.57 2 14.5c0 1.93 1.57 3.5 3.5 3.5h.5v2c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-2h.5c1.93 0 3.5-1.57 3.5-3.5 0-1.93-1.57-3.5-3.5-3.5h-2.76c.79-.95 1.26-2.17 1.26-3.5C17 4.46 14.54 2 11.5 2h1z"/>
-                  </svg>
-                  <span>Mercado Pago</span>
+            {/* Payment method selector - stepper style */}
+            <div className="flex items-center justify-center mb-6">
+              {[
+                { id: "mercadopago" as PaymentTab, label: "Mercado Pago" },
+                { id: "webpay" as PaymentTab, label: "Webpay" },
+                { id: "tarjeta" as PaymentTab, label: "Tarjeta" },
+              ].map((tab, idx) => (
+                <div key={tab.id} className="flex items-center">
+                  <button
+                    className="flex flex-col items-center gap-1.5"
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    {/* Circle */}
+                    <span
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all ${
+                        activeTab === tab.id
+                          ? "bg-blue-500 text-white shadow-[0_0_0_4px_rgba(59,130,246,0.2)]"
+                          : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                      }`}
+                    >
+                      {idx + 1}
+                    </span>
+                    {/* Label */}
+                    <span
+                      className={`text-xs font-medium ${
+                        activeTab === tab.id
+                          ? "text-white"
+                          : "text-gray-500"
+                      }`}
+                    >
+                      {tab.label}
+                    </span>
+                  </button>
+                  {/* Line between options */}
+                  {idx < 2 && (
+                    <div className="w-6 h-0.5 mx-2 mb-5 rounded-full bg-gray-700" />
+                  )}
                 </div>
-              </button>
-              <button
-                onClick={() => setActiveTab("webpay")}
-                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-                  activeTab === "webpay"
-                    ? "bg-[#EC1C24] text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  <span>Webpay</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab("tarjeta")}
-                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-                  activeTab === "tarjeta"
-                    ? "bg-gray-600 text-white"
-                    : "text-gray-400 hover:text-white hover:bg-gray-700"
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  <span>Tarjeta</span>
-                </div>
-              </button>
+              ))}
             </div>
 
             {/* MercadoPago Wallet Tab Content */}
