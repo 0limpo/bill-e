@@ -1625,10 +1625,13 @@ async def create_mp_preference(request: MPPreferenceRequest):
         base_return = f"{frontend_url}/payment/success"
         if request.session_id:
             base_return = f"{base_return}?session={request.session_id}"
+            separator = "&"
+        else:
+            separator = "?"
 
-        success_url = f"{base_return}&status=approved"
-        failure_url = f"{base_return}&status=rejected"
-        pending_url = f"{base_return}&status=pending"
+        success_url = f"{base_return}{separator}status=approved"
+        failure_url = f"{base_return}{separator}status=rejected"
+        pending_url = f"{base_return}{separator}status=pending"
 
         # Get configured price
         amount = mp_get_premium_price()
