@@ -290,15 +290,17 @@ function PaymentPageContent() {
           <>
             {/* Wallet Brick - MercadoPago (Primary option) */}
             <div className="mb-6">
-              <div className="bg-[#00b1ea] rounded-xl p-4 mb-3">
-                <div className="flex items-center gap-3 mb-2">
-                  <svg className="w-8 h-8" viewBox="0 0 48 48" fill="white">
-                    <path d="M24 4C12.954 4 4 12.954 4 24s8.954 20 20 20 20-8.954 20-20S35.046 4 24 4zm0 36c-8.837 0-16-7.163-16-16S15.163 8 24 8s16 7.163 16 16-7.163 16-16 16z"/>
-                    <path d="M24 12c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm0 20c-4.418 0-8-3.582-8-8s3.582-8 8-8 8 3.582 8 8-3.582 8-8 8z"/>
-                  </svg>
+              <div className="bg-[#FFE600] rounded-xl p-4 mb-3">
+                <div className="flex items-center gap-3">
+                  {/* MercadoPago handshake icon */}
+                  <div className="w-10 h-10 bg-[#00B1EA] rounded-full flex items-center justify-center">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="white">
+                      <path d="M12.5 2C9.46 2 7 4.46 7 7.5c0 1.33.47 2.55 1.26 3.5H5.5C3.57 11 2 12.57 2 14.5c0 1.93 1.57 3.5 3.5 3.5h.5v2c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-2h.5c1.93 0 3.5-1.57 3.5-3.5 0-1.93-1.57-3.5-3.5-3.5h-2.76c.79-.95 1.26-2.17 1.26-3.5C17 4.46 14.54 2 11.5 2h1z"/>
+                    </svg>
+                  </div>
                   <div>
-                    <h2 className="text-white font-bold text-lg">MercadoPago</h2>
-                    <p className="text-white/80 text-sm">Saldo, créditos o tarjetas guardadas</p>
+                    <h2 className="text-gray-900 font-bold text-lg">Mercado Pago</h2>
+                    <p className="text-gray-700 text-sm">Saldo, créditos o tarjetas guardadas</p>
                   </div>
                 </div>
               </div>
