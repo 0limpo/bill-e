@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-type PaymentStatus = "loading" | "ready" | "redirecting_mp" | "redirecting_webpay" | "processing" | "success" | "error";
+type PaymentStatus = "loading" | "ready" | "redirecting" | "processing" | "success" | "error";
 type PaymentTab = "mercadopago" | "webpay" | "tarjeta";
 
 function PaymentPageContent() {
@@ -26,12 +26,12 @@ function PaymentPageContent() {
   const [status, setStatus] = useState<PaymentStatus>("loading");
   const [error, setError] = useState<string>("");
   const [preferenceId, setPreferenceId] = useState<string>("");
-  const [mpInitPoint, setMpInitPoint] = useState<string>("");
   const [mpInstance, setMpInstance] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<PaymentTab>("mercadopago");
   const [lang] = useState<Language>(() => detectLanguage());
   const t = getTranslator(lang);
 
+  const walletBrickRef = useRef<boolean>(false);
   const cardBrickRef = useRef<boolean>(false);
 
   const amount = 1990; // CLP
@@ -65,7 +65,6 @@ function PaymentPageContent() {
         });
 
         setPreferenceId(prefResponse.preference_id);
-        setMpInitPoint(prefResponse.init_point);
 
         // Store pending payment info
         storePendingPayment({
@@ -109,13 +108,34 @@ function PaymentPageContent() {
     init();
   }, [sessionId, userType, ownerToken]);
 
-  // Handle redirect to MercadoPago
-  const handleMercadoPagoRedirect = () => {
-    if (mpInitPoint) {
-      setStatus("redirecting_mp");
-      window.location.href = mpInitPoint;
-    }
-  };
+  // Render Wallet Brick when tab is active
+  useEffect(() => {
+    if (status !== "ready" || !mpInstance || !preferenceId || activeTab !== "mercadopago" || walletBrickRef.current) return;
+
+    const renderWalletBrick = async () => {
+      try {
+        const bricks = mpInstance.bricks();
+
+        await bricks.create("wallet", "walletBrick_container", {
+          initialization: {
+            preferenceId: preferenceId,
+            redirectMode: "self",
+          },
+          customization: {
+            visual: {
+              buttonBackground: "#00B1EA",
+              borderRadius: "12px",
+            },
+          },
+        });
+        walletBrickRef.current = true;
+      } catch (err: any) {
+        console.error("Wallet Brick error:", err);
+      }
+    };
+
+    renderWalletBrick();
+  }, [status, mpInstance, preferenceId, activeTab]);
 
   // Render Card Payment Brick when tab is active
   useEffect(() => {
@@ -191,7 +211,7 @@ function PaymentPageContent() {
 
   // Handle redirect to Flow.cl for Webpay
   const handleWebpayRedirect = async () => {
-    setStatus("redirecting_webpay");
+    setStatus("redirecting");
     try {
       // Create Flow payment order
       const result = await createPayment({
@@ -264,14 +284,7 @@ function PaymentPageContent() {
           </div>
         )}
 
-        {status === "redirecting_mp" && (
-          <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">{t("payment.redirectingMP")}</p>
-          </div>
-        )}
-
-        {status === "redirecting_webpay" && (
+        {status === "redirecting" && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
             <p className="text-muted-foreground">{t("payment.redirectingWebpay")}</p>
@@ -353,16 +366,9 @@ function PaymentPageContent() {
               </button>
             </div>
 
-            {/* MercadoPago Tab Content */}
+            {/* MercadoPago Wallet Tab Content */}
             <div className={activeTab === "mercadopago" ? "block" : "hidden"}>
-              <button
-                onClick={handleMercadoPagoRedirect}
-                disabled={!mpInitPoint}
-                className="w-full bg-[#FFE600] hover:bg-[#FFE600]/90 disabled:opacity-50 font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-1"
-              >
-                <span className="text-[#2D3277]">mercado</span>
-                <span className="text-[#00B1EA]">pago</span>
-              </button>
+              <div id="walletBrick_container"></div>
             </div>
 
             {/* Webpay Tab Content */}
