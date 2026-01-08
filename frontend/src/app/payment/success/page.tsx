@@ -28,7 +28,8 @@ function PaymentSuccessContent() {
 
         if (!pendingPayment) {
           // Maybe user navigated here directly - check URL params
-          const commerceOrder = searchParams.get("order");
+          // MercadoPago uses external_reference, Flow uses order
+          const commerceOrder = searchParams.get("external_reference") || searchParams.get("order");
           if (!commerceOrder) {
             setState("error");
             setError("No se encontró información del pago");
@@ -36,7 +37,7 @@ function PaymentSuccessContent() {
           }
           // Try to check status anyway
           const status = await getPaymentStatus(commerceOrder);
-          handleStatusResponse(status, null, null);
+          handleStatusResponse(status, searchParams.get("session"), null);
           return;
         }
 
@@ -278,7 +279,7 @@ function PaymentSuccessContent() {
 
         {/* Footer */}
         <p className="text-xs text-muted-foreground text-center mt-6">
-          Pago procesado por Flow.cl
+          Pago seguro
         </p>
       </div>
     </div>
