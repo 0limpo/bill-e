@@ -1,0 +1,208 @@
+"""
+MercadoPago Payment Integration for Bill-e
+Supports both Card Payment Brick (embedded) and Wallet Brick (redirect)
+"""
+
+import os
+import mercadopago
+from typing import Dict, Any, Optional
+from datetime import datetime, timedelta
+
+# Configuration from environment
+MP_ACCESS_TOKEN = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+MP_PUBLIC_KEY = os.getenv("MERCADOPAGO_PUBLIC_KEY", "")
+
+# Price configuration (shared with Flow)
+PREMIUM_PRICE_CLP = int(os.getenv("PREMIUM_PRICE_CLP", "1990"))
+
+
+def get_sdk() -> mercadopago.SDK:
+    """Get initialized MercadoPago SDK."""
+    if not MP_ACCESS_TOKEN:
+        raise ValueError("MERCADOPAGO_ACCESS_TOKEN not configured")
+    return mercadopago.SDK(MP_ACCESS_TOKEN)
+
+
+def get_public_key() -> str:
+    """Get MercadoPago public key for frontend."""
+    if not MP_PUBLIC_KEY:
+        raise ValueError("MERCADOPAGO_PUBLIC_KEY not configured")
+    return MP_PUBLIC_KEY
+
+
+def create_preference(
+    commerce_order: str,
+    title: str,
+    amount: int,
+    notification_url: str,
+    success_url: str,
+    failure_url: str,
+    pending_url: str,
+    external_reference: str,
+    metadata: Dict = None
+) -> Dict[str, Any]:
+    """
+    Create a payment preference for Wallet Brick.
+
+    Args:
+        commerce_order: Unique order ID
+        title: Product title
+        amount: Amount in CLP
+        notification_url: Webhook URL
+        success_url: Redirect URL on success
+        failure_url: Redirect URL on failure
+        pending_url: Redirect URL on pending
+        external_reference: Our reference ID
+        metadata: Additional metadata
+
+    Returns:
+        Preference response with id, init_point, etc.
+    """
+    sdk = get_sdk()
+
+    preference_data = {
+        "items": [
+            {
+                "id": commerce_order,
+                "title": title,
+                "quantity": 1,
+                "currency_id": "CLP",
+                "unit_price": amount
+            }
+        ],
+        "back_urls": {
+            "success": success_url,
+            "failure": failure_url,
+            "pending": pending_url
+        },
+        "auto_return": "approved",
+        "notification_url": notification_url,
+        "external_reference": external_reference,
+        "statement_descriptor": "BILL-E PREMIUM",
+        "expires": True,
+        "expiration_date_from": datetime.now().isoformat(),
+        "expiration_date_to": (datetime.now() + timedelta(hours=24)).isoformat(),
+    }
+
+    if metadata:
+        preference_data["metadata"] = metadata
+
+    result = sdk.preference().create(preference_data)
+
+    if result["status"] != 201:
+        error_msg = f"MercadoPago API error: {result}"
+        print(error_msg)
+        raise Exception(error_msg)
+
+    return result["response"]
+
+
+def process_card_payment(
+    token: str,
+    transaction_amount: float,
+    installments: int,
+    payment_method_id: str,
+    issuer_id: str,
+    payer_email: str,
+    external_reference: str,
+    description: str,
+    notification_url: str,
+    metadata: Dict = None
+) -> Dict[str, Any]:
+    """
+    Process a card payment from Card Payment Brick.
+
+    Args:
+        token: Card token from Brick
+        transaction_amount: Amount in CLP
+        installments: Number of installments
+        payment_method_id: Payment method (visa, mastercard, etc.)
+        issuer_id: Card issuer ID
+        payer_email: Payer's email
+        external_reference: Our reference ID
+        description: Payment description
+        notification_url: Webhook URL
+        metadata: Additional metadata
+
+    Returns:
+        Payment response
+    """
+    sdk = get_sdk()
+
+    payment_data = {
+        "token": token,
+        "transaction_amount": float(transaction_amount),
+        "installments": installments,
+        "payment_method_id": payment_method_id,
+        "issuer_id": issuer_id,
+        "payer": {
+            "email": payer_email
+        },
+        "external_reference": external_reference,
+        "description": description,
+        "notification_url": notification_url,
+        "statement_descriptor": "BILL-E PREMIUM"
+    }
+
+    if metadata:
+        payment_data["metadata"] = metadata
+
+    result = sdk.payment().create(payment_data)
+
+    if result["status"] not in [200, 201]:
+        error_msg = f"MercadoPago payment error: {result}"
+        print(error_msg)
+        raise Exception(error_msg)
+
+    return result["response"]
+
+
+def get_payment(payment_id: str) -> Dict[str, Any]:
+    """
+    Get payment details by ID.
+
+    Args:
+        payment_id: MercadoPago payment ID
+
+    Returns:
+        Payment details
+    """
+    sdk = get_sdk()
+    result = sdk.payment().get(payment_id)
+
+    if result["status"] != 200:
+        error_msg = f"MercadoPago API error: {result}"
+        print(error_msg)
+        raise Exception(error_msg)
+
+    return result["response"]
+
+
+def get_premium_price() -> int:
+    """Get the configured premium price in CLP."""
+    return PREMIUM_PRICE_CLP
+
+
+# Payment status mapping
+class MPPaymentStatus:
+    PENDING = "pending"
+    APPROVED = "approved"
+    AUTHORIZED = "authorized"
+    IN_PROCESS = "in_process"
+    IN_MEDIATION = "in_mediation"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+    REFUNDED = "refunded"
+    CHARGED_BACK = "charged_back"
+
+    @staticmethod
+    def is_approved(status: str) -> bool:
+        return status in ["approved", "authorized"]
+
+    @staticmethod
+    def is_pending(status: str) -> bool:
+        return status in ["pending", "in_process", "in_mediation"]
+
+    @staticmethod
+    def is_failed(status: str) -> bool:
+        return status in ["rejected", "cancelled", "refunded", "charged_back"]

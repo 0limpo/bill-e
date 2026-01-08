@@ -289,20 +289,9 @@ export default function SessionPage() {
 
     // Paywall screen (shown when free session limit reached)
     if (showPaywall) {
-      const handlePayment = async () => {
-        setPaymentLoading(true);
-        setPaymentError(null);
-        try {
-          await startPaymentFlow({
-            user_type: "editor",
-            session_id: sessionId,
-          });
-          // Redirect happens in startPaymentFlow
-        } catch (err) {
-          console.error("Payment error:", err);
-          setPaymentError(err instanceof Error ? err.message : "Error al iniciar el pago");
-          setPaymentLoading(false);
-        }
+      const handlePayment = () => {
+        // Redirect to payment page with MercadoPago Bricks
+        router.push(`/payment?session=${sessionId}&type=editor`);
       };
 
       return (
@@ -460,21 +449,14 @@ export default function SessionPage() {
 
   // --- Host Paywall (shown when host reaches free session limit) ---
   if (isOwner && showPaywall) {
-    const handleHostPayment = async () => {
-      setPaymentLoading(true);
-      setPaymentError(null);
-      try {
-        await startPaymentFlow({
-          user_type: "host",
-          session_id: sessionId,
-          owner_token: ownerToken || undefined,
-        });
-        // Redirect happens in startPaymentFlow
-      } catch (err) {
-        console.error("Payment error:", err);
-        setPaymentError(err instanceof Error ? err.message : "Error al iniciar el pago");
-        setPaymentLoading(false);
-      }
+    const handleHostPayment = () => {
+      // Redirect to payment page with MercadoPago Bricks
+      const params = new URLSearchParams({
+        session: sessionId,
+        type: "host",
+        ...(ownerToken ? { owner: ownerToken } : {}),
+      });
+      router.push(`/payment?${params.toString()}`);
     };
 
     return (

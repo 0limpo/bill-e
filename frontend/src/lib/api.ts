@@ -630,3 +630,79 @@ export async function verifyEditorCode(
     body: JSON.stringify({ phone, code, session_id: sessionId }),
   });
 }
+
+// --- MercadoPago Endpoints ---
+
+export interface MPPublicKeyResponse {
+  public_key: string;
+}
+
+export interface MPPreferenceResponse {
+  success: boolean;
+  preference_id: string;
+  init_point: string;
+  sandbox_init_point: string;
+  commerce_order: string;
+  amount: number;
+}
+
+export interface MPCardPaymentResponse {
+  success: boolean;
+  status: string;
+  mp_status: string;
+  commerce_order: string;
+  payment_id: number;
+  premium_expires?: string;
+  status_detail?: string;
+}
+
+/**
+ * Get MercadoPago public key for Bricks initialization
+ */
+export async function getMPPublicKey(): Promise<MPPublicKeyResponse> {
+  return apiRequest<MPPublicKeyResponse>("/api/mercadopago/public-key");
+}
+
+/**
+ * Create a MercadoPago preference for Wallet Brick
+ */
+export async function createMPPreference(params: {
+  user_type: "host" | "editor";
+  device_id?: string;
+  phone?: string;
+  session_id?: string;
+}): Promise<MPPreferenceResponse> {
+  const deviceId = getDeviceId();
+  return apiRequest<MPPreferenceResponse>("/api/mercadopago/preference", {
+    method: "POST",
+    body: JSON.stringify({
+      ...params,
+      device_id: params.device_id || deviceId,
+    }),
+  });
+}
+
+/**
+ * Process card payment from Card Payment Brick
+ */
+export async function processMPCardPayment(params: {
+  token: string;
+  transaction_amount: number;
+  installments: number;
+  payment_method_id: string;
+  issuer_id: string;
+  payer_email: string;
+  user_type: "host" | "editor";
+  device_id?: string;
+  phone?: string;
+  session_id?: string;
+}): Promise<MPCardPaymentResponse> {
+  const deviceId = getDeviceId();
+  return apiRequest<MPCardPaymentResponse>("/api/mercadopago/process-payment", {
+    method: "POST",
+    body: JSON.stringify({
+      ...params,
+      device_id: params.device_id || deviceId,
+    }),
+  });
+}

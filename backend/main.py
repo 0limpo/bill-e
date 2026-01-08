@@ -91,6 +91,21 @@ except ImportError as e:
     print(f"Warning: Boleta integration not available: {e}")
     boleta_available = False
 
+# Importar MercadoPago Integration
+try:
+    from mercadopago_payment import (
+        create_preference as mp_create_preference,
+        process_card_payment as mp_process_card_payment,
+        get_payment as mp_get_payment,
+        get_public_key as mp_get_public_key,
+        get_premium_price as mp_get_premium_price,
+        MPPaymentStatus
+    )
+    mercadopago_available = True
+except ImportError as e:
+    print(f"Warning: MercadoPago integration not available: {e}")
+    mercadopago_available = False
+
 load_dotenv()
 
 app = FastAPI(title="Bill-e API", version="1.0.0")
@@ -1543,6 +1558,338 @@ async def get_payment_price():
     if payment_available:
         return {"price": get_premium_price(), "currency": "CLP"}
     return {"price": 1990, "currency": "CLP"}
+
+
+# =====================================================
+# MERCADOPAGO PAYMENT ENDPOINTS
+# =====================================================
+
+class MPPreferenceRequest(BaseModel):
+    user_type: str  # "editor" or "host"
+    device_id: Optional[str] = None
+    phone: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+class MPCardPaymentRequest(BaseModel):
+    token: str
+    transaction_amount: float
+    installments: int
+    payment_method_id: str
+    issuer_id: str
+    payer_email: str
+    user_type: str
+    device_id: Optional[str] = None
+    phone: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+@app.get("/api/mercadopago/public-key")
+async def get_mp_public_key():
+    """Get MercadoPago public key for frontend Bricks initialization."""
+    if not mercadopago_available:
+        raise HTTPException(status_code=503, detail="MercadoPago not available")
+
+    try:
+        return {"public_key": mp_get_public_key()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/mercadopago/preference")
+async def create_mp_preference(request: MPPreferenceRequest):
+    """
+    Create a MercadoPago preference for Wallet Brick.
+    Returns preference_id for frontend Wallet Brick initialization.
+    """
+    if not mercadopago_available:
+        raise HTTPException(status_code=503, detail="MercadoPago not available")
+
+    try:
+        # Validate request
+        if request.user_type not in ["editor", "host"]:
+            raise HTTPException(status_code=400, detail="Invalid user_type")
+
+        # Generate unique commerce order ID
+        commerce_order = f"mp_{uuid.uuid4().hex[:12]}"
+
+        # Build callback URLs
+        backend_url = os.getenv("BACKEND_URL", "https://bill-e-backend-lfwp.onrender.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+
+        notification_url = f"{backend_url}/api/mercadopago/webhook"
+
+        # Build return URLs with session context
+        base_return = f"{frontend_url}/payment/success"
+        if request.session_id:
+            base_return = f"{base_return}?session={request.session_id}"
+
+        success_url = f"{base_return}&status=approved"
+        failure_url = f"{base_return}&status=rejected"
+        pending_url = f"{base_return}&status=pending"
+
+        # Get configured price
+        amount = mp_get_premium_price()
+
+        # Create preference
+        preference = mp_create_preference(
+            commerce_order=commerce_order,
+            title="Bill-e Premium - 1 año",
+            amount=amount,
+            notification_url=notification_url,
+            success_url=success_url,
+            failure_url=failure_url,
+            pending_url=pending_url,
+            external_reference=commerce_order,
+            metadata={
+                "user_type": request.user_type,
+                "device_id": request.device_id,
+                "phone": request.phone,
+                "session_id": request.session_id
+            }
+        )
+
+        # Store payment record in Redis
+        payment_record = {
+            "commerce_order": commerce_order,
+            "preference_id": preference.get("id"),
+            "processor": "mercadopago",
+            "status": "pending",
+            "amount": amount,
+            "currency": "CLP",
+            "user_type": request.user_type,
+            "device_id": request.device_id,
+            "phone": request.phone,
+            "session_id": request.session_id,
+            "created_at": datetime.now().isoformat(),
+            "paid_at": None,
+            "premium_expires": None
+        }
+
+        # Store with 7-day TTL
+        redis_client.setex(
+            f"payment:{commerce_order}",
+            604800,  # 7 days
+            json.dumps(payment_record)
+        )
+
+        return {
+            "success": True,
+            "preference_id": preference.get("id"),
+            "init_point": preference.get("init_point"),
+            "sandbox_init_point": preference.get("sandbox_init_point"),
+            "commerce_order": commerce_order,
+            "amount": amount
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"MercadoPago preference error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/mercadopago/process-payment")
+async def process_mp_card_payment(request: MPCardPaymentRequest):
+    """
+    Process a card payment from Card Payment Brick.
+    Called when user submits card details in the embedded form.
+    """
+    if not mercadopago_available:
+        raise HTTPException(status_code=503, detail="MercadoPago not available")
+
+    try:
+        # Validate request
+        if request.user_type not in ["editor", "host"]:
+            raise HTTPException(status_code=400, detail="Invalid user_type")
+
+        # Generate unique commerce order ID
+        commerce_order = f"mp_{uuid.uuid4().hex[:12]}"
+
+        # Build notification URL
+        backend_url = os.getenv("BACKEND_URL", "https://bill-e-backend-lfwp.onrender.com")
+        notification_url = f"{backend_url}/api/mercadopago/webhook"
+
+        # Process card payment
+        payment_result = mp_process_card_payment(
+            token=request.token,
+            transaction_amount=request.transaction_amount,
+            installments=request.installments,
+            payment_method_id=request.payment_method_id,
+            issuer_id=request.issuer_id,
+            payer_email=request.payer_email,
+            external_reference=commerce_order,
+            description="Bill-e Premium - 1 año",
+            notification_url=notification_url,
+            metadata={
+                "user_type": request.user_type,
+                "device_id": request.device_id,
+                "phone": request.phone,
+                "session_id": request.session_id
+            }
+        )
+
+        mp_status = payment_result.get("status")
+
+        # Determine our status
+        if MPPaymentStatus.is_approved(mp_status):
+            status = "paid"
+            paid_at = datetime.now().isoformat()
+
+            # Activate premium immediately
+            premium_expires = None
+            if request.user_type == "editor" and request.device_id:
+                premium_result = set_editor_premium(redis_client, request.device_id, request.phone)
+                premium_expires = premium_result.get("expires")
+                print(f"Editor premium activated for device: {request.device_id}")
+            elif request.user_type == "host" and request.phone:
+                premium_result = set_host_premium(redis_client, request.phone)
+                premium_expires = premium_result.get("expires")
+                print(f"Host premium activated for phone: {request.phone}")
+
+        elif MPPaymentStatus.is_pending(mp_status):
+            status = "pending"
+            paid_at = None
+            premium_expires = None
+        else:
+            status = "rejected"
+            paid_at = None
+            premium_expires = None
+
+        # Store payment record in Redis
+        payment_record = {
+            "commerce_order": commerce_order,
+            "mp_payment_id": payment_result.get("id"),
+            "processor": "mercadopago",
+            "status": status,
+            "mp_status": mp_status,
+            "amount": int(request.transaction_amount),
+            "currency": "CLP",
+            "user_type": request.user_type,
+            "device_id": request.device_id,
+            "phone": request.phone,
+            "session_id": request.session_id,
+            "payer_email": request.payer_email,
+            "created_at": datetime.now().isoformat(),
+            "paid_at": paid_at,
+            "premium_expires": premium_expires,
+            "mp_response": payment_result
+        }
+
+        redis_client.setex(
+            f"payment:{commerce_order}",
+            604800,
+            json.dumps(payment_record)
+        )
+
+        return {
+            "success": status == "paid",
+            "status": status,
+            "mp_status": mp_status,
+            "commerce_order": commerce_order,
+            "payment_id": payment_result.get("id"),
+            "premium_expires": premium_expires,
+            "status_detail": payment_result.get("status_detail")
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"MercadoPago card payment error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/mercadopago/webhook")
+async def mp_webhook(request: Request):
+    """
+    MercadoPago webhook (IPN) callback.
+    Called when payment status changes.
+    """
+    if not mercadopago_available:
+        raise HTTPException(status_code=503, detail="MercadoPago not available")
+
+    try:
+        # Get query params (MercadoPago sends type and data.id)
+        params = dict(request.query_params)
+
+        # Also try to get JSON body
+        try:
+            body = await request.json()
+        except:
+            body = {}
+
+        print(f"MercadoPago webhook - params: {params}, body: {body}")
+
+        # Get payment ID from various possible locations
+        payment_id = None
+        topic = params.get("topic") or params.get("type") or body.get("type")
+
+        if topic == "payment":
+            payment_id = params.get("id") or body.get("data", {}).get("id")
+        elif body.get("action") == "payment.created" or body.get("action") == "payment.updated":
+            payment_id = body.get("data", {}).get("id")
+
+        if not payment_id:
+            print(f"Webhook received but no payment_id found: {params}, {body}")
+            return {"status": "ok", "message": "No payment_id"}
+
+        # Get payment details from MercadoPago
+        mp_payment = mp_get_payment(str(payment_id))
+        external_reference = mp_payment.get("external_reference")
+
+        if not external_reference:
+            print(f"No external_reference in payment {payment_id}")
+            return {"status": "ok", "message": "No external_reference"}
+
+        # Get our payment record
+        payment_json = redis_client.get(f"payment:{external_reference}")
+        if not payment_json:
+            print(f"Payment record not found: {external_reference}")
+            return {"status": "ok", "message": "Payment not found"}
+
+        payment = json.loads(payment_json)
+
+        # Update payment record
+        mp_status = mp_payment.get("status")
+        payment["mp_payment_id"] = payment_id
+        payment["mp_status"] = mp_status
+        payment["mp_response"] = mp_payment
+
+        if MPPaymentStatus.is_approved(mp_status) and payment.get("status") != "paid":
+            payment["status"] = "paid"
+            payment["paid_at"] = datetime.now().isoformat()
+
+            # Activate premium
+            user_type = payment.get("user_type")
+            device_id = payment.get("device_id")
+            phone = payment.get("phone")
+
+            if user_type == "editor" and device_id:
+                premium_result = set_editor_premium(redis_client, device_id, phone)
+                payment["premium_expires"] = premium_result.get("expires")
+                print(f"Editor premium activated via webhook: {device_id}")
+            elif user_type == "host" and phone:
+                premium_result = set_host_premium(redis_client, phone)
+                payment["premium_expires"] = premium_result.get("expires")
+                print(f"Host premium activated via webhook: {phone}")
+
+        elif MPPaymentStatus.is_failed(mp_status):
+            payment["status"] = "rejected"
+
+        # Save updated record
+        ttl = redis_client.ttl(f"payment:{external_reference}")
+        redis_client.setex(
+            f"payment:{external_reference}",
+            ttl if ttl > 0 else 604800,
+            json.dumps(payment)
+        )
+
+        return {"status": "ok"}
+
+    except Exception as e:
+        print(f"MercadoPago webhook error: {e}")
+        # Always return 200 to avoid retries
+        return {"status": "error", "message": str(e)}
 
 
 # =====================================================
