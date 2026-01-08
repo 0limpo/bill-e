@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getMPPublicKey, createMPPreference, processMPCardPayment } from "@/lib/api";
 import { storePendingPayment } from "@/lib/payment";
@@ -12,6 +12,7 @@ declare global {
 }
 
 type PaymentStatus = "loading" | "ready" | "processing" | "success" | "error";
+type PaymentTab = "mercadopago" | "credit" | "debit";
 
 function PaymentPageContent() {
   const searchParams = useSearchParams();
@@ -27,7 +28,12 @@ function PaymentPageContent() {
   const [preferenceId, setPreferenceId] = useState<string>("");
   const [commerceOrder, setCommerceOrder] = useState<string>("");
   const [mpInstance, setMpInstance] = useState<any>(null);
-  const [cardPaymentBrick, setCardPaymentBrick] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<PaymentTab>("mercadopago");
+
+  // Track which bricks have been rendered
+  const creditBrickRef = useRef<any>(null);
+  const debitBrickRef = useRef<any>(null);
+  const walletBrickRef = useRef<boolean>(false);
 
   const amount = 1990; // CLP
 
@@ -105,84 +111,108 @@ function PaymentPageContent() {
     init();
   }, [sessionId, userType, ownerToken]);
 
-  // Render Card Payment Brick
+  // Helper function to create card brick with specific payment method type
+  const createCardBrick = async (
+    containerId: string,
+    cardType: "credit_card" | "debit_card"
+  ) => {
+    const bricks = mpInstance.bricks();
+
+    return await bricks.create("cardPayment", containerId, {
+      initialization: {
+        amount: amount,
+      },
+      customization: {
+        visual: {
+          style: {
+            theme: "dark",
+          },
+        },
+        paymentMethods: {
+          maxInstallments: 1,
+          types: {
+            included: [cardType],
+          },
+        },
+      },
+      callbacks: {
+        onReady: () => {
+          console.log(`${cardType} Brick ready`);
+        },
+        onSubmit: async (cardFormData: any) => {
+          console.log("Card form submitted:", cardFormData);
+          setStatus("processing");
+
+          try {
+            const result = await processMPCardPayment({
+              token: cardFormData.token,
+              transaction_amount: amount,
+              installments: cardFormData.installments || 1,
+              payment_method_id: cardFormData.payment_method_id,
+              issuer_id: cardFormData.issuer_id,
+              payer_email: cardFormData.payer.email,
+              user_type: userType,
+              session_id: sessionId,
+            });
+
+            if (result.success) {
+              setStatus("success");
+              setTimeout(() => {
+                router.push(`/payment/success?session=${sessionId}&status=approved&order=${result.commerce_order}`);
+              }, 1500);
+            } else {
+              setError(result.status_detail || "Payment rejected");
+              setStatus("error");
+            }
+          } catch (err: any) {
+            console.error("Payment error:", err);
+            setError(err.message || "Payment failed");
+            setStatus("error");
+          }
+        },
+        onError: (error: any) => {
+          console.error("Brick error:", error);
+          setError(error.message || "Payment form error");
+        },
+      },
+    });
+  };
+
+  // Render Credit Card Brick when tab is active
   useEffect(() => {
-    if (status !== "ready" || !mpInstance || cardPaymentBrick) return;
+    if (status !== "ready" || !mpInstance || activeTab !== "credit" || creditBrickRef.current) return;
 
-    const renderCardBrick = async () => {
+    const renderCreditBrick = async () => {
       try {
-        const bricks = mpInstance.bricks();
-
-        const brick = await bricks.create("cardPayment", "cardPaymentBrick_container", {
-          initialization: {
-            amount: amount,
-          },
-          customization: {
-            visual: {
-              style: {
-                theme: "dark",
-              },
-            },
-            paymentMethods: {
-              maxInstallments: 1, // No installments
-            },
-          },
-          callbacks: {
-            onReady: () => {
-              console.log("Card Payment Brick ready");
-            },
-            onSubmit: async (cardFormData: any) => {
-              console.log("Card form submitted:", cardFormData);
-              setStatus("processing");
-
-              try {
-                const result = await processMPCardPayment({
-                  token: cardFormData.token,
-                  transaction_amount: amount,
-                  installments: cardFormData.installments || 1,
-                  payment_method_id: cardFormData.payment_method_id,
-                  issuer_id: cardFormData.issuer_id,
-                  payer_email: cardFormData.payer.email,
-                  user_type: userType,
-                  session_id: sessionId,
-                });
-
-                if (result.success) {
-                  setStatus("success");
-                  // Redirect to success page
-                  setTimeout(() => {
-                    router.push(`/payment/success?session=${sessionId}&status=approved&order=${result.commerce_order}`);
-                  }, 1500);
-                } else {
-                  setError(result.status_detail || "Payment rejected");
-                  setStatus("error");
-                }
-              } catch (err: any) {
-                console.error("Payment error:", err);
-                setError(err.message || "Payment failed");
-                setStatus("error");
-              }
-            },
-            onError: (error: any) => {
-              console.error("Brick error:", error);
-              setError(error.message || "Payment form error");
-            },
-          },
-        });
-
-        setCardPaymentBrick(brick);
+        creditBrickRef.current = await createCardBrick("creditCardBrick_container", "credit_card");
       } catch (err: any) {
-        console.error("Brick render error:", err);
-        setError(err.message || "Error rendering payment form");
+        console.error("Credit Brick render error:", err);
+        setError(err.message || "Error rendering credit card form");
       }
     };
 
-    renderCardBrick();
-  }, [status, mpInstance, cardPaymentBrick, amount, userType, sessionId, router]);
+    renderCreditBrick();
+  }, [status, mpInstance, activeTab]);
 
-  // Render Wallet Brick
+  // Render Debit Card Brick when tab is active
   useEffect(() => {
-    if (status !== "ready" || !mpInstance || !preferenceId) return;
+    if (status !== "ready" || !mpInstance || activeTab !== "debit" || debitBrickRef.current) return;
+
+    const renderDebitBrick = async () => {
+      try {
+        debitBrickRef.current = await createCardBrick("debitCardBrick_container", "debit_card");
+      } catch (err: any) {
+        console.error("Debit Brick render error:", err);
+        setError(err.message || "Error rendering debit card form");
+      }
+    };
+
+    renderDebitBrick();
+  }, [status, mpInstance, activeTab]);
+
+  // Render Wallet Brick when tab is active
+  useEffect(() => {
+    if (status !== "ready" || !mpInstance || !preferenceId || activeTab !== "mercadopago" || walletBrickRef.current) return;
 
     const renderWalletBrick = async () => {
       try {
@@ -200,13 +230,14 @@ function PaymentPageContent() {
             },
           },
         });
+        walletBrickRef.current = true;
       } catch (err: any) {
         console.error("Wallet Brick error:", err);
       }
     };
 
     renderWalletBrick();
-  }, [status, mpInstance, preferenceId]);
+  }, [status, mpInstance, preferenceId, activeTab]);
 
   const handleBack = () => {
     if (sessionId) {
@@ -288,11 +319,59 @@ function PaymentPageContent() {
         {/* Payment forms */}
         {(status === "ready" || status === "error") && (
           <>
-            {/* Wallet Brick - MercadoPago (Primary option) */}
-            <div className="mb-6">
-              <div className="bg-[#FFE600] rounded-xl p-4 mb-3">
+            {/* Payment method tabs */}
+            <div className="flex rounded-xl overflow-hidden mb-6 bg-gray-800">
+              <button
+                onClick={() => setActiveTab("mercadopago")}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                  activeTab === "mercadopago"
+                    ? "bg-[#00B1EA] text-white"
+                    : "text-gray-400 hover:text-white hover:bg-gray-700"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12.5 2C9.46 2 7 4.46 7 7.5c0 1.33.47 2.55 1.26 3.5H5.5C3.57 11 2 12.57 2 14.5c0 1.93 1.57 3.5 3.5 3.5h.5v2c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-2h.5c1.93 0 3.5-1.57 3.5-3.5 0-1.93-1.57-3.5-3.5-3.5h-2.76c.79-.95 1.26-2.17 1.26-3.5C17 4.46 14.54 2 11.5 2h1z"/>
+                  </svg>
+                  <span>Mercado Pago</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("credit")}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                  activeTab === "credit"
+                    ? "bg-[#00B1EA] text-white"
+                    : "text-gray-400 hover:text-white hover:bg-gray-700"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  <span>Crédito</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab("debit")}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                  activeTab === "debit"
+                    ? "bg-[#00B1EA] text-white"
+                    : "text-gray-400 hover:text-white hover:bg-gray-700"
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                  </svg>
+                  <span>Débito</span>
+                </div>
+              </button>
+            </div>
+
+            {/* MercadoPago Wallet Tab Content */}
+            <div className={activeTab === "mercadopago" ? "block" : "hidden"}>
+              <div className="bg-[#FFE600] rounded-xl p-4 mb-4">
                 <div className="flex items-center gap-3">
-                  {/* MercadoPago handshake icon */}
                   <div className="w-10 h-10 bg-[#00B1EA] rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6" viewBox="0 0 24 24" fill="white">
                       <path d="M12.5 2C9.46 2 7 4.46 7 7.5c0 1.33.47 2.55 1.26 3.5H5.5C3.57 11 2 12.57 2 14.5c0 1.93 1.57 3.5 3.5 3.5h.5v2c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-2h.5c1.93 0 3.5-1.57 3.5-3.5 0-1.93-1.57-3.5-3.5-3.5h-2.76c.79-.95 1.26-2.17 1.26-3.5C17 4.46 14.54 2 11.5 2h1z"/>
@@ -307,16 +386,40 @@ function PaymentPageContent() {
               <div id="walletBrick_container"></div>
             </div>
 
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-gray-700"></div>
-              <span className="text-gray-500 text-sm">o paga con tarjeta</span>
-              <div className="flex-1 h-px bg-gray-700"></div>
+            {/* Credit Card Tab Content */}
+            <div className={activeTab === "credit" ? "block" : "hidden"}>
+              <div className="bg-gray-800 rounded-xl p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-white font-bold text-lg">Tarjeta de Crédito</h2>
+                    <p className="text-gray-400 text-sm">Visa, Mastercard, American Express</p>
+                  </div>
+                </div>
+              </div>
+              <div id="creditCardBrick_container"></div>
             </div>
 
-            {/* Card Payment Brick */}
-            <div>
-              <div id="cardPaymentBrick_container"></div>
+            {/* Debit Card Tab Content */}
+            <div className={activeTab === "debit" ? "block" : "hidden"}>
+              <div className="bg-gray-800 rounded-xl p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-white font-bold text-lg">Tarjeta de Débito</h2>
+                    <p className="text-gray-400 text-sm">Redcompra, Visa Débito, Mastercard Débito</p>
+                  </div>
+                </div>
+              </div>
+              <div id="debitCardBrick_container"></div>
             </div>
           </>
         )}
