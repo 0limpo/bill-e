@@ -247,12 +247,12 @@ function PaymentPageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-800">
+      <div className="p-4 border-b border-border">
         <button
           onClick={handleBack}
-          className="text-gray-400 hover:text-white flex items-center gap-2"
+          className="text-muted-foreground hover:text-foreground flex items-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -264,58 +264,58 @@ function PaymentPageContent() {
       {/* Content */}
       <div className="flex-1 p-4 max-w-md mx-auto w-full">
         {/* Product info */}
-        <div className="bg-gray-900 rounded-xl p-4 mb-6">
+        <div className="bg-card rounded-xl p-4 mb-6">
           <div className="flex justify-between items-start mb-2">
             <h1 className="text-xl font-bold">Bill-e Premium</h1>
-            <span className="bg-blue-600 text-xs px-2 py-1 rounded-full">1 ano</span>
+            <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">1 ano</span>
           </div>
-          <p className="text-gray-400 text-sm mb-3">Uso ilimitado como anfitrion e invitado</p>
+          <p className="text-muted-foreground text-sm mb-3">Uso ilimitado como anfitrion e invitado</p>
           <div className="text-3xl font-bold">${amount.toLocaleString("es-CL")}</div>
         </div>
 
         {/* Status messages */}
         {status === "loading" && (
           <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-400">Cargando metodos de pago...</p>
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Cargando metodos de pago...</p>
           </div>
         )}
 
         {status === "redirecting" && (
           <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-400">Redirigiendo a Webpay...</p>
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Redirigiendo a Webpay...</p>
           </div>
         )}
 
         {status === "processing" && (
           <div className="text-center py-8">
-            <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-gray-400">Procesando pago...</p>
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Procesando pago...</p>
           </div>
         )}
 
         {status === "success" && (
           <div className="text-center py-8">
-            <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-success rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <p className="text-green-400 text-lg font-medium">Pago exitoso!</p>
-            <p className="text-gray-400 text-sm mt-2">Redirigiendo...</p>
+            <p className="text-success text-lg font-medium">Pago exitoso!</p>
+            <p className="text-muted-foreground text-sm mt-2">Redirigiendo...</p>
           </div>
         )}
 
         {status === "error" && (
-          <div className="bg-red-900/30 border border-red-500/50 rounded-xl p-4 mb-6">
-            <p className="text-red-400">{error}</p>
+          <div className="bg-destructive/10 border border-destructive/50 rounded-xl p-4 mb-6">
+            <p className="text-destructive">{error}</p>
             <button
               onClick={() => {
                 setStatus("ready");
                 setError("");
               }}
-              className="mt-3 text-sm text-blue-400 hover:underline"
+              className="mt-3 text-sm text-primary hover:underline"
             >
               Intentar de nuevo
             </button>
@@ -331,7 +331,7 @@ function PaymentPageContent() {
                 onClick={() => setActiveTab("mercadopago")}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
                   activeTab === "mercadopago"
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
@@ -341,7 +341,7 @@ function PaymentPageContent() {
                 onClick={() => setActiveTab("webpay")}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
                   activeTab === "webpay"
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
@@ -351,7 +351,7 @@ function PaymentPageContent() {
                 onClick={() => setActiveTab("tarjeta")}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
                   activeTab === "tarjeta"
-                    ? "bg-primary text-white"
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
@@ -368,7 +368,7 @@ function PaymentPageContent() {
             <div className={activeTab === "webpay" ? "block" : "hidden"}>
               <button
                 onClick={handleWebpayRedirect}
-                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -389,7 +389,7 @@ function PaymentPageContent() {
 
         {/* Security note */}
         <div className="mt-8 text-center">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
@@ -404,10 +404,10 @@ function PaymentPageContent() {
 // Loading fallback for Suspense
 function PaymentLoading() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+    <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
-        <p className="text-gray-400">Cargando...</p>
+        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Cargando...</p>
       </div>
     </div>
   );
