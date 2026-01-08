@@ -1917,7 +1917,7 @@ async def mp_webhook(request: Request):
 # EDITOR VERIFICATION ENDPOINTS
 # =====================================================
 
-FREE_SESSIONS_LIMIT = 2  # Number of free sessions for editors
+FREE_SESSIONS_LIMIT = 999999  # Paywall disabled temporarily
 
 @app.post("/api/editor/request-code")
 async def request_editor_code(request: Request):
