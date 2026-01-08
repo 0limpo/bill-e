@@ -325,45 +325,38 @@ function PaymentPageContent() {
         {/* Payment forms */}
         {(status === "ready" || status === "error") && (
           <>
-            {/* Payment method selector - stepper style */}
-            <div className="flex items-center justify-center mb-6">
-              {[
-                { id: "mercadopago" as PaymentTab, label: "Mercado Pago" },
-                { id: "webpay" as PaymentTab, label: "Webpay" },
-                { id: "tarjeta" as PaymentTab, label: "Tarjeta" },
-              ].map((tab, idx) => (
-                <div key={tab.id} className="flex items-center">
-                  <button
-                    className="flex flex-col items-center gap-1.5"
-                    onClick={() => setActiveTab(tab.id)}
-                  >
-                    {/* Circle */}
-                    <span
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all ${
-                        activeTab === tab.id
-                          ? "bg-blue-500 text-white shadow-[0_0_0_4px_rgba(59,130,246,0.2)]"
-                          : "bg-gray-700 text-gray-400 hover:bg-gray-600"
-                      }`}
-                    >
-                      {idx + 1}
-                    </span>
-                    {/* Label */}
-                    <span
-                      className={`text-xs font-medium ${
-                        activeTab === tab.id
-                          ? "text-white"
-                          : "text-gray-500"
-                      }`}
-                    >
-                      {tab.label}
-                    </span>
-                  </button>
-                  {/* Line between options */}
-                  {idx < 2 && (
-                    <div className="w-6 h-0.5 mx-2 mb-5 rounded-full bg-gray-700" />
-                  )}
-                </div>
-              ))}
+            {/* Payment method tabs */}
+            <div className="flex rounded-xl overflow-hidden mb-6 bg-secondary">
+              <button
+                onClick={() => setActiveTab("mercadopago")}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
+                  activeTab === "mercadopago"
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                }`}
+              >
+                Mercado Pago
+              </button>
+              <button
+                onClick={() => setActiveTab("webpay")}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
+                  activeTab === "webpay"
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                }`}
+              >
+                Webpay
+              </button>
+              <button
+                onClick={() => setActiveTab("tarjeta")}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
+                  activeTab === "tarjeta"
+                    ? "bg-primary text-white"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                }`}
+              >
+                Tarjeta
+              </button>
             </div>
 
             {/* MercadoPago Wallet Tab Content */}
@@ -375,14 +368,14 @@ function PaymentPageContent() {
             <div className={activeTab === "webpay" ? "block" : "hidden"}>
               <button
                 onClick={handleWebpayRedirect}
-                className="w-full bg-[#EC1C24] hover:bg-[#D4171D] text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
                 Pagar con Webpay
               </button>
-              <p className="text-gray-500 text-xs text-center mt-3">
+              <p className="text-muted-foreground text-xs text-center mt-3">
                 Seras redirigido a Webpay para seleccionar tu banco
               </p>
             </div>
