@@ -361,9 +361,6 @@ function PaymentPageContent() {
 
             {/* MercadoPago Wallet Tab Content */}
             <div className={activeTab === "mercadopago" ? "block" : "hidden"}>
-              <div className="bg-[#FFE600] rounded-xl p-4 mb-4 flex items-center justify-center">
-                <img src="/mp-logo.png" alt="Mercado Pago" className="h-10" />
-              </div>
               <div id="walletBrick_container"></div>
             </div>
 
