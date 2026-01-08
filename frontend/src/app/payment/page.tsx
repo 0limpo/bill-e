@@ -329,13 +329,17 @@ function PaymentPageContent() {
             <div className="flex rounded-xl overflow-hidden mb-6 bg-secondary">
               <button
                 onClick={() => setActiveTab("mercadopago")}
-                className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
+                className={`flex-1 py-3 px-4 text-sm font-bold transition-all ${
                   activeTab === "mercadopago"
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                    : "hover:bg-secondary/80"
                 }`}
               >
-                Mercado Pago
+                {activeTab === "mercadopago" ? (
+                  "Mercado Pago"
+                ) : (
+                  <><span className="text-[#2D3277]">mercado</span><span className="text-[#00B1EA]">pago</span></>
+                )}
               </button>
               <button
                 onClick={() => setActiveTab("webpay")}
