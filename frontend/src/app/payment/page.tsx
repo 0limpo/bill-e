@@ -120,7 +120,7 @@ function PaymentPageContent() {
           },
           customization: {
             visual: {
-              buttonBackground: "black",
+              buttonBackground: "#00B1EA",
               borderRadius: "12px",
             },
           },
