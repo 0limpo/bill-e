@@ -70,8 +70,7 @@ export default function SessionPage() {
   const [premiumPrice] = useState(1990); // Default, could fetch from API
   const [selectingParticipant, setSelectingParticipant] = useState<string | null>(null);
 
-  // Restore premium modal state
-  const [showRestorePremiumModal, setShowRestorePremiumModal] = useState(false);
+  // Auth providers for paywall sign-in
   const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
 
   const {
@@ -136,14 +135,14 @@ export default function SessionPage() {
     autoFinalize();
   }, [paymentSuccess, isOwner, session, finalize, router, updateHostStep]);
 
-  // Load auth providers when restore premium modal is opened
+  // Load auth providers when paywall is opened
   useEffect(() => {
-    if (showRestorePremiumModal && authProviders.length === 0) {
+    if (showPaywall && authProviders.length === 0) {
       getAuthProviders()
         .then((data) => setAuthProviders(data.providers))
         .catch(console.error);
     }
-  }, [showRestorePremiumModal, authProviders.length]);
+  }, [showPaywall, authProviders.length]);
 
   const t = getTranslator(lang);
 
@@ -547,6 +546,24 @@ export default function SessionPage() {
             )}
           </div>
 
+          {/* Ya tengo premium - Sign in option */}
+          <div className="bg-card rounded-2xl p-4 border border-border mb-4">
+            <p className="text-sm text-center text-muted-foreground mb-3">
+              ¿Ya compraste premium?
+            </p>
+            {authProviders.length > 0 ? (
+              <SignInButtons
+                providers={authProviders}
+                redirectTo={`${window.location.origin}/s/${sessionId}${ownerToken ? `?owner=${ownerToken}` : ""}`}
+                variant="compact"
+              />
+            ) : (
+              <div className="flex justify-center py-2">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+          </div>
+
           <button
             onClick={() => setShowPaywall(false)}
             className="w-full text-sm text-muted-foreground hover:text-foreground"
@@ -636,14 +653,6 @@ export default function SessionPage() {
               )}
               {isOwner && session?.host_is_premium && (
                 <span className="text-[10px] text-primary/60">Premium</span>
-              )}
-              {!session?.host_is_premium && (
-                <button
-                  onClick={() => setShowRestorePremiumModal(true)}
-                  className="text-[10px] text-primary hover:underline"
-                >
-                  Ya tengo premium
-                </button>
               )}
             </div>
           </div>
@@ -830,43 +839,6 @@ export default function SessionPage() {
           />
         )}
       </main>
-
-      {/* Restore Premium Modal */}
-      {showRestorePremiumModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 shadow-xl">
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-bold text-foreground">Recuperar Premium</h2>
-              <p className="text-sm text-muted-foreground mt-1">
-                Inicia sesion con la cuenta que usaste para comprar premium
-              </p>
-            </div>
-
-            {authProviders.length > 0 ? (
-              <SignInButtons
-                providers={authProviders}
-                redirectTo={`${window.location.origin}/s/${sessionId}${ownerToken ? `?owner=${ownerToken}` : ""}`}
-              />
-            ) : (
-              <div className="flex justify-center py-4">
-                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowRestorePremiumModal(false)}
-              className="w-full mt-4 py-3 text-muted-foreground hover:text-foreground transition-colors text-sm"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
