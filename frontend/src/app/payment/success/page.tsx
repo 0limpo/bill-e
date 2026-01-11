@@ -65,9 +65,10 @@ function PaymentSuccessContent() {
           // Auto-redirect to session after 3 seconds
           if (sessionId) {
             setTimeout(() => {
+              // Add payment=success param so session page knows to auto-finalize
               const url = ownerToken
-                ? `/s/${sessionId}?owner=${ownerToken}`
-                : `/s/${sessionId}`;
+                ? `/s/${sessionId}?owner=${ownerToken}&payment=success`
+                : `/s/${sessionId}?payment=success`;
               router.push(url);
             }, 3000);
           }
@@ -101,13 +102,14 @@ function PaymentSuccessContent() {
   const handleReturnToSession = () => {
     const pendingPayment = getPendingPayment();
     if (pendingPayment?.session_id) {
+      // Add payment=success param so session page knows to auto-finalize
       const url = pendingPayment.owner_token
-        ? `/s/${pendingPayment.session_id}?owner=${pendingPayment.owner_token}`
-        : `/s/${pendingPayment.session_id}`;
+        ? `/s/${pendingPayment.session_id}?owner=${pendingPayment.owner_token}&payment=success`
+        : `/s/${pendingPayment.session_id}?payment=success`;
       clearPendingPayment();
       router.push(url);
     } else if (paymentData?.session_id) {
-      router.push(`/s/${paymentData.session_id}`);
+      router.push(`/s/${paymentData.session_id}?payment=success`);
     } else {
       router.push("/");
     }

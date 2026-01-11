@@ -1644,6 +1644,15 @@ async def create_mp_preference(request: MPPreferenceRequest):
         if request.user_type not in ["editor", "host"]:
             raise HTTPException(status_code=400, detail="Invalid user_type")
 
+        # For hosts, get phone from session data if not provided
+        phone = request.phone
+        if request.user_type == "host" and not phone and request.session_id:
+            session_json = redis_client.get(f"session:{request.session_id}")
+            if session_json:
+                session_data = json.loads(session_json)
+                phone = session_data.get("owner_phone")
+                print(f"Got owner_phone from session: {phone}")
+
         # Generate unique commerce order ID
         commerce_order = f"mp_{uuid.uuid4().hex[:12]}"
 
@@ -1681,7 +1690,7 @@ async def create_mp_preference(request: MPPreferenceRequest):
             metadata={
                 "user_type": request.user_type,
                 "device_id": request.device_id,
-                "phone": request.phone,
+                "phone": phone,
                 "session_id": request.session_id
             },
             payment_method_filter=request.payment_method_filter
@@ -1697,7 +1706,7 @@ async def create_mp_preference(request: MPPreferenceRequest):
             "currency": "CLP",
             "user_type": request.user_type,
             "device_id": request.device_id,
-            "phone": request.phone,
+            "phone": phone,
             "session_id": request.session_id,
             "created_at": datetime.now().isoformat(),
             "paid_at": None,
@@ -1719,7 +1728,7 @@ async def create_mp_preference(request: MPPreferenceRequest):
                 amount=amount,
                 currency="CLP",
                 device_id=request.device_id,
-                phone=request.phone,
+                phone=phone,
                 user_type=request.user_type,
                 country_code="CL",
                 session_id=request.session_id
@@ -1755,6 +1764,15 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
         if request.user_type not in ["editor", "host"]:
             raise HTTPException(status_code=400, detail="Invalid user_type")
 
+        # For hosts, get phone from session data if not provided
+        phone = request.phone
+        if request.user_type == "host" and not phone and request.session_id:
+            session_json = redis_client.get(f"session:{request.session_id}")
+            if session_json:
+                session_data = json.loads(session_json)
+                phone = session_data.get("owner_phone")
+                print(f"Card payment - Got owner_phone from session: {phone}")
+
         # Generate unique commerce order ID
         commerce_order = f"mp_{uuid.uuid4().hex[:12]}"
 
@@ -1776,7 +1794,7 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
             metadata={
                 "user_type": request.user_type,
                 "device_id": request.device_id,
-                "phone": request.phone,
+                "phone": phone,
                 "session_id": request.session_id
             }
         )
@@ -1791,13 +1809,13 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
             # Activate premium immediately
             premium_expires = None
             if request.user_type == "editor" and request.device_id:
-                premium_result = set_editor_premium(redis_client, request.device_id, request.phone)
+                premium_result = set_editor_premium(redis_client, request.device_id, phone)
                 premium_expires = premium_result.get("expires")
                 print(f"Editor premium activated for device: {request.device_id}")
-            elif request.user_type == "host" and request.phone:
-                premium_result = set_host_premium(redis_client, request.phone)
+            elif request.user_type == "host" and phone:
+                premium_result = set_host_premium(redis_client, phone)
                 premium_expires = premium_result.get("expires")
-                print(f"Host premium activated for phone: {request.phone}")
+                print(f"Host premium activated for phone: {phone}")
 
         elif MPPaymentStatus.is_pending(mp_status):
             status = "pending"
@@ -1819,7 +1837,7 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
             "currency": "CLP",
             "user_type": request.user_type,
             "device_id": request.device_id,
-            "phone": request.phone,
+            "phone": phone,
             "session_id": request.session_id,
             "payer_email": request.payer_email,
             "created_at": datetime.now().isoformat(),

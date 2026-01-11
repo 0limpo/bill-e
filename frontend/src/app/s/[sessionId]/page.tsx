@@ -36,6 +36,7 @@ export default function SessionPage() {
   const urlOwnerToken = searchParams.get("owner");
   const viewMode = searchParams.get("view");
   const isViewOnly = viewMode === "results";
+  const paymentSuccess = searchParams.get("payment") === "success";
 
   // Use URL token first, fallback to localStorage
   const [ownerToken, setOwnerToken] = useState<string | null>(urlOwnerToken);
@@ -108,6 +109,26 @@ export default function SessionPage() {
       setStep(3);
     }
   }, [session?.status, step]);
+
+  // Auto-finalize after successful payment (for hosts returning from payment page)
+  useEffect(() => {
+    const autoFinalize = async () => {
+      if (paymentSuccess && isOwner && session && session.status !== "finalized") {
+        console.log("Auto-finalizing after payment success");
+        const result = await finalize();
+        if (result.success) {
+          setStep(3);
+          window.scrollTo(0, 0);
+          updateHostStep(3);
+        }
+        // Clear the payment param from URL to avoid re-triggering
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("payment");
+        router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+      }
+    };
+    autoFinalize();
+  }, [paymentSuccess, isOwner, session, finalize, router, updateHostStep]);
 
   const t = getTranslator(lang);
 
