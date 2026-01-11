@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { createCollaborativeSession } from "@/lib/api";
+import { getAuthProviders, AuthProvider } from "@/lib/auth";
+import { SignInButtons } from "@/components/auth/SignInButtons";
 
 // Helper to manage recent session in localStorage
 const RECENT_SESSION_KEY = "bill-e-recent-session";
@@ -96,11 +98,23 @@ export default function LandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Load recent session on mount
   useEffect(() => {
     setRecentSession(getRecentSession());
   }, []);
+
+  // Load auth providers when modal opens
+  useEffect(() => {
+    if (showRestoreModal && authProviders.length === 0) {
+      getAuthProviders()
+        .then((data) => setAuthProviders(data.providers))
+        .catch(() => setAuthError("No se pudieron cargar las opciones de inicio de sesión"));
+    }
+  }, [showRestoreModal, authProviders.length]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -260,6 +274,16 @@ export default function LandingPage() {
             <span className="text-muted-foreground">→</span>
           </button>
         )}
+
+        {/* Restore premium link */}
+        {!isLoading && (
+          <button
+            onClick={() => setShowRestoreModal(true)}
+            className="mt-4 w-full text-center text-sm text-primary hover:underline"
+          >
+            Ya tengo premium
+          </button>
+        )}
       </div>
 
       {/* Steps */}
@@ -304,6 +328,41 @@ export default function LandingPage() {
           Hecho con ❤️
         </p>
       </footer>
+
+      {/* Restore Premium Modal */}
+      {showRestoreModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-foreground mb-2 text-center">
+              Restaurar Premium
+            </h2>
+            <p className="text-sm text-muted-foreground text-center mb-6">
+              Inicia sesión con la cuenta que usaste para comprar premium
+            </p>
+
+            {authProviders.length > 0 ? (
+              <SignInButtons
+                providers={authProviders}
+                redirectTo={`${window.location.origin}/auth/success`}
+                onError={setAuthError}
+              />
+            ) : authError ? (
+              <p className="text-sm text-red-500 text-center">{authError}</p>
+            ) : (
+              <div className="flex justify-center py-4">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowRestoreModal(false)}
+              className="mt-4 w-full py-3 text-muted-foreground hover:text-foreground transition-colors text-sm"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
