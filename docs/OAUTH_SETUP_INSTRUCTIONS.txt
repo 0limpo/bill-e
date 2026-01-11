@@ -1,0 +1,186 @@
+================================================================================
+                    CONFIGURACION DE OAUTH PARA BILL-E
+                    Google / Facebook / Microsoft
+================================================================================
+
+Necesitas crear una "app" en cada plataforma para obtener:
+- Client ID (publico)
+- Client Secret (privado)
+
+Al final, agregaras estas variables en Render:
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- FACEBOOK_CLIENT_ID
+- FACEBOOK_CLIENT_SECRET
+- MICROSOFT_CLIENT_ID
+- MICROSOFT_CLIENT_SECRET
+
+================================================================================
+                            1. GOOGLE
+================================================================================
+
+1. Ve a: https://console.cloud.google.com/
+
+2. Crea un proyecto nuevo (o usa uno existente):
+   - Click en el selector de proyectos (arriba)
+   - "New Project"
+   - Nombre: "Bill-e" o similar
+   - Click "Create"
+
+3. Habilita la API de Google+:
+   - Menu hamburguesa > "APIs & Services" > "Library"
+   - Busca "Google+ API" o "Google Identity"
+   - Click "Enable"
+
+4. Configura la pantalla de consentimiento:
+   - Menu > "APIs & Services" > "OAuth consent screen"
+   - User Type: "External"
+   - Click "Create"
+   - Llena los campos:
+     * App name: Bill-e
+     * User support email: tu email
+     * Developer contact: tu email
+   - Click "Save and Continue"
+   - Scopes: Click "Add or Remove Scopes"
+     * Selecciona: email, profile, openid
+   - Click "Save and Continue"
+   - Test users: Agrega tu email para pruebas
+   - Click "Save and Continue"
+
+5. Crea las credenciales:
+   - Menu > "APIs & Services" > "Credentials"
+   - Click "+ Create Credentials" > "OAuth client ID"
+   - Application type: "Web application"
+   - Name: "Bill-e Web"
+   - Authorized JavaScript origins:
+     * http://localhost:3000
+     * https://bill-e.vercel.app
+   - Authorized redirect URIs:
+     * http://localhost:3000/api/auth/callback/google
+     * https://bill-e.vercel.app/api/auth/callback/google
+     * https://bill-e-backend-lfwp.onrender.com/api/auth/google/callback
+   - Click "Create"
+
+6. Copia tus credenciales:
+   - Client ID: xxxx.apps.googleusercontent.com
+   - Client Secret: GOCSPX-xxxx
+
+================================================================================
+                            2. FACEBOOK
+================================================================================
+
+1. Ve a: https://developers.facebook.com/
+
+2. Click "My Apps" (arriba derecha) > "Create App"
+
+3. Selecciona el tipo de app:
+   - "Consumer" o "None" (para autenticacion basica)
+   - Click "Next"
+
+4. Configura la app:
+   - App name: Bill-e
+   - App contact email: tu email
+   - Click "Create App"
+
+5. Agrega el producto "Facebook Login":
+   - En el dashboard, busca "Facebook Login"
+   - Click "Set Up"
+   - Selecciona "Web"
+   - Site URL: https://bill-e.vercel.app
+   - Click "Save" y "Continue"
+
+6. Configura Facebook Login:
+   - Menu izquierdo > "Facebook Login" > "Settings"
+   - Valid OAuth Redirect URIs:
+     * http://localhost:3000/api/auth/callback/facebook
+     * https://bill-e.vercel.app/api/auth/callback/facebook
+     * https://bill-e-backend-lfwp.onrender.com/api/auth/facebook/callback
+   - Click "Save Changes"
+
+7. Obtén las credenciales:
+   - Menu izquierdo > "Settings" > "Basic"
+   - App ID: es tu FACEBOOK_CLIENT_ID
+   - App Secret: Click "Show" > es tu FACEBOOK_CLIENT_SECRET
+
+8. Pon la app en modo Live:
+   - Arriba del dashboard hay un toggle "In Development"
+   - Cambialo a "Live"
+   - (Necesitaras agregar Privacy Policy URL, puede ser un link temporal)
+
+================================================================================
+                            3. MICROSOFT
+================================================================================
+
+1. Ve a: https://portal.azure.com/
+
+2. Busca "App registrations" en la barra de busqueda
+   - O ve a: Azure Active Directory > App registrations
+
+3. Click "+ New registration"
+   - Name: Bill-e
+   - Supported account types:
+     * "Accounts in any organizational directory and personal Microsoft accounts"
+     * (Esta opcion permite Outlook, Hotmail, Xbox, etc.)
+   - Redirect URI:
+     * Platform: Web
+     * URL: https://bill-e-backend-lfwp.onrender.com/api/auth/microsoft/callback
+   - Click "Register"
+
+4. Copia el Application (client) ID:
+   - En la pagina "Overview"
+   - Application (client) ID: es tu MICROSOFT_CLIENT_ID
+
+5. Crea el Client Secret:
+   - Menu izquierdo > "Certificates & secrets"
+   - Click "+ New client secret"
+   - Description: "Bill-e production"
+   - Expires: 24 months (o lo que prefieras)
+   - Click "Add"
+   - COPIA EL VALUE INMEDIATAMENTE (solo se muestra una vez)
+   - Ese es tu MICROSOFT_CLIENT_SECRET
+
+6. Configura permisos (opcional pero recomendado):
+   - Menu izquierdo > "API permissions"
+   - Ya deberia tener "User.Read" por defecto
+   - Si no, click "Add permission" > "Microsoft Graph" > "Delegated"
+   - Selecciona: User.Read, email, profile, openid
+
+7. Agrega mas Redirect URIs:
+   - Menu izquierdo > "Authentication"
+   - Click "Add URI" y agrega:
+     * http://localhost:3000/api/auth/callback/microsoft
+     * https://bill-e.vercel.app/api/auth/callback/microsoft
+
+================================================================================
+                    RESUMEN - VARIABLES PARA RENDER
+================================================================================
+
+Una vez que tengas todo, agrega estas variables en Render:
+
+GOOGLE_CLIENT_ID=xxxxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
+
+FACEBOOK_CLIENT_ID=123456789
+FACEBOOK_CLIENT_SECRET=abcdef123456
+
+MICROSOFT_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MICROSOFT_CLIENT_SECRET=xxxxx~xxxxx
+
+================================================================================
+                            NOTAS IMPORTANTES
+================================================================================
+
+1. Los Redirect URIs deben coincidir EXACTAMENTE con lo que configures en el
+   backend, incluyendo http vs https y trailing slashes.
+
+2. Para desarrollo local, asegurate de agregar los URIs de localhost.
+
+3. Google puede tardar unos minutos en propagar los cambios.
+
+4. Facebook requiere que la app este en modo "Live" para que funcione con
+   usuarios que no son testers.
+
+5. Microsoft permite cuentas personales (Outlook/Hotmail) Y empresariales,
+   dependiendo de la opcion que elegiste en "Supported account types".
+
+================================================================================

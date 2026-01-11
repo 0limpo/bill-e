@@ -116,6 +116,14 @@ except ImportError as e:
     print(f"Warning: PostgreSQL not available: {e}")
     postgres_available = False
 
+# Importar OAuth Authentication
+try:
+    import auth as oauth_auth
+    auth_available = True
+except ImportError as e:
+    print(f"Warning: OAuth authentication not available: {e}")
+    auth_available = False
+
 load_dotenv()
 
 app = FastAPI(title="Bill-e API", version="1.0.0")
@@ -2279,6 +2287,352 @@ async def get_admin_user(device_id: str, secret: str = None):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==============================================================================
+# OAuth Authentication Endpoints
+# ==============================================================================
+
+# Store for OAuth state tokens (should use Redis in production)
+oauth_states: Dict[str, Dict] = {}
+
+
+@app.get("/api/auth/providers")
+async def get_auth_providers():
+    """Get list of available OAuth providers."""
+    if not auth_available:
+        return {"providers": [], "message": "Authentication not configured"}
+
+    providers = oauth_auth.get_available_providers()
+    return {
+        "providers": providers,
+        "configured": {
+            "google": oauth_auth.is_provider_configured("google"),
+            "facebook": oauth_auth.is_provider_configured("facebook"),
+            "microsoft": oauth_auth.is_provider_configured("microsoft"),
+        }
+    }
+
+
+@app.get("/api/auth/{provider}/login")
+async def oauth_login(
+    provider: str,
+    device_id: str = None,
+    redirect_to: str = None
+):
+    """
+    Start OAuth flow. Returns authorization URL.
+
+    Args:
+        provider: google, facebook, or microsoft
+        device_id: Optional device ID to link after auth
+        redirect_to: Optional URL to redirect after successful auth
+    """
+    if not auth_available:
+        raise HTTPException(status_code=503, detail="Authentication not available")
+
+    if provider not in ["google", "facebook", "microsoft"]:
+        raise HTTPException(status_code=400, detail="Invalid provider")
+
+    if not oauth_auth.is_provider_configured(provider):
+        raise HTTPException(status_code=503, detail=f"{provider} not configured")
+
+    # Generate state token
+    state = oauth_auth.generate_state_token()
+
+    # Store state with metadata
+    backend_url = os.getenv("BACKEND_URL", "https://bill-e-backend-lfwp.onrender.com")
+    redirect_uri = f"{backend_url}/api/auth/{provider}/callback"
+
+    oauth_states[state] = {
+        "provider": provider,
+        "device_id": device_id,
+        "redirect_to": redirect_to,
+        "created_at": datetime.now().isoformat()
+    }
+
+    # Clean old states (older than 10 minutes)
+    now = datetime.now()
+    expired_states = [
+        s for s, data in oauth_states.items()
+        if (now - datetime.fromisoformat(data["created_at"])).seconds > 600
+    ]
+    for s in expired_states:
+        del oauth_states[s]
+
+    # Generate auth URL
+    auth_url = oauth_auth.generate_auth_url(
+        provider=provider,
+        redirect_uri=redirect_uri,
+        state=state,
+        device_id=device_id
+    )
+
+    return {
+        "auth_url": auth_url,
+        "state": state,
+        "provider": provider
+    }
+
+
+@app.get("/api/auth/{provider}/callback")
+async def oauth_callback(
+    provider: str,
+    code: str = None,
+    state: str = None,
+    error: str = None
+):
+    """
+    OAuth callback handler. Exchanges code for token and creates/updates user.
+    Redirects to frontend with session token.
+    """
+    from fastapi.responses import RedirectResponse
+
+    frontend_url = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+
+    if error:
+        return RedirectResponse(f"{frontend_url}/auth/error?error={error}")
+
+    if not code or not state:
+        return RedirectResponse(f"{frontend_url}/auth/error?error=missing_params")
+
+    # Verify state
+    state_data = oauth_states.pop(state, None)
+    if not state_data:
+        return RedirectResponse(f"{frontend_url}/auth/error?error=invalid_state")
+
+    if state_data["provider"] != provider:
+        return RedirectResponse(f"{frontend_url}/auth/error?error=provider_mismatch")
+
+    device_id = state_data.get("device_id")
+    redirect_to = state_data.get("redirect_to")
+
+    # Exchange code for token
+    backend_url = os.getenv("BACKEND_URL", "https://bill-e-backend-lfwp.onrender.com")
+    redirect_uri = f"{backend_url}/api/auth/{provider}/callback"
+
+    token_response = await oauth_auth.exchange_code_for_token(
+        provider=provider,
+        code=code,
+        redirect_uri=redirect_uri
+    )
+
+    if not token_response:
+        return RedirectResponse(f"{frontend_url}/auth/error?error=token_exchange_failed")
+
+    access_token = token_response.get("access_token")
+    if not access_token:
+        return RedirectResponse(f"{frontend_url}/auth/error?error=no_access_token")
+
+    # Get user info
+    user_info = await oauth_auth.get_user_info(provider, access_token)
+    if not user_info:
+        return RedirectResponse(f"{frontend_url}/auth/error?error=user_info_failed")
+
+    # Create or find user in database
+    if postgres_available:
+        user = postgres_db.find_or_create_user(
+            provider=provider,
+            provider_id=user_info["provider_id"],
+            email=user_info["email"],
+            name=user_info.get("name"),
+            picture_url=user_info.get("picture_url"),
+            device_id=device_id
+        )
+
+        if user:
+            # If device has premium, transfer to user account
+            if device_id and user.get("is_new"):
+                postgres_db.transfer_premium_to_user(user["id"], device_id)
+                # Refresh user data
+                user = postgres_db.get_user_by_id(user["id"])
+
+            # If user has premium and device provided, restore to device
+            elif device_id and user.get("is_premium"):
+                postgres_db.restore_premium_to_device(user["id"], device_id)
+
+            # Create session token
+            session_token = oauth_auth.create_session_token(
+                user_id=user["id"],
+                provider=provider,
+                email=user["email"]
+            )
+
+            # Redirect to frontend with token
+            redirect_url = redirect_to or f"{frontend_url}/auth/success"
+            separator = "&" if "?" in redirect_url else "?"
+            return RedirectResponse(
+                f"{redirect_url}{separator}token={session_token}&user_id={user['id']}&is_premium={user.get('is_premium', False)}"
+            )
+
+    return RedirectResponse(f"{frontend_url}/auth/error?error=database_error")
+
+
+@app.post("/api/auth/verify")
+async def verify_auth_token(request: Request):
+    """Verify a session token and return user info."""
+    if not auth_available:
+        raise HTTPException(status_code=503, detail="Authentication not available")
+
+    try:
+        body = await request.json()
+        token = body.get("token")
+
+        if not token:
+            raise HTTPException(status_code=400, detail="Token required")
+
+        payload = oauth_auth.verify_session_token(token)
+
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        # Get fresh user data
+        if postgres_available:
+            user = postgres_db.get_user_by_id(payload["user_id"])
+            if user:
+                return {
+                    "valid": True,
+                    "user": user
+                }
+
+        return {
+            "valid": True,
+            "user": {
+                "id": payload["user_id"],
+                "provider": payload["provider"],
+                "email": payload["email"]
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/link-device")
+async def link_device_to_account(request: Request):
+    """
+    Link a device_id to an authenticated user account.
+    If device has premium, transfers it to the user account.
+    """
+    if not auth_available or not postgres_available:
+        raise HTTPException(status_code=503, detail="Service not available")
+
+    try:
+        body = await request.json()
+        token = body.get("token")
+        device_id = body.get("device_id")
+
+        if not token or not device_id:
+            raise HTTPException(status_code=400, detail="Token and device_id required")
+
+        payload = oauth_auth.verify_session_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        user_id = payload["user_id"]
+
+        # Link device
+        result = postgres_db.link_device_to_user(user_id, device_id)
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Try to transfer premium from device to user
+        transfer_result = postgres_db.transfer_premium_to_user(user_id, device_id)
+
+        return {
+            "success": True,
+            "user_id": user_id,
+            "device_linked": device_id,
+            "premium_transferred": transfer_result.get("transferred_from_device") is not None if transfer_result else False
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/auth/restore-premium")
+async def restore_premium_to_device(request: Request):
+    """
+    Restore premium from user account to current device.
+    Used when user signs in on a new device.
+    """
+    if not auth_available or not postgres_available:
+        raise HTTPException(status_code=503, detail="Service not available")
+
+    try:
+        body = await request.json()
+        token = body.get("token")
+        device_id = body.get("device_id")
+
+        if not token or not device_id:
+            raise HTTPException(status_code=400, detail="Token and device_id required")
+
+        payload = oauth_auth.verify_session_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        user_id = payload["user_id"]
+
+        # Restore premium to device
+        result = postgres_db.restore_premium_to_device(user_id, device_id)
+
+        if not result:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if not result.get("success"):
+            return {
+                "success": False,
+                "error": result.get("error", "Could not restore premium")
+            }
+
+        # Also activate in Redis for immediate effect
+        if redis_client and collaborative_available:
+            from datetime import datetime
+            expires = datetime.fromisoformat(result["premium_expires"])
+            set_host_device_premium(redis_client, device_id)
+
+        return {
+            "success": True,
+            "device_id": device_id,
+            "premium_expires": result.get("premium_expires")
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/auth/me")
+async def get_current_user(authorization: str = None):
+    """Get current user info from session token."""
+    if not auth_available:
+        raise HTTPException(status_code=503, detail="Authentication not available")
+
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required")
+
+    # Extract token from "Bearer <token>"
+    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+
+    payload = oauth_auth.verify_session_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    if postgres_available:
+        user = postgres_db.get_user_by_id(payload["user_id"])
+        if user:
+            return user
+
+    return {
+        "id": payload["user_id"],
+        "provider": payload["provider"],
+        "email": payload["email"]
+    }
 
 
 if __name__ == "__main__":

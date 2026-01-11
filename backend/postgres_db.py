@@ -97,6 +97,12 @@ class DeviceType(enum.Enum):
     UNKNOWN = "unknown"
 
 
+class AuthProvider(enum.Enum):
+    GOOGLE = "google"
+    FACEBOOK = "facebook"
+    MICROSOFT = "microsoft"
+
+
 # Models
 class Payment(Base):
     """
@@ -194,6 +200,44 @@ class UserProfile(Base):
     __table_args__ = (
         Index('ix_user_profiles_premium', 'is_premium', 'premium_expires'),
         Index('ix_user_profiles_country', 'country_code'),
+    )
+
+
+class User(Base):
+    """
+    Authenticated users via OAuth (Google/Facebook/Microsoft).
+    Links to device_ids for premium access across devices.
+    """
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # OAuth provider info
+    provider = Column(SQLEnum(AuthProvider), nullable=False)
+    provider_id = Column(String(255), nullable=False)  # ID from OAuth provider
+
+    # User info from OAuth
+    email = Column(String(255), nullable=False, index=True)
+    name = Column(String(255))
+    picture_url = Column(Text)
+
+    # Linked devices (stored as JSON array of device_ids)
+    device_ids = Column(JSON, default=list)  # ["device_id_1", "device_id_2", ...]
+
+    # Premium status
+    is_premium = Column(Boolean, default=False)
+    premium_expires = Column(DateTime)
+    premium_payment_id = Column(UUID(as_uuid=True))  # FK to payments
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login_at = Column(DateTime, default=datetime.utcnow)
+
+    # Unique constraint: one account per provider+email combination
+    __table_args__ = (
+        Index('ix_users_provider_email', 'provider', 'email', unique=True),
+        Index('ix_users_provider_id', 'provider', 'provider_id', unique=True),
     )
 
 
@@ -618,3 +662,274 @@ def get_recent_payments(limit: int = 50) -> List[Dict]:
             "paid_at": p.paid_at.isoformat() if p.paid_at else None,
             "created_at": p.created_at.isoformat() if p.created_at else None
         } for p in payments]
+
+
+# Helper functions for OAuth Users
+
+def find_or_create_user(
+    provider: str,
+    provider_id: str,
+    email: str,
+    name: str = None,
+    picture_url: str = None,
+    device_id: str = None
+) -> Optional[Dict]:
+    """
+    Find existing user by provider+provider_id or create new one.
+    Optionally links a device_id to the user.
+    """
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        # Try to find existing user
+        user = db.query(User).filter(
+            User.provider == AuthProvider(provider),
+            User.provider_id == provider_id
+        ).first()
+
+        if user:
+            # Update last login
+            user.last_login_at = datetime.utcnow()
+
+            # Update info if changed
+            if name and name != user.name:
+                user.name = name
+            if picture_url and picture_url != user.picture_url:
+                user.picture_url = picture_url
+
+            # Link device if provided and not already linked
+            if device_id:
+                current_devices = user.device_ids or []
+                if device_id not in current_devices:
+                    current_devices.append(device_id)
+                    user.device_ids = current_devices
+
+            db.flush()
+
+            return {
+                "id": str(user.id),
+                "provider": user.provider.value,
+                "email": user.email,
+                "name": user.name,
+                "picture_url": user.picture_url,
+                "device_ids": user.device_ids or [],
+                "is_premium": user.is_premium,
+                "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None,
+                "is_new": False
+            }
+
+        # Create new user
+        user = User(
+            provider=AuthProvider(provider),
+            provider_id=provider_id,
+            email=email,
+            name=name,
+            picture_url=picture_url,
+            device_ids=[device_id] if device_id else []
+        )
+        db.add(user)
+        db.flush()
+
+        return {
+            "id": str(user.id),
+            "provider": user.provider.value,
+            "email": user.email,
+            "name": user.name,
+            "picture_url": user.picture_url,
+            "device_ids": user.device_ids or [],
+            "is_premium": False,
+            "premium_expires": None,
+            "is_new": True
+        }
+
+
+def get_user_by_id(user_id: str) -> Optional[Dict]:
+    """Get user by ID."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+
+        if not user:
+            return None
+
+        return {
+            "id": str(user.id),
+            "provider": user.provider.value,
+            "email": user.email,
+            "name": user.name,
+            "picture_url": user.picture_url,
+            "device_ids": user.device_ids or [],
+            "is_premium": user.is_premium,
+            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None
+        }
+
+
+def get_user_by_email(email: str) -> Optional[Dict]:
+    """Get user by email (returns first match if multiple providers)."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        user = db.query(User).filter(User.email == email).first()
+
+        if not user:
+            return None
+
+        return {
+            "id": str(user.id),
+            "provider": user.provider.value,
+            "email": user.email,
+            "name": user.name,
+            "picture_url": user.picture_url,
+            "device_ids": user.device_ids or [],
+            "is_premium": user.is_premium,
+            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None
+        }
+
+
+def link_device_to_user(user_id: str, device_id: str) -> Optional[Dict]:
+    """Link a device_id to an existing user."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+
+        if not user:
+            return None
+
+        current_devices = user.device_ids or []
+        if device_id not in current_devices:
+            current_devices.append(device_id)
+            user.device_ids = current_devices
+            db.flush()
+
+        return {
+            "id": str(user.id),
+            "device_ids": user.device_ids
+        }
+
+
+def transfer_premium_to_user(
+    user_id: str,
+    device_id: str = None
+) -> Optional[Dict]:
+    """
+    Transfer premium from a device_id to a user account.
+    Called after OAuth sign-in post-payment.
+    """
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+        if not user:
+            return None
+
+        # If device_id provided, try to find premium from UserProfile
+        if device_id:
+            profile = db.query(UserProfile).filter(
+                UserProfile.device_id == device_id,
+                UserProfile.is_premium == True
+            ).first()
+
+            if profile and profile.premium_expires:
+                user.is_premium = True
+                user.premium_expires = profile.premium_expires
+                user.premium_payment_id = profile.premium_payment_id
+
+                # Link device if not already
+                current_devices = user.device_ids or []
+                if device_id not in current_devices:
+                    current_devices.append(device_id)
+                    user.device_ids = current_devices
+
+                db.flush()
+
+                return {
+                    "id": str(user.id),
+                    "is_premium": True,
+                    "premium_expires": user.premium_expires.isoformat(),
+                    "transferred_from_device": device_id
+                }
+
+        return {
+            "id": str(user.id),
+            "is_premium": user.is_premium,
+            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None,
+            "transferred_from_device": None
+        }
+
+
+def restore_premium_to_device(user_id: str, device_id: str) -> Optional[Dict]:
+    """
+    Restore premium from user account to a new device.
+    Called when user signs in on a new device.
+    """
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
+        if not user:
+            return None
+
+        if not user.is_premium or not user.premium_expires:
+            return {
+                "success": False,
+                "error": "User does not have active premium"
+            }
+
+        if user.premium_expires < datetime.utcnow():
+            return {
+                "success": False,
+                "error": "Premium has expired"
+            }
+
+        # Link device to user
+        current_devices = user.device_ids or []
+        if device_id not in current_devices:
+            current_devices.append(device_id)
+            user.device_ids = current_devices
+
+        # Create or update UserProfile with premium
+        profile = db.query(UserProfile).filter(UserProfile.device_id == device_id).first()
+
+        if not profile:
+            profile = UserProfile(device_id=device_id)
+            db.add(profile)
+
+        profile.is_premium = True
+        profile.premium_expires = user.premium_expires
+        profile.premium_payment_id = user.premium_payment_id
+        profile.email = user.email
+
+        db.flush()
+
+        return {
+            "success": True,
+            "user_id": str(user.id),
+            "device_id": device_id,
+            "premium_expires": user.premium_expires.isoformat()
+        }
