@@ -61,6 +61,7 @@ try:
         check_host_session_limit,
         set_editor_premium,
         set_host_premium,
+        set_host_device_premium,
         HOST_FREE_SESSIONS,
         SessionStatus
     )
@@ -1504,11 +1505,18 @@ async def payment_webhook(request: Request):
                 premium_expires = premium_result.get("expires")
                 print(f"Editor premium activated for device: {device_id}")
 
-            elif user_type == "host" and phone:
-                # Activate host premium
-                premium_result = set_host_premium(redis_client, phone)
-                premium_expires = premium_result.get("expires")
-                print(f"Host premium activated for phone: {phone}")
+            elif user_type == "host":
+                # Activate host premium - prefer phone, fallback to device_id
+                if phone:
+                    premium_result = set_host_premium(redis_client, phone)
+                    premium_expires = premium_result.get("expires")
+                    print(f"Host premium activated for phone: {phone}")
+                elif device_id:
+                    premium_result = set_host_device_premium(redis_client, device_id)
+                    premium_expires = premium_result.get("expires")
+                    print(f"Host premium activated for device: {device_id}")
+                else:
+                    print(f"Warning: Could not activate host premium - no phone or device_id")
 
             else:
                 print(f"Warning: Could not activate premium - user_type={user_type}, device_id={device_id}, phone={phone}")
@@ -1812,10 +1820,16 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
                 premium_result = set_editor_premium(redis_client, request.device_id, phone)
                 premium_expires = premium_result.get("expires")
                 print(f"Editor premium activated for device: {request.device_id}")
-            elif request.user_type == "host" and phone:
-                premium_result = set_host_premium(redis_client, phone)
-                premium_expires = premium_result.get("expires")
-                print(f"Host premium activated for phone: {phone}")
+            elif request.user_type == "host":
+                # Prefer phone, fallback to device_id
+                if phone:
+                    premium_result = set_host_premium(redis_client, phone)
+                    premium_expires = premium_result.get("expires")
+                    print(f"Host premium activated for phone: {phone}")
+                elif request.device_id:
+                    premium_result = set_host_device_premium(redis_client, request.device_id)
+                    premium_expires = premium_result.get("expires")
+                    print(f"Host premium activated for device: {request.device_id}")
 
         elif MPPaymentStatus.is_pending(mp_status):
             status = "pending"
@@ -1958,10 +1972,18 @@ async def mp_webhook(request: Request):
                 premium_result = set_editor_premium(redis_client, device_id, phone)
                 payment["premium_expires"] = premium_result.get("expires")
                 print(f"Editor premium activated via webhook: {device_id}")
-            elif user_type == "host" and phone:
-                premium_result = set_host_premium(redis_client, phone)
-                payment["premium_expires"] = premium_result.get("expires")
-                print(f"Host premium activated via webhook: {phone}")
+            elif user_type == "host":
+                # Prefer phone, fallback to device_id
+                if phone:
+                    premium_result = set_host_premium(redis_client, phone)
+                    payment["premium_expires"] = premium_result.get("expires")
+                    print(f"Host premium activated via webhook (phone): {phone}")
+                elif device_id:
+                    premium_result = set_host_device_premium(redis_client, device_id)
+                    payment["premium_expires"] = premium_result.get("expires")
+                    print(f"Host premium activated via webhook (device): {device_id}")
+                else:
+                    print(f"WARNING: Could not activate host premium - no phone or device_id")
             else:
                 print(f"WARNING: Could not activate premium - missing data")
 
