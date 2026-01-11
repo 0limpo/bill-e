@@ -107,6 +107,14 @@ except ImportError as e:
     print(f"Warning: MercadoPago integration not available: {e}")
     mercadopago_available = False
 
+# Importar PostgreSQL Database
+try:
+    import postgres_db
+    postgres_available = True
+except ImportError as e:
+    print(f"Warning: PostgreSQL not available: {e}")
+    postgres_available = False
+
 load_dotenv()
 
 app = FastAPI(title="Bill-e API", version="1.0.0")
@@ -430,6 +438,13 @@ async def startup_event():
         init_alerting()
         print("✅ Analytics and alerting initialized")
 
+    # Initialize PostgreSQL
+    if postgres_available:
+        if postgres_db.init_db():
+            print("✅ PostgreSQL database initialized")
+        else:
+            print("⚠️ PostgreSQL not configured (payments will only use Redis)")
+
 # ================ ENDPOINTS WHATSAPP ORIGINALES ================
 
 @app.get("/webhook/whatsapp")
@@ -458,6 +473,8 @@ async def whatsapp_webhook_handle(request: Request):
 async def create_collaborative_session_endpoint(request: Request):
     try:
         data = await request.json()
+        device_id = data.get("device_id", "")
+
         result = create_collaborative_session(
             redis_client=redis_client,
             owner_phone=data.get("owner_phone", ""),
@@ -468,8 +485,23 @@ async def create_collaborative_session_endpoint(request: Request):
             raw_text=data.get("raw_text", ""),
             charges=data.get("charges", []),
             decimal_places=data.get("decimal_places", 0),
-            device_id=data.get("device_id", "")
+            device_id=device_id
         )
+
+        # Track user in PostgreSQL (host creating session)
+        if postgres_available and device_id:
+            user_agent = request.headers.get("user-agent", "")
+            accept_lang = request.headers.get("accept-language", "")
+            language = accept_lang.split(",")[0].split("-")[0] if accept_lang else None
+
+            postgres_db.track_user(
+                device_id=device_id,
+                role="host",
+                session_id=result.get("session_id"),
+                user_agent=user_agent,
+                language=language
+            )
+
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -1679,6 +1711,20 @@ async def create_mp_preference(request: MPPreferenceRequest):
             json.dumps(payment_record)
         )
 
+        # Also store in PostgreSQL for persistence
+        if postgres_available:
+            postgres_db.create_payment(
+                commerce_order=commerce_order,
+                processor="mercadopago",
+                amount=amount,
+                currency="CLP",
+                device_id=request.device_id,
+                phone=request.phone,
+                user_type=request.user_type,
+                country_code="CL",
+                session_id=request.session_id
+            )
+
         return {
             "success": True,
             "preference_id": preference.get("id"),
@@ -1916,6 +1962,35 @@ async def mp_webhook(request: Request):
             json.dumps(payment)
         )
 
+        # Also update PostgreSQL for persistence
+        if postgres_available and payment.get("status") == "paid":
+            premium_expires_dt = None
+            if payment.get("premium_expires"):
+                try:
+                    premium_expires_dt = datetime.fromisoformat(payment["premium_expires"])
+                except:
+                    pass
+
+            postgres_db.update_payment_status(
+                commerce_order=external_reference,
+                status="paid",
+                processor_payment_id=str(payment_id),
+                processor_response=mp_payment,
+                premium_expires=premium_expires_dt
+            )
+
+            # Also set user premium in PostgreSQL
+            if payment.get("device_id") and premium_expires_dt:
+                db_payment = postgres_db.get_payment_by_order(external_reference)
+                if db_payment:
+                    postgres_db.set_user_premium(
+                        device_id=payment.get("device_id"),
+                        payment_id=db_payment["id"],
+                        premium_expires=premium_expires_dt,
+                        phone=payment.get("phone")
+                    )
+            print(f"PostgreSQL payment record updated: {external_reference}")
+
         return {"status": "ok"}
 
     except Exception as e:
@@ -2101,6 +2176,67 @@ async def get_editor_status(phone: str, session_id: str):
             "is_premium": False
         }
 
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
+# ADMIN ENDPOINTS
+# =====================================================
+
+ADMIN_SECRET = os.getenv("ADMIN_SECRET", "bill-e-admin-2024")
+
+
+@app.get("/api/admin/analytics")
+async def get_admin_analytics(secret: str = None):
+    """Get analytics summary. Requires admin secret."""
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="PostgreSQL not configured")
+
+    try:
+        analytics = postgres_db.get_analytics_summary()
+        if not analytics:
+            return {"message": "No data available yet"}
+        return analytics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/payments")
+async def get_admin_payments(secret: str = None, limit: int = 50):
+    """Get recent payments. Requires admin secret."""
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="PostgreSQL not configured")
+
+    try:
+        payments = postgres_db.get_recent_payments(limit=limit)
+        return {"payments": payments, "count": len(payments)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/user/{device_id}")
+async def get_admin_user(device_id: str, secret: str = None):
+    """Get user profile by device_id. Requires admin secret."""
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="PostgreSQL not configured")
+
+    try:
+        profile = postgres_db.get_user_profile(device_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail="User not found")
+        return profile
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -13,3 +13,5 @@ google-oauth2-tool==0.0.3
 pillow==10.1.0
 python-dateutil==2.8.2
 mercadopago==2.2.1
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
