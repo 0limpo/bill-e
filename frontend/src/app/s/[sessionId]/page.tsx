@@ -351,7 +351,7 @@ export default function SessionPage() {
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
           <div className="w-full max-w-sm">
             <div className="text-center mb-8">
-              <div className="text-5xl mb-4">📦</div>
+              <div className="text-5xl mb-4">✨</div>
               <h1 className="text-2xl font-bold mb-2">{t("paywall.title")}</h1>
               <p className="text-muted-foreground">{t("paywall.subtitle")}</p>
             </div>
@@ -516,7 +516,7 @@ export default function SessionPage() {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <div className="text-5xl mb-4">📦</div>
+            <div className="text-5xl mb-4">✨</div>
             <h1 className="text-2xl font-bold mb-2">{t("paywall.title")}</h1>
             <p className="text-muted-foreground">{t("paywall.subtitle")}</p>
           </div>
