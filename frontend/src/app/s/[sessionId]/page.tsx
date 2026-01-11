@@ -39,6 +39,8 @@ export default function SessionPage() {
   const viewMode = searchParams.get("view");
   const isViewOnly = viewMode === "results";
   const paymentSuccess = searchParams.get("payment") === "success";
+  const authIsPremium = searchParams.get("is_premium");
+  const returnedFromAuth = searchParams.has("token");
 
   // Use URL token first, fallback to localStorage
   const [ownerToken, setOwnerToken] = useState<string | null>(urlOwnerToken);
@@ -72,6 +74,7 @@ export default function SessionPage() {
 
   // Auth providers for paywall sign-in
   const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
+  const [noPremiumMessage, setNoPremiumMessage] = useState<string | null>(null);
 
   const {
     session,
@@ -143,6 +146,20 @@ export default function SessionPage() {
         .catch(console.error);
     }
   }, [showPaywall, authProviders.length]);
+
+  // Handle return from OAuth - show paywall with message if no premium
+  useEffect(() => {
+    if (returnedFromAuth && authIsPremium === "False") {
+      setNoPremiumMessage("No tienes premium vinculado a esta cuenta");
+      setShowPaywall(true);
+      // Clean URL params
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete("token");
+      newUrl.searchParams.delete("user_id");
+      newUrl.searchParams.delete("is_premium");
+      router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+    }
+  }, [returnedFromAuth, authIsPremium, router]);
 
   const t = getTranslator(lang);
 
@@ -546,10 +563,19 @@ export default function SessionPage() {
             )}
           </div>
 
+          {/* No premium message */}
+          {noPremiumMessage && (
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-4">
+              <p className="text-sm text-center text-orange-400">
+                {noPremiumMessage}
+              </p>
+            </div>
+          )}
+
           {/* Ya tengo premium - Sign in option */}
           <div className="bg-card rounded-2xl p-4 border border-border mb-4">
             <p className="text-sm text-center text-muted-foreground mb-3">
-              ¿Ya compraste premium?
+              {noPremiumMessage ? "Intenta con otra cuenta" : "¿Ya compraste premium?"}
             </p>
             {authProviders.length > 0 ? (
               <SignInButtons
@@ -565,7 +591,10 @@ export default function SessionPage() {
           </div>
 
           <button
-            onClick={() => setShowPaywall(false)}
+            onClick={() => {
+              setShowPaywall(false);
+              setNoPremiumMessage(null);
+            }}
             className="w-full text-sm text-muted-foreground hover:text-foreground"
           >
             {t("paywall.later")}
