@@ -10,6 +10,7 @@ import {
   formatPriceCLP,
   type PaymentStatusResponse,
 } from "@/lib/payment";
+import { PostPaymentModal } from "@/components/auth/PostPaymentModal";
 
 type PaymentState = "loading" | "success" | "pending" | "rejected" | "cancelled" | "error";
 
@@ -19,6 +20,11 @@ function PaymentSuccessContent() {
   const [state, setState] = useState<PaymentState>("loading");
   const [paymentData, setPaymentData] = useState<PaymentStatusResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState<{ sessionId: string | null; ownerToken: string | null }>({
+    sessionId: null,
+    ownerToken: null,
+  });
 
   useEffect(() => {
     const checkPayment = async () => {
@@ -62,16 +68,12 @@ function PaymentSuccessContent() {
         case "paid":
           setState("success");
           clearPendingPayment();
-          // Auto-redirect to session after 3 seconds
-          if (sessionId) {
-            setTimeout(() => {
-              // Add payment=success param so session page knows to auto-finalize
-              const url = ownerToken
-                ? `/s/${sessionId}?owner=${ownerToken}&payment=success`
-                : `/s/${sessionId}?payment=success`;
-              router.push(url);
-            }, 3000);
-          }
+          // Store session info for later redirect
+          setSessionInfo({ sessionId, ownerToken });
+          // Show link account modal after short delay
+          setTimeout(() => {
+            setShowLinkModal(true);
+          }, 1500);
           break;
 
         case "pending":
@@ -118,6 +120,19 @@ function PaymentSuccessContent() {
   const handleReturnHome = () => {
     clearPendingPayment();
     router.push("/");
+  };
+
+  const handleSkipLinking = () => {
+    setShowLinkModal(false);
+    // Redirect to session
+    if (sessionInfo.sessionId) {
+      const url = sessionInfo.ownerToken
+        ? `/s/${sessionInfo.sessionId}?owner=${sessionInfo.ownerToken}&payment=success`
+        : `/s/${sessionInfo.sessionId}?payment=success`;
+      router.push(url);
+    } else {
+      router.push("/");
+    }
   };
 
   return (
@@ -181,19 +196,14 @@ function PaymentSuccessContent() {
                   {formatPriceCLP(paymentData.amount)}
                 </p>
               )}
-              <p className="text-xs text-muted-foreground mb-6">
-                Recibirás tu boleta electrónica por email
-              </p>
-
-              <button
-                onClick={handleReturnToSession}
-                className="w-full h-12 bg-primary text-primary-foreground font-semibold rounded-xl hover:bg-primary/90 transition-colors"
-              >
-                Continuar a la sesión
-              </button>
-              <p className="text-xs text-muted-foreground mt-3">
-                Redirigiendo automáticamente en 3 segundos...
-              </p>
+              {!showLinkModal && (
+                <>
+                  <p className="text-xs text-muted-foreground mb-6">
+                    Preparando opciones...
+                  </p>
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                </>
+              )}
             </div>
           )}
 
@@ -284,6 +294,14 @@ function PaymentSuccessContent() {
           Pago seguro
         </p>
       </div>
+
+      {/* Post-payment link account modal */}
+      <PostPaymentModal
+        isOpen={showLinkModal}
+        onClose={() => setShowLinkModal(false)}
+        onSkip={handleSkipLinking}
+        sessionId={sessionInfo.sessionId || undefined}
+      />
     </div>
   );
 }
