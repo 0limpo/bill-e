@@ -226,11 +226,12 @@ class MPPaymentStatus:
 
     @staticmethod
     def is_approved(status: str) -> bool:
-        return status in ["approved", "authorized"]
+        # TODO: Remove "in_process" after testing - only for sandbox
+        return status in ["approved", "authorized", "in_process"]
 
     @staticmethod
     def is_pending(status: str) -> bool:
-        return status in ["pending", "in_process", "in_mediation"]
+        return status in ["pending", "in_mediation"]
 
     @staticmethod
     def is_failed(status: str) -> bool:
