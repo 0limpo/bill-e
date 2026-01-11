@@ -74,7 +74,7 @@ export default function SessionPage() {
 
   // Auth providers for paywall sign-in
   const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
-  const [noPremiumMessage, setNoPremiumMessage] = useState<string | null>(null);
+  const [showNoPremiumWarning, setShowNoPremiumWarning] = useState(false);
 
   const {
     session,
@@ -150,7 +150,7 @@ export default function SessionPage() {
   // Handle return from OAuth - show paywall with message if no premium
   useEffect(() => {
     if (returnedFromAuth && authIsPremium === "False") {
-      setNoPremiumMessage("No tienes premium vinculado a esta cuenta");
+      setShowNoPremiumWarning(true);
       setShowPaywall(true);
       // Clean URL params
       const newUrl = new URL(window.location.href);
@@ -564,18 +564,18 @@ export default function SessionPage() {
           </div>
 
           {/* No premium message */}
-          {noPremiumMessage && (
+          {showNoPremiumWarning && (
             <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-4">
               <p className="text-sm text-center text-orange-400">
-                {noPremiumMessage}
+                {t("paywall.noPremiumLinked")}
               </p>
             </div>
           )}
 
-          {/* Ya tengo premium - Sign in option */}
+          {/* Already have premium - Sign in option */}
           <div className="bg-card rounded-2xl p-4 border border-border mb-4">
             <p className="text-sm text-center text-muted-foreground mb-3">
-              {noPremiumMessage ? "Intenta con otra cuenta" : "¿Ya compraste premium?"}
+              {showNoPremiumWarning ? t("paywall.tryAnotherAccount") : t("paywall.alreadyHavePremium")}
             </p>
             {authProviders.length > 0 ? (
               <SignInButtons
@@ -593,7 +593,7 @@ export default function SessionPage() {
           <button
             onClick={() => {
               setShowPaywall(false);
-              setNoPremiumMessage(null);
+              setShowNoPremiumWarning(false);
             }}
             className="w-full text-sm text-muted-foreground hover:text-foreground"
           >

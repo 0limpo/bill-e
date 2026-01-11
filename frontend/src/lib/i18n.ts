@@ -114,6 +114,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.expiry": "Válido por 1 año",
     "paywall.pay": "Comprar",
     "paywall.later": "Quizás después",
+    "paywall.alreadyHavePremium": "¿Ya compraste premium?",
+    "paywall.tryAnotherAccount": "Intenta con otra cuenta",
+    "paywall.noPremiumLinked": "No tienes premium vinculado a esta cuenta",
 
     // Payment
     "payment.back": "Volver",
@@ -272,6 +275,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.expiry": "Valid for 1 year",
     "paywall.pay": "Buy",
     "paywall.later": "Maybe later",
+    "paywall.alreadyHavePremium": "Already have premium?",
+    "paywall.tryAnotherAccount": "Try another account",
+    "paywall.noPremiumLinked": "No premium linked to this account",
 
     // Payment
     "payment.back": "Back",
