@@ -1855,8 +1855,11 @@ async def mp_webhook(request: Request):
             # Don't block for now - need to fix MERCADOPAGO_WEBHOOK_SECRET
 
         # Get payment details from MercadoPago
+        print(f"Fetching payment details from MP API: {payment_id}")
         mp_payment = mp_get_payment(str(payment_id))
         external_reference = mp_payment.get("external_reference")
+        mp_status = mp_payment.get("status")
+        print(f"MP payment {payment_id}: status={mp_status}, external_reference={external_reference}")
 
         if not external_reference:
             print(f"No external_reference in payment {payment_id}")
@@ -1865,18 +1868,19 @@ async def mp_webhook(request: Request):
         # Get our payment record
         payment_json = redis_client.get(f"payment:{external_reference}")
         if not payment_json:
-            print(f"Payment record not found: {external_reference}")
+            print(f"Payment record not found in Redis: payment:{external_reference}")
             return {"status": "ok", "message": "Payment not found"}
 
         payment = json.loads(payment_json)
+        print(f"Found payment record: status={payment.get('status')}, user_type={payment.get('user_type')}")
 
         # Update payment record
-        mp_status = mp_payment.get("status")
         payment["mp_payment_id"] = payment_id
         payment["mp_status"] = mp_status
         payment["mp_response"] = mp_payment
 
         if MPPaymentStatus.is_approved(mp_status) and payment.get("status") != "paid":
+            print(f"Payment {payment_id} APPROVED - activating premium")
             payment["status"] = "paid"
             payment["paid_at"] = datetime.now().isoformat()
 
@@ -1884,6 +1888,7 @@ async def mp_webhook(request: Request):
             user_type = payment.get("user_type")
             device_id = payment.get("device_id")
             phone = payment.get("phone")
+            print(f"Premium activation: user_type={user_type}, device_id={device_id}, phone={phone}")
 
             if user_type == "editor" and device_id:
                 premium_result = set_editor_premium(redis_client, device_id, phone)
@@ -1893,11 +1898,17 @@ async def mp_webhook(request: Request):
                 premium_result = set_host_premium(redis_client, phone)
                 payment["premium_expires"] = premium_result.get("expires")
                 print(f"Host premium activated via webhook: {phone}")
+            else:
+                print(f"WARNING: Could not activate premium - missing data")
 
         elif MPPaymentStatus.is_failed(mp_status):
             payment["status"] = "rejected"
+            print(f"Payment {payment_id} REJECTED")
+        else:
+            print(f"Payment {payment_id} status unchanged: mp_status={mp_status}, current_status={payment.get('status')}")
 
         # Save updated record
+        print(f"Saving payment record: status={payment.get('status')}")
         ttl = redis_client.ttl(f"payment:{external_reference}")
         redis_client.setex(
             f"payment:{external_reference}",
