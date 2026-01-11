@@ -2396,15 +2396,21 @@ async def oauth_callback(
     if not code or not state:
         return RedirectResponse(f"{frontend_url}/auth/error?error=missing_params")
 
+    # Parse state to extract original token and device_id
+    # State format from Google: "state_token:device_id" or just "state_token"
+    state_token, state_device_id = oauth_auth.parse_state(state)
+
     # Verify state
-    state_data = oauth_states.pop(state, None)
+    state_data = oauth_states.pop(state_token, None)
     if not state_data:
+        print(f"OAuth state not found: {state_token}, available: {list(oauth_states.keys())}")
         return RedirectResponse(f"{frontend_url}/auth/error?error=invalid_state")
 
     if state_data["provider"] != provider:
         return RedirectResponse(f"{frontend_url}/auth/error?error=provider_mismatch")
 
-    device_id = state_data.get("device_id")
+    # Use device_id from state or from stored data
+    device_id = state_device_id or state_data.get("device_id")
     redirect_to = state_data.get("redirect_to")
 
     # Exchange code for token
