@@ -2592,6 +2592,171 @@ async def get_recent_sessions_endpoint(secret: str = None, limit: int = 50, stat
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/cron/reconcile-premium")
+async def cron_reconcile_premium(secret: str = None):
+    """
+    Reconcile premium status from PostgreSQL to Redis.
+    Restores premium access for users whose Redis data expired.
+    Should be called periodically (e.g., every hour).
+    """
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not redis_client:
+        return {"error": "Redis not available", "reconciled": 0}
+
+    if not postgres_available:
+        return {"error": "PostgreSQL not available", "reconciled": 0}
+
+    try:
+        reconciled = 0
+        already_active = 0
+        errors = 0
+        details = []
+
+        # Get all active premium users from PostgreSQL
+        premium_users = postgres_db.get_active_premium_users()
+
+        for user in premium_users:
+            try:
+                source = user.get("source")
+                device_id = user.get("device_id")
+                phone = user.get("phone")
+                user_type = user.get("user_type")
+                premium_expires = user.get("premium_expires")
+
+                if not premium_expires:
+                    continue
+
+                # Check if premium is already active in Redis
+                needs_restore = False
+                restore_type = None
+
+                # For payments, restore based on user_type
+                if source == "payment":
+                    if user_type == "host":
+                        if phone:
+                            host_key = f"host:{phone}:data"
+                            host_data = redis_client.get(host_key)
+                            if not host_data:
+                                needs_restore = True
+                                restore_type = "host_phone"
+                            else:
+                                data = json.loads(host_data)
+                                if not data.get("is_premium"):
+                                    needs_restore = True
+                                    restore_type = "host_phone"
+                        elif device_id:
+                            device_key = f"host_device:{device_id}:data"
+                            device_data = redis_client.get(device_key)
+                            if not device_data:
+                                needs_restore = True
+                                restore_type = "host_device"
+                            else:
+                                data = json.loads(device_data)
+                                if not data.get("is_premium"):
+                                    needs_restore = True
+                                    restore_type = "host_device"
+
+                    elif user_type == "editor" and device_id:
+                        editor_key = f"editor:{device_id}:data"
+                        editor_data = redis_client.get(editor_key)
+                        if not editor_data:
+                            needs_restore = True
+                            restore_type = "editor"
+                        else:
+                            data = json.loads(editor_data)
+                            if not data.get("is_premium"):
+                                needs_restore = True
+                                restore_type = "editor"
+
+                # Restore premium to Redis if needed
+                if needs_restore and restore_type:
+                    if restore_type == "host_phone" and phone:
+                        result = set_host_premium(redis_client, phone)
+                        reconciled += 1
+                        details.append({
+                            "type": "host_phone",
+                            "phone": phone[:4] + "****",
+                            "expires": premium_expires
+                        })
+
+                    elif restore_type == "host_device" and device_id:
+                        result = set_host_device_premium(redis_client, device_id)
+                        reconciled += 1
+                        details.append({
+                            "type": "host_device",
+                            "device_id": device_id[:8] + "...",
+                            "expires": premium_expires
+                        })
+
+                    elif restore_type == "editor" and device_id:
+                        result = set_editor_premium(redis_client, device_id, phone)
+                        reconciled += 1
+                        details.append({
+                            "type": "editor",
+                            "device_id": device_id[:8] + "...",
+                            "expires": premium_expires
+                        })
+                else:
+                    already_active += 1
+
+            except Exception as e:
+                print(f"Error reconciling premium: {e}")
+                errors += 1
+
+        return {
+            "success": True,
+            "reconciled": reconciled,
+            "already_active": already_active,
+            "errors": errors,
+            "total_premium_in_db": len(premium_users),
+            "details": details[:20]  # First 20 for debugging
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/cron/full-sync")
+async def cron_full_sync(secret: str = None):
+    """
+    Full sync: sessions + premium reconciliation.
+    Single endpoint to call from external cron.
+    """
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    results = {}
+
+    # Sync sessions
+    try:
+        session_result = await cron_sync_sessions(secret=secret)
+        results["sessions"] = {
+            "synced": session_result.get("synced", 0),
+            "errors": session_result.get("errors", 0)
+        }
+    except Exception as e:
+        results["sessions"] = {"error": str(e)}
+
+    # Reconcile premium
+    try:
+        premium_result = await cron_reconcile_premium(secret=secret)
+        results["premium"] = {
+            "reconciled": premium_result.get("reconciled", 0),
+            "already_active": premium_result.get("already_active", 0),
+            "errors": premium_result.get("errors", 0)
+        }
+    except Exception as e:
+        results["premium"] = {"error": str(e)}
+
+    return {
+        "success": True,
+        "timestamp": datetime.utcnow().isoformat(),
+        "results": results
+    }
+
+
 # =====================================================
 # ADMIN ENDPOINTS
 # =====================================================

@@ -1225,3 +1225,68 @@ def get_recent_sessions(limit: int = 50, status: str = None) -> List[Dict]:
             "abandoned_at": s.abandoned_at.isoformat() if s.abandoned_at else None,
             "synced_at": s.synced_at.isoformat() if s.synced_at else None
         } for s in sessions]
+
+
+def get_active_premium_users() -> List[Dict]:
+    """
+    Get all users with active premium from PostgreSQL.
+    Used for reconciliation with Redis.
+    """
+    if not db_available:
+        return []
+
+    with get_db() as db:
+        if db is None:
+            return []
+
+        now = datetime.utcnow()
+        results = []
+
+        # Get premium from user_profiles (device-based)
+        profiles = db.query(UserProfile).filter(
+            UserProfile.is_premium == True,
+            UserProfile.premium_expires > now
+        ).all()
+
+        for p in profiles:
+            results.append({
+                "source": "user_profile",
+                "device_id": p.device_id,
+                "phone": p.phone,
+                "email": p.email,
+                "premium_expires": p.premium_expires.isoformat() if p.premium_expires else None,
+            })
+
+        # Get premium from users (OAuth-based)
+        users = db.query(User).filter(
+            User.is_premium == True,
+            User.premium_expires > now
+        ).all()
+
+        for u in users:
+            results.append({
+                "source": "user",
+                "user_id": str(u.id),
+                "email": u.email,
+                "device_ids": u.device_ids or [],
+                "premium_expires": u.premium_expires.isoformat() if u.premium_expires else None,
+            })
+
+        # Get from payments (source of truth)
+        payments = db.query(Payment).filter(
+            Payment.status == PaymentStatus.PAID,
+            Payment.premium_expires > now
+        ).all()
+
+        for pay in payments:
+            results.append({
+                "source": "payment",
+                "commerce_order": pay.commerce_order,
+                "device_id": pay.device_id,
+                "phone": pay.phone,
+                "email": pay.email,
+                "user_type": pay.user_type.value if pay.user_type else None,
+                "premium_expires": pay.premium_expires.isoformat() if pay.premium_expires else None,
+            })
+
+        return results
