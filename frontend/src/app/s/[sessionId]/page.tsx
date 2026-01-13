@@ -13,6 +13,15 @@ import { formatCurrency, getAvatarColor, getInitials, type Item, type Charge, ty
 import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
 import { getStoredToken, getAuthProviders, type AuthProvider } from "@/lib/auth";
 import { SignInButtons } from "@/components/auth/SignInButtons";
+import {
+  trackStep1Complete,
+  trackStep2Complete,
+  trackPersonAdded,
+  trackPaywallShown,
+  trackGuestJoined,
+  trackShare,
+  trackSessionDetails,
+} from "@/lib/tracking";
 
 // Check localStorage for owner token
 function getStoredOwnerToken(sessionId: string): string | null {
@@ -202,10 +211,14 @@ export default function SessionPage() {
     const result = await join(joinName.trim());
 
     if (result.limitReached) {
+      trackPaywallShown(sessionId);
       setSessionsUsed(result.sessionsUsed || 0);
       setShowPaywall(true);
     } else if (!result.success) {
       setJoinError("No se pudo unir. La sesión puede estar finalizada o no existe.");
+    } else {
+      // Successfully joined
+      trackGuestJoined(sessionId, result.isNew || false);
     }
 
     setJoining(false);
@@ -219,6 +232,8 @@ export default function SessionPage() {
     setShowAddParticipant(false);
     // Fire and forget - useSession has optimistic update
     addParticipant(name);
+    // Track person added
+    trackPersonAdded(sessionId, (session?.participants?.length || 0) + 1);
   };
 
   const handleItemsChange = async (newItems: Item[]) => {
@@ -270,11 +285,21 @@ export default function SessionPage() {
     const result = await finalize();
 
     if (result.success) {
+      // Track step 2 completion and session details
+      trackStep2Complete(sessionId, session?.participants?.length || 0);
+      trackSessionDetails(sessionId, {
+        total: session?.total || 0,
+        itemsCount: session?.items?.length || 0,
+        personCount: session?.participants?.length || 0,
+        hasCharges: (session?.charges?.length || 0) > 0,
+      });
+
       setStep(3);
       window.scrollTo(0, 0);
       updateHostStep(3);
     } else if (result.limitReached) {
       // Host reached free session limit - show paywall
+      trackPaywallShown(sessionId);
       setSessionsUsed(result.sessionsUsed || 0);
       setShowPaywall(true);
     }
@@ -285,6 +310,12 @@ export default function SessionPage() {
     if (isOwner && step === 3 && newStep < 3) {
       await reopen();
     }
+
+    // Track step completion
+    if (newStep === 2 && step === 1) {
+      trackStep1Complete(sessionId, session?.items?.length || 0);
+    }
+
     setStep(newStep);
     window.scrollTo(0, 0);
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { createCollaborativeSession } from "@/lib/api";
+import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 
 // Helper to manage recent session in localStorage
 const RECENT_SESSION_KEY = "bill-e-recent-session";
@@ -96,10 +97,12 @@ export default function LandingPage() {
   const [error, setError] = useState<string | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
+  const [photoSource, setPhotoSource] = useState<"camera" | "gallery">("camera");
 
-  // Load recent session on mount
+  // Load recent session on mount and track app open
   useEffect(() => {
     setRecentSession(getRecentSession());
+    trackAppOpen();
   }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +110,9 @@ export default function LandingPage() {
     e.target.value = "";
 
     if (!file) return;
+
+    // Track photo taken
+    trackPhotoTaken(photoSource);
 
     setIsLoading(true);
     setError(null);
@@ -146,6 +152,9 @@ export default function LandingPage() {
 
       const ocrData = await ocrResponse.json();
       const data = ocrData.data || ocrData;
+
+      // Track OCR complete
+      trackOcrComplete(sessionId, data.items?.length || 0, true);
 
       // Step 3: Create collaborative session with OCR data
       setStatus("Creando sesión...");
@@ -222,6 +231,7 @@ export default function LandingPage() {
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => {
+                setPhotoSource("camera");
                 setInputKey(k => k + 1);
                 setTimeout(() => cameraInputRef.current?.click(), 50);
               }}
@@ -231,6 +241,7 @@ export default function LandingPage() {
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
               onClick={() => {
+                setPhotoSource("gallery");
                 setInputKey(k => k + 1);
                 setTimeout(() => galleryInputRef.current?.click(), 50);
               }}

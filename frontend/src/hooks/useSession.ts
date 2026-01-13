@@ -47,7 +47,7 @@ export interface UseSessionReturn {
   markInteraction: () => void;
 
   // Participant actions
-  join: (name: string, phone?: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
+  join: (name: string, phone?: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number; isNew?: boolean }>;
   selectParticipant: (participantId: string, name: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
   addParticipant: (name: string, phone?: string) => Promise<boolean>;
   removeParticipantById: (participantId: string) => Promise<boolean>;
@@ -196,7 +196,7 @@ export function useSession({
 
   // Join session - returns result with status info
   const join = useCallback(
-    async (name: string, phone?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
+    async (name: string, phone?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number; isNew?: boolean }> => {
       markInteraction();
       try {
         const result = await joinSession(sessionId, name, phone);
@@ -218,7 +218,7 @@ export function useSession({
             JSON.stringify({ id: result.participant.id, name: result.participant.name })
           );
           await refresh();
-          return { success: true };
+          return { success: true, isNew: !result.is_existing };
         }
 
         return { success: false };

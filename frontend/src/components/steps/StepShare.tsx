@@ -14,6 +14,7 @@ import {
   type Assignment,
   type Session,
 } from "@/lib/billEngine";
+import { trackShare } from "@/lib/tracking";
 
 interface StepShareProps {
   items: Item[];
@@ -118,6 +119,9 @@ export function StepShare({
 
   // Share on WhatsApp
   const shareOnWhatsApp = () => {
+    // Track share event
+    if (sessionId) trackShare(sessionId, "whatsapp");
+
     const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "https://bill-e.vercel.app";
 
     let message = `🧾 *Resumen de la cuenta*\n\n`;

@@ -2229,6 +2229,96 @@ async def get_editor_status(phone: str, session_id: str):
 
 
 # =====================================================
+# ANALYTICS ENDPOINTS
+# =====================================================
+
+class AnalyticsEvent(BaseModel):
+    event_name: str
+    event_params: dict = {}
+    timestamp: str = None
+
+
+@app.post("/api/analytics/event")
+async def track_analytics_event(event: AnalyticsEvent):
+    """
+    Track a funnel event from the frontend.
+    Events are stored in Redis for real-time analytics.
+    """
+    try:
+        if not redis_client:
+            # Silently succeed if Redis not available - analytics shouldn't break the app
+            return {"success": True}
+
+        # Create event data
+        event_data = {
+            "event_name": event.event_name,
+            "event_params": event.event_params,
+            "timestamp": event.timestamp or datetime.utcnow().isoformat(),
+        }
+
+        # Store in Redis list for the day
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+        key = f"analytics:events:{today}"
+
+        # Add to list (keep last 10000 events per day)
+        redis_client.lpush(key, json.dumps(event_data))
+        redis_client.ltrim(key, 0, 9999)
+        redis_client.expire(key, 7 * 86400)  # Keep for 7 days
+
+        # Also increment counters for quick funnel stats
+        counter_key = f"analytics:funnel:{today}:{event.event_name}"
+        redis_client.incr(counter_key)
+        redis_client.expire(counter_key, 7 * 86400)
+
+        return {"success": True}
+    except Exception as e:
+        # Silently fail - analytics shouldn't break the app
+        print(f"Analytics error: {e}")
+        return {"success": True}
+
+
+@app.get("/api/analytics/funnel")
+async def get_funnel_analytics(secret: str = None, days: int = 7):
+    """Get funnel analytics. Requires admin secret."""
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not redis_client:
+        return {"error": "Redis not available"}
+
+    try:
+        funnel_events = [
+            "funnel_app_open",
+            "funnel_photo_taken",
+            "funnel_ocr_complete",
+            "funnel_step1_complete",
+            "funnel_person_added",
+            "funnel_step2_complete",
+            "funnel_shared",
+            "funnel_paywall_shown",
+            "funnel_payment_started",
+            "funnel_payment_complete",
+        ]
+
+        result = {"days": {}}
+
+        for i in range(days):
+            date = (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
+            day_stats = {}
+
+            for event in funnel_events:
+                key = f"analytics:funnel:{date}:{event}"
+                count = redis_client.get(key)
+                day_stats[event] = int(count) if count else 0
+
+            result["days"][date] = day_stats
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
 # ADMIN ENDPOINTS
 # =====================================================
 

@@ -26,6 +26,7 @@ export interface PaymentStatusResponse {
   premium_expires?: string;
   user_type?: "host" | "editor";
   session_id?: string;
+  payment_method?: string;
 }
 
 export interface PriceResponse {

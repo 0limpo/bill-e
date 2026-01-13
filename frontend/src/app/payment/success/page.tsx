@@ -11,6 +11,7 @@ import {
   type PaymentStatusResponse,
 } from "@/lib/payment";
 import { PostPaymentModal } from "@/components/auth/PostPaymentModal";
+import { trackPaymentComplete } from "@/lib/tracking";
 
 type PaymentState = "loading" | "success" | "pending" | "rejected" | "cancelled" | "error";
 
@@ -68,6 +69,10 @@ function PaymentSuccessContent() {
         case "paid":
           setState("success");
           clearPendingPayment();
+          // Track payment completion
+          if (sessionId) {
+            trackPaymentComplete(sessionId, status.payment_method || "unknown");
+          }
           // Store session info for later redirect
           setSessionInfo({ sessionId, ownerToken });
           // Show link account modal after short delay

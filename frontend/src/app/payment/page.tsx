@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { getMPPublicKey, createMPPreference, processMPCardPayment } from "@/lib/api";
 import { createPayment, storePendingPayment } from "@/lib/payment";
 import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
+import { trackPaymentStarted } from "@/lib/tracking";
 
 declare global {
   interface Window {
@@ -165,6 +166,7 @@ function PaymentPageContent() {
             },
             onSubmit: async (cardFormData: any) => {
               console.log("Card form submitted:", cardFormData);
+              trackPaymentStarted(sessionId, "mercadopago");
               setStatus("processing");
 
               try {
@@ -211,6 +213,7 @@ function PaymentPageContent() {
 
   // Handle redirect to Flow.cl for Webpay
   const handleWebpayRedirect = async () => {
+    trackPaymentStarted(sessionId, "webpay");
     setStatus("redirecting");
     try {
       // Create Flow payment order
