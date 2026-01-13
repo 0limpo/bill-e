@@ -33,7 +33,7 @@ export function SignInButtons({
       window.location.href = authUrl;
     } catch (error) {
       console.error("Sign in error:", error);
-      onError?.(`Error al iniciar sesion con ${PROVIDER_INFO[provider].name}`);
+      onError?.(`Error al iniciar sesión con ${PROVIDER_INFO[provider].name}`);
       setLoading(null);
     }
   };

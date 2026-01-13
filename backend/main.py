@@ -2303,13 +2303,15 @@ async def get_auth_providers():
     if not auth_available:
         return {"providers": [], "message": "Authentication not configured"}
 
-    providers = oauth_auth.get_available_providers()
+    # Only include Google for now (Facebook requires advanced access)
+    providers = []
+    if oauth_auth.is_provider_configured("google"):
+        providers.append("google")
+
     return {
         "providers": providers,
         "configured": {
             "google": oauth_auth.is_provider_configured("google"),
-            "facebook": oauth_auth.is_provider_configured("facebook"),
-            "microsoft": oauth_auth.is_provider_configured("microsoft"),
         }
     }
 

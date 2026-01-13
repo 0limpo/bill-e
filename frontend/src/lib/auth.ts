@@ -26,8 +26,8 @@ export interface ProvidersResponse {
   providers: AuthProvider[];
   configured: {
     google: boolean;
-    facebook: boolean;
-    microsoft: boolean;
+    facebook?: boolean;
+    microsoft?: boolean;
   };
 }
 

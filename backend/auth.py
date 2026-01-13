@@ -35,7 +35,7 @@ OAUTH_CONFIG = {
         "auth_url": "https://www.facebook.com/v18.0/dialog/oauth",
         "token_url": "https://graph.facebook.com/v18.0/oauth/access_token",
         "userinfo_url": "https://graph.facebook.com/me",
-        "scopes": ["email", "public_profile"],
+        "scopes": ["public_profile"],  # email not available in Facebook Login for Business
     },
     "microsoft": {
         "auth_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
