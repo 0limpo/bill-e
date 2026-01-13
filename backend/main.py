@@ -2718,10 +2718,87 @@ async def cron_reconcile_premium(secret: str = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/cron/sync-users")
+async def cron_sync_users(secret: str = None):
+    """
+    Sync user analytics from Redis to PostgreSQL.
+    Stores complete user history permanently.
+    """
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not redis_client:
+        return {"error": "Redis not available", "synced": 0}
+
+    if not postgres_available:
+        return {"error": "PostgreSQL not available", "synced": 0}
+
+    try:
+        synced = 0
+        errors = 0
+        events_added = 0
+
+        # Get all known tracking IDs from Redis
+        tracking_ids = redis_client.smembers("analytics:users")
+
+        if not tracking_ids:
+            return {"success": True, "synced": 0, "message": "No users to sync"}
+
+        for tid in tracking_ids:
+            try:
+                tid_str = tid.decode() if isinstance(tid, bytes) else tid
+
+                # Get user metadata from Redis
+                meta_key = f"analytics:user:{tid_str}:meta"
+                meta_raw = redis_client.hgetall(meta_key)
+                meta = {k.decode() if isinstance(k, bytes) else k: v.decode() if isinstance(v, bytes) else v
+                        for k, v in meta_raw.items()}
+
+                # Get event counts from Redis
+                counts_key = f"analytics:user:{tid_str}:counts"
+                counts_raw = redis_client.hgetall(counts_key)
+                event_counts = {k.decode() if isinstance(k, bytes) else k: int(v)
+                               for k, v in counts_raw.items()}
+
+                # Get events from Redis
+                events_key = f"analytics:user:{tid_str}:events"
+                events_raw = redis_client.lrange(events_key, 0, -1)  # Get all events
+                events = [json.loads(e) for e in events_raw]
+
+                # Upsert to PostgreSQL
+                result = postgres_db.upsert_user_analytics(
+                    tracking_id=tid_str,
+                    meta=meta,
+                    event_counts=event_counts,
+                    events=events
+                )
+
+                if result:
+                    synced += 1
+                    events_added += result.get("events_added", 0)
+                else:
+                    errors += 1
+
+            except Exception as e:
+                print(f"Error syncing user {tid_str}: {e}")
+                errors += 1
+
+        return {
+            "success": True,
+            "synced": synced,
+            "events_added": events_added,
+            "errors": errors,
+            "total_users_in_redis": len(tracking_ids)
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/cron/full-sync")
 async def cron_full_sync(secret: str = None):
     """
-    Full sync: sessions + premium reconciliation.
+    Full sync: sessions + users + premium reconciliation.
     Single endpoint to call from external cron.
     """
     if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
@@ -2739,6 +2816,17 @@ async def cron_full_sync(secret: str = None):
     except Exception as e:
         results["sessions"] = {"error": str(e)}
 
+    # Sync user analytics
+    try:
+        users_result = await cron_sync_users(secret=secret)
+        results["users"] = {
+            "synced": users_result.get("synced", 0),
+            "events_added": users_result.get("events_added", 0),
+            "errors": users_result.get("errors", 0)
+        }
+    except Exception as e:
+        results["users"] = {"error": str(e)}
+
     # Reconcile premium
     try:
         premium_result = await cron_reconcile_premium(secret=secret)
@@ -2755,6 +2843,62 @@ async def cron_full_sync(secret: str = None):
         "timestamp": datetime.utcnow().isoformat(),
         "results": results
     }
+
+
+@app.get("/api/analytics/user-summary")
+async def get_user_analytics_summary_endpoint(secret: str = None):
+    """Get aggregated user analytics from PostgreSQL."""
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not postgres_available:
+        return {"error": "PostgreSQL not available"}
+
+    try:
+        summary = postgres_db.get_user_analytics_summary()
+        if not summary:
+            return {"error": "No data available"}
+        return summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/user-history/{tracking_id}")
+async def get_user_history_endpoint(tracking_id: str, secret: str = None, limit: int = 500):
+    """Get complete history for a specific user from PostgreSQL."""
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not postgres_available:
+        return {"error": "PostgreSQL not available"}
+
+    try:
+        history = postgres_db.get_user_history(tracking_id, limit=limit)
+        if not history:
+            raise HTTPException(status_code=404, detail="User not found")
+        return history
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/monthly/{year}/{month}")
+async def get_monthly_analytics_endpoint(year: int, month: int, secret: str = None):
+    """Get analytics for a specific month."""
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not postgres_available:
+        return {"error": "PostgreSQL not available"}
+
+    try:
+        analytics = postgres_db.get_monthly_analytics(year, month)
+        if not analytics:
+            return {"error": "No data available"}
+        return analytics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =====================================================

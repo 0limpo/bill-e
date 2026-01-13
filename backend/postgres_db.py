@@ -311,6 +311,83 @@ class SessionSnapshot(Base):
     )
 
 
+class UserAnalytics(Base):
+    """
+    Persistent user analytics tracked by tracking_id.
+    Synced from Redis for permanent storage.
+    """
+    __tablename__ = "user_analytics"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tracking_id = Column(String(100), unique=True, nullable=False, index=True)
+
+    # User metadata
+    device_type = Column(String(20))  # mobile, desktop, tablet
+    os = Column(String(50))
+    language = Column(String(10))
+    country_code = Column(String(5))
+
+    # Timestamps
+    first_seen_at = Column(DateTime)
+    last_seen_at = Column(DateTime)
+    last_event = Column(String(100))
+
+    # Event counts (JSON for flexibility)
+    event_counts = Column(JSON)  # {"funnel_app_open": 5, "funnel_photo_taken": 3, ...}
+    total_events = Column(Integer, default=0)
+
+    # Funnel progress
+    furthest_funnel_step = Column(Integer, default=0)
+    completed_funnel = Column(Boolean, default=False)
+
+    # Session participation
+    sessions_participated = Column(JSON)  # ["session_id_1", "session_id_2", ...]
+    total_sessions = Column(Integer, default=0)
+
+    # Monthly aggregates (JSON for flexibility)
+    events_by_month = Column(JSON)  # {"2024-01": {"funnel_app_open": 2, ...}, "2024-02": {...}}
+
+    # Sync metadata
+    synced_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index('ix_user_analytics_last_seen', 'last_seen_at'),
+        Index('ix_user_analytics_first_seen', 'first_seen_at'),
+    )
+
+
+class UserEvent(Base):
+    """
+    Individual user events for detailed history.
+    Permanent storage of all tracked events.
+    """
+    __tablename__ = "user_events"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tracking_id = Column(String(100), nullable=False, index=True)
+
+    # Event data
+    event_name = Column(String(100), nullable=False, index=True)
+    event_params = Column(JSON)  # Full event parameters
+    session_id = Column(String(100), index=True)  # If event is session-related
+
+    # Timestamp
+    event_timestamp = Column(DateTime, nullable=False, index=True)
+
+    # For deduplication
+    event_hash = Column(String(64), index=True)  # Hash of event for dedup
+
+    # Sync metadata
+    synced_at = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index('ix_user_events_tracking_time', 'tracking_id', 'event_timestamp'),
+        Index('ix_user_events_name_time', 'event_name', 'event_timestamp'),
+        Index('ix_user_events_month', 'event_timestamp'),  # For monthly queries
+    )
+
+
 # Helper functions for Payments
 
 def create_payment(
@@ -1290,3 +1367,337 @@ def get_active_premium_users() -> List[Dict]:
             })
 
         return results
+
+
+# Helper functions for User Analytics
+
+import hashlib
+
+def upsert_user_analytics(
+    tracking_id: str,
+    meta: Dict,
+    event_counts: Dict,
+    events: List[Dict]
+) -> Optional[Dict]:
+    """
+    Upsert user analytics from Redis to PostgreSQL.
+    Also stores individual events for detailed history.
+    """
+    if not db_available or not tracking_id:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        # Find or create user analytics record
+        user_analytics = db.query(UserAnalytics).filter(
+            UserAnalytics.tracking_id == tracking_id
+        ).first()
+
+        is_new = user_analytics is None
+        if is_new:
+            user_analytics = UserAnalytics(tracking_id=tracking_id)
+            db.add(user_analytics)
+
+        # Update metadata
+        if meta.get("device_type"):
+            user_analytics.device_type = meta.get("device_type")
+        if meta.get("os"):
+            user_analytics.os = meta.get("os")
+        if meta.get("language"):
+            user_analytics.language = meta.get("language")
+
+        # Update timestamps
+        if meta.get("first_seen"):
+            try:
+                user_analytics.first_seen_at = datetime.fromisoformat(
+                    meta["first_seen"].replace("Z", "+00:00")
+                )
+            except:
+                pass
+
+        if meta.get("last_seen"):
+            try:
+                user_analytics.last_seen_at = datetime.fromisoformat(
+                    meta["last_seen"].replace("Z", "+00:00")
+                )
+            except:
+                pass
+
+        user_analytics.last_event = meta.get("last_event")
+
+        # Update event counts
+        user_analytics.event_counts = event_counts
+        user_analytics.total_events = event_counts.get("total_events", 0)
+
+        # Calculate funnel progress
+        funnel_order = [
+            "funnel_app_open",
+            "funnel_photo_taken",
+            "funnel_ocr_complete",
+            "funnel_step1_complete",
+            "funnel_person_added",
+            "funnel_step2_complete",
+            "funnel_shared",
+            "funnel_paywall_shown",
+            "funnel_payment_started",
+            "funnel_payment_complete",
+        ]
+
+        furthest_step = 0
+        for i, event in enumerate(funnel_order):
+            if event_counts.get(event, 0) > 0:
+                furthest_step = i + 1
+
+        user_analytics.furthest_funnel_step = furthest_step
+        user_analytics.completed_funnel = furthest_step == len(funnel_order)
+
+        # Extract sessions from events
+        session_ids = set(user_analytics.sessions_participated or [])
+        for event in events:
+            session_id = event.get("event_params", {}).get("session_id")
+            if session_id:
+                session_ids.add(session_id)
+
+        user_analytics.sessions_participated = list(session_ids)
+        user_analytics.total_sessions = len(session_ids)
+
+        # Build monthly aggregates from events
+        events_by_month = user_analytics.events_by_month or {}
+        for event in events:
+            try:
+                ts = event.get("timestamp", "")
+                if ts:
+                    month_key = ts[:7]  # "2024-01"
+                    event_name = event.get("event_name", "unknown")
+
+                    if month_key not in events_by_month:
+                        events_by_month[month_key] = {}
+
+                    if event_name not in events_by_month[month_key]:
+                        events_by_month[month_key][event_name] = 0
+
+                    events_by_month[month_key][event_name] += 1
+            except:
+                pass
+
+        user_analytics.events_by_month = events_by_month
+        user_analytics.synced_at = datetime.utcnow()
+
+        # Store individual events (with deduplication)
+        events_added = 0
+        for event in events:
+            try:
+                event_name = event.get("event_name")
+                event_timestamp_str = event.get("timestamp")
+                event_params = event.get("event_params", {})
+
+                if not event_name or not event_timestamp_str:
+                    continue
+
+                # Parse timestamp
+                try:
+                    event_timestamp = datetime.fromisoformat(
+                        event_timestamp_str.replace("Z", "+00:00")
+                    )
+                except:
+                    continue
+
+                # Create hash for deduplication
+                hash_input = f"{tracking_id}:{event_name}:{event_timestamp_str}"
+                event_hash = hashlib.sha256(hash_input.encode()).hexdigest()[:32]
+
+                # Check if event already exists
+                existing = db.query(UserEvent).filter(
+                    UserEvent.event_hash == event_hash
+                ).first()
+
+                if existing:
+                    continue
+
+                # Create new event record
+                user_event = UserEvent(
+                    tracking_id=tracking_id,
+                    event_name=event_name,
+                    event_params=event_params,
+                    session_id=event_params.get("session_id"),
+                    event_timestamp=event_timestamp,
+                    event_hash=event_hash,
+                )
+                db.add(user_event)
+                events_added += 1
+
+            except Exception as e:
+                print(f"Error adding event: {e}")
+                continue
+
+        db.flush()
+
+        return {
+            "tracking_id": tracking_id,
+            "is_new": is_new,
+            "total_events": user_analytics.total_events,
+            "furthest_step": user_analytics.furthest_funnel_step,
+            "events_added": events_added,
+        }
+
+
+def get_user_analytics_summary() -> Optional[Dict]:
+    """Get aggregated user analytics for admin dashboard."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        from sqlalchemy import func
+
+        total_users = db.query(func.count(UserAnalytics.id)).scalar() or 0
+
+        # Users by funnel step
+        step_breakdown = dict(
+            db.query(UserAnalytics.furthest_funnel_step, func.count(UserAnalytics.id))
+            .group_by(UserAnalytics.furthest_funnel_step)
+            .all()
+        )
+
+        # Users who completed funnel
+        completed_funnel = db.query(func.count(UserAnalytics.id)).filter(
+            UserAnalytics.completed_funnel == True
+        ).scalar() or 0
+
+        # Average events per user
+        avg_events = db.query(func.avg(UserAnalytics.total_events)).scalar() or 0
+
+        # Users by device type
+        device_breakdown = dict(
+            db.query(UserAnalytics.device_type, func.count(UserAnalytics.id))
+            .filter(UserAnalytics.device_type.isnot(None))
+            .group_by(UserAnalytics.device_type)
+            .all()
+        )
+
+        # Users by OS
+        os_breakdown = dict(
+            db.query(UserAnalytics.os, func.count(UserAnalytics.id))
+            .filter(UserAnalytics.os.isnot(None))
+            .group_by(UserAnalytics.os)
+            .all()
+        )
+
+        # Total events stored
+        total_events = db.query(func.count(UserEvent.id)).scalar() or 0
+
+        # Events by month
+        events_by_month = dict(
+            db.query(
+                func.to_char(UserEvent.event_timestamp, 'YYYY-MM'),
+                func.count(UserEvent.id)
+            )
+            .group_by(func.to_char(UserEvent.event_timestamp, 'YYYY-MM'))
+            .order_by(func.to_char(UserEvent.event_timestamp, 'YYYY-MM').desc())
+            .limit(12)
+            .all()
+        )
+
+        return {
+            "total_users_tracked": total_users,
+            "total_events_stored": total_events,
+            "completed_funnel": completed_funnel,
+            "conversion_rate": round((completed_funnel / total_users * 100), 2) if total_users > 0 else 0,
+            "avg_events_per_user": round(float(avg_events), 1),
+            "by_funnel_step": step_breakdown,
+            "by_device": device_breakdown,
+            "by_os": os_breakdown,
+            "events_by_month": events_by_month,
+        }
+
+
+def get_user_history(tracking_id: str, limit: int = 500) -> Optional[Dict]:
+    """Get complete history for a specific user."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        # Get user analytics
+        user = db.query(UserAnalytics).filter(
+            UserAnalytics.tracking_id == tracking_id
+        ).first()
+
+        if not user:
+            return None
+
+        # Get events
+        events = db.query(UserEvent).filter(
+            UserEvent.tracking_id == tracking_id
+        ).order_by(UserEvent.event_timestamp.desc()).limit(limit).all()
+
+        return {
+            "tracking_id": tracking_id,
+            "meta": {
+                "device_type": user.device_type,
+                "os": user.os,
+                "language": user.language,
+                "first_seen_at": user.first_seen_at.isoformat() if user.first_seen_at else None,
+                "last_seen_at": user.last_seen_at.isoformat() if user.last_seen_at else None,
+                "last_event": user.last_event,
+            },
+            "stats": {
+                "total_events": user.total_events,
+                "furthest_funnel_step": user.furthest_funnel_step,
+                "completed_funnel": user.completed_funnel,
+                "total_sessions": user.total_sessions,
+            },
+            "event_counts": user.event_counts,
+            "events_by_month": user.events_by_month,
+            "sessions": user.sessions_participated,
+            "events": [{
+                "event_name": e.event_name,
+                "event_params": e.event_params,
+                "session_id": e.session_id,
+                "timestamp": e.event_timestamp.isoformat() if e.event_timestamp else None,
+            } for e in events]
+        }
+
+
+def get_monthly_analytics(year: int, month: int) -> Optional[Dict]:
+    """Get analytics for a specific month."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        from sqlalchemy import func, extract
+
+        # Events in this month
+        events = db.query(UserEvent).filter(
+            extract('year', UserEvent.event_timestamp) == year,
+            extract('month', UserEvent.event_timestamp) == month
+        ).all()
+
+        # Count by event type
+        event_counts = {}
+        unique_users = set()
+        unique_sessions = set()
+
+        for e in events:
+            event_counts[e.event_name] = event_counts.get(e.event_name, 0) + 1
+            unique_users.add(e.tracking_id)
+            if e.session_id:
+                unique_sessions.add(e.session_id)
+
+        return {
+            "year": year,
+            "month": month,
+            "total_events": len(events),
+            "unique_users": len(unique_users),
+            "unique_sessions": len(unique_sessions),
+            "event_counts": event_counts,
+        }
