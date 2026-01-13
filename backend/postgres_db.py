@@ -103,6 +103,12 @@ class AuthProvider(enum.Enum):
     MICROSOFT = "microsoft"
 
 
+class SessionStatus(enum.Enum):
+    IN_PROGRESS = "in_progress"
+    FINALIZED = "finalized"
+    ABANDONED = "abandoned"
+
+
 # Models
 class Payment(Base):
     """
@@ -238,6 +244,70 @@ class User(Base):
     __table_args__ = (
         Index('ix_users_provider_email', 'provider', 'email', unique=True),
         Index('ix_users_provider_id', 'provider', 'provider_id', unique=True),
+    )
+
+
+class SessionSnapshot(Base):
+    """
+    Complete snapshot of bill-splitting sessions.
+    Synced from Redis via cron job for analytics and history.
+    """
+    __tablename__ = "session_snapshots"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(String(100), unique=True, nullable=False, index=True)
+
+    # Status
+    status = Column(SQLEnum(SessionStatus), default=SessionStatus.IN_PROGRESS, index=True)
+    host_step = Column(Integer)  # 1=Review, 2=Assign, 3=Share
+
+    # Session data (stored as JSON for flexibility)
+    items = Column(JSON)  # [{name, price, quantity, mode}, ...]
+    participants = Column(JSON)  # [{id, name, phone}, ...]
+    assignments = Column(JSON)  # {item_id: [{participant_id, quantity}], ...}
+    charges = Column(JSON)  # [{id, name, value, valueType, isDiscount, distribution}, ...]
+
+    # Totals
+    subtotal = Column(Integer)  # In smallest currency unit
+    total = Column(Integer)
+    original_subtotal = Column(Integer)  # OCR detected subtotal
+    original_total = Column(Integer)  # OCR detected total
+
+    # Counts (denormalized for quick queries)
+    items_count = Column(Integer, default=0)
+    participants_count = Column(Integer, default=0)
+
+    # Host info
+    host_device_id = Column(String(100), index=True)
+    host_phone = Column(String(50))
+
+    # Device/location info
+    device_type = Column(String(20))  # mobile, desktop, tablet
+    os = Column(String(50))
+    country_code = Column(String(5))
+    currency = Column(String(10), default="CLP")
+
+    # Timing
+    created_at = Column(DateTime)  # When session was created in Redis
+    started_at = Column(DateTime)  # When OCR completed (step 1 started)
+    step1_completed_at = Column(DateTime)  # When moved to step 2
+    step2_completed_at = Column(DateTime)  # When moved to step 3
+    finalized_at = Column(DateTime)  # When session was finalized
+    abandoned_at = Column(DateTime)  # When marked as abandoned
+
+    # Duration (in seconds, calculated)
+    duration_total = Column(Integer)  # Total session duration
+    duration_step1 = Column(Integer)  # Time in review step
+    duration_step2 = Column(Integer)  # Time in assign step
+
+    # Sync metadata
+    redis_ttl_at_sync = Column(Integer)  # TTL remaining when synced
+    synced_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index('ix_session_snapshots_status_created', 'status', 'created_at'),
+        Index('ix_session_snapshots_host', 'host_device_id'),
     )
 
 
@@ -933,3 +1003,225 @@ def restore_premium_to_device(user_id: str, device_id: str) -> Optional[Dict]:
             "device_id": device_id,
             "premium_expires": user.premium_expires.isoformat()
         }
+
+
+# Helper functions for Session Snapshots
+
+def upsert_session_snapshot(session_data: Dict, redis_ttl: int = None) -> Optional[Dict]:
+    """
+    Upsert a session snapshot from Redis data.
+    Creates if new, updates if exists.
+    """
+    if not db_available:
+        return None
+
+    session_id = session_data.get("id") or session_data.get("session_id")
+    if not session_id:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        # Check if exists
+        snapshot = db.query(SessionSnapshot).filter(
+            SessionSnapshot.session_id == session_id
+        ).first()
+
+        is_new = snapshot is None
+        if is_new:
+            snapshot = SessionSnapshot(session_id=session_id)
+            db.add(snapshot)
+
+        # Determine status
+        session_status = session_data.get("status", "assigning")
+        if session_status == "finalized":
+            snapshot.status = SessionStatus.FINALIZED
+        elif redis_ttl is not None and redis_ttl < 3600:  # Less than 1 hour TTL
+            snapshot.status = SessionStatus.ABANDONED
+            if not snapshot.abandoned_at:
+                snapshot.abandoned_at = datetime.utcnow()
+        else:
+            snapshot.status = SessionStatus.IN_PROGRESS
+
+        # Basic info
+        snapshot.host_step = session_data.get("host_step", 1)
+
+        # Session data as JSON
+        snapshot.items = session_data.get("items", [])
+        snapshot.participants = session_data.get("participants", [])
+        snapshot.assignments = session_data.get("assignments", {})
+        snapshot.charges = session_data.get("charges", [])
+
+        # Totals
+        snapshot.subtotal = session_data.get("subtotal")
+        snapshot.total = session_data.get("total")
+        snapshot.original_subtotal = session_data.get("original_subtotal")
+        snapshot.original_total = session_data.get("original_total")
+
+        # Counts
+        snapshot.items_count = len(snapshot.items) if snapshot.items else 0
+        snapshot.participants_count = len(snapshot.participants) if snapshot.participants else 0
+
+        # Host info
+        snapshot.host_device_id = session_data.get("owner_device_id")
+        snapshot.host_phone = session_data.get("owner_phone")
+
+        # Timing from session data
+        if session_data.get("created_at"):
+            try:
+                snapshot.created_at = datetime.fromisoformat(session_data["created_at"].replace("Z", "+00:00"))
+            except:
+                pass
+
+        if session_data.get("step1_completed_at"):
+            try:
+                snapshot.step1_completed_at = datetime.fromisoformat(session_data["step1_completed_at"].replace("Z", "+00:00"))
+            except:
+                pass
+
+        if session_data.get("step2_completed_at"):
+            try:
+                snapshot.step2_completed_at = datetime.fromisoformat(session_data["step2_completed_at"].replace("Z", "+00:00"))
+            except:
+                pass
+
+        if session_status == "finalized" and not snapshot.finalized_at:
+            snapshot.finalized_at = datetime.utcnow()
+
+        # Calculate durations if we have timestamps
+        if snapshot.created_at and snapshot.step1_completed_at:
+            snapshot.duration_step1 = int((snapshot.step1_completed_at - snapshot.created_at).total_seconds())
+
+        if snapshot.step1_completed_at and snapshot.step2_completed_at:
+            snapshot.duration_step2 = int((snapshot.step2_completed_at - snapshot.step1_completed_at).total_seconds())
+
+        if snapshot.created_at:
+            end_time = snapshot.finalized_at or snapshot.abandoned_at or datetime.utcnow()
+            snapshot.duration_total = int((end_time - snapshot.created_at).total_seconds())
+
+        # Sync metadata
+        snapshot.redis_ttl_at_sync = redis_ttl
+        snapshot.synced_at = datetime.utcnow()
+
+        db.flush()
+
+        return {
+            "session_id": session_id,
+            "status": snapshot.status.value,
+            "is_new": is_new,
+            "items_count": snapshot.items_count,
+            "participants_count": snapshot.participants_count
+        }
+
+
+def get_session_metrics() -> Optional[Dict]:
+    """Get aggregated session metrics for analytics."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        from sqlalchemy import func
+
+        # Total sessions by status
+        status_counts = dict(
+            db.query(SessionSnapshot.status, func.count(SessionSnapshot.id))
+            .group_by(SessionSnapshot.status)
+            .all()
+        )
+
+        # Completed sessions stats
+        completed = db.query(SessionSnapshot).filter(
+            SessionSnapshot.status == SessionStatus.FINALIZED
+        )
+
+        completed_count = completed.count()
+
+        if completed_count > 0:
+            avg_items = db.query(func.avg(SessionSnapshot.items_count)).filter(
+                SessionSnapshot.status == SessionStatus.FINALIZED
+            ).scalar() or 0
+
+            avg_participants = db.query(func.avg(SessionSnapshot.participants_count)).filter(
+                SessionSnapshot.status == SessionStatus.FINALIZED
+            ).scalar() or 0
+
+            avg_total = db.query(func.avg(SessionSnapshot.total)).filter(
+                SessionSnapshot.status == SessionStatus.FINALIZED,
+                SessionSnapshot.total.isnot(None)
+            ).scalar() or 0
+
+            avg_duration = db.query(func.avg(SessionSnapshot.duration_total)).filter(
+                SessionSnapshot.status == SessionStatus.FINALIZED,
+                SessionSnapshot.duration_total.isnot(None)
+            ).scalar() or 0
+
+            avg_duration_step1 = db.query(func.avg(SessionSnapshot.duration_step1)).filter(
+                SessionSnapshot.status == SessionStatus.FINALIZED,
+                SessionSnapshot.duration_step1.isnot(None)
+            ).scalar() or 0
+
+            avg_duration_step2 = db.query(func.avg(SessionSnapshot.duration_step2)).filter(
+                SessionSnapshot.status == SessionStatus.FINALIZED,
+                SessionSnapshot.duration_step2.isnot(None)
+            ).scalar() or 0
+        else:
+            avg_items = avg_participants = avg_total = avg_duration = 0
+            avg_duration_step1 = avg_duration_step2 = 0
+
+        # Abandonment by step
+        abandoned_by_step = dict(
+            db.query(SessionSnapshot.host_step, func.count(SessionSnapshot.id))
+            .filter(SessionSnapshot.status == SessionStatus.ABANDONED)
+            .group_by(SessionSnapshot.host_step)
+            .all()
+        )
+
+        return {
+            "total_sessions": sum(v for v in status_counts.values()),
+            "by_status": {k.value if k else "unknown": v for k, v in status_counts.items()},
+            "completed": {
+                "count": completed_count,
+                "avg_items": round(float(avg_items), 1),
+                "avg_participants": round(float(avg_participants), 1),
+                "avg_total": round(float(avg_total), 0),
+                "avg_duration_seconds": round(float(avg_duration), 0),
+                "avg_duration_step1_seconds": round(float(avg_duration_step1), 0),
+                "avg_duration_step2_seconds": round(float(avg_duration_step2), 0),
+            },
+            "abandoned_by_step": abandoned_by_step
+        }
+
+
+def get_recent_sessions(limit: int = 50, status: str = None) -> List[Dict]:
+    """Get recent session snapshots for admin view."""
+    if not db_available:
+        return []
+
+    with get_db() as db:
+        if db is None:
+            return []
+
+        query = db.query(SessionSnapshot)
+
+        if status:
+            query = query.filter(SessionSnapshot.status == SessionStatus(status))
+
+        sessions = query.order_by(SessionSnapshot.synced_at.desc()).limit(limit).all()
+
+        return [{
+            "session_id": s.session_id,
+            "status": s.status.value if s.status else None,
+            "host_step": s.host_step,
+            "items_count": s.items_count,
+            "participants_count": s.participants_count,
+            "total": s.total,
+            "duration_total": s.duration_total,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "finalized_at": s.finalized_at.isoformat() if s.finalized_at else None,
+            "abandoned_at": s.abandoned_at.isoformat() if s.abandoned_at else None,
+            "synced_at": s.synced_at.isoformat() if s.synced_at else None
+        } for s in sessions]

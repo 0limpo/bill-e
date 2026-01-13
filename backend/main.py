@@ -2474,6 +2474,125 @@ async def get_user_analytics(tracking_id: str, secret: str = None, limit: int = 
 
 
 # =====================================================
+# CRON ENDPOINTS - Session Sync
+# =====================================================
+
+@app.post("/api/cron/sync-sessions")
+async def cron_sync_sessions(secret: str = None):
+    """
+    Cron job to sync all Redis sessions to PostgreSQL.
+    Should be called every 15 minutes via external cron service.
+
+    Example: curl -X POST "https://api.bill-e.app/api/cron/sync-sessions?secret=xxx"
+    """
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not redis_client:
+        return {"error": "Redis not available", "synced": 0}
+
+    if not postgres_available:
+        return {"error": "PostgreSQL not available", "synced": 0}
+
+    try:
+        synced = 0
+        errors = 0
+        sessions_found = []
+
+        # Scan all session keys in Redis
+        cursor = 0
+        while True:
+            cursor, keys = redis_client.scan(cursor, match="session:*", count=100)
+
+            for key in keys:
+                key_str = key.decode() if isinstance(key, bytes) else key
+                session_id = key_str.replace("session:", "")
+
+                try:
+                    # Get session data
+                    session_json = redis_client.get(key_str)
+                    if not session_json:
+                        continue
+
+                    session_data = json.loads(session_json)
+
+                    # Get TTL
+                    ttl = redis_client.ttl(key_str)
+
+                    # Add session_id to data if not present
+                    session_data["session_id"] = session_id
+
+                    # Upsert to PostgreSQL
+                    result = postgres_db.upsert_session_snapshot(session_data, redis_ttl=ttl)
+
+                    if result:
+                        synced += 1
+                        sessions_found.append({
+                            "session_id": session_id,
+                            "status": result.get("status"),
+                            "is_new": result.get("is_new"),
+                            "ttl": ttl
+                        })
+                    else:
+                        errors += 1
+
+                except Exception as e:
+                    print(f"Error syncing session {session_id}: {e}")
+                    errors += 1
+
+            if cursor == 0:
+                break
+
+        return {
+            "success": True,
+            "synced": synced,
+            "errors": errors,
+            "sessions": sessions_found[:20]  # Return first 20 for debugging
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cron/session-metrics")
+async def get_session_metrics_endpoint(secret: str = None):
+    """
+    Get aggregated session metrics from PostgreSQL.
+    """
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not postgres_available:
+        return {"error": "PostgreSQL not available"}
+
+    try:
+        metrics = postgres_db.get_session_metrics()
+        if not metrics:
+            return {"error": "No data available"}
+        return metrics
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cron/recent-sessions")
+async def get_recent_sessions_endpoint(secret: str = None, limit: int = 50, status: str = None):
+    """
+    Get recent session snapshots from PostgreSQL.
+    """
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not postgres_available:
+        return {"error": "PostgreSQL not available"}
+
+    try:
+        sessions = postgres_db.get_recent_sessions(limit=limit, status=status)
+        return {"sessions": sessions, "count": len(sessions)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# =====================================================
 # ADMIN ENDPOINTS
 # =====================================================
 
