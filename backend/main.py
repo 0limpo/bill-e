@@ -2249,26 +2249,58 @@ async def track_analytics_event(event: AnalyticsEvent):
             # Silently succeed if Redis not available - analytics shouldn't break the app
             return {"success": True}
 
+        timestamp = event.timestamp or datetime.utcnow().isoformat()
+        today = datetime.utcnow().strftime("%Y-%m-%d")
+
         # Create event data
         event_data = {
             "event_name": event.event_name,
             "event_params": event.event_params,
-            "timestamp": event.timestamp or datetime.utcnow().isoformat(),
+            "timestamp": timestamp,
         }
 
-        # Store in Redis list for the day
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        # Store in Redis list for the day (global events)
         key = f"analytics:events:{today}"
-
-        # Add to list (keep last 10000 events per day)
         redis_client.lpush(key, json.dumps(event_data))
         redis_client.ltrim(key, 0, 9999)
         redis_client.expire(key, 7 * 86400)  # Keep for 7 days
 
-        # Also increment counters for quick funnel stats
+        # Increment counters for quick funnel stats
         counter_key = f"analytics:funnel:{today}:{event.event_name}"
         redis_client.incr(counter_key)
         redis_client.expire(counter_key, 7 * 86400)
+
+        # Store per-user history (if tracking_id is present)
+        tracking_id = event.event_params.get("tracking_id")
+        if tracking_id:
+            # Store event in user's history list
+            user_key = f"analytics:user:{tracking_id}:events"
+            redis_client.lpush(user_key, json.dumps(event_data))
+            redis_client.ltrim(user_key, 0, 499)  # Keep last 500 events per user
+            redis_client.expire(user_key, 30 * 86400)  # Keep for 30 days
+
+            # Update user metadata
+            meta_key = f"analytics:user:{tracking_id}:meta"
+            redis_client.hset(meta_key, "last_seen", timestamp)
+            redis_client.hset(meta_key, "last_event", event.event_name)
+            if not redis_client.hexists(meta_key, "first_seen"):
+                redis_client.hset(meta_key, "first_seen", timestamp)
+            # Store device info on first event
+            if event.event_params.get("device_type"):
+                redis_client.hset(meta_key, "device_type", event.event_params.get("device_type"))
+            if event.event_params.get("os"):
+                redis_client.hset(meta_key, "os", event.event_params.get("os"))
+            redis_client.expire(meta_key, 30 * 86400)
+
+            # Increment user's event counter
+            user_counter_key = f"analytics:user:{tracking_id}:counts"
+            redis_client.hincrby(user_counter_key, event.event_name, 1)
+            redis_client.hincrby(user_counter_key, "total_events", 1)
+            redis_client.expire(user_counter_key, 30 * 86400)
+
+            # Add to set of known users (for listing)
+            redis_client.sadd("analytics:users", tracking_id)
+            redis_client.expire("analytics:users", 30 * 86400)
 
         return {"success": True}
     except Exception as e:
@@ -2314,6 +2346,129 @@ async def get_funnel_analytics(secret: str = None, days: int = 7):
             result["days"][date] = day_stats
 
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/users")
+async def get_analytics_users(secret: str = None, limit: int = 100):
+    """
+    List all tracked users with their event counts.
+    Requires admin secret.
+    """
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not redis_client:
+        return {"error": "Redis not available"}
+
+    try:
+        # Get all known tracking IDs
+        tracking_ids = redis_client.smembers("analytics:users")
+        if not tracking_ids:
+            return {"users": [], "total": 0}
+
+        users = []
+        for tid in tracking_ids:
+            tid_str = tid.decode() if isinstance(tid, bytes) else tid
+
+            # Get user metadata
+            meta_key = f"analytics:user:{tid_str}:meta"
+            meta = redis_client.hgetall(meta_key)
+            meta_decoded = {k.decode() if isinstance(k, bytes) else k: v.decode() if isinstance(v, bytes) else v for k, v in meta.items()}
+
+            # Get user event counts
+            counts_key = f"analytics:user:{tid_str}:counts"
+            counts = redis_client.hgetall(counts_key)
+            counts_decoded = {k.decode() if isinstance(k, bytes) else k: int(v) for k, v in counts.items()}
+
+            users.append({
+                "tracking_id": tid_str,
+                "meta": meta_decoded,
+                "event_counts": counts_decoded,
+            })
+
+        # Sort by last_seen (most recent first)
+        users.sort(key=lambda u: u["meta"].get("last_seen", ""), reverse=True)
+
+        return {
+            "users": users[:limit],
+            "total": len(users),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/analytics/user/{tracking_id}")
+async def get_user_analytics(tracking_id: str, secret: str = None, limit: int = 100):
+    """
+    Get a specific user's event history and stats.
+    Requires admin secret.
+    """
+    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not redis_client:
+        return {"error": "Redis not available"}
+
+    try:
+        # Get user metadata
+        meta_key = f"analytics:user:{tracking_id}:meta"
+        meta = redis_client.hgetall(meta_key)
+        if not meta:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        meta_decoded = {k.decode() if isinstance(k, bytes) else k: v.decode() if isinstance(v, bytes) else v for k, v in meta.items()}
+
+        # Get user event counts
+        counts_key = f"analytics:user:{tracking_id}:counts"
+        counts = redis_client.hgetall(counts_key)
+        counts_decoded = {k.decode() if isinstance(k, bytes) else k: int(v) for k, v in counts.items()}
+
+        # Get user event history
+        events_key = f"analytics:user:{tracking_id}:events"
+        events_raw = redis_client.lrange(events_key, 0, limit - 1)
+        events = [json.loads(e) for e in events_raw]
+
+        # Calculate funnel progress
+        funnel_order = [
+            "funnel_app_open",
+            "funnel_photo_taken",
+            "funnel_ocr_complete",
+            "funnel_step1_complete",
+            "funnel_person_added",
+            "funnel_step2_complete",
+            "funnel_shared",
+            "funnel_paywall_shown",
+            "funnel_payment_started",
+            "funnel_payment_complete",
+        ]
+
+        furthest_step = 0
+        for i, event in enumerate(funnel_order):
+            if counts_decoded.get(event, 0) > 0:
+                furthest_step = i + 1
+
+        # Get sessions this user participated in
+        session_ids = set()
+        for event in events:
+            if event.get("event_params", {}).get("session_id"):
+                session_ids.add(event["event_params"]["session_id"])
+
+        return {
+            "tracking_id": tracking_id,
+            "meta": meta_decoded,
+            "event_counts": counts_decoded,
+            "funnel_progress": {
+                "furthest_step": furthest_step,
+                "total_steps": len(funnel_order),
+                "completed": furthest_step == len(funnel_order),
+            },
+            "sessions": list(session_ids),
+            "events": events,
+        }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
