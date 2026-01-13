@@ -6,3 +6,13 @@ services:
     plan: free
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
+
+# Cron job para sincronizar analytics cada 15 minutos
+  - type: cron
+    name: bill-e-sync
+    env: python
+    region: oregon
+    plan: starter
+    schedule: "*/15 * * * *"
+    buildCommand: "pip install requests"
+    startCommand: "python -c \"import requests; r = requests.post('https://bill-e-backend-lfwp.onrender.com/api/cron/full-sync'); print(r.status_code, r.text)\""
