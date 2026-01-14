@@ -79,6 +79,7 @@ export async function createPayment(params: {
   user_type: "host" | "editor";
   phone?: string;
   session_id?: string;
+  email?: string;
 }): Promise<CreatePaymentResponse> {
   const deviceId = getDeviceId();
 
@@ -89,6 +90,7 @@ export async function createPayment(params: {
       device_id: deviceId,
       phone: params.phone,
       session_id: params.session_id,
+      email: params.email,
     }),
   });
 }

@@ -167,6 +167,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "error.joinAsGuest": "Unirme como invitado",
     "error.retry": "Reintentar",
 
+    // Payment email field
+    "payment.emailLabel": "Email para recuperación (opcional)",
+    "payment.emailPlaceholder": "tu@email.com",
+    "payment.emailHint": "Podrás recuperar tu premium con este email si cambias de dispositivo",
+
     // Post Payment Modal
     "postPayment.title": "Premium Activado",
     "postPayment.subtitle": "Tu cuenta premium está activa por 1 año",
@@ -336,6 +341,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "error.sessionActiveElsewhereDesc": "The host session is already in use. Use the guest link to join.",
     "error.joinAsGuest": "Join as guest",
     "error.retry": "Retry",
+
+    // Payment email field
+    "payment.emailLabel": "Recovery email (optional)",
+    "payment.emailPlaceholder": "your@email.com",
+    "payment.emailHint": "You can recover your premium with this email if you change devices",
 
     // Post Payment Modal
     "postPayment.title": "Premium Activated",

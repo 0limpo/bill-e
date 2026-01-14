@@ -1329,6 +1329,7 @@ class CreatePaymentRequest(BaseModel):
     device_id: Optional[str] = None
     phone: Optional[str] = None
     session_id: Optional[str] = None
+    email: Optional[str] = None  # Optional: for premium recovery
 
 
 @app.post("/api/payment/create")
@@ -1393,12 +1394,14 @@ async def create_payment_order(request: CreatePaymentRequest):
             "commerce_order": commerce_order,
             "flow_order": flow_response.get("flowOrder"),
             "token": flow_response.get("token"),
+            "processor": "flow",
             "status": "pending",
             "amount": amount,
             "currency": "CLP",
             "user_type": request.user_type,
             "device_id": request.device_id,
             "phone": request.phone,
+            "email": request.email,  # Optional email for premium recovery
             "session_id": request.session_id,
             "created_at": datetime.now().isoformat(),
             "paid_at": None,
@@ -1419,6 +1422,21 @@ async def create_payment_order(request: CreatePaymentRequest):
             604800,
             commerce_order
         )
+
+        # Also store in PostgreSQL for persistence
+        if postgres_available:
+            postgres_db.create_payment(
+                commerce_order=commerce_order,
+                processor="flow",
+                amount=amount,
+                currency="CLP",
+                device_id=request.device_id,
+                phone=request.phone,
+                email=request.email,
+                user_type=request.user_type,
+                country_code="CL",
+                session_id=request.session_id
+            )
 
         # Build full payment URL
         payment_url = build_payment_url(flow_response)
@@ -1497,8 +1515,11 @@ async def payment_webhook(request: Request):
             payment["status"] = "paid"
             payment["paid_at"] = datetime.now().isoformat()
 
-            # Get payer email from Flow response
+            # Get payer email from Flow response (for premium recovery)
             payer_email = flow_status.get("payer", "")
+            if payer_email:
+                payment["payer_email"] = payer_email
+                print(f"Payer email from Flow: {payer_email}")
 
             # Activate premium based on user type
             user_type = payment.get("user_type")
@@ -1530,6 +1551,36 @@ async def payment_webhook(request: Request):
                 print(f"Warning: Could not activate premium - user_type={user_type}, device_id={device_id}, phone={phone}")
 
             payment["premium_expires"] = premium_expires
+
+            # Update PostgreSQL for persistence
+            if postgres_available:
+                premium_expires_dt = None
+                if premium_expires:
+                    try:
+                        premium_expires_dt = datetime.fromisoformat(premium_expires)
+                    except:
+                        pass
+
+                postgres_db.update_payment_status(
+                    commerce_order=commerce_order,
+                    status="paid",
+                    processor_payment_id=str(flow_status.get("flowOrder", "")),
+                    processor_response=flow_status,
+                    premium_expires=premium_expires_dt,
+                    email=payer_email
+                )
+
+                # Also set user premium in PostgreSQL
+                if device_id and premium_expires_dt:
+                    db_payment = postgres_db.get_payment_by_order(commerce_order)
+                    if db_payment:
+                        postgres_db.set_user_premium(
+                            device_id=device_id,
+                            payment_id=db_payment["id"],
+                            premium_expires=premium_expires_dt,
+                            phone=phone
+                        )
+                print(f"PostgreSQL payment record updated: {commerce_order}")
 
             # Emit boleta electrónica (non-blocking - premium already activated)
             if boleta_available:

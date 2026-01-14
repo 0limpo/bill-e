@@ -30,6 +30,7 @@ function PaymentPageContent() {
   const [preferenceId, setPreferenceId] = useState<string>("");
   const [mpInstance, setMpInstance] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<PaymentTab>("mercadopago");
+  const [recoveryEmail, setRecoveryEmail] = useState<string>("");
   const [lang] = useState<Language>(() => detectLanguage());
   const t = getTranslator(lang);
 
@@ -60,9 +61,9 @@ function PaymentPageContent() {
         // Get public key
         const pkResponse = await getMPPublicKey();
 
-        // Get user email if logged in (improves payment approval rate)
+        // Get user email: prefer recovery email input, then logged in user, then undefined
         const storedUser = getStoredUser();
-        const userEmail = storedUser?.email;
+        const userEmail = recoveryEmail || storedUser?.email;
 
         // Create preference for Wallet Brick
         const prefResponse = await createMPPreference({
@@ -226,6 +227,7 @@ function PaymentPageContent() {
       const result = await createPayment({
         user_type: userType,
         session_id: sessionId,
+        email: recoveryEmail || undefined,
       });
 
       if (!result.success || !result.payment_url) {
@@ -337,6 +339,23 @@ function PaymentPageContent() {
         {/* Payment forms */}
         {(status === "ready" || status === "error") && (
           <>
+            {/* Recovery email field */}
+            <div className="mb-6">
+              <label className="block text-sm text-muted-foreground mb-2">
+                {t("payment.emailLabel")}
+              </label>
+              <input
+                type="email"
+                value={recoveryEmail}
+                onChange={(e) => setRecoveryEmail(e.target.value)}
+                placeholder={t("payment.emailPlaceholder")}
+                className="w-full bg-secondary border border-border rounded-lg px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground mt-2">
+                {t("payment.emailHint")}
+              </p>
+            </div>
+
             {/* Payment method tabs */}
             <div className="flex rounded-xl overflow-hidden mb-6 bg-secondary">
               <button
