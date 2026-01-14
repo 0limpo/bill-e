@@ -43,7 +43,8 @@ def create_preference(
     pending_url: str,
     external_reference: str,
     metadata: Dict = None,
-    payment_method_filter: Optional[str] = None
+    payment_method_filter: Optional[str] = None,
+    payer_email: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Create a payment preference for Wallet Brick or Checkout Pro.
@@ -59,6 +60,7 @@ def create_preference(
         external_reference: Our reference ID
         metadata: Additional metadata
         payment_method_filter: Optional filter - "credit_card" or "debit_card" to restrict payment types
+        payer_email: Optional payer email (if user is logged in with Google)
 
     Returns:
         Preference response with id, init_point, etc.
@@ -70,6 +72,8 @@ def create_preference(
             {
                 "id": commerce_order,
                 "title": title,
+                "description": "Suscripción Premium Bill-e - 1 año",
+                "category_id": "services",
                 "quantity": 1,
                 "currency_id": "CLP",
                 "unit_price": amount
@@ -81,6 +85,7 @@ def create_preference(
             "pending": pending_url
         },
         "auto_return": "approved",
+        "binary_mode": True,
         "notification_url": notification_url,
         "external_reference": external_reference,
         "statement_descriptor": "BILL-E PREMIUM",
@@ -88,6 +93,10 @@ def create_preference(
         "expiration_date_from": datetime.now().isoformat(),
         "expiration_date_to": (datetime.now() + timedelta(hours=24)).isoformat(),
     }
+
+    # Add payer email if available (improves approval rate)
+    if payer_email:
+        preference_data["payer"] = {"email": payer_email}
 
     # Filter payment methods if specified
     if payment_method_filter == "credit_card":

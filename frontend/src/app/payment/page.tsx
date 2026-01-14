@@ -6,6 +6,7 @@ import { getMPPublicKey, createMPPreference, processMPCardPayment } from "@/lib/
 import { createPayment, storePendingPayment } from "@/lib/payment";
 import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
 import { trackPaymentStarted } from "@/lib/tracking";
+import { getStoredUser } from "@/lib/auth";
 
 declare global {
   interface Window {
@@ -59,10 +60,15 @@ function PaymentPageContent() {
         // Get public key
         const pkResponse = await getMPPublicKey();
 
+        // Get user email if logged in (improves payment approval rate)
+        const storedUser = getStoredUser();
+        const userEmail = storedUser?.email;
+
         // Create preference for Wallet Brick
         const prefResponse = await createMPPreference({
           user_type: userType,
           session_id: sessionId,
+          email: userEmail,
         });
 
         setPreferenceId(prefResponse.preference_id);

@@ -1619,6 +1619,7 @@ class MPPreferenceRequest(BaseModel):
     phone: Optional[str] = None
     session_id: Optional[str] = None
     payment_method_filter: Optional[str] = None  # "credit_card" or "debit_card" for Checkout Pro redirect
+    email: Optional[str] = None  # Optional: if user is logged in with Google
 
 
 class MPCardPaymentRequest(BaseModel):
@@ -1709,7 +1710,8 @@ async def create_mp_preference(request: MPPreferenceRequest):
                 "phone": phone,
                 "session_id": request.session_id
             },
-            payment_method_filter=request.payment_method_filter
+            payment_method_filter=request.payment_method_filter,
+            payer_email=request.email
         )
 
         # Store payment record in Redis
@@ -1723,6 +1725,7 @@ async def create_mp_preference(request: MPPreferenceRequest):
             "user_type": request.user_type,
             "device_id": request.device_id,
             "phone": phone,
+            "email": request.email,
             "session_id": request.session_id,
             "created_at": datetime.now().isoformat(),
             "paid_at": None,
@@ -1745,6 +1748,7 @@ async def create_mp_preference(request: MPPreferenceRequest):
                 currency="CLP",
                 device_id=request.device_id,
                 phone=phone,
+                email=request.email,
                 user_type=request.user_type,
                 country_code="CL",
                 session_id=request.session_id

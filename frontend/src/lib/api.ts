@@ -672,6 +672,7 @@ export async function createMPPreference(params: {
   phone?: string;
   session_id?: string;
   payment_method_filter?: "credit_card" | "debit_card";
+  email?: string;
 }): Promise<MPPreferenceResponse> {
   const deviceId = getDeviceId();
   return apiRequest<MPPreferenceResponse>("/api/mercadopago/preference", {
