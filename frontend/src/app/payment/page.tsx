@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getMPPublicKey, createMPPreference, processMPCardPayment, getDeviceId } from "@/lib/api";
-import { storePendingPayment } from "@/lib/payment";
+import { createPayment, storePendingPayment } from "@/lib/payment";
 import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
 import { trackPaymentStarted } from "@/lib/tracking";
 import { getStoredUser, startOAuthLogin, type AuthUser } from "@/lib/auth";
@@ -15,7 +15,7 @@ declare global {
 }
 
 type PaymentStatus = "need_auth" | "loading" | "ready" | "redirecting" | "processing" | "success" | "error";
-type PaymentTab = "mercadopago" | "tarjeta";
+type PaymentTab = "mercadopago" | "webpay" | "tarjeta";
 
 function PaymentPageContent() {
   const searchParams = useSearchParams();
@@ -230,6 +230,42 @@ function PaymentPageContent() {
     renderCardBrick();
   }, [status, mpInstance, activeTab, amount, userType, sessionId, router, user]);
 
+  // Handle redirect to Flow.cl for Webpay
+  const handleWebpayRedirect = async () => {
+    if (!user?.email) return;
+
+    trackPaymentStarted(sessionId, "webpay");
+    setStatus("redirecting");
+    try {
+      // Create Flow payment order with Google email
+      const result = await createPayment({
+        user_type: userType,
+        google_email: user.email,
+        session_id: sessionId,
+      });
+
+      if (!result.success || !result.payment_url) {
+        throw new Error("Error al crear orden de pago");
+      }
+
+      // Store pending payment info
+      storePendingPayment({
+        commerce_order: result.commerce_order,
+        session_id: sessionId,
+        owner_token: ownerToken,
+        user_type: userType,
+        created_at: new Date().toISOString(),
+      });
+
+      // Redirect to Flow.cl (which shows Webpay bank selection)
+      window.location.href = result.payment_url;
+    } catch (err: any) {
+      console.error("Webpay redirect error:", err);
+      setError(err.message || "Error al procesar pago");
+      setStatus("error");
+    }
+  };
+
   // Handle Google login
   const handleGoogleLogin = async () => {
     try {
@@ -404,6 +440,16 @@ function PaymentPageContent() {
                 Mercado Pago
               </button>
               <button
+                onClick={() => setActiveTab("webpay")}
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
+                  activeTab === "webpay"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {t("payment.tabWebpay")}
+              </button>
+              <button
                 onClick={() => setActiveTab("tarjeta")}
                 className={`flex-1 py-3 px-4 text-sm font-medium transition-all ${
                   activeTab === "tarjeta"
@@ -420,6 +466,22 @@ function PaymentPageContent() {
               <div id="walletBrick_container"></div>
             </div>
 
+            {/* Webpay Tab Content */}
+            <div className={activeTab === "webpay" ? "block" : "hidden"}>
+              <button
+                onClick={handleWebpayRedirect}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-4 px-6 rounded-xl transition-colors flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+                {t("payment.payWithWebpay")}
+              </button>
+              <p className="text-muted-foreground text-xs text-center mt-3">
+                {t("payment.webpayRedirectNote")}
+              </p>
+            </div>
+
             {/* Card Payment Tab Content */}
             <div className={activeTab === "tarjeta" ? "block" : "hidden"}>
               <div id="cardPaymentBrick_container"></div>
@@ -433,7 +495,7 @@ function PaymentPageContent() {
             <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            {t("payment.poweredBy")} MercadoPago
+            {t("payment.poweredBy")} {activeTab === "webpay" ? "Transbank" : "MercadoPago"}
           </p>
         </div>
       </div>

@@ -1329,17 +1329,18 @@ async def split_item(session_id: str, request: Request):
 
 class CreatePaymentRequest(BaseModel):
     user_type: str  # "editor" or "host"
+    google_email: str  # Required: user must be logged in with Google before paying
+    session_id: Optional[str] = None
+    # Legacy fields (kept for backward compatibility but not used)
     device_id: Optional[str] = None
     phone: Optional[str] = None
-    session_id: Optional[str] = None
-    email: Optional[str] = None  # Optional: for premium recovery
 
 
 @app.post("/api/payment/create")
 async def create_payment_order(request: CreatePaymentRequest):
     """
-    Create a payment order for premium access.
-    Simplified flow: no email required, Flow collects it.
+    Create a payment order for premium access via Flow/Webpay.
+    Requires Google authentication before payment.
 
     Returns:
         {
@@ -1356,8 +1357,11 @@ async def create_payment_order(request: CreatePaymentRequest):
         if request.user_type not in ["editor", "host"]:
             raise HTTPException(status_code=400, detail="Invalid user_type")
 
-        if request.user_type == "editor" and not request.device_id:
-            raise HTTPException(status_code=400, detail="device_id required for editor")
+        # Google email is required for premium tracking
+        if not request.google_email:
+            raise HTTPException(status_code=400, detail="Google authentication required before payment")
+
+        google_email = request.google_email.lower().strip()
 
         # Generate unique commerce order ID
         commerce_order = f"bille_{uuid.uuid4().hex[:12]}"
@@ -1386,8 +1390,7 @@ async def create_payment_order(request: CreatePaymentRequest):
             url_return=url_return,
             optional_data={
                 "user_type": request.user_type,
-                "device_id": request.device_id,
-                "phone": request.phone,
+                "google_email": google_email,
                 "session_id": request.session_id
             }
         )
@@ -1402,9 +1405,7 @@ async def create_payment_order(request: CreatePaymentRequest):
             "amount": amount,
             "currency": "CLP",
             "user_type": request.user_type,
-            "device_id": request.device_id,
-            "phone": request.phone,
-            "email": request.email,  # Optional email for premium recovery
+            "google_email": google_email,
             "session_id": request.session_id,
             "created_at": datetime.now().isoformat(),
             "paid_at": None,
@@ -1433,9 +1434,7 @@ async def create_payment_order(request: CreatePaymentRequest):
                 processor="flow",
                 amount=amount,
                 currency="CLP",
-                device_id=request.device_id,
-                phone=request.phone,
-                email=request.email,
+                email=google_email,
                 user_type=request.user_type,
                 country_code="CL",
                 session_id=request.session_id
@@ -1518,40 +1517,18 @@ async def payment_webhook(request: Request):
             payment["status"] = "paid"
             payment["paid_at"] = datetime.now().isoformat()
 
-            # Get payer email from Flow response (for premium recovery)
-            payer_email = flow_status.get("payer", "")
-            if payer_email:
-                payment["payer_email"] = payer_email
-                print(f"Payer email from Flow: {payer_email}")
-
-            # Activate premium based on user type
+            # Activate premium by Google email (new simplified system)
             user_type = payment.get("user_type")
-            device_id = payment.get("device_id")
-            phone = payment.get("phone")
+            google_email = payment.get("google_email")
+            print(f"Flow payment - Premium activation: user_type={user_type}, google_email={google_email}")
 
             premium_expires = None
-
-            if user_type == "editor" and device_id:
-                # Activate editor premium
-                premium_result = set_editor_premium(redis_client, device_id, phone)
+            if google_email:
+                premium_result = set_premium_by_email(redis_client, google_email, user_type)
                 premium_expires = premium_result.get("expires")
-                print(f"Editor premium activated for device: {device_id}")
-
-            elif user_type == "host":
-                # Activate host premium - prefer phone, fallback to device_id
-                if phone:
-                    premium_result = set_host_premium(redis_client, phone)
-                    premium_expires = premium_result.get("expires")
-                    print(f"Host premium activated for phone: {phone}")
-                elif device_id:
-                    premium_result = set_host_device_premium(redis_client, device_id)
-                    premium_expires = premium_result.get("expires")
-                    print(f"Host premium activated for device: {device_id}")
-                else:
-                    print(f"Warning: Could not activate host premium - no phone or device_id")
-
+                print(f"Premium activated via Flow webhook for email: {google_email}")
             else:
-                print(f"Warning: Could not activate premium - user_type={user_type}, device_id={device_id}, phone={phone}")
+                print(f"WARNING: Could not activate premium - no google_email in payment record")
 
             payment["premium_expires"] = premium_expires
 
@@ -1570,19 +1547,8 @@ async def payment_webhook(request: Request):
                     processor_payment_id=str(flow_status.get("flowOrder", "")),
                     processor_response=flow_status,
                     premium_expires=premium_expires_dt,
-                    email=payer_email
+                    email=google_email
                 )
-
-                # Also set user premium in PostgreSQL
-                if device_id and premium_expires_dt:
-                    db_payment = postgres_db.get_payment_by_order(commerce_order)
-                    if db_payment:
-                        postgres_db.set_user_premium(
-                            device_id=device_id,
-                            payment_id=db_payment["id"],
-                            premium_expires=premium_expires_dt,
-                            phone=phone
-                        )
                 print(f"PostgreSQL payment record updated: {commerce_order}")
 
             # Emit boleta electrónica (non-blocking - premium already activated)

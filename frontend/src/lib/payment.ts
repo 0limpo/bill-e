@@ -74,23 +74,19 @@ async function paymentRequest<T>(
 
 /**
  * Create a payment order and get the Flow.cl redirect URL
+ * Requires Google email for premium tracking
  */
 export async function createPayment(params: {
   user_type: "host" | "editor";
-  phone?: string;
+  google_email: string;  // Required: user must be logged in with Google
   session_id?: string;
-  email?: string;
 }): Promise<CreatePaymentResponse> {
-  const deviceId = getDeviceId();
-
   return paymentRequest<CreatePaymentResponse>("/api/payment/create", {
     method: "POST",
     body: JSON.stringify({
       user_type: params.user_type,
-      device_id: deviceId,
-      phone: params.phone,
+      google_email: params.google_email,
       session_id: params.session_id,
-      email: params.email,
     }),
   });
 }
