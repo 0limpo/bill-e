@@ -173,7 +173,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "postPayment.protectTitle": "Protege tu compra",
     "postPayment.protectDesc": "Vincula tu cuenta para acceder desde cualquier dispositivo y no perder tu premium si cambias de celular.",
     "postPayment.skipButton": "Ahora no, usar solo este dispositivo",
-    "postPayment.warning": "Si no vinculas tu cuenta, perderás el acceso premium si cambias de dispositivo o borras los datos del navegador.",
+    "postPayment.warning": "Si cambias de dispositivo, podrás recuperar tu premium usando el email de tu compra en Mercado Pago.",
     "postPayment.signInUnavailable": "Inicio de sesión no disponible",
   },
   en: {
@@ -343,7 +343,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "postPayment.protectTitle": "Protect your purchase",
     "postPayment.protectDesc": "Link your account to access from any device and keep your premium if you change phones.",
     "postPayment.skipButton": "Not now, use this device only",
-    "postPayment.warning": "If you don't link your account, you'll lose premium access if you change devices or clear browser data.",
+    "postPayment.warning": "If you change devices, you can recover your premium using your Mercado Pago purchase email.",
     "postPayment.signInUnavailable": "Sign-in unavailable",
   },
 };

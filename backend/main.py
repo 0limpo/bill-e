@@ -1969,6 +1969,13 @@ async def mp_webhook(request: Request):
         payment["mp_status"] = mp_status
         payment["mp_response"] = mp_payment
 
+        # Extract payer email from MP response (for premium recovery)
+        mp_payer = mp_payment.get("payer", {})
+        mp_payer_email = mp_payer.get("email")
+        if mp_payer_email:
+            payment["payer_email"] = mp_payer_email
+            print(f"Payer email from MP: {mp_payer_email}")
+
         if MPPaymentStatus.is_approved(mp_status) and payment.get("status") != "paid":
             print(f"Payment {payment_id} APPROVED - activating premium")
             payment["status"] = "paid"
@@ -2028,7 +2035,8 @@ async def mp_webhook(request: Request):
                 status="paid",
                 processor_payment_id=str(payment_id),
                 processor_response=mp_payment,
-                premium_expires=premium_expires_dt
+                premium_expires=premium_expires_dt,
+                email=mp_payer_email
             )
 
             # Also set user premium in PostgreSQL
@@ -2049,6 +2057,88 @@ async def mp_webhook(request: Request):
         print(f"MercadoPago webhook error: {e}")
         # Always return 200 to avoid retries
         return {"status": "error", "message": str(e)}
+
+
+# =====================================================
+# PREMIUM RECOVERY ENDPOINT
+# =====================================================
+
+class PremiumRecoveryRequest(BaseModel):
+    email: str
+    device_id: str
+
+@app.post("/api/premium/recover")
+async def recover_premium_by_email(request: PremiumRecoveryRequest):
+    """
+    Recover premium access using the email used during payment.
+    This is for users who lost their device_id (cleared browser data, new device).
+    """
+    try:
+        if not postgres_available:
+            raise HTTPException(status_code=503, detail="Database not available")
+
+        email = request.email.strip().lower()
+        device_id = request.device_id.strip()
+
+        if not email or not device_id:
+            raise HTTPException(status_code=400, detail="Email and device_id required")
+
+        # Find paid payment with this email
+        payment = postgres_db.get_paid_payment_by_email(email)
+
+        if not payment:
+            return {
+                "success": False,
+                "error": "no_payment_found",
+                "message": "No se encontró una compra premium activa con este email"
+            }
+
+        # Check if premium is still active
+        premium_expires = payment.get("premium_expires")
+        if not premium_expires:
+            return {
+                "success": False,
+                "error": "premium_expired",
+                "message": "Tu premium ha expirado"
+            }
+
+        premium_expires_dt = datetime.fromisoformat(premium_expires)
+        if premium_expires_dt < datetime.now():
+            return {
+                "success": False,
+                "error": "premium_expired",
+                "message": "Tu premium ha expirado"
+            }
+
+        # Activate premium on new device
+        user_type = payment.get("user_type", "editor")
+
+        if user_type == "editor":
+            premium_result = set_editor_premium(redis_client, device_id, None)
+        else:
+            premium_result = set_host_device_premium(redis_client, device_id)
+
+        # Update PostgreSQL with new device_id
+        postgres_db.set_user_premium(
+            device_id=device_id,
+            payment_id=payment.get("id"),
+            premium_expires=premium_expires_dt
+        )
+
+        print(f"Premium recovered for email {email} -> device {device_id}")
+
+        return {
+            "success": True,
+            "message": "Premium recuperado exitosamente",
+            "premium_expires": premium_expires,
+            "user_type": user_type
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Premium recovery error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # =====================================================

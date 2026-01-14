@@ -708,3 +708,31 @@ export async function processMPCardPayment(params: {
     }),
   });
 }
+
+// ============================================================================
+// Premium Recovery
+// ============================================================================
+
+export interface PremiumRecoveryResponse {
+  success: boolean;
+  error?: string;
+  message: string;
+  premium_expires?: string;
+  user_type?: string;
+}
+
+/**
+ * Recover premium using the email used during payment
+ */
+export async function recoverPremiumByEmail(
+  email: string
+): Promise<PremiumRecoveryResponse> {
+  const deviceId = getDeviceId();
+  return apiRequest<PremiumRecoveryResponse>("/api/premium/recover", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      device_id: deviceId,
+    }),
+  });
+}

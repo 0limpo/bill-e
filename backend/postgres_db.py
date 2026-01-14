@@ -438,7 +438,8 @@ def update_payment_status(
     status: str,
     processor_payment_id: str = None,
     processor_response: dict = None,
-    premium_expires: datetime = None
+    premium_expires: datetime = None,
+    email: str = None
 ) -> Optional[Dict]:
     """Update payment status after processor callback."""
     if not db_available:
@@ -460,6 +461,9 @@ def update_payment_status(
 
         if processor_response:
             payment.processor_response = processor_response
+
+        if email:
+            payment.email = email
 
         if status == "paid":
             payment.paid_at = datetime.utcnow()
@@ -505,6 +509,36 @@ def get_payment_by_order(commerce_order: str) -> Optional[Dict]:
             "premium_expires": payment.premium_expires.isoformat() if payment.premium_expires else None,
             "paid_at": payment.paid_at.isoformat() if payment.paid_at else None,
             "created_at": payment.created_at.isoformat() if payment.created_at else None
+        }
+
+
+def get_paid_payment_by_email(email: str) -> Optional[Dict]:
+    """Get most recent paid payment by payer email (for premium recovery)."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        # Find most recent paid payment with this email and active premium
+        payment = db.query(Payment).filter(
+            Payment.email == email,
+            Payment.status == PaymentStatus.PAID,
+            Payment.premium_expires > datetime.utcnow()
+        ).order_by(Payment.paid_at.desc()).first()
+
+        if not payment:
+            return None
+
+        return {
+            "id": str(payment.id),
+            "commerce_order": payment.commerce_order,
+            "device_id": payment.device_id,
+            "email": payment.email,
+            "user_type": payment.user_type.value if payment.user_type else None,
+            "premium_expires": payment.premium_expires.isoformat() if payment.premium_expires else None,
+            "paid_at": payment.paid_at.isoformat() if payment.paid_at else None
         }
 
 
