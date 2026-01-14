@@ -908,3 +908,109 @@ def get_participant_summary(session_data: Dict, participant_id: str) -> Dict:
         "items": consumed_items,
         "item_count": len(consumed_items)
     }
+
+
+# --- Premium by Email (Google Auth) ---
+# Simplified premium system: premium is tied to Google email, not device_id
+
+def set_premium_by_email(
+    redis_client,
+    email: str,
+    user_type: str = "host"
+) -> Dict[str, Any]:
+    """
+    Set premium for a Google email (after payment with Google auth).
+    Premium lasts 1 year with unlimited sessions.
+    """
+    email_normalized = email.lower().strip()
+    premium_key = f"premium_email:{email_normalized}"
+
+    # Set expiry to 1 year from now
+    expiry = (datetime.now() + timedelta(days=365)).isoformat()
+
+    premium_data = {
+        "email": email_normalized,
+        "is_premium": True,
+        "user_type": user_type,
+        "premium_since": datetime.now().isoformat(),
+        "premium_expires": expiry,
+        "unlimited": True
+    }
+
+    # Store with no TTL (permanent until manually deleted)
+    # TTL will be managed by premium_expires field
+    redis_client.set(premium_key, json.dumps(premium_data))
+
+    return {
+        "success": True,
+        "email": email_normalized,
+        "is_premium": True,
+        "unlimited": True,
+        "expires": expiry
+    }
+
+
+def check_premium_by_email(
+    redis_client,
+    email: str
+) -> Dict[str, Any]:
+    """
+    Check if an email has active premium.
+    Returns premium status and expiry info.
+    """
+    if not email:
+        return {"is_premium": False, "error": "No email provided"}
+
+    email_normalized = email.lower().strip()
+    premium_key = f"premium_email:{email_normalized}"
+
+    premium_json = redis_client.get(premium_key)
+    if not premium_json:
+        return {"is_premium": False, "email": email_normalized}
+
+    premium_data = json.loads(premium_json)
+
+    # Check if premium has expired
+    expires_str = premium_data.get("premium_expires")
+    if expires_str:
+        try:
+            expires = datetime.fromisoformat(expires_str)
+            if expires < datetime.now():
+                return {
+                    "is_premium": False,
+                    "email": email_normalized,
+                    "expired": True,
+                    "expired_at": expires_str
+                }
+        except:
+            pass
+
+    return {
+        "is_premium": True,
+        "email": email_normalized,
+        "unlimited": premium_data.get("unlimited", True),
+        "user_type": premium_data.get("user_type", "host"),
+        "premium_expires": expires_str,
+        "premium_since": premium_data.get("premium_since")
+    }
+
+
+def get_premium_by_email(
+    redis_client,
+    email: str
+) -> Optional[Dict[str, Any]]:
+    """
+    Get full premium data for an email.
+    Returns None if no premium found.
+    """
+    if not email:
+        return None
+
+    email_normalized = email.lower().strip()
+    premium_key = f"premium_email:{email_normalized}"
+
+    premium_json = redis_client.get(premium_key)
+    if not premium_json:
+        return None
+
+    return json.loads(premium_json)

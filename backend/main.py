@@ -62,6 +62,9 @@ try:
         set_editor_premium,
         set_host_premium,
         set_host_device_premium,
+        set_premium_by_email,
+        check_premium_by_email,
+        get_premium_by_email,
         HOST_FREE_SESSIONS,
         SessionStatus
     )
@@ -1666,11 +1669,12 @@ async def get_payment_price():
 
 class MPPreferenceRequest(BaseModel):
     user_type: str  # "editor" or "host"
-    device_id: Optional[str] = None
-    phone: Optional[str] = None
+    google_email: str  # Required: user must be logged in with Google before paying
     session_id: Optional[str] = None
     payment_method_filter: Optional[str] = None  # "credit_card" or "debit_card" for Checkout Pro redirect
-    email: Optional[str] = None  # Optional: if user is logged in with Google
+    # Legacy fields (kept for backward compatibility but not used for premium)
+    device_id: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class MPCardPaymentRequest(BaseModel):
@@ -1681,9 +1685,11 @@ class MPCardPaymentRequest(BaseModel):
     issuer_id: str
     payer_email: str
     user_type: str
+    google_email: str  # Required: user must be logged in with Google before paying
+    session_id: Optional[str] = None
+    # Legacy fields (kept for backward compatibility but not used for premium)
     device_id: Optional[str] = None
     phone: Optional[str] = None
-    session_id: Optional[str] = None
 
 
 @app.get("/api/mercadopago/public-key")
@@ -1702,6 +1708,7 @@ async def get_mp_public_key():
 async def create_mp_preference(request: MPPreferenceRequest):
     """
     Create a MercadoPago preference for Wallet Brick.
+    Requires Google authentication before payment.
     Returns preference_id for frontend Wallet Brick initialization.
     """
     if not mercadopago_available:
@@ -1712,14 +1719,11 @@ async def create_mp_preference(request: MPPreferenceRequest):
         if request.user_type not in ["editor", "host"]:
             raise HTTPException(status_code=400, detail="Invalid user_type")
 
-        # For hosts, get phone from session data if not provided
-        phone = request.phone
-        if request.user_type == "host" and not phone and request.session_id:
-            session_json = redis_client.get(f"session:{request.session_id}")
-            if session_json:
-                session_data = json.loads(session_json)
-                phone = session_data.get("owner_phone")
-                print(f"Got owner_phone from session: {phone}")
+        # Google email is required for premium tracking
+        if not request.google_email:
+            raise HTTPException(status_code=400, detail="Google authentication required before payment")
+
+        google_email = request.google_email.lower().strip()
 
         # Generate unique commerce order ID
         commerce_order = f"mp_{uuid.uuid4().hex[:12]}"
@@ -1757,12 +1761,11 @@ async def create_mp_preference(request: MPPreferenceRequest):
             external_reference=commerce_order,
             metadata={
                 "user_type": request.user_type,
-                "device_id": request.device_id,
-                "phone": phone,
+                "google_email": google_email,
                 "session_id": request.session_id
             },
             payment_method_filter=request.payment_method_filter,
-            payer_email=request.email
+            payer_email=google_email
         )
 
         # Store payment record in Redis
@@ -1774,9 +1777,7 @@ async def create_mp_preference(request: MPPreferenceRequest):
             "amount": amount,
             "currency": "CLP",
             "user_type": request.user_type,
-            "device_id": request.device_id,
-            "phone": phone,
-            "email": request.email,
+            "google_email": google_email,
             "session_id": request.session_id,
             "created_at": datetime.now().isoformat(),
             "paid_at": None,
@@ -1797,9 +1798,7 @@ async def create_mp_preference(request: MPPreferenceRequest):
                 processor="mercadopago",
                 amount=amount,
                 currency="CLP",
-                device_id=request.device_id,
-                phone=phone,
-                email=request.email,
+                email=google_email,
                 user_type=request.user_type,
                 country_code="CL",
                 session_id=request.session_id
@@ -1835,14 +1834,11 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
         if request.user_type not in ["editor", "host"]:
             raise HTTPException(status_code=400, detail="Invalid user_type")
 
-        # For hosts, get phone from session data if not provided
-        phone = request.phone
-        if request.user_type == "host" and not phone and request.session_id:
-            session_json = redis_client.get(f"session:{request.session_id}")
-            if session_json:
-                session_data = json.loads(session_json)
-                phone = session_data.get("owner_phone")
-                print(f"Card payment - Got owner_phone from session: {phone}")
+        # Google email is required for premium tracking
+        if not request.google_email:
+            raise HTTPException(status_code=400, detail="Google authentication required before payment")
+
+        google_email = request.google_email.lower().strip()
 
         # Generate unique commerce order ID
         commerce_order = f"mp_{uuid.uuid4().hex[:12]}"
@@ -1864,8 +1860,7 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
             notification_url=notification_url,
             metadata={
                 "user_type": request.user_type,
-                "device_id": request.device_id,
-                "phone": phone,
+                "google_email": google_email,
                 "session_id": request.session_id
             }
         )
@@ -1877,22 +1872,10 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
             status = "paid"
             paid_at = datetime.now().isoformat()
 
-            # Activate premium immediately
-            premium_expires = None
-            if request.user_type == "editor" and request.device_id:
-                premium_result = set_editor_premium(redis_client, request.device_id, phone)
-                premium_expires = premium_result.get("expires")
-                print(f"Editor premium activated for device: {request.device_id}")
-            elif request.user_type == "host":
-                # Prefer phone, fallback to device_id
-                if phone:
-                    premium_result = set_host_premium(redis_client, phone)
-                    premium_expires = premium_result.get("expires")
-                    print(f"Host premium activated for phone: {phone}")
-                elif request.device_id:
-                    premium_result = set_host_device_premium(redis_client, request.device_id)
-                    premium_expires = premium_result.get("expires")
-                    print(f"Host premium activated for device: {request.device_id}")
+            # Activate premium by Google email
+            premium_result = set_premium_by_email(redis_client, google_email, request.user_type)
+            premium_expires = premium_result.get("expires")
+            print(f"Premium activated for Google email: {google_email}")
 
         elif MPPaymentStatus.is_pending(mp_status):
             status = "pending"
@@ -1913,8 +1896,7 @@ async def process_mp_card_payment(request: MPCardPaymentRequest):
             "amount": int(request.transaction_amount),
             "currency": "CLP",
             "user_type": request.user_type,
-            "device_id": request.device_id,
-            "phone": phone,
+            "google_email": google_email,
             "session_id": request.session_id,
             "payer_email": request.payer_email,
             "created_at": datetime.now().isoformat(),
@@ -2032,30 +2014,17 @@ async def mp_webhook(request: Request):
             payment["status"] = "paid"
             payment["paid_at"] = datetime.now().isoformat()
 
-            # Activate premium
+            # Activate premium by Google email (new simplified system)
             user_type = payment.get("user_type")
-            device_id = payment.get("device_id")
-            phone = payment.get("phone")
-            print(f"Premium activation: user_type={user_type}, device_id={device_id}, phone={phone}")
+            google_email = payment.get("google_email")
+            print(f"Premium activation: user_type={user_type}, google_email={google_email}")
 
-            if user_type == "editor" and device_id:
-                premium_result = set_editor_premium(redis_client, device_id, phone)
+            if google_email:
+                premium_result = set_premium_by_email(redis_client, google_email, user_type)
                 payment["premium_expires"] = premium_result.get("expires")
-                print(f"Editor premium activated via webhook: {device_id}")
-            elif user_type == "host":
-                # Prefer phone, fallback to device_id
-                if phone:
-                    premium_result = set_host_premium(redis_client, phone)
-                    payment["premium_expires"] = premium_result.get("expires")
-                    print(f"Host premium activated via webhook (phone): {phone}")
-                elif device_id:
-                    premium_result = set_host_device_premium(redis_client, device_id)
-                    payment["premium_expires"] = premium_result.get("expires")
-                    print(f"Host premium activated via webhook (device): {device_id}")
-                else:
-                    print(f"WARNING: Could not activate host premium - no phone or device_id")
+                print(f"Premium activated via webhook for email: {google_email}")
             else:
-                print(f"WARNING: Could not activate premium - missing data")
+                print(f"WARNING: Could not activate premium - no google_email in payment record")
 
         elif MPPaymentStatus.is_failed(mp_status):
             payment["status"] = "rejected"
@@ -2081,25 +2050,15 @@ async def mp_webhook(request: Request):
                 except:
                     pass
 
+            google_email = payment.get("google_email")
             postgres_db.update_payment_status(
                 commerce_order=external_reference,
                 status="paid",
                 processor_payment_id=str(payment_id),
                 processor_response=mp_payment,
                 premium_expires=premium_expires_dt,
-                email=mp_payer_email
+                email=google_email
             )
-
-            # Also set user premium in PostgreSQL
-            if payment.get("device_id") and premium_expires_dt:
-                db_payment = postgres_db.get_payment_by_order(external_reference)
-                if db_payment:
-                    postgres_db.set_user_premium(
-                        device_id=payment.get("device_id"),
-                        payment_id=db_payment["id"],
-                        premium_expires=premium_expires_dt,
-                        phone=payment.get("phone")
-                    )
             print(f"PostgreSQL payment record updated: {external_reference}")
 
         return {"status": "ok"}
@@ -2111,84 +2070,36 @@ async def mp_webhook(request: Request):
 
 
 # =====================================================
-# PREMIUM RECOVERY ENDPOINT
+# PREMIUM CHECK ENDPOINT (by Google email)
 # =====================================================
 
-class PremiumRecoveryRequest(BaseModel):
-    email: str
-    device_id: str
-
-@app.post("/api/premium/recover")
-async def recover_premium_by_email(request: PremiumRecoveryRequest):
+@app.get("/api/premium/check/{email}")
+async def check_premium_status(email: str):
     """
-    Recover premium access using the email used during payment.
-    This is for users who lost their device_id (cleared browser data, new device).
+    Check if a Google email has active premium.
+    Used by frontend after Google login to verify premium status.
     """
     try:
-        if not postgres_available:
-            raise HTTPException(status_code=503, detail="Database not available")
+        if not email:
+            raise HTTPException(status_code=400, detail="Email required")
 
-        email = request.email.strip().lower()
-        device_id = request.device_id.strip()
+        email = email.strip().lower()
 
-        if not email or not device_id:
-            raise HTTPException(status_code=400, detail="Email and device_id required")
-
-        # Find paid payment with this email
-        payment = postgres_db.get_paid_payment_by_email(email)
-
-        if not payment:
-            return {
-                "success": False,
-                "error": "no_payment_found",
-                "message": "No se encontró una compra premium activa con este email"
-            }
-
-        # Check if premium is still active
-        premium_expires = payment.get("premium_expires")
-        if not premium_expires:
-            return {
-                "success": False,
-                "error": "premium_expired",
-                "message": "Tu premium ha expirado"
-            }
-
-        premium_expires_dt = datetime.fromisoformat(premium_expires)
-        if premium_expires_dt < datetime.now():
-            return {
-                "success": False,
-                "error": "premium_expired",
-                "message": "Tu premium ha expirado"
-            }
-
-        # Activate premium on new device
-        user_type = payment.get("user_type", "editor")
-
-        if user_type == "editor":
-            premium_result = set_editor_premium(redis_client, device_id, None)
-        else:
-            premium_result = set_host_device_premium(redis_client, device_id)
-
-        # Update PostgreSQL with new device_id
-        postgres_db.set_user_premium(
-            device_id=device_id,
-            payment_id=payment.get("id"),
-            premium_expires=premium_expires_dt
-        )
-
-        print(f"Premium recovered for email {email} -> device {device_id}")
+        # Check Redis for premium status
+        premium_status = check_premium_by_email(redis_client, email)
 
         return {
             "success": True,
-            "message": "Premium recuperado exitosamente",
-            "premium_expires": premium_expires,
-            "user_type": user_type
+            "email": email,
+            "is_premium": premium_status.get("is_premium", False),
+            "premium_expires": premium_status.get("premium_expires"),
+            "user_type": premium_status.get("user_type")
         }
 
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Premium recovery error: {e}")
+        print(f"Premium check error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -3267,15 +3178,10 @@ async def oauth_callback(
         )
 
         if user:
-            # If device has premium, transfer to user account
-            if device_id and user.get("is_new"):
-                postgres_db.transfer_premium_to_user(user["id"], device_id)
-                # Refresh user data
-                user = postgres_db.get_user_by_id(user["id"])
-
-            # If user has premium and device provided, restore to device
-            elif device_id and user.get("is_premium"):
-                postgres_db.restore_premium_to_device(user["id"], device_id)
+            # Check premium status by email (new simplified system)
+            email = user_info["email"]
+            premium_status = check_premium_by_email(redis_client, email)
+            is_premium = premium_status.get("is_premium", False)
 
             # Create session token
             session_token = oauth_auth.create_session_token(
@@ -3284,11 +3190,11 @@ async def oauth_callback(
                 email=user["email"]
             )
 
-            # Redirect to frontend with token
+            # Redirect to frontend with token and premium status
             redirect_url = redirect_to or f"{frontend_url}/auth/success"
             separator = "&" if "?" in redirect_url else "?"
             return RedirectResponse(
-                f"{redirect_url}{separator}token={session_token}&user_id={user['id']}&is_premium={user.get('is_premium', False)}"
+                f"{redirect_url}{separator}token={session_token}&user_id={user['id']}&is_premium={is_premium}"
             )
 
     return RedirectResponse(f"{frontend_url}/auth/error?error=database_error")

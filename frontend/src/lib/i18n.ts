@@ -167,10 +167,13 @@ export const translations: Record<Language, Record<string, string>> = {
     "error.joinAsGuest": "Unirme como invitado",
     "error.retry": "Reintentar",
 
-    // Payment email field
-    "payment.emailLabel": "Email para recuperación (opcional)",
-    "payment.emailPlaceholder": "tu@email.com",
-    "payment.emailHint": "Podrás recuperar tu premium con este email si cambias de dispositivo",
+    // Payment auth
+    "payment.authRequired": "Inicia sesión para continuar",
+    "payment.authRequiredDesc": "Vincula tu cuenta de Google para que tu premium quede protegido y puedas acceder desde cualquier dispositivo.",
+    "payment.continueWithGoogle": "Continuar con Google",
+    "payment.authBenefit": "Tu premium quedará vinculado a tu cuenta de Google",
+    "payment.loggedInAs": "Conectado como",
+    "payment.premiumLinkedTo": "Premium vinculado a esta cuenta",
 
     // Post Payment Modal
     "postPayment.title": "Premium Activado",
@@ -342,10 +345,13 @@ export const translations: Record<Language, Record<string, string>> = {
     "error.joinAsGuest": "Join as guest",
     "error.retry": "Retry",
 
-    // Payment email field
-    "payment.emailLabel": "Recovery email (optional)",
-    "payment.emailPlaceholder": "your@email.com",
-    "payment.emailHint": "You can recover your premium with this email if you change devices",
+    // Payment auth
+    "payment.authRequired": "Sign in to continue",
+    "payment.authRequiredDesc": "Link your Google account so your premium is protected and you can access from any device.",
+    "payment.continueWithGoogle": "Continue with Google",
+    "payment.authBenefit": "Your premium will be linked to your Google account",
+    "payment.loggedInAs": "Signed in as",
+    "payment.premiumLinkedTo": "Premium linked to this account",
 
     // Post Payment Modal
     "postPayment.title": "Premium Activated",

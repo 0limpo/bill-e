@@ -665,27 +665,23 @@ export async function getMPPublicKey(): Promise<MPPublicKeyResponse> {
 
 /**
  * Create a MercadoPago preference for Wallet Brick
+ * Requires Google email for premium tracking
  */
 export async function createMPPreference(params: {
   user_type: "host" | "editor";
-  device_id?: string;
-  phone?: string;
+  google_email: string;  // Required: user must be logged in with Google
   session_id?: string;
   payment_method_filter?: "credit_card" | "debit_card";
-  email?: string;
 }): Promise<MPPreferenceResponse> {
-  const deviceId = getDeviceId();
   return apiRequest<MPPreferenceResponse>("/api/mercadopago/preference", {
     method: "POST",
-    body: JSON.stringify({
-      ...params,
-      device_id: params.device_id || deviceId,
-    }),
+    body: JSON.stringify(params),
   });
 }
 
 /**
  * Process card payment from Card Payment Brick
+ * Requires Google email for premium tracking
  */
 export async function processMPCardPayment(params: {
   token: string;
@@ -695,44 +691,34 @@ export async function processMPCardPayment(params: {
   issuer_id: string;
   payer_email: string;
   user_type: "host" | "editor";
-  device_id?: string;
-  phone?: string;
+  google_email: string;  // Required: user must be logged in with Google
   session_id?: string;
 }): Promise<MPCardPaymentResponse> {
-  const deviceId = getDeviceId();
   return apiRequest<MPCardPaymentResponse>("/api/mercadopago/process-payment", {
     method: "POST",
-    body: JSON.stringify({
-      ...params,
-      device_id: params.device_id || deviceId,
-    }),
+    body: JSON.stringify(params),
   });
 }
 
 // ============================================================================
-// Premium Recovery
+// Premium Check (by Google email)
 // ============================================================================
 
-export interface PremiumRecoveryResponse {
+export interface PremiumCheckResponse {
   success: boolean;
-  error?: string;
-  message: string;
+  email: string;
+  is_premium: boolean;
   premium_expires?: string;
   user_type?: string;
 }
 
 /**
- * Recover premium using the email used during payment
+ * Check if a Google email has active premium
  */
-export async function recoverPremiumByEmail(
+export async function checkPremiumByEmail(
   email: string
-): Promise<PremiumRecoveryResponse> {
-  const deviceId = getDeviceId();
-  return apiRequest<PremiumRecoveryResponse>("/api/premium/recover", {
-    method: "POST",
-    body: JSON.stringify({
-      email,
-      device_id: deviceId,
-    }),
-  });
+): Promise<PremiumCheckResponse> {
+  return apiRequest<PremiumCheckResponse>(
+    `/api/premium/check/${encodeURIComponent(email)}`
+  );
 }
