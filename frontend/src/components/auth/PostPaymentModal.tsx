@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { SignInButtons } from "./SignInButtons";
 import { AuthProvider, getAuthProviders } from "@/lib/auth";
+import { detectLanguage, getTranslator } from "@/lib/i18n";
 
 interface PostPaymentModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export function PostPaymentModal({
   const [providers, setProviders] = useState<AuthProvider[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const t = getTranslator(detectLanguage());
 
   useEffect(() => {
     async function loadProviders() {
@@ -65,10 +67,10 @@ export function PostPaymentModal({
             </svg>
           </div>
           <h2 className="text-xl font-bold text-foreground">
-            Premium Activado
+            {t("postPayment.title")}
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Tu cuenta premium esta activa por 1 ano
+            {t("postPayment.subtitle")}
           </p>
         </div>
 
@@ -88,11 +90,10 @@ export function PostPaymentModal({
                 d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
               />
             </svg>
-            Protege tu compra
+            {t("postPayment.protectTitle")}
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Vincula tu cuenta para acceder desde cualquier dispositivo y no
-            perder tu premium si cambias de celular.
+            {t("postPayment.protectDesc")}
           </p>
 
           {loading ? (
@@ -107,7 +108,7 @@ export function PostPaymentModal({
             />
           ) : (
             <p className="text-sm text-muted-foreground text-center py-2">
-              Sign-in no disponible
+              {t("postPayment.signInUnavailable")}
             </p>
           )}
 
@@ -121,13 +122,12 @@ export function PostPaymentModal({
           onClick={onSkip}
           className="w-full py-3 text-muted-foreground hover:text-foreground transition-colors text-sm"
         >
-          Ahora no, usar solo este dispositivo
+          {t("postPayment.skipButton")}
         </button>
 
         {/* Warning */}
         <p className="text-xs text-muted-foreground text-center mt-4">
-          Si no vinculas tu cuenta, perderas el acceso premium si cambias de
-          dispositivo o borras los datos del navegador.
+          {t("postPayment.warning")}
         </p>
       </div>
     </div>

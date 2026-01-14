@@ -166,6 +166,15 @@ export const translations: Record<Language, Record<string, string>> = {
     "error.sessionActiveElsewhereDesc": "La sesión del anfitrión ya está en uso. Usa el link de invitado para unirte.",
     "error.joinAsGuest": "Unirme como invitado",
     "error.retry": "Reintentar",
+
+    // Post Payment Modal
+    "postPayment.title": "Premium Activado",
+    "postPayment.subtitle": "Tu cuenta premium está activa por 1 año",
+    "postPayment.protectTitle": "Protege tu compra",
+    "postPayment.protectDesc": "Vincula tu cuenta para acceder desde cualquier dispositivo y no perder tu premium si cambias de celular.",
+    "postPayment.skipButton": "Ahora no, usar solo este dispositivo",
+    "postPayment.warning": "Si no vinculas tu cuenta, perderás el acceso premium si cambias de dispositivo o borras los datos del navegador.",
+    "postPayment.signInUnavailable": "Inicio de sesión no disponible",
   },
   en: {
     // App
@@ -327,6 +336,15 @@ export const translations: Record<Language, Record<string, string>> = {
     "error.sessionActiveElsewhereDesc": "The host session is already in use. Use the guest link to join.",
     "error.joinAsGuest": "Join as guest",
     "error.retry": "Retry",
+
+    // Post Payment Modal
+    "postPayment.title": "Premium Activated",
+    "postPayment.subtitle": "Your premium account is active for 1 year",
+    "postPayment.protectTitle": "Protect your purchase",
+    "postPayment.protectDesc": "Link your account to access from any device and keep your premium if you change phones.",
+    "postPayment.skipButton": "Not now, use this device only",
+    "postPayment.warning": "If you don't link your account, you'll lose premium access if you change devices or clear browser data.",
+    "postPayment.signInUnavailable": "Sign-in unavailable",
   },
 };
 
