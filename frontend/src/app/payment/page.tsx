@@ -6,7 +6,7 @@ import { getMPPublicKey, createMPPreference, processMPCardPayment, getDeviceId }
 import { createPayment, storePendingPayment } from "@/lib/payment";
 import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
 import { trackPaymentStarted } from "@/lib/tracking";
-import { getStoredUser, startOAuthLogin, type AuthUser } from "@/lib/auth";
+import { getStoredUser, startOAuthLogin, handleAuthCallback, verifyToken, setStoredUser, type AuthUser } from "@/lib/auth";
 
 declare global {
   interface Window {
@@ -39,15 +39,40 @@ function PaymentPageContent() {
 
   const amount = 1990; // CLP
 
-  // Check if user is authenticated on mount
+  // Check if user is authenticated on mount (also handle OAuth callback)
   useEffect(() => {
-    const storedUser = getStoredUser();
-    if (storedUser?.email) {
-      setUser(storedUser);
-      setStatus("loading");
-    } else {
-      setStatus("need_auth");
-    }
+    const checkAuth = async () => {
+      // First, check if this is an OAuth callback (has token in URL params)
+      const callbackResult = handleAuthCallback();
+
+      if (callbackResult?.token) {
+        // OAuth callback - verify token and store user
+        const verifiedUser = await verifyToken(callbackResult.token);
+        if (verifiedUser) {
+          setStoredUser(verifiedUser);
+          setUser(verifiedUser);
+          setStatus("loading");
+          // Clean up URL params
+          const url = new URL(window.location.href);
+          url.searchParams.delete("token");
+          url.searchParams.delete("user_id");
+          url.searchParams.delete("is_premium");
+          window.history.replaceState({}, "", url.toString());
+          return;
+        }
+      }
+
+      // Otherwise, check for existing stored user
+      const storedUser = getStoredUser();
+      if (storedUser?.email) {
+        setUser(storedUser);
+        setStatus("loading");
+      } else {
+        setStatus("need_auth");
+      }
+    };
+
+    checkAuth();
   }, []);
 
   // Load MercadoPago SDK script
