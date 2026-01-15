@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, Minus, Plus, X, Check, Share2, 
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
+  detectDecimals,
   getAvatarColor,
   getInitials,
   type Item,
@@ -160,7 +161,9 @@ export function StepAssign({
     });
   }, [assignments]);
 
-  const fmt = (amount: number) => formatCurrency(amount);
+  // Detect decimals from items to match receipt format
+  const decimals = detectDecimals(items);
+  const fmt = (amount: number) => formatCurrency(amount, decimals);
 
   // Clear all unit-based assignments for an item
   const clearUnitAssignments = (itemId: string, itemQty: number) => {

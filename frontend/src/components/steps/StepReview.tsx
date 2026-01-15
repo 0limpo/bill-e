@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatCurrency, formatNumber, type Item, type Charge } from "@/lib/billEngine";
+import { formatCurrency, formatNumber, detectDecimals, type Item, type Charge } from "@/lib/billEngine";
 import { playCelebrationSound } from "@/lib/sounds";
 
 interface InlineInputProps {
@@ -218,7 +218,9 @@ export function StepReview({
     onChargesChange(charges.filter((c) => c.id !== id));
   };
 
-  const fmt = (amount: number) => formatCurrency(amount);
+  // Detect decimals from items to match receipt format
+  const decimals = detectDecimals(items);
+  const fmt = (amount: number) => formatCurrency(amount, decimals);
 
   // Clear selections when clicking on background
   const handleBackgroundClick = (e: React.MouseEvent) => {

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronDown, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
+  detectDecimals,
   getAvatarColor,
   getInitials,
   calculateParticipantTotal,
@@ -39,7 +40,9 @@ export function StepShare({
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
 
-  const fmt = (amount: number) => formatCurrency(amount);
+  // Detect decimals from items to match receipt format
+  const decimals = detectDecimals(items);
+  const fmt = (amount: number) => formatCurrency(amount, decimals);
 
   // Build session object for calculations
   const session: Session = {

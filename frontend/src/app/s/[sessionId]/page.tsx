@@ -9,7 +9,7 @@ import { StepReview } from "@/components/steps/StepReview";
 import { StepAssign } from "@/components/steps/StepAssign";
 import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
-import { formatCurrency, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
+import { formatCurrency, detectDecimals, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
 import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
 import { getStoredToken, getAuthProviders, type AuthProvider } from "@/lib/auth";
 import { SignInButtons } from "@/components/auth/SignInButtons";
@@ -181,6 +181,9 @@ export default function SessionPage() {
     quantity: item.quantity,
     mode: item.mode,
   }));
+
+  // Detect if prices have decimals to match receipt format
+  const decimals = detectDecimals(items);
 
   const priceMode = session?.price_mode || "unitario";
 
@@ -777,7 +780,7 @@ export default function SessionPage() {
                         <span className="text-primary font-semibold w-8 text-center">{qty}</span>
                         <span className="truncate">{item.name}</span>
                       </div>
-                      <span className="font-semibold tabular-nums">{formatCurrency(displayPrice)}</span>
+                      <span className="font-semibold tabular-nums">{formatCurrency(displayPrice, decimals)}</span>
                     </div>
                   );
                 })
@@ -787,7 +790,7 @@ export default function SessionPage() {
               {items.length > 0 && (
                 <div className="breakdown-row subtotal">
                   <span>{t("totals.subtotal")}</span>
-                  <span>{formatCurrency(items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0))}</span>
+                  <span>{formatCurrency(items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0), decimals)}</span>
                 </div>
               )}
             </div>
@@ -813,7 +816,7 @@ export default function SessionPage() {
                         </span>
                       </span>
                       <span className="font-semibold shrink-0 ml-2">
-                        {charge.isDiscount ? "-" : "+"}{formatCurrency(amount)}
+                        {charge.isDiscount ? "-" : "+"}{formatCurrency(amount, decimals)}
                       </span>
                     </div>
                   );

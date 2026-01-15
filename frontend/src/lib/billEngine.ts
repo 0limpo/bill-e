@@ -102,6 +102,22 @@ export const formatCurrency = (
 };
 
 /**
+ * Detect if any item in the list has decimal prices
+ * Returns 2 if decimals found, 0 otherwise
+ */
+export const detectDecimals = (items: Item[] | undefined): number => {
+  if (!items || items.length === 0) return 0;
+
+  for (const item of items) {
+    // Check if price has decimal part
+    if (item.price % 1 !== 0) return 2;
+    // Also check price_as_shown if available
+    if (item.price_as_shown && item.price_as_shown % 1 !== 0) return 2;
+  }
+  return 0;
+};
+
+/**
  * Generate a consistent color based on index (preferred) or name fallback
  */
 export const getAvatarColor = (name: string, index?: number): string => {
