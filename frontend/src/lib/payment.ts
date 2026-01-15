@@ -151,17 +151,18 @@ export function clearPendingPayment(): void {
 
 /**
  * Start payment flow: create order, store info, redirect to Flow
+ * Requires Google email for premium tracking
  */
 export async function startPaymentFlow(params: {
   user_type: "host" | "editor";
-  phone?: string;
+  google_email: string;  // Required: user must be logged in with Google
   session_id?: string;
   owner_token?: string;
 }): Promise<void> {
   // Create payment order
   const result = await createPayment({
     user_type: params.user_type,
-    phone: params.phone,
+    google_email: params.google_email,
     session_id: params.session_id,
   });
 
@@ -175,7 +176,6 @@ export async function startPaymentFlow(params: {
     session_id: params.session_id || "",
     owner_token: params.owner_token,
     user_type: params.user_type,
-    phone: params.phone,
     created_at: new Date().toISOString(),
   });
 
