@@ -148,6 +148,15 @@ export const translations: Record<Language, Record<string, string>> = {
     "payment.tabCard": "Tarjeta",
     "payment.payWithWebpay": "Pagar con Webpay",
     "payment.webpayRedirectNote": "Serás redirigido a Webpay para seleccionar tu banco",
+    "payment.verifyingDesc": "Espera mientras confirmamos tu pago",
+    "payment.processingDesc": "Tu pago está siendo procesado. Esto puede tomar unos segundos.",
+    "payment.errorInit": "Error al inicializar el pago",
+    "payment.errorRejected": "Pago rechazado",
+    "payment.errorPayment": "Error en el pago",
+    "payment.errorForm": "Error en el formulario",
+    "payment.errorCreateOrder": "Error al crear orden de pago",
+    "payment.errorProcessing": "Error al procesar pago",
+    "payment.errorGoogleLogin": "Error al iniciar sesión con Google",
 
     // Editor (participant view)
     "editor.hostVerifying": "El host está verificando la cuenta. Puedes ver los items mientras esperas.",
@@ -326,6 +335,15 @@ export const translations: Record<Language, Record<string, string>> = {
     "payment.tabCard": "Card",
     "payment.payWithWebpay": "Pay with Webpay",
     "payment.webpayRedirectNote": "You'll be redirected to Webpay to select your bank",
+    "payment.verifyingDesc": "Wait while we confirm your payment",
+    "payment.processingDesc": "Your payment is being processed. This may take a few seconds.",
+    "payment.errorInit": "Error initializing payment",
+    "payment.errorRejected": "Payment rejected",
+    "payment.errorPayment": "Payment error",
+    "payment.errorForm": "Form error",
+    "payment.errorCreateOrder": "Error creating payment order",
+    "payment.errorProcessing": "Error processing payment",
+    "payment.errorGoogleLogin": "Error signing in with Google",
 
     // Editor (participant view)
     "editor.hostVerifying": "The host is verifying the bill. You can see the items while you wait.",

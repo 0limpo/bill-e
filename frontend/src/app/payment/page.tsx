@@ -144,7 +144,7 @@ function PaymentPageContent() {
         setStatus("ready");
       } catch (err: any) {
         console.error("Init error:", err);
-        setError(err.message || "Error initializing payment");
+        setError(err.message || t("payment.errorInit"));
         setStatus("error");
       }
     };
@@ -231,18 +231,18 @@ function PaymentPageContent() {
                     router.push(`/payment/success?session=${sessionId}&status=approved&order=${result.commerce_order}`);
                   }, 1500);
                 } else {
-                  setError(result.status_detail || "Pago rechazado");
+                  setError(result.status_detail || t("payment.errorRejected"));
                   setStatus("error");
                 }
               } catch (err: any) {
                 console.error("Payment error:", err);
-                setError(err.message || "Error en el pago");
+                setError(err.message || t("payment.errorPayment"));
                 setStatus("error");
               }
             },
             onError: (error: any) => {
               console.error("Brick error:", error);
-              setError(error.message || "Error en el formulario");
+              setError(error.message || t("payment.errorForm"));
             },
           },
         });
@@ -270,7 +270,7 @@ function PaymentPageContent() {
       });
 
       if (!result.success || !result.payment_url) {
-        throw new Error("Error al crear orden de pago");
+        throw new Error(t("payment.errorCreateOrder"));
       }
 
       // Store pending payment info
@@ -286,7 +286,7 @@ function PaymentPageContent() {
       window.location.href = result.payment_url;
     } catch (err: any) {
       console.error("Webpay redirect error:", err);
-      setError(err.message || "Error al procesar pago");
+      setError(err.message || t("payment.errorProcessing"));
       setStatus("error");
     }
   };
@@ -301,7 +301,7 @@ function PaymentPageContent() {
       window.location.href = authUrl;
     } catch (err: any) {
       console.error("Google login error:", err);
-      setError(err.message || "Error al iniciar sesión con Google");
+      setError(err.message || t("payment.errorGoogleLogin"));
     }
   };
 

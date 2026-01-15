@@ -159,7 +159,7 @@ function PaymentSuccessContent() {
                 {t("payment.verifying")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {lang === "es" ? "Espera mientras confirmamos tu pago" : "Wait while we confirm your payment"}
+                {t("payment.verifyingDesc")}
               </p>
             </div>
           )}
@@ -171,9 +171,7 @@ function PaymentSuccessContent() {
                 {t("payment.processing")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {lang === "es"
-                  ? "Tu pago está siendo procesado. Esto puede tomar unos segundos."
-                  : "Your payment is being processed. This may take a few seconds."}
+                {t("payment.processingDesc")}
               </p>
             </div>
           )}
