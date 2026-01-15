@@ -173,7 +173,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "payment.continueWithGoogle": "Continuar con Google",
     "payment.authBenefit": "Tu premium quedará vinculado a tu cuenta de Google",
     "payment.loggedInAs": "Conectado como",
-    "payment.premiumLinkedTo": "Premium vinculado a esta cuenta",
+    "payment.premiumLinkedTo": "Tu premium se vinculará a esta cuenta",
 
     // Post Payment Modal
     "postPayment.title": "Premium Activado",
@@ -351,7 +351,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "payment.continueWithGoogle": "Continue with Google",
     "payment.authBenefit": "Your premium will be linked to your Google account",
     "payment.loggedInAs": "Signed in as",
-    "payment.premiumLinkedTo": "Premium linked to this account",
+    "payment.premiumLinkedTo": "Premium will be linked to this account",
 
     // Post Payment Modal
     "postPayment.title": "Premium Activated",
