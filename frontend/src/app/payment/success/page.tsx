@@ -13,6 +13,21 @@ import {
 import { trackPaymentComplete } from "@/lib/tracking";
 import { detectLanguage, getTranslator } from "@/lib/i18n";
 
+// Recover owner token from recent session storage
+function getStoredOwnerToken(sessionId: string): string | null {
+  try {
+    const stored = localStorage.getItem("bill-e-recent-session");
+    if (!stored) return null;
+    const data = JSON.parse(stored);
+    if (data.sessionId === sessionId) {
+      return data.ownerToken;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 type PaymentState = "loading" | "success" | "pending" | "rejected" | "cancelled" | "error";
 
 function PaymentSuccessContent() {
@@ -41,13 +56,19 @@ function PaymentSuccessContent() {
           }
           // Try to check status anyway
           const status = await getPaymentStatus(commerceOrder);
-          handleStatusResponse(status, searchParams.get("session"), null);
+          const sessionId = searchParams.get("session");
+          // Try to recover owner token from recent session storage
+          const recoveredToken = sessionId ? getStoredOwnerToken(sessionId) : null;
+          handleStatusResponse(status, sessionId, recoveredToken);
           return;
         }
 
         // Check payment status
         const status = await getPaymentStatus(pendingPayment.commerce_order);
-        handleStatusResponse(status, pendingPayment.session_id, pendingPayment.owner_token || null);
+        // Use pending payment token, or try to recover from recent session storage
+        const ownerToken = pendingPayment.owner_token ||
+          (pendingPayment.session_id ? getStoredOwnerToken(pendingPayment.session_id) : null);
+        handleStatusResponse(status, pendingPayment.session_id, ownerToken);
       } catch (err) {
         console.error("Error checking payment:", err);
         setState("error");

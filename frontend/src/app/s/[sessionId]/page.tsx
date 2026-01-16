@@ -53,7 +53,15 @@ export default function SessionPage() {
 
   // Use URL token first, fallback to localStorage
   const [ownerToken, setOwnerToken] = useState<string | null>(urlOwnerToken);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Load email synchronously to ensure it's available for autoFinalize
+  const [userEmail, setUserEmail] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const user = getStoredUser();
+      return user?.email || null;
+    }
+    return null;
+  });
 
   useEffect(() => {
     if (!urlOwnerToken) {
@@ -63,14 +71,6 @@ export default function SessionPage() {
       }
     }
   }, [sessionId, urlOwnerToken]);
-
-  // Get logged-in user's email for premium verification
-  useEffect(() => {
-    const user = getStoredUser();
-    if (user?.email) {
-      setUserEmail(user.email);
-    }
-  }, []);
 
   const [step, setStep] = useState(isViewOnly ? 3 : 1);
   const [lang, setLang] = useState<Language>("es");
