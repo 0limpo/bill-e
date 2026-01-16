@@ -536,8 +536,20 @@ Retorna SOLO el JSON, sin explicaciones."""
         """Retorna True si el servicio está disponible."""
         return self.model is not None
 
-# Instancia global del servicio
-gemini_service = GeminiOCRService()
+# Instancia global del servicio (lazy initialization)
+_gemini_service = None
+
+
+def get_gemini_service() -> GeminiOCRService:
+    """
+    Lazy initialization del servicio Gemini.
+    Solo se inicializa cuando se necesita, no durante el import.
+    Esto permite que el servidor inicie rápido y pase los health checks de Render.
+    """
+    global _gemini_service
+    if _gemini_service is None:
+        _gemini_service = GeminiOCRService()
+    return _gemini_service
 
 
 def validate_receipt(image_bytes: bytes) -> bool:
@@ -550,7 +562,7 @@ def validate_receipt(image_bytes: bytes) -> bool:
     Returns:
         True if image appears to be a receipt, False otherwise
     """
-    return gemini_service.is_receipt(image_bytes)
+    return get_gemini_service().is_receipt(image_bytes)
 
 
 def process_image(image_bytes: bytes, skip_validation: bool = False):
@@ -566,11 +578,12 @@ def process_image(image_bytes: bytes, skip_validation: bool = False):
     """
     logger.info("🚀 Iniciando procesamiento con Gemini...")
 
-    if not gemini_service.is_available():
+    service = get_gemini_service()
+    if not service.is_available():
         logger.error("❌ Gemini no disponible")
         raise Exception("Gemini OCR no disponible")
 
-    result = gemini_service.process_image_structured(image_bytes)
+    result = service.process_image_structured(image_bytes)
 
     if not result or not result.get('success'):
         logger.error("❌ Resultado de Gemini no válido")
