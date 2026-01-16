@@ -12,9 +12,10 @@ interface InlineInputProps {
   onSave: (value: string | number) => void;
   className?: string;
   placeholder?: string;
+  decimals?: number;  // For consistent decimal formatting
 }
 
-function InlineInput({ type, value, onSave, className = "", placeholder }: InlineInputProps) {
+function InlineInput({ type, value, onSave, className = "", placeholder, decimals = 0 }: InlineInputProps) {
   const [localVal, setLocalVal] = useState(String(value ?? ""));
   const [isFocused, setIsFocused] = useState(false);
 
@@ -45,7 +46,7 @@ function InlineInput({ type, value, onSave, className = "", placeholder }: Inlin
 
   // Display formatted when not focused, raw when focused
   const displayValue = !isFocused && type === "number"
-    ? formatNumber(Number(value) || 0)
+    ? formatNumber(Number(value) || 0, decimals)
     : localVal;
 
   return (
@@ -291,6 +292,7 @@ export function StepReview({
                   value={displayPrice}
                   className="edit-price"
                   onSave={handlePriceSave}
+                  decimals={decimals}
                 />
                 {isEditing && (
                   <button
@@ -512,6 +514,7 @@ export function StepReview({
                   value={originalSubtotal}
                   className="edit-price text-sm"
                   onSave={(val) => onOriginalSubtotalChange?.(Math.max(0, Number(val)))}
+                  decimals={decimals}
                 />
                 {subtotalMatches ? (
                   <span className="text-green-500 text-sm">✓</span>
@@ -532,6 +535,7 @@ export function StepReview({
                   value={originalTotal}
                   className="edit-price text-sm"
                   onSave={(val) => onOriginalTotalChange?.(Math.max(0, Number(val)))}
+                  decimals={decimals}
                 />
                 {totalMatches ? (
                   <span className="text-green-500 text-sm">✓</span>

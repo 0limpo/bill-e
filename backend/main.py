@@ -720,11 +720,12 @@ async def finalize_session_endpoint(session_id: str, request: Request):
     try:
         data = await request.json()
         owner_token = data.get("owner_token")
+        owner_email = data.get("owner_email")  # Optional - for email-based premium
 
         if not owner_token:
             raise HTTPException(status_code=400, detail="Token de owner requerido")
 
-        result = finalize_session(redis_client, session_id, owner_token)
+        result = finalize_session(redis_client, session_id, owner_token, owner_email)
 
         if "error" in result:
             raise HTTPException(status_code=result.get("code", 400), detail=result["error"])

@@ -678,7 +678,8 @@ def update_assignment(
 def finalize_session(
     redis_client,
     session_id: str,
-    owner_token: str
+    owner_token: str,
+    owner_email: str = None
 ) -> Dict[str, Any]:
     session_data = get_session(redis_client, session_id)
 
@@ -692,15 +693,27 @@ def finalize_session(
         return {"error": "La sesion ya fue finalizada", "code": 400}
 
     # Check host session limit before finalizing
-    # Priority: phone > device_id (for web users without phone)
+    # Priority: email (Google auth) > phone > device_id
     owner_phone = session_data.get("owner_phone", "")
     owner_device_id = session_data.get("owner_device_id", "")
 
-    limit_check = None
-    if owner_phone:
-        limit_check = check_host_session_limit(redis_client, owner_phone, session_id)
-    elif owner_device_id:
-        limit_check = check_host_device_limit(redis_client, owner_device_id, session_id)
+    # First check email-based premium (new simplified system)
+    if owner_email:
+        email_premium = check_premium_by_email(redis_client, owner_email)
+        if email_premium.get("is_premium"):
+            # User has email-based premium - allow unlimited sessions
+            limit_check = {"allowed": True, "is_premium": True, "email": owner_email}
+        else:
+            limit_check = None  # Fall through to phone/device_id check
+    else:
+        limit_check = None
+
+    # Fallback to phone/device_id based limit check
+    if limit_check is None:
+        if owner_phone:
+            limit_check = check_host_session_limit(redis_client, owner_phone, session_id)
+        elif owner_device_id:
+            limit_check = check_host_device_limit(redis_client, owner_device_id, session_id)
 
     if limit_check and not limit_check.get("allowed"):
         return {

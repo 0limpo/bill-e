@@ -387,11 +387,15 @@ export interface FinalizeSessionResponse {
 
 export async function finalizeSession(
   sessionId: string,
-  ownerToken: string
+  ownerToken: string,
+  ownerEmail?: string
 ): Promise<FinalizeSessionResponse> {
   return apiRequest(`/api/session/${sessionId}/finalize`, {
     method: "POST",
-    body: JSON.stringify({ owner_token: ownerToken }),
+    body: JSON.stringify({
+      owner_token: ownerToken,
+      ...(ownerEmail && { owner_email: ownerEmail }),
+    }),
   });
 }
 
