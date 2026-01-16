@@ -303,6 +303,7 @@ class GeminiOCRService:
 
 {
   "precio_modo": "unitario",
+  "moneda_tiene_decimales": false,
   "items": [
     {"nombre": "Coca Cola", "cantidad": 2, "precio": 4000}
   ],
@@ -315,6 +316,7 @@ class GeminiOCRService:
 
 DEFINICIONES:
 - precio_modo: "unitario" si la boleta muestra precio por unidad, "total_linea" si muestra el total de la línea (cantidad × precio)
+- moneda_tiene_decimales: true solo si la moneda usa centavos (USD, EUR, etc). false para pesos chilenos (CLP), pesos mexicanos (MXN), etc.
 - items: productos consumidos (comida, bebida, servicios)
 - precio: el valor TAL CUAL aparece en la boleta (sin modificar). Si la boleta muestra $7000 para 2 cervezas, poner 7000
 - cargos: todo lo que suma o resta al subtotal DESPUÉS de los items:
@@ -326,9 +328,9 @@ DEFINICIONES:
 - es_descuento: true si resta, false si suma
 
 FORMATO NUMÉRICO:
-- Números SIN separadores de miles: 13990, no 13.990
-- Si el total tiene 3+ dígitos después del punto (ej: 111.793), el punto es separador de miles → 111793
-- Si el total tiene 2 dígitos después del punto (ej: 111.79), el punto es decimal → 111.79
+- NUNCA uses separador de miles (ni punto ni coma)
+- Si la moneda NO tiene decimales: números enteros (2500, no 2.500)
+- Si la moneda SÍ tiene decimales: usa punto decimal con máximo 2 dígitos (8.50)
 
 Retorna SOLO el JSON, sin explicaciones."""
 
@@ -472,11 +474,73 @@ Retorna SOLO el JSON, sin explicaciones."""
                             review_message = f"Suma de items (${items_sum}) difiere del subtotal (${subtotal}) en {diff_ratio*100:.1f}%"
                             logger.warning(f"⚠️ {review_message}")
 
-                    # Calcular decimal_places basado en si hay decimales
-                    has_decimals = any(
-                        (it['price'] % 1) != 0 for it in items
-                    ) or (total % 1) != 0
-                    decimal_places = 2 if has_decimals else 0
+                    # Usar moneda_tiene_decimales de Gemini si está disponible
+                    # Esto es más confiable que detectar por los valores
+                    currency_has_decimals = data.get('moneda_tiene_decimales', None)
+
+                    # Post-procesamiento: detectar si los precios parecen usar punto como separador de miles
+                    # Esto ocurre cuando Gemini devuelve 2.500 (que JSON parsea como 2.5) en lugar de 2500
+                    all_prices = [it['price'] for it in items] + [total]
+
+                    # Heurística: si la mayoría de precios son < 100 pero total > 1000, probablemente
+                    # Gemini usó punto como separador de miles
+                    prices_seem_low = sum(1 for p in all_prices if 0 < p < 100) > len(all_prices) * 0.5
+                    total_seems_high_pattern = total > 1000 or (subtotal and subtotal > 1000)
+
+                    # Otra heurística: si los precios tienen decimales pero parecen ser X.XXX (3 dígitos)
+                    # Por ejemplo, 2.5 podría ser 2500, 13.99 podría ser 13990
+                    def looks_like_thousand_sep(price):
+                        """Detecta si el precio parece usar punto como separador de miles."""
+                        if price <= 0:
+                            return False
+                        decimal_part = price % 1
+                        if decimal_part == 0:
+                            return False
+                        # Si multiplicar por 1000 da un número razonable para comida (500-100000)
+                        adjusted = price * 1000
+                        return 500 <= adjusted <= 200000
+
+                    prices_look_like_thousand_sep = sum(
+                        1 for p in all_prices if looks_like_thousand_sep(p)
+                    ) > len(all_prices) * 0.3
+
+                    # Si detectamos patrón de separador de miles, corregir
+                    if prices_look_like_thousand_sep and currency_has_decimals is not True:
+                        logger.info(f"🔧 Detectado patrón de separador de miles, convirtiendo precios...")
+                        logger.info(f"   Antes: items={[it['price'] for it in items]}, total={total}")
+
+                        # Multiplicar precios por 1000
+                        for it in items:
+                            it['price'] = round(it['price'] * 1000)
+                            if 'price_as_shown' in it:
+                                it['price_as_shown'] = round(it['price_as_shown'] * 1000)
+                        total = round(total * 1000)
+                        if subtotal:
+                            subtotal = round(subtotal * 1000)
+
+                        # También convertir cargos fijos (no porcentajes)
+                        for charge in charges:
+                            if charge['valueType'] == 'fixed' and charge['value'] > 0:
+                                old_val = charge['value']
+                                charge['value'] = round(charge['value'] * 1000)
+                                logger.info(f"   Cargo '{charge['name']}': {old_val} → {charge['value']}")
+
+                        # Recalcular items_sum
+                        items_sum = sum(it['price'] * it['quantity'] for it in items)
+
+                        logger.info(f"   Después: items={[it['price'] for it in items]}, total={total}")
+                        currency_has_decimals = False
+
+                    # Calcular decimal_places
+                    if currency_has_decimals is not None:
+                        # Usar lo que dijo Gemini
+                        decimal_places = 2 if currency_has_decimals else 0
+                    else:
+                        # Fallback: detectar por los valores
+                        has_decimals = any(
+                            (it['price'] % 1) != 0 for it in items
+                        ) or (total % 1) != 0
+                        decimal_places = 2 if has_decimals else 0
 
                     # Formato numérico por defecto (chileno)
                     number_format = {'thousands': '.', 'decimal': ','}
@@ -507,7 +571,8 @@ Retorna SOLO el JSON, sin explicaciones."""
                     }
 
                     # Log items
-                    logger.info(f"✅ Gemini extrajo: Total=${total}, Subtotal=${subtotal}, Items={len(items)}, Charges={len(charges)}, PriceMode={price_mode}")
+                    logger.info(f"✅ Gemini extrajo: Total=${total}, Subtotal=${subtotal}, Items={len(items)}, Charges={len(charges)}, PriceMode={price_mode}, DecimalPlaces={decimal_places}")
+                    logger.info(f"💰 Moneda tiene decimales: {currency_has_decimals} → decimal_places={decimal_places}")
                     logger.info(f"📦 Items:")
                     for i, it in enumerate(items):
                         line_total = it['price'] * it['quantity']
