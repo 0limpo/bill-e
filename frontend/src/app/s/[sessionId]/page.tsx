@@ -11,7 +11,7 @@ import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, detectDecimals, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
 import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
-import { getStoredToken, getAuthProviders, type AuthProvider } from "@/lib/auth";
+import { getStoredToken, getStoredUser, getAuthProviders, type AuthProvider } from "@/lib/auth";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import {
   trackStep1Complete,
@@ -53,6 +53,7 @@ export default function SessionPage() {
 
   // Use URL token first, fallback to localStorage
   const [ownerToken, setOwnerToken] = useState<string | null>(urlOwnerToken);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (!urlOwnerToken) {
@@ -62,6 +63,14 @@ export default function SessionPage() {
       }
     }
   }, [sessionId, urlOwnerToken]);
+
+  // Get logged-in user's email for premium verification
+  useEffect(() => {
+    const user = getStoredUser();
+    if (user?.email) {
+      setUserEmail(user.email);
+    }
+  }, []);
 
   const [step, setStep] = useState(isViewOnly ? 3 : 1);
   const [lang, setLang] = useState<Language>("es");
@@ -111,6 +120,7 @@ export default function SessionPage() {
   } = useSession({
     sessionId,
     ownerToken,
+    ownerEmail: userEmail,
     pollInterval: 5000,
     interactionPause: 15000,
   });
@@ -131,7 +141,15 @@ export default function SessionPage() {
   useEffect(() => {
     const autoFinalize = async () => {
       if (paymentSuccess && isOwner && session && session.status !== "finalized") {
-        console.log("Auto-finalizing after payment success");
+        // Wait for email to be loaded from localStorage before finalizing
+        // This ensures premium verification uses the correct email
+        const storedUser = getStoredUser();
+        if (!storedUser?.email && !userEmail) {
+          // No email yet, wait for next render when email is loaded
+          return;
+        }
+
+        console.log("Auto-finalizing after payment success, email:", userEmail || storedUser?.email);
         const result = await finalize();
         if (result.success) {
           setStep(3);
@@ -145,7 +163,7 @@ export default function SessionPage() {
       }
     };
     autoFinalize();
-  }, [paymentSuccess, isOwner, session, finalize, router, updateHostStep]);
+  }, [paymentSuccess, isOwner, session, finalize, router, updateHostStep, userEmail]);
 
   // Load auth providers when paywall is opened
   useEffect(() => {
@@ -182,8 +200,8 @@ export default function SessionPage() {
     mode: item.mode,
   }));
 
-  // Detect if prices have decimals to match receipt format
-  const decimals = detectDecimals(items);
+  // Use decimal_places from backend (OCR), fallback to detection
+  const decimals = session?.decimal_places ?? detectDecimals(items);
 
   const priceMode = session?.price_mode || "unitario";
 
