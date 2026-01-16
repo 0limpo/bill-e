@@ -29,6 +29,7 @@ import {
 export interface UseSessionOptions {
   sessionId: string;
   ownerToken?: string | null;
+  ownerEmail?: string | null;  // For email-based premium verification
   pollInterval?: number;
   interactionPause?: number;
 }
@@ -80,6 +81,7 @@ export interface UseSessionReturn {
 export function useSession({
   sessionId,
   ownerToken,
+  ownerEmail,
   pollInterval = 5000,
   interactionPause = 15000,
 }: UseSessionOptions): UseSessionReturn {
@@ -705,7 +707,7 @@ export function useSession({
     if (!ownerToken) return { success: false };
     markInteraction();
     try {
-      const result = await finalizeSession(sessionId, ownerToken);
+      const result = await finalizeSession(sessionId, ownerToken, ownerEmail || undefined);
 
       // Check if limit was reached
       if (result.error === "limit_reached" || result.requires_payment) {
@@ -727,7 +729,7 @@ export function useSession({
       }
       return { success: false };
     }
-  }, [sessionId, ownerToken, markInteraction]);
+  }, [sessionId, ownerToken, ownerEmail, markInteraction]);
 
   // Reopen session
   const reopen = useCallback(async (): Promise<boolean> => {
