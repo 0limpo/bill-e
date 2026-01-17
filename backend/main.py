@@ -1479,7 +1479,7 @@ async def payment_flow_return(request: Request, token: str = None):
 
         if not token:
             print("Flow return without token")
-            return RedirectResponse(f"{frontend_url}/payment/success?error=no_token")
+            return RedirectResponse(f"{frontend_url}/payment/success?error=no_token", status_code=303)
 
         # Get commerce_order from token
         commerce_order = None
@@ -1508,11 +1508,11 @@ async def payment_flow_return(request: Request, token: str = None):
             redirect_url += "?" + "&".join(params)
 
         print(f"Flow return redirecting to: {redirect_url}")
-        return RedirectResponse(redirect_url)
+        return RedirectResponse(redirect_url, status_code=303)
 
     except Exception as e:
         print(f"Flow return error: {e}")
-        return RedirectResponse(f"{frontend_url}/payment/success?error=redirect_failed")
+        return RedirectResponse(f"{frontend_url}/payment/success?error=redirect_failed", status_code=303)
 
 
 @app.post("/api/payment/webhook")
