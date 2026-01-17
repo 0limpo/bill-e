@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -1373,11 +1373,9 @@ async def create_payment_order(request: CreatePaymentRequest):
 
         url_confirmation = f"{backend_url}/api/payment/webhook"
 
-        # Build return URL with session context
-        if request.session_id:
-            url_return = f"{frontend_url}/payment/success?session={request.session_id}"
-        else:
-            url_return = f"{frontend_url}/payment/success"
+        # Build return URL - Flow redirects user here after payment
+        # Use backend endpoint that handles GET/POST and redirects to frontend
+        url_return = f"{backend_url}/api/payment/flow-return"
 
         # Get configured price
         amount = get_premium_price()
@@ -1457,6 +1455,64 @@ async def create_payment_order(request: CreatePaymentRequest):
     except Exception as e:
         print(f"Payment creation error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/payment/flow-return")
+@app.post("/api/payment/flow-return")
+async def payment_flow_return(request: Request, token: str = None):
+    """
+    Flow.cl return URL handler.
+
+    Flow redirects the user here after payment (can be GET or POST).
+    We redirect them to the frontend payment success page.
+    """
+    frontend_url = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+
+    try:
+        # Get token from query params (GET) or form data (POST)
+        if not token:
+            if request.method == "POST":
+                form_data = await request.form()
+                token = form_data.get("token")
+            else:
+                token = request.query_params.get("token")
+
+        if not token:
+            print("Flow return without token")
+            return RedirectResponse(f"{frontend_url}/payment/success?error=no_token")
+
+        # Get commerce_order from token
+        commerce_order = None
+        if redis_client:
+            commerce_order = redis_client.get(f"payment_token:{token}")
+            if isinstance(commerce_order, bytes):
+                commerce_order = commerce_order.decode('utf-8')
+
+        # Get session_id from payment record
+        session_id = None
+        if commerce_order and redis_client:
+            payment_json = redis_client.get(f"payment:{commerce_order}")
+            if payment_json:
+                payment = json.loads(payment_json)
+                session_id = payment.get("session_id")
+
+        # Build redirect URL
+        redirect_url = f"{frontend_url}/payment/success"
+        params = []
+        if commerce_order:
+            params.append(f"order={commerce_order}")
+        if session_id:
+            params.append(f"session={session_id}")
+
+        if params:
+            redirect_url += "?" + "&".join(params)
+
+        print(f"Flow return redirecting to: {redirect_url}")
+        return RedirectResponse(redirect_url)
+
+    except Exception as e:
+        print(f"Flow return error: {e}")
+        return RedirectResponse(f"{frontend_url}/payment/success?error=redirect_failed")
 
 
 @app.post("/api/payment/webhook")
