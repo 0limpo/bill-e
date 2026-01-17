@@ -398,7 +398,9 @@ function PaymentPageContent() {
         {status === "redirecting" && (
           <div className="text-center py-8">
             <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p className="text-muted-foreground">{t("payment.redirectingMP")}</p>
+            <p className="text-muted-foreground">
+              {activeTab === "webpay" ? t("payment.redirectingWebpay") : t("payment.redirectingMP")}
+            </p>
           </div>
         )}
 

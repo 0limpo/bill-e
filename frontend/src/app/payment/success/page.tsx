@@ -317,7 +317,7 @@ function PaymentSuccessContent() {
 
         {/* Footer */}
         <p className="text-xs text-muted-foreground text-center mt-6">
-          {t("payment.poweredBy")} MercadoPago
+          {t("payment.poweredBy")} {paymentData?.commerce_order?.startsWith("mp_") ? "MercadoPago" : "Flow"}
         </p>
       </div>
     </div>
