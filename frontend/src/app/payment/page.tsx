@@ -227,6 +227,14 @@ function PaymentPageContent() {
 
                 if (result.success) {
                   setStatus("success");
+                  // Update pending payment with the new commerce_order from card payment
+                  storePendingPayment({
+                    commerce_order: result.commerce_order,
+                    session_id: sessionId,
+                    owner_token: ownerToken,
+                    user_type: userType,
+                    created_at: new Date().toISOString(),
+                  });
                   setTimeout(() => {
                     router.push(`/payment/success?session=${sessionId}&status=approved&order=${result.commerce_order}`);
                   }, 1500);
