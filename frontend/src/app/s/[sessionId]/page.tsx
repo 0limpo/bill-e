@@ -173,13 +173,18 @@ export default function SessionPage() {
           clearPendingJoin();
 
           // Re-attempt join with stored info (now premium, should succeed)
+          let result;
           if (pendingJoin.participantId) {
-            await selectParticipant(pendingJoin.participantId, pendingJoin.name);
+            result = await selectParticipant(pendingJoin.participantId, pendingJoin.name);
           } else {
-            await join(pendingJoin.name);
+            result = await join(pendingJoin.name);
           }
-          // After successful join, currentParticipant will be set
-          // and user will see step 1 on next render
+
+          // Go to step 1 after successful join (same pattern as host going to step 3)
+          if (result.success) {
+            setStep(1);
+            window.scrollTo(0, 0);
+          }
         }
         clearPaymentParams();
         return;
