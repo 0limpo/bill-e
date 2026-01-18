@@ -48,6 +48,7 @@ export default function SessionPage() {
   const viewMode = searchParams.get("view");
   const isViewOnly = viewMode === "results";
   const paymentSuccess = searchParams.get("payment") === "success";
+  const payerType = searchParams.get("payer"); // "host" or "editor"
   const authIsPremium = searchParams.get("is_premium");
   const returnedFromAuth = searchParams.has("token");
 
@@ -137,10 +138,30 @@ export default function SessionPage() {
     }
   }, [session?.status, step]);
 
-  // Auto-finalize after successful payment (for hosts returning from payment page)
+  // Handle post-payment redirect
   useEffect(() => {
-    const autoFinalize = async () => {
-      if (paymentSuccess && isOwner && session && session.status !== "finalized") {
+    const handlePostPayment = async () => {
+      if (!paymentSuccess || !session) return;
+
+      // Clear payment params from URL to avoid re-triggering
+      const clearPaymentParams = () => {
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("payment");
+        newUrl.searchParams.delete("payer");
+        router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+      };
+
+      // Editor payment: go to step 1
+      if (payerType === "editor") {
+        console.log("Editor returned from payment, going to step 1");
+        setStep(1);
+        window.scrollTo(0, 0);
+        clearPaymentParams();
+        return;
+      }
+
+      // Host payment: auto-finalize and go to step 3
+      if (isOwner && session.status !== "finalized") {
         // Wait for email to be loaded from localStorage before finalizing
         // This ensures premium verification uses the correct email
         const storedUser = getStoredUser();
@@ -156,14 +177,11 @@ export default function SessionPage() {
           window.scrollTo(0, 0);
           updateHostStep(3);
         }
-        // Clear the payment param from URL to avoid re-triggering
-        const newUrl = new URL(window.location.href);
-        newUrl.searchParams.delete("payment");
-        router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+        clearPaymentParams();
       }
     };
-    autoFinalize();
-  }, [paymentSuccess, isOwner, session, finalize, router, updateHostStep, userEmail]);
+    handlePostPayment();
+  }, [paymentSuccess, payerType, isOwner, session, finalize, router, updateHostStep, userEmail]);
 
   // Load auth providers when paywall is opened
   useEffect(() => {

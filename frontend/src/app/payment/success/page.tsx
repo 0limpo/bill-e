@@ -68,7 +68,7 @@ function PaymentSuccessContent() {
         // Use pending payment token, or try to recover from recent session storage
         const ownerToken = pendingPayment.owner_token ||
           (pendingPayment.session_id ? getStoredOwnerToken(pendingPayment.session_id) : null);
-        handleStatusResponse(status, pendingPayment.session_id, ownerToken);
+        handleStatusResponse(status, pendingPayment.session_id, ownerToken, pendingPayment.user_type);
       } catch (err) {
         console.error("Error checking payment:", err);
         setState("error");
@@ -79,7 +79,8 @@ function PaymentSuccessContent() {
     const handleStatusResponse = (
       status: PaymentStatusResponse,
       sessionId: string | null,
-      ownerToken: string | null
+      ownerToken: string | null,
+      userType?: string
     ) => {
       setPaymentData(status);
 
@@ -94,10 +95,11 @@ function PaymentSuccessContent() {
           // Auto-redirect after 3 seconds
           setTimeout(() => {
             if (sessionId) {
-              const url = ownerToken
-                ? `/s/${sessionId}?owner=${ownerToken}&payment=success`
-                : `/s/${sessionId}?payment=success`;
-              router.push(url);
+              const params = new URLSearchParams();
+              if (ownerToken) params.set("owner", ownerToken);
+              params.set("payment", "success");
+              if (userType) params.set("payer", userType);
+              router.push(`/s/${sessionId}?${params.toString()}`);
             } else {
               router.push("/");
             }
