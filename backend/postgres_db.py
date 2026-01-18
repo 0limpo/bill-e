@@ -980,6 +980,55 @@ def get_user_by_email(email: str) -> Optional[Dict]:
         }
 
 
+def set_premium_by_email(
+    email: str,
+    premium_expires: datetime,
+    payment_id: str = None
+) -> Optional[Dict]:
+    """
+    Set premium status for a user by email.
+    Creates user record if it doesn't exist (for users who pay before OAuth sign-in).
+    This is the persistent PostgreSQL backup for Redis premium data.
+    """
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        email_normalized = email.lower().strip()
+        user = db.query(User).filter(User.email == email_normalized).first()
+
+        if user:
+            # Update existing user
+            user.is_premium = True
+            user.premium_expires = premium_expires
+            if payment_id:
+                user.premium_payment_id = uuid.UUID(payment_id) if isinstance(payment_id, str) else payment_id
+            user.updated_at = datetime.utcnow()
+        else:
+            # Create minimal user record for email (will be linked on OAuth sign-in)
+            user = User(
+                provider=AuthProvider.GOOGLE,  # Assume Google for now
+                provider_id=f"pending_{email_normalized}",  # Placeholder until OAuth
+                email=email_normalized,
+                is_premium=True,
+                premium_expires=premium_expires,
+                premium_payment_id=uuid.UUID(payment_id) if payment_id else None
+            )
+            db.add(user)
+
+        db.flush()
+
+        return {
+            "email": email_normalized,
+            "is_premium": True,
+            "premium_expires": premium_expires.isoformat(),
+            "user_existed": user is not None
+        }
+
+
 def link_device_to_user(user_id: str, device_id: str) -> Optional[Dict]:
     """Link a device_id to an existing user."""
     if not db_available:

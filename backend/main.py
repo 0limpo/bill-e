@@ -1618,6 +1618,15 @@ async def payment_webhook(request: Request):
                 )
                 print(f"PostgreSQL payment record updated: {commerce_order}")
 
+                # Also persist premium status to User table (backup for Redis)
+                if google_email and premium_expires_dt:
+                    postgres_db.set_premium_by_email(
+                        email=google_email,
+                        premium_expires=premium_expires_dt,
+                        payment_id=commerce_order
+                    )
+                    print(f"PostgreSQL user premium status updated for: {google_email}")
+
             # Emit boleta electrónica (non-blocking - premium already activated)
             if boleta_available:
                 try:
@@ -2096,6 +2105,15 @@ async def mp_webhook(request: Request):
                 email=google_email
             )
             print(f"PostgreSQL payment record updated: {external_reference}")
+
+            # Also persist premium status to User table (backup for Redis)
+            if google_email and premium_expires_dt:
+                postgres_db.set_premium_by_email(
+                    email=google_email,
+                    premium_expires=premium_expires_dt,
+                    payment_id=external_reference
+                )
+                print(f"PostgreSQL user premium status updated for: {google_email}")
 
         return {"status": "ok"}
 
