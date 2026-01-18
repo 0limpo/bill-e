@@ -16,4 +16,4 @@ services:
     plan: starter
     schedule: "*/15 * * * *"
     buildCommand: "pip install requests"
-    startCommand: "python -c \"import requests; r = requests.post('https://bill-e-backend-lfwp.onrender.com/api/cron/full-sync'); print(r.status_code, r.text)\""
+    startCommand: "python -c \"import requests; import os; r = requests.post('https://bill-e-backend-lfwp.onrender.com/api/cron/full-sync', params={'secret': os.getenv('ADMIN_SECRET', 'bill-e-admin-2024')}); print(r.status_code, r.text)\""
