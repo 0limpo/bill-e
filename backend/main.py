@@ -1599,33 +1599,36 @@ async def payment_webhook(request: Request):
 
             payment["premium_expires"] = premium_expires
 
-            # Update PostgreSQL for persistence
+            # Update PostgreSQL for persistence (non-blocking - Redis is source of truth)
             if postgres_available:
-                premium_expires_dt = None
-                if premium_expires:
-                    try:
-                        premium_expires_dt = datetime.fromisoformat(premium_expires)
-                    except:
-                        pass
+                try:
+                    premium_expires_dt = None
+                    if premium_expires:
+                        try:
+                            premium_expires_dt = datetime.fromisoformat(premium_expires)
+                        except:
+                            pass
 
-                postgres_db.update_payment_status(
-                    commerce_order=commerce_order,
-                    status="paid",
-                    processor_payment_id=str(flow_status.get("flowOrder", "")),
-                    processor_response=flow_status,
-                    premium_expires=premium_expires_dt,
-                    email=google_email
-                )
-                print(f"PostgreSQL payment record updated: {commerce_order}")
-
-                # Also persist premium status to User table (backup for Redis)
-                if google_email and premium_expires_dt:
-                    postgres_db.set_premium_by_email(
-                        email=google_email,
+                    postgres_db.update_payment_status(
+                        commerce_order=commerce_order,
+                        status="paid",
+                        processor_payment_id=str(flow_status.get("flowOrder", "")),
+                        processor_response=flow_status,
                         premium_expires=premium_expires_dt,
-                        payment_id=commerce_order
+                        email=google_email
                     )
-                    print(f"PostgreSQL user premium status updated for: {google_email}")
+                    print(f"PostgreSQL payment record updated: {commerce_order}")
+
+                    # Also persist premium status to User table (backup for Redis)
+                    if google_email and premium_expires_dt:
+                        postgres_db.set_premium_by_email(
+                            email=google_email,
+                            premium_expires=premium_expires_dt,
+                            payment_id=commerce_order
+                        )
+                        print(f"PostgreSQL user premium status updated for: {google_email}")
+                except Exception as pg_error:
+                    print(f"PostgreSQL update error (non-critical, Redis is source of truth): {pg_error}")
 
             # Emit boleta electrónica (non-blocking - premium already activated)
             if boleta_available:
@@ -2086,34 +2089,37 @@ async def mp_webhook(request: Request):
             json.dumps(payment)
         )
 
-        # Also update PostgreSQL for persistence
+        # Also update PostgreSQL for persistence (non-blocking - Redis is source of truth)
         if postgres_available and payment.get("status") == "paid":
-            premium_expires_dt = None
-            if payment.get("premium_expires"):
-                try:
-                    premium_expires_dt = datetime.fromisoformat(payment["premium_expires"])
-                except:
-                    pass
+            try:
+                premium_expires_dt = None
+                if payment.get("premium_expires"):
+                    try:
+                        premium_expires_dt = datetime.fromisoformat(payment["premium_expires"])
+                    except:
+                        pass
 
-            google_email = payment.get("google_email")
-            postgres_db.update_payment_status(
-                commerce_order=external_reference,
-                status="paid",
-                processor_payment_id=str(payment_id),
-                processor_response=mp_payment,
-                premium_expires=premium_expires_dt,
-                email=google_email
-            )
-            print(f"PostgreSQL payment record updated: {external_reference}")
-
-            # Also persist premium status to User table (backup for Redis)
-            if google_email and premium_expires_dt:
-                postgres_db.set_premium_by_email(
-                    email=google_email,
+                google_email = payment.get("google_email")
+                postgres_db.update_payment_status(
+                    commerce_order=external_reference,
+                    status="paid",
+                    processor_payment_id=str(payment_id),
+                    processor_response=mp_payment,
                     premium_expires=premium_expires_dt,
-                    payment_id=external_reference
+                    email=google_email
                 )
-                print(f"PostgreSQL user premium status updated for: {google_email}")
+                print(f"PostgreSQL payment record updated: {external_reference}")
+
+                # Also persist premium status to User table (backup for Redis)
+                if google_email and premium_expires_dt:
+                    postgres_db.set_premium_by_email(
+                        email=google_email,
+                        premium_expires=premium_expires_dt,
+                        payment_id=external_reference
+                    )
+                    print(f"PostgreSQL user premium status updated for: {google_email}")
+            except Exception as pg_error:
+                print(f"PostgreSQL update error (non-critical): {pg_error}")
 
         return {"status": "ok"}
 
