@@ -204,7 +204,19 @@ def check_editor_device_limit(
                         "unlimited": True
                     }
         except Exception as e:
-            print(f"Error checking premium by email: {e}")
+            print(f"Error checking premium by email in postgres: {e}")
+
+    # Check if premium by email in Redis (set by set_premium_by_email after payment)
+    if google_email:
+        premium_check = check_premium_by_email(redis_client, google_email)
+        print(f"Redis premium check for {google_email}: {premium_check}")
+        if premium_check.get("is_premium"):
+            return {
+                "allowed": True,
+                "sessions_used": len(sessions),
+                "is_premium": True,
+                "unlimited": premium_check.get("unlimited", True)
+            }
 
     # Check if premium (stored in device data) - legacy fallback
     device_data_key = f"editor_device_data:{device_id}"
