@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { Loader2 } from "lucide-react";
 import { createCollaborativeSession } from "@/lib/api";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 
@@ -223,7 +224,7 @@ export default function LandingPage() {
       <div className="w-full max-w-sm">
         {isLoading ? (
           <div className="h-14 flex items-center justify-center gap-2 text-muted-foreground">
-            <span className="animate-spin">⏳</span>
+            <Loader2 className="w-5 h-5 animate-spin" />
             {status || "Procesando..."}
           </div>
         ) : (
