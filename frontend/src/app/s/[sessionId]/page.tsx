@@ -419,15 +419,16 @@ export default function SessionPage() {
 
   // --- Render States ---
 
-  // Loading - also show loading while waiting for auto-finalize after payment
+  // Loading - also show loading while waiting for auto-finalize/auto-join after payment
   const waitingForAutoFinalize = paymentSuccess && isOwner && session?.status !== "finalized";
-  if (loading || waitingForAutoFinalize) {
+  const waitingForAutoJoin = paymentSuccess && !isOwner && !currentParticipant && getPendingJoin() !== null;
+  if (loading || waitingForAutoFinalize || waitingForAutoJoin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">
-            {waitingForAutoFinalize ? "Finalizando..." : "Cargando sesión..."}
+            {waitingForAutoFinalize ? "Finalizando..." : waitingForAutoJoin ? "Uniéndose..." : "Cargando sesión..."}
           </p>
         </div>
       </div>
