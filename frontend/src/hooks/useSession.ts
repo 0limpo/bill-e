@@ -49,8 +49,8 @@ export interface UseSessionReturn {
   markInteraction: () => void;
 
   // Participant actions
-  join: (name: string, phone?: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number; isNew?: boolean }>;
-  selectParticipant: (participantId: string, name: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
+  join: (name: string, phone?: string, emailOverride?: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number; isNew?: boolean }>;
+  selectParticipant: (participantId: string, name: string, emailOverride?: string) => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
   addParticipant: (name: string, phone?: string) => Promise<boolean>;
   removeParticipantById: (participantId: string) => Promise<boolean>;
   updateParticipantName: (participantId: string, name: string) => Promise<boolean>;
@@ -199,12 +199,14 @@ export function useSession({
 
   // Join session - returns result with status info
   const join = useCallback(
-    async (name: string, phone?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number; isNew?: boolean }> => {
+    async (name: string, phone?: string, emailOverride?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number; isNew?: boolean }> => {
       markInteraction();
       try {
         // Get editor's google email for premium check
+        // Use emailOverride if provided (e.g., from post-payment flow), otherwise get from stored user
         const storedUser = getStoredUser();
-        const googleEmail = storedUser?.email || undefined;
+        const googleEmail = emailOverride || storedUser?.email || undefined;
+        console.log("Join: using googleEmail:", googleEmail);
         const result = await joinSession(sessionId, name, phone, googleEmail);
 
         // Check if limit reached
@@ -238,11 +240,13 @@ export function useSession({
 
   // Select existing participant (checks device limit first)
   const selectParticipant = useCallback(
-    async (participantId: string, name: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
+    async (participantId: string, name: string, emailOverride?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
       try {
         // Get editor's google email for premium check
+        // Use emailOverride if provided (e.g., from post-payment flow), otherwise get from stored user
         const storedUser = getStoredUser();
-        const googleEmail = storedUser?.email || undefined;
+        const googleEmail = emailOverride || storedUser?.email || undefined;
+        console.log("SelectParticipant: using googleEmail:", googleEmail);
         // Check device limit via API
         const result = await selectExistingParticipant(sessionId, participantId, googleEmail);
 

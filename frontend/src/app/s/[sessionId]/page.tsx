@@ -171,14 +171,20 @@ export default function SessionPage() {
       if (pendingJoin) {
         console.log("Editor returned from payment, auto-joining with:", pendingJoin.name);
 
+        // Get the user's email explicitly (same pattern as host flow)
+        // This ensures premium verification works after payment
+        const storedUser = getStoredUser();
+        const editorEmail = storedUser?.email || undefined;
+        console.log("Editor email for premium check:", editorEmail);
+
         // Re-attempt join with stored info (now premium, should succeed)
         let result;
         if (pendingJoin.participantId) {
           console.log("Selecting existing participant:", pendingJoin.participantId);
-          result = await selectParticipant(pendingJoin.participantId, pendingJoin.name);
+          result = await selectParticipant(pendingJoin.participantId, pendingJoin.name, editorEmail);
         } else {
           console.log("Joining as new participant");
-          result = await join(pendingJoin.name);
+          result = await join(pendingJoin.name, undefined, editorEmail);
         }
 
         console.log("Join/select result:", result);

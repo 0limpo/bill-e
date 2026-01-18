@@ -612,12 +612,16 @@ async def join_session(session_id: str, request: Request):
         device_id = data.get("device_id", "").strip()
         google_email = data.get("google_email", "").strip() or None  # For premium check
 
+        # Debug logging
+        print(f"JOIN REQUEST: name={name}, device_id={device_id[:8] if device_id else 'none'}..., google_email={google_email}")
+
         if not name:
             raise HTTPException(status_code=400, detail="El nombre es requerido")
 
         # Check device limit if device_id provided
         if device_id:
             limit_check = check_editor_device_limit(redis_client, device_id, session_id, google_email)
+            print(f"JOIN LIMIT CHECK: {limit_check}")
 
             if not limit_check.get("allowed"):
                 # Limit reached - return paywall status
