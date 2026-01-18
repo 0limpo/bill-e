@@ -91,6 +91,20 @@ export default function SessionPage() {
   const [premiumPrice] = useState(1990); // Default, could fetch from API
   const [selectingParticipant, setSelectingParticipant] = useState<string | null>(null);
 
+  // Store pending join info for after payment
+  const storePendingJoin = (name: string, participantId?: string) => {
+    localStorage.setItem(`pending-join-${sessionId}`, JSON.stringify({ name, participantId }));
+  };
+  const getPendingJoin = (): { name: string; participantId?: string } | null => {
+    try {
+      const stored = localStorage.getItem(`pending-join-${sessionId}`);
+      return stored ? JSON.parse(stored) : null;
+    } catch { return null; }
+  };
+  const clearPendingJoin = () => {
+    localStorage.removeItem(`pending-join-${sessionId}`);
+  };
+
   // Auth providers for paywall sign-in
   const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
   const [showNoPremiumWarning, setShowNoPremiumWarning] = useState(false);
@@ -151,10 +165,22 @@ export default function SessionPage() {
         router.replace(newUrl.pathname + newUrl.search, { scroll: false });
       };
 
-      // Editor payment: clear params and let natural flow take over
-      // (they'll see join screen because they don't have currentParticipant yet)
+      // Editor payment: auto-join with stored name, then go to step 1
       if (payerType === "editor") {
-        console.log("Editor returned from payment, showing join screen");
+        const pendingJoin = getPendingJoin();
+        if (pendingJoin) {
+          console.log("Editor returned from payment, auto-joining with:", pendingJoin.name);
+          clearPendingJoin();
+
+          // Re-attempt join with stored info (now premium, should succeed)
+          if (pendingJoin.participantId) {
+            await selectParticipant(pendingJoin.participantId, pendingJoin.name);
+          } else {
+            await join(pendingJoin.name);
+          }
+          // After successful join, currentParticipant will be set
+          // and user will see step 1 on next render
+        }
         clearPaymentParams();
         return;
       }
@@ -180,7 +206,7 @@ export default function SessionPage() {
       }
     };
     handlePostPayment();
-  }, [paymentSuccess, payerType, isOwner, session, finalize, router, updateHostStep, userEmail]);
+  }, [paymentSuccess, payerType, isOwner, session, finalize, router, updateHostStep, userEmail, join, selectParticipant, sessionId]);
 
   // Load auth providers when paywall is opened
   useEffect(() => {
@@ -251,6 +277,7 @@ export default function SessionPage() {
     if (result.limitReached) {
       trackPaywallShown(sessionId);
       setSessionsUsed(result.sessionsUsed || 0);
+      storePendingJoin(joinName.trim()); // Store name for after payment
       setShowPaywall(true);
     } else if (!result.success) {
       setJoinError("No se pudo unir. La sesión puede estar finalizada o no existe.");
@@ -505,6 +532,7 @@ export default function SessionPage() {
                       setSelectingParticipant(null);
                       if (result.limitReached) {
                         setSessionsUsed(result.sessionsUsed || 0);
+                        storePendingJoin(p.name, p.id); // Store for after payment
                         setShowPaywall(true);
                       }
                     }}
