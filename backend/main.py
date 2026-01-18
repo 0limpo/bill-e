@@ -1763,13 +1763,16 @@ async def create_mp_preference(request: MPPreferenceRequest):
 
         notification_url = f"{backend_url}/api/mercadopago/webhook"
 
-        # Build return URLs with session context
+        # Build return URLs with session context and user_type
         base_return = f"{frontend_url}/payment/success"
+        params = []
         if request.session_id:
-            base_return = f"{base_return}?session={request.session_id}"
-            separator = "&"
-        else:
-            separator = "?"
+            params.append(f"session={request.session_id}")
+        if request.user_type:
+            params.append(f"type={request.user_type}")
+
+        base_return = f"{base_return}?{'&'.join(params)}" if params else base_return
+        separator = "&" if params else "?"
 
         success_url = f"{base_return}{separator}status=approved"
         failure_url = f"{base_return}{separator}status=rejected"
