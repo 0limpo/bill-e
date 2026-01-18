@@ -610,13 +610,14 @@ async def join_session(session_id: str, request: Request):
         name = data.get("name", "").strip()
         phone = data.get("phone", "").strip() or "N/A"  # Phone is now optional
         device_id = data.get("device_id", "").strip()
+        google_email = data.get("google_email", "").strip() or None  # For premium check
 
         if not name:
             raise HTTPException(status_code=400, detail="El nombre es requerido")
 
         # Check device limit if device_id provided
         if device_id:
-            limit_check = check_editor_device_limit(redis_client, device_id, session_id)
+            limit_check = check_editor_device_limit(redis_client, device_id, session_id, google_email)
 
             if not limit_check.get("allowed"):
                 # Limit reached - return paywall status
@@ -657,13 +658,14 @@ async def select_existing_participant(session_id: str, request: Request):
         data = await request.json()
         participant_id = data.get("participant_id", "").strip()
         device_id = data.get("device_id", "").strip()
+        google_email = data.get("google_email", "").strip() or None  # For premium check
 
         if not participant_id:
             raise HTTPException(status_code=400, detail="participant_id es requerido")
 
         # Check device limit if device_id provided
         if device_id:
-            limit_check = check_editor_device_limit(redis_client, device_id, session_id)
+            limit_check = check_editor_device_limit(redis_client, device_id, session_id, google_email)
 
             if not limit_check.get("allowed"):
                 # Limit reached - return paywall status
@@ -1488,13 +1490,15 @@ async def payment_flow_return(request: Request, token: str = None):
             if isinstance(commerce_order, bytes):
                 commerce_order = commerce_order.decode('utf-8')
 
-        # Get session_id from payment record
+        # Get session_id and user_type from payment record
         session_id = None
+        user_type = None
         if commerce_order and redis_client:
             payment_json = redis_client.get(f"payment:{commerce_order}")
             if payment_json:
                 payment = json.loads(payment_json)
                 session_id = payment.get("session_id")
+                user_type = payment.get("user_type")
 
         # Build redirect URL
         redirect_url = f"{frontend_url}/payment/success"
@@ -1503,6 +1507,8 @@ async def payment_flow_return(request: Request, token: str = None):
             params.append(f"order={commerce_order}")
         if session_id:
             params.append(f"session={session_id}")
+        if user_type:
+            params.append(f"type={user_type}")
 
         if params:
             redirect_url += "?" + "&".join(params)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getStoredUser } from "@/lib/auth";
 import {
   loadSession,
   pollSession,
@@ -201,7 +202,10 @@ export function useSession({
     async (name: string, phone?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number; isNew?: boolean }> => {
       markInteraction();
       try {
-        const result = await joinSession(sessionId, name, phone);
+        // Get editor's google email for premium check
+        const storedUser = getStoredUser();
+        const googleEmail = storedUser?.email || undefined;
+        const result = await joinSession(sessionId, name, phone, googleEmail);
 
         // Check if limit reached
         if (result.status === "limit_reached") {
@@ -236,8 +240,11 @@ export function useSession({
   const selectParticipant = useCallback(
     async (participantId: string, name: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
       try {
+        // Get editor's google email for premium check
+        const storedUser = getStoredUser();
+        const googleEmail = storedUser?.email || undefined;
         // Check device limit via API
-        const result = await selectExistingParticipant(sessionId, participantId);
+        const result = await selectExistingParticipant(sessionId, participantId, googleEmail);
 
         // Check if limit reached
         if (result.status === "limit_reached") {

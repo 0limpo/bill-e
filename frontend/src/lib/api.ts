@@ -166,12 +166,13 @@ export interface JoinSessionResponse {
 export async function joinSession(
   sessionId: string,
   name: string,
-  phone?: string
+  phone?: string,
+  googleEmail?: string
 ): Promise<JoinSessionResponse> {
   const deviceId = getDeviceId();
   return apiRequest(`/api/session/${sessionId}/join`, {
     method: "POST",
-    body: JSON.stringify({ name, phone, device_id: deviceId }),
+    body: JSON.stringify({ name, phone, device_id: deviceId, google_email: googleEmail }),
   });
 }
 
@@ -188,12 +189,13 @@ export interface SelectParticipantResponse {
  */
 export async function selectExistingParticipant(
   sessionId: string,
-  participantId: string
+  participantId: string,
+  googleEmail?: string
 ): Promise<SelectParticipantResponse> {
   const deviceId = getDeviceId();
   return apiRequest<SelectParticipantResponse>(`/api/session/${sessionId}/select-participant`, {
     method: "POST",
-    body: JSON.stringify({ participant_id: participantId, device_id: deviceId }),
+    body: JSON.stringify({ participant_id: participantId, device_id: deviceId, google_email: googleEmail }),
   });
 }
 

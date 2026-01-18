@@ -155,7 +155,8 @@ EDITOR_FREE_SESSIONS = 0  # Paywall enabled for testing
 def check_editor_device_limit(
     redis_client,
     device_id: str,
-    session_id: str
+    session_id: str,
+    google_email: str = None
 ) -> Dict[str, Any]:
     """
     Check if editor device has exceeded free session limit.
@@ -176,7 +177,22 @@ def check_editor_device_limit(
             "is_returning": True
         }
 
-    # Check if premium (stored in device data)
+    # Check if premium by google_email (database check)
+    if google_email:
+        try:
+            import postgres_db
+            is_premium, _ = postgres_db.check_premium_status(google_email)
+            if is_premium:
+                return {
+                    "allowed": True,
+                    "sessions_used": len(sessions),
+                    "is_premium": True,
+                    "unlimited": True
+                }
+        except Exception as e:
+            print(f"Error checking premium by email: {e}")
+
+    # Check if premium (stored in device data) - legacy fallback
     device_data_key = f"editor_device_data:{device_id}"
     device_data_json = redis_client.get(device_data_key)
     device_data = json.loads(device_data_json) if device_data_json else {}

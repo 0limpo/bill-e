@@ -57,9 +57,11 @@ function PaymentSuccessContent() {
           // Try to check status anyway
           const status = await getPaymentStatus(commerceOrder);
           const sessionId = searchParams.get("session");
+          // Get user_type from URL (passed by backend for Flow)
+          const userType = searchParams.get("type") as "host" | "editor" | null;
           // Try to recover owner token from recent session storage
           const recoveredToken = sessionId ? getStoredOwnerToken(sessionId) : null;
-          handleStatusResponse(status, sessionId, recoveredToken);
+          handleStatusResponse(status, sessionId, recoveredToken, userType || undefined);
           return;
         }
 
