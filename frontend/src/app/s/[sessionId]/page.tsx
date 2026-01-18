@@ -767,7 +767,7 @@ export default function SessionPage() {
                 <div key={s.num} className="flex items-center">
                   {/* Step */}
                   <button
-                    className="flex flex-col items-center gap-1.5"
+                    className="flex flex-col items-center gap-1.5 w-[72px]"
                     onClick={() => !isViewOnly && s.num <= step && goToStep(s.num)}
                     disabled={isViewOnly || s.num > step}
                   >
@@ -785,7 +785,7 @@ export default function SessionPage() {
                     </span>
                     {/* Label */}
                     <span
-                      className={`text-base font-medium flex items-center gap-1 ${
+                      className={`text-sm font-medium flex items-center justify-center gap-1 ${
                         s.num === step
                           ? "text-foreground"
                           : "text-muted-foreground"
@@ -808,14 +808,8 @@ export default function SessionPage() {
               </div>
             </div>
 
-            {/* Right column: Language + Role + Sessions */}
+            {/* Right column: Role + Sessions */}
             <div className="flex flex-col items-end gap-0.5">
-              <button
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                onClick={() => setLang(lang === "es" ? "en" : "es")}
-              >
-                {lang === "es" ? "EN" : "ES"}
-              </button>
               <span className="text-xs text-primary/60">
                 {isOwner ? "Host" : currentParticipant?.name || "Editor"}
               </span>
