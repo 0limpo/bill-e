@@ -181,14 +181,28 @@ def check_editor_device_limit(
     if google_email:
         try:
             import postgres_db
-            is_premium, _ = postgres_db.check_premium_status(google_email)
-            if is_premium:
-                return {
-                    "allowed": True,
-                    "sessions_used": len(sessions),
-                    "is_premium": True,
-                    "unlimited": True
-                }
+            user = postgres_db.get_user_by_email(google_email)
+            if user and user.get("is_premium"):
+                # Check if premium has expired
+                premium_expires = user.get("premium_expires")
+                if premium_expires:
+                    from datetime import datetime
+                    expiry_date = datetime.fromisoformat(premium_expires)
+                    if datetime.now() <= expiry_date:
+                        return {
+                            "allowed": True,
+                            "sessions_used": len(sessions),
+                            "is_premium": True,
+                            "unlimited": True
+                        }
+                else:
+                    # No expiry = unlimited premium
+                    return {
+                        "allowed": True,
+                        "sessions_used": len(sessions),
+                        "is_premium": True,
+                        "unlimited": True
+                    }
         except Exception as e:
             print(f"Error checking premium by email: {e}")
 
