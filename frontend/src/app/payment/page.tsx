@@ -59,13 +59,16 @@ function PaymentPageContent() {
           url.searchParams.delete("is_premium");
           window.history.replaceState({}, "", url.toString());
 
-          // If user is already premium, redirect to session (they already paid)
+          // If user is already premium, redirect to session with payment params for auto-join
           if (callbackResult.isPremium || verifiedUser.is_premium) {
             console.log("User is already premium, redirecting to session");
             if (sessionId) {
-              const redirectUrl = userType === "host" && ownerToken
+              // Include payment=success so session page triggers auto-join
+              const baseUrl = userType === "host" && ownerToken
                 ? `/s/${sessionId}?owner=${ownerToken}`
                 : `/s/${sessionId}`;
+              const separator = baseUrl.includes("?") ? "&" : "?";
+              const redirectUrl = `${baseUrl}${separator}payment=success&payer=${userType}`;
               router.push(redirectUrl);
               return;
             }
@@ -86,13 +89,16 @@ function PaymentPageContent() {
         if (freshUser) {
           setStoredUser(freshUser); // Update cached user
 
-          // If user is now premium, redirect to session
+          // If user is now premium, redirect to session with payment params for auto-join
           if (freshUser.is_premium) {
             console.log("User is premium (verified with backend), redirecting to session");
             if (sessionId) {
-              const redirectUrl = userType === "host" && ownerToken
+              // Include payment=success so session page triggers auto-join
+              const baseUrl = userType === "host" && ownerToken
                 ? `/s/${sessionId}?owner=${ownerToken}`
                 : `/s/${sessionId}`;
+              const separator = baseUrl.includes("?") ? "&" : "?";
+              const redirectUrl = `${baseUrl}${separator}payment=success&payer=${userType}`;
               router.push(redirectUrl);
               return;
             }
