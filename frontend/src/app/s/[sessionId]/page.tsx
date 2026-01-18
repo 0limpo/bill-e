@@ -166,27 +166,43 @@ export default function SessionPage() {
       };
 
       // Editor payment: auto-join with stored name, then go to step 1
-      if (payerType === "editor") {
-        const pendingJoin = getPendingJoin();
-        if (pendingJoin) {
-          console.log("Editor returned from payment, auto-joining with:", pendingJoin.name);
-          clearPendingJoin();
+      // Check for pendingJoin existence (more reliable than payerType from URL)
+      const pendingJoin = getPendingJoin();
+      if (pendingJoin) {
+        console.log("Editor returned from payment, auto-joining with:", pendingJoin.name);
 
-          // Re-attempt join with stored info (now premium, should succeed)
-          let result;
-          if (pendingJoin.participantId) {
-            result = await selectParticipant(pendingJoin.participantId, pendingJoin.name);
-          } else {
-            result = await join(pendingJoin.name);
-          }
-
-          // Go to step 1 after successful join (same pattern as host going to step 3)
-          if (result.success) {
-            setStep(1);
-            window.scrollTo(0, 0);
-          }
+        // Re-attempt join with stored info (now premium, should succeed)
+        let result;
+        if (pendingJoin.participantId) {
+          console.log("Selecting existing participant:", pendingJoin.participantId);
+          result = await selectParticipant(pendingJoin.participantId, pendingJoin.name);
+        } else {
+          console.log("Joining as new participant");
+          result = await join(pendingJoin.name);
         }
-        clearPaymentParams();
+
+        console.log("Join/select result:", result);
+
+        // Go to step 1 after successful join (same pattern as host going to step 3)
+        if (result.success) {
+          console.log("Join successful, setting step to 1");
+          clearPendingJoin(); // Only clear on success
+          setStep(1);
+          window.scrollTo(0, 0);
+          clearPaymentParams();
+        } else if (result.limitReached) {
+          // Payment didn't process in time? Show paywall again
+          console.log("Limit still reached after payment, showing paywall");
+          clearPendingJoin(); // Clear to avoid infinite loop
+          setSessionsUsed(result.sessionsUsed || 0);
+          setShowPaywall(true);
+          clearPaymentParams();
+        } else {
+          // Other failure - clear and show join screen
+          console.log("Join failed for unknown reason");
+          clearPendingJoin();
+          clearPaymentParams();
+        }
         return;
       }
 

@@ -236,7 +236,7 @@ function PaymentPageContent() {
                     created_at: new Date().toISOString(),
                   });
                   setTimeout(() => {
-                    router.push(`/payment/success?session=${sessionId}&status=approved&order=${result.commerce_order}`);
+                    router.push(`/payment/success?session=${sessionId}&type=${userType}&status=approved&order=${result.commerce_order}`);
                   }, 1500);
                 } else {
                   setError(result.status_detail || t("payment.errorRejected"));
