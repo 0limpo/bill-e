@@ -523,6 +523,24 @@ export default function SessionPage() {
               )}
             </div>
 
+            {/* Already have premium - Sign in option */}
+            <div className="bg-card rounded-2xl p-4 border border-border mb-4">
+              <p className="text-sm text-center text-muted-foreground mb-3">
+                {t("paywall.alreadyHavePremium")}
+              </p>
+              {authProviders.length > 0 ? (
+                <SignInButtons
+                  providers={authProviders}
+                  redirectTo={`${window.location.origin}/payment?session=${sessionId}&type=editor`}
+                  variant="compact"
+                />
+              ) : (
+                <div className="flex justify-center py-2">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+
             <button
               onClick={() => window.history.back()}
               className="w-full text-sm text-muted-foreground hover:text-foreground"
