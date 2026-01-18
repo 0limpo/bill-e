@@ -151,11 +151,10 @@ export default function SessionPage() {
         router.replace(newUrl.pathname + newUrl.search, { scroll: false });
       };
 
-      // Editor payment: go to step 1
+      // Editor payment: clear params and let natural flow take over
+      // (they'll see join screen because they don't have currentParticipant yet)
       if (payerType === "editor") {
-        console.log("Editor returned from payment, going to step 1");
-        setStep(1);
-        window.scrollTo(0, 0);
+        console.log("Editor returned from payment, showing join screen");
         clearPaymentParams();
         return;
       }
