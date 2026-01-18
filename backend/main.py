@@ -3311,6 +3311,85 @@ async def verify_auth_token(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================================================
+# DEBUG ENDPOINTS (remove in production)
+# ============================================================================
+
+@app.delete("/api/debug/premium/{email}")
+async def debug_delete_premium(email: str):
+    """
+    DEBUG: Delete premium status for an email.
+    Removes from both Redis and PostgreSQL.
+    """
+    email_normalized = email.lower().strip()
+    results = {
+        "email": email_normalized,
+        "redis_deleted": False,
+        "postgres_updated": False
+    }
+
+    # Delete from Redis
+    redis_key = f"premium_email:{email_normalized}"
+    deleted = redis_client.delete(redis_key)
+    results["redis_deleted"] = deleted > 0
+    results["redis_key"] = redis_key
+
+    # Update PostgreSQL
+    if postgres_available:
+        try:
+            from sqlalchemy import update
+            with postgres_db.get_db() as db:
+                if db:
+                    user = db.query(postgres_db.User).filter(
+                        postgres_db.User.email == email_normalized
+                    ).first()
+                    if user:
+                        user.is_premium = False
+                        user.premium_expires = None
+                        db.flush()
+                        results["postgres_updated"] = True
+                        results["user_id"] = str(user.id)
+        except Exception as e:
+            results["postgres_error"] = str(e)
+
+    print(f"DEBUG: Deleted premium for {email_normalized}: {results}")
+    return results
+
+
+@app.get("/api/debug/premium/{email}")
+async def debug_check_premium(email: str):
+    """
+    DEBUG: Check premium status for an email.
+    """
+    email_normalized = email.lower().strip()
+    results = {
+        "email": email_normalized,
+        "redis": None,
+        "postgres": None
+    }
+
+    # Check Redis
+    redis_key = f"premium_email:{email_normalized}"
+    redis_data = redis_client.get(redis_key)
+    if redis_data:
+        results["redis"] = json.loads(redis_data)
+
+    # Check PostgreSQL
+    if postgres_available:
+        try:
+            user = postgres_db.get_user_by_email(email_normalized)
+            if user:
+                results["postgres"] = {
+                    "id": user.get("id"),
+                    "is_premium": user.get("is_premium"),
+                    "premium_expires": user.get("premium_expires")
+                }
+        except Exception as e:
+            results["postgres_error"] = str(e)
+
+    return results
+
+
 @app.post("/api/auth/link-device")
 async def link_device_to_account(request: Request):
     """
