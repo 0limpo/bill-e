@@ -3273,20 +3273,35 @@ async def verify_auth_token(request: Request):
             raise HTTPException(status_code=401, detail="Invalid or expired token")
 
         # Get fresh user data
+        user_data = None
         if postgres_available:
-            user = postgres_db.get_user_by_id(payload["user_id"])
-            if user:
-                return {
-                    "valid": True,
-                    "user": user
-                }
+            user_data = postgres_db.get_user_by_id(payload["user_id"])
+
+        # Also check Redis for premium status (primary source of truth)
+        email = payload.get("email") or (user_data.get("email") if user_data else None)
+        if email:
+            premium_status = check_premium_by_email(redis_client, email)
+            redis_is_premium = premium_status.get("is_premium", False)
+        else:
+            redis_is_premium = False
+
+        if user_data:
+            # Use PostgreSQL data but override premium with Redis if Redis says premium
+            if redis_is_premium and not user_data.get("is_premium"):
+                user_data["is_premium"] = True
+                user_data["premium_expires"] = premium_status.get("premium_expires")
+            return {
+                "valid": True,
+                "user": user_data
+            }
 
         return {
             "valid": True,
             "user": {
                 "id": payload["user_id"],
                 "provider": payload["provider"],
-                "email": payload["email"]
+                "email": payload["email"],
+                "is_premium": redis_is_premium
             }
         }
 

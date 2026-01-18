@@ -6,7 +6,7 @@ import { getMPPublicKey, createMPPreference, processMPCardPayment, getDeviceId }
 import { createPayment, storePendingPayment } from "@/lib/payment";
 import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
 import { trackPaymentStarted } from "@/lib/tracking";
-import { getStoredUser, startOAuthLogin, handleAuthCallback, verifyToken, setStoredUser, type AuthUser } from "@/lib/auth";
+import { getStoredUser, getStoredToken, startOAuthLogin, handleAuthCallback, verifyToken, setStoredUser, type AuthUser } from "@/lib/auth";
 
 declare global {
   interface Window {
@@ -51,22 +51,62 @@ function PaymentPageContent() {
         if (verifiedUser) {
           setStoredUser(verifiedUser);
           setUser(verifiedUser);
-          setStatus("loading");
-          // Clean up URL params
+
+          // Clean up URL params first
           const url = new URL(window.location.href);
           url.searchParams.delete("token");
           url.searchParams.delete("user_id");
           url.searchParams.delete("is_premium");
           window.history.replaceState({}, "", url.toString());
+
+          // If user is already premium, redirect to session (they already paid)
+          if (callbackResult.isPremium || verifiedUser.is_premium) {
+            console.log("User is already premium, redirecting to session");
+            if (sessionId) {
+              const redirectUrl = userType === "host" && ownerToken
+                ? `/s/${sessionId}?owner=${ownerToken}`
+                : `/s/${sessionId}`;
+              router.push(redirectUrl);
+              return;
+            }
+          }
+
+          setStatus("loading");
           return;
         }
       }
 
       // Otherwise, check for existing stored user
       const storedUser = getStoredUser();
-      if (storedUser?.email) {
-        setUser(storedUser);
-        setStatus("loading");
+      const storedToken = getStoredToken();
+
+      if (storedUser?.email && storedToken) {
+        // Verify token with backend to get fresh premium status
+        const freshUser = await verifyToken(storedToken);
+        if (freshUser) {
+          setStoredUser(freshUser); // Update cached user
+
+          // If user is now premium, redirect to session
+          if (freshUser.is_premium) {
+            console.log("User is premium (verified with backend), redirecting to session");
+            if (sessionId) {
+              const redirectUrl = userType === "host" && ownerToken
+                ? `/s/${sessionId}?owner=${ownerToken}`
+                : `/s/${sessionId}`;
+              router.push(redirectUrl);
+              return;
+            }
+          }
+
+          setUser(freshUser);
+          setStatus("loading");
+        } else {
+          // Token invalid, need re-auth
+          setStatus("need_auth");
+        }
+      } else if (storedUser?.email) {
+        // Have user but no token - need re-auth
+        setStatus("need_auth");
       } else {
         setStatus("need_auth");
       }
