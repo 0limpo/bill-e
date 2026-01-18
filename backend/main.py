@@ -3396,6 +3396,36 @@ async def debug_check_premium(email: str):
     return results
 
 
+@app.post("/api/debug/payment/{commerce_order}/mark-paid")
+async def debug_mark_payment_paid(commerce_order: str):
+    """
+    DEBUG: Manually mark a payment as paid.
+    Use when webhook didn't update the payment record.
+    """
+    payment_json = redis_client.get(f"payment:{commerce_order}")
+    if not payment_json:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    payment = json.loads(payment_json)
+    payment["status"] = "paid"
+    payment["paid_at"] = datetime.now().isoformat()
+
+    # Save updated record
+    ttl = redis_client.ttl(f"payment:{commerce_order}")
+    redis_client.setex(
+        f"payment:{commerce_order}",
+        ttl if ttl > 0 else 604800,
+        json.dumps(payment)
+    )
+
+    print(f"DEBUG: Manually marked payment {commerce_order} as paid")
+    return {
+        "commerce_order": commerce_order,
+        "status": "paid",
+        "message": "Payment marked as paid"
+    }
+
+
 @app.post("/api/auth/link-device")
 async def link_device_to_account(request: Request):
     """
