@@ -150,7 +150,7 @@ def verify_owner_device(
 
 # --- Editor Device Tracking ---
 
-EDITOR_FREE_SESSIONS = 0  # Paywall enabled for testing
+EDITOR_FREE_SESSIONS = 10  # Free sessions before paywall
 
 def check_editor_device_limit(
     redis_client,
@@ -342,7 +342,7 @@ def set_editor_premium(
 
 # --- Host Session Tracking (by phone number) ---
 
-HOST_FREE_SESSIONS = 0  # Paywall enabled for testing
+HOST_FREE_SESSIONS = 10  # Free sessions before paywall
 
 
 def check_host_session_limit(

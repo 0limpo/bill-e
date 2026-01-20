@@ -8,12 +8,12 @@ services:
     buildCommand: "pip install -r requirements.txt"
     startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
 
-# Cron job para sincronizar analytics cada 15 minutos
-  - type: cron
-    name: bill-e-sync
-    env: python
-    region: oregon
-    plan: starter
-    schedule: "*/15 * * * *"
-    buildCommand: "pip install requests"
-    startCommand: "python -c \"import requests; import os; r = requests.post('https://bill-e-backend-lfwp.onrender.com/api/cron/full-sync', params={'secret': os.getenv('ADMIN_SECRET', 'bill-e-admin-2024')}); print(r.status_code, r.text)\""
+# Cron job desactivado temporalmente (timeout issues)
+#  - type: cron
+#    name: bill-e-sync
+#    env: python
+#    region: oregon
+#    plan: starter
+#    schedule: "*/15 * * * *"
+#    buildCommand: "pip install requests"
+#    startCommand: "python -c \"import requests; import os; r = requests.post('https://bill-e-backend-lfwp.onrender.com/api/cron/full-sync', params={'secret': os.getenv('ADMIN_SECRET', 'bill-e-admin-2024')}); print(r.status_code, r.text)\""
