@@ -20,6 +20,7 @@ import {
   updateParticipant,
   addParticipantManual,
   updateHostStep as apiUpdateHostStep,
+  updateBillCostShared as apiUpdateBillCostShared,
   type SessionResponse,
   type ApiCharge,
   type PollResponse,
@@ -75,6 +76,10 @@ export interface UseSessionReturn {
   finalize: () => Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }>;
   reopen: () => Promise<boolean>;
   updateHostStep: (step: number) => Promise<boolean>;
+
+  // Bill-e cost sharing
+  billCostShared: boolean;
+  updateBillCostShared: (shared: boolean) => Promise<boolean>;
 }
 
 // --- Hook ---
@@ -162,6 +167,7 @@ export function useSession({
               totals: data.totals,
               charges: data.charges,
               number_format: data.number_format || prev.number_format,
+              bill_cost_shared: data.bill_cost_shared ?? prev.bill_cost_shared,
             };
           });
         }
@@ -770,7 +776,27 @@ export function useSession({
     }
   }, [sessionId, ownerToken, markInteraction]);
 
+  // Update bill cost shared (owner only)
+  const updateBillCostShared = useCallback(async (shared: boolean): Promise<boolean> => {
+    if (!ownerToken) return false;
+    markInteraction();
+
+    // Optimistic update
+    setSession((prev) => (prev ? { ...prev, bill_cost_shared: shared } : prev));
+
+    try {
+      await apiUpdateBillCostShared(sessionId, ownerToken, shared);
+      return true;
+    } catch (err) {
+      console.error("Update bill cost shared error:", err);
+      // Rollback
+      setSession((prev) => (prev ? { ...prev, bill_cost_shared: !shared } : prev));
+      return false;
+    }
+  }, [sessionId, ownerToken, markInteraction]);
+
   const hostStep = session?.host_step ?? 1;
+  const billCostShared = session?.bill_cost_shared ?? false;
 
   return {
     session,
@@ -797,5 +823,7 @@ export function useSession({
     finalize,
     reopen,
     updateHostStep,
+    billCostShared,
+    updateBillCostShared,
   };
 }

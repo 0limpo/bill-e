@@ -28,6 +28,7 @@ export interface SessionResponse {
   tip_value?: number;
   tip_percentage?: number;
   has_tip?: boolean;
+  bill_cost_shared?: boolean;  // Whether to divide Bill-e cost among participants
   // Host session tracking (only for owners)
   host_sessions_used?: number;
   host_sessions_limit?: number;
@@ -80,6 +81,7 @@ export interface PollResponse {
   has_tip?: boolean;
   number_format?: string;
   last_updated: string;
+  bill_cost_shared?: boolean;
 }
 
 // --- Helper ---
@@ -425,6 +427,20 @@ export async function updateHostStep(
   return apiRequest(`/api/session/${sessionId}/host-step`, {
     method: "POST",
     body: JSON.stringify({ owner_token: ownerToken, step }),
+  });
+}
+
+/**
+ * Update whether to share Bill-e cost among participants (owner only)
+ */
+export async function updateBillCostShared(
+  sessionId: string,
+  ownerToken: string,
+  billCostShared: boolean
+): Promise<{ success: boolean; bill_cost_shared: boolean }> {
+  return apiRequest(`/api/session/${sessionId}/bill-cost-shared`, {
+    method: "POST",
+    body: JSON.stringify({ owner_token: ownerToken, bill_cost_shared: billCostShared }),
   });
 }
 

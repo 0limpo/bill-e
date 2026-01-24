@@ -557,6 +557,7 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
             "decimal_places": session_data.get("decimal_places", 0),  # 0 for CLP, 2 for USD
             "number_format": session_data.get("number_format", {"thousands": ",", "decimal": "."}),
             "price_mode": session_data.get("price_mode", "unitario"),  # 'unitario' o 'total_linea'
+            "bill_cost_shared": session_data.get("bill_cost_shared", False),  # Whether to share Bill-e cost
             "expires_at": session_data["expires_at"],
             "last_updated": session_data.get("last_updated"),
             "last_updated_by": session_data.get("last_updated_by"),
@@ -857,8 +858,43 @@ async def poll_session(session_id: str, last_update: str = None):
             "decimal_places": session_data.get("decimal_places", 0),  # Include for currency formatting
             "number_format": session_data.get("number_format", {"thousands": ",", "decimal": "."}),
             "last_updated": current_update,
-            "last_updated_by": session_data.get("last_updated_by", "")
+            "last_updated_by": session_data.get("last_updated_by", ""),
+            "bill_cost_shared": session_data.get("bill_cost_shared", False),
         }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/bill-cost-shared")
+async def update_bill_cost_shared(session_id: str, request: Request):
+    """Update whether to share Bill-e cost among participants (owner only)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+        bill_cost_shared = data.get("bill_cost_shared", False)
+
+        if not owner_token:
+            raise HTTPException(status_code=400, detail="Token de owner requerido")
+
+        session_data = get_collab_session(redis_client, session_id)
+
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        session_data["bill_cost_shared"] = bill_cost_shared
+        session_data["last_updated"] = datetime.now().isoformat()
+
+        ttl = redis_client.ttl(f"session:{session_id}")
+        if ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+        return {"success": True, "bill_cost_shared": bill_cost_shared}
+
     except HTTPException:
         raise
     except Exception as e:
@@ -2167,7 +2203,7 @@ async def check_premium_status(email: str):
 # EDITOR VERIFICATION ENDPOINTS
 # =====================================================
 
-FREE_SESSIONS_LIMIT = 10  # Free sessions before paywall
+FREE_SESSIONS_LIMIT = 0  # Free sessions before paywall
 
 @app.post("/api/editor/request-code")
 async def request_editor_code(request: Request):

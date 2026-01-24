@@ -26,6 +26,9 @@ interface StepShareProps {
   t: (key: string) => string;
   isOwner?: boolean;
   sessionId?: string;
+  billCostShared?: boolean;
+  premiumPrice?: number;
+  ownerParticipantId?: string;
 }
 
 export function StepShare({
@@ -37,8 +40,21 @@ export function StepShare({
   t,
   isOwner = false,
   sessionId,
+  billCostShared = false,
+  premiumPrice = 1990,
+  ownerParticipantId,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
+
+  // Bill-e cost sharing calculations
+  const participantCount = participants.length;
+  const billCostPerPerson = billCostShared && participantCount >= 2
+    ? Math.round(premiumPrice / participantCount)
+    : 0;
+  // Host recovery = what they get back from others (N-1 shares)
+  const hostRecovery = billCostShared && participantCount >= 2
+    ? premiumPrice - billCostPerPerson
+    : 0;
 
   // Detect decimals from items to match receipt format
   const decimals = detectDecimals(items);
@@ -52,11 +68,14 @@ export function StepShare({
     assignments,
   };
 
-  // Calculate totals
-  const totalAmount = participants.reduce((sum, p) => {
+  // Calculate totals (including Bill-e cost if shared)
+  const baseTotalAmount = participants.reduce((sum, p) => {
     const { total } = calculateParticipantTotal(p.id, session);
     return sum + total;
   }, 0);
+
+  // Add Bill-e premium cost to table total if shared
+  const totalAmount = baseTotalAmount + (billCostShared ? premiumPrice : 0);
 
   // Get items for a participant (with correct grupal division)
   const getParticipantItems = (participantId: string) => {
@@ -131,7 +150,13 @@ export function StepShare({
 
     participants.forEach((p) => {
       const { total } = calculateParticipantTotal(p.id, session);
-      message += `• ${p.name}: ${fmt(total)}\n`;
+      // Calculate Bill-e cost for this participant
+      const isHost = p.id === ownerParticipantId;
+      const billECost = billCostShared
+        ? (isHost ? -hostRecovery : billCostPerPerson)
+        : 0;
+      const finalTotal = total + billECost;
+      message += `• ${p.name}: ${fmt(finalTotal)}\n`;
     });
 
     message += `\n💰 *Total: ${fmt(totalAmount)}*`;
@@ -153,6 +178,14 @@ export function StepShare({
           const isExpanded = expandedParticipants[p.id];
           const participantItems = getParticipantItems(p.id);
 
+          // Calculate Bill-e cost for this participant
+          const isHostParticipant = p.id === ownerParticipantId;
+          // Host gets negative (recovery), others pay positive
+          const billECostForParticipant = billCostShared
+            ? (isHostParticipant ? -hostRecovery : billCostPerPerson)
+            : 0;
+          const finalTotal = total + billECostForParticipant;
+
           return (
             <div
               key={p.id}
@@ -173,7 +206,7 @@ export function StepShare({
                   </div>
                   <span className="font-medium truncate">{p.name}</span>
                 </div>
-                <span className="font-semibold tabular-nums text-foreground">{fmt(total)}</span>
+                <span className="font-semibold tabular-nums text-foreground">{fmt(finalTotal)}</span>
               </button>
 
               {/* Expanded Details */}
@@ -215,10 +248,30 @@ export function StepShare({
                         </div>
                       ))}
 
+                    {/* Bill-e cost line (only if shared) */}
+                    {billCostShared && billECostForParticipant !== 0 && (
+                      <div
+                        className={`flex items-center justify-between py-1 text-sm ${
+                          billECostForParticipant < 0 ? "text-green-600" : "text-orange-500"
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">
+                          {t("share.billECost")}
+                          {billECostForParticipant < 0 && (
+                            <span className="text-xs opacity-70">({t("share.billERecovered")})</span>
+                          )}
+                        </span>
+                        <span className="tabular-nums">
+                          {billECostForParticipant < 0 ? "-" : "+"}
+                          {fmt(Math.abs(billECostForParticipant))}
+                        </span>
+                      </div>
+                    )}
+
                     {/* Total */}
                     <div className="flex items-center justify-between py-1 text-sm font-semibold border-t border-border/30 mt-1 pt-2">
                       <span>{t("items.total")}</span>
-                      <span className="tabular-nums text-foreground">{fmt(total)}</span>
+                      <span className="tabular-nums text-foreground">{fmt(finalTotal)}</span>
                     </div>
                   </div>
                 </div>

@@ -117,6 +117,16 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.alreadyHavePremium": "¿Ya compraste premium?",
     "paywall.tryAnotherAccount": "Intenta con otra cuenta",
     "paywall.noPremiumLinked": "No tienes premium vinculado a esta cuenta",
+    "paywall.divideBillE": "Dividir Bill-e entre todos",
+    "paywall.withoutDividing": "Sin dividir",
+    "paywall.dividing": "Dividiendo",
+    "paywall.otherParticipants": "Otros participantes",
+    "paywall.youRecover": "Recuperas",
+    "paywall.eachPays": "c/u paga",
+
+    // Share - Bill-e cost
+    "share.billECost": "Bill-e",
+    "share.billERecovered": "recuperado",
 
     // Payment
     "payment.back": "Volver",
@@ -304,6 +314,16 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.alreadyHavePremium": "Already have premium?",
     "paywall.tryAnotherAccount": "Try another account",
     "paywall.noPremiumLinked": "No premium linked to this account",
+    "paywall.divideBillE": "Split Bill-e among everyone",
+    "paywall.withoutDividing": "Without splitting",
+    "paywall.dividing": "Splitting",
+    "paywall.otherParticipants": "Other participants",
+    "paywall.youRecover": "You recover",
+    "paywall.eachPays": "each pays",
+
+    // Share - Bill-e cost
+    "share.billECost": "Bill-e",
+    "share.billERecovered": "recovered",
 
     // Payment
     "payment.back": "Back",

@@ -132,6 +132,8 @@ export default function SessionPage() {
     reopen,
     markInteraction,
     updateHostStep,
+    billCostShared,
+    updateBillCostShared,
   } = useSession({
     sessionId,
     ownerToken,
@@ -647,7 +649,21 @@ export default function SessionPage() {
 
   // --- Host Paywall (shown when host reaches free session limit) ---
   if (isOwner && showPaywall) {
-    const handleHostPayment = () => {
+    // Calculate Bill-e cost sharing amounts
+    const participantCount = participants.length;
+    const canDivideBillCost = participantCount >= 2;
+    const billCostPerPerson = canDivideBillCost ? Math.round(premiumPrice / participantCount) : 0;
+    const hostRecovery = premiumPrice - billCostPerPerson; // What host recovers from others
+
+    // Find a sample "other" participant name for preview
+    const otherParticipant = participants.find((p) => p.id !== session?.participants?.find((sp) => sp.role === "owner")?.id);
+    const otherParticipantName = otherParticipant?.name || "Participante";
+
+    const handleHostPayment = async () => {
+      // Save bill cost sharing preference before redirecting to payment
+      if (canDivideBillCost) {
+        await updateBillCostShared(billCostShared);
+      }
       // Redirect to payment page with MercadoPago Bricks
       const params = new URLSearchParams({
         session: sessionId,
@@ -687,6 +703,52 @@ export default function SessionPage() {
             <div className="flex items-baseline gap-1 mb-4">
               <span className="text-3xl font-bold">{formatPriceCLP(premiumPrice)}</span>
             </div>
+
+            {/* Divide Bill-e toggle - only show if 2+ participants */}
+            {canDivideBillCost && (
+              <div className="mb-4 p-3 bg-secondary/50 rounded-xl">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-sm font-medium">{t("paywall.divideBillE")}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={billCostShared}
+                    onClick={() => updateBillCostShared(!billCostShared)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      billCostShared ? "bg-primary" : "bg-muted"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        billCostShared ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </label>
+
+                {/* Preview cards */}
+                {billCostShared && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {/* Host card - shows recovery (negative = green) */}
+                    <div className="bg-card rounded-lg p-2 text-center border border-border">
+                      <div className="text-xs text-muted-foreground mb-1">Host (tú)</div>
+                      <div className="text-sm font-semibold text-green-500">
+                        -{formatPriceCLP(hostRecovery)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{t("paywall.youRecover")}</div>
+                    </div>
+                    {/* Others card - shows what they pay (positive = orange) */}
+                    <div className="bg-card rounded-lg p-2 text-center border border-border">
+                      <div className="text-xs text-muted-foreground mb-1 truncate">{t("paywall.otherParticipants")} ({participantCount - 1})</div>
+                      <div className="text-sm font-semibold text-orange-500">
+                        +{formatPriceCLP(billCostPerPerson)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{t("paywall.eachPays")}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <Button
               className="w-full h-12 font-semibold"
@@ -1003,6 +1065,9 @@ export default function SessionPage() {
             t={t}
             isOwner={isOwner}
             sessionId={sessionId}
+            billCostShared={billCostShared}
+            premiumPrice={premiumPrice}
+            ownerParticipantId={session?.participants?.find((p) => p.role === "owner")?.id}
           />
         )}
       </main>

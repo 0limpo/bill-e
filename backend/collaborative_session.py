@@ -66,6 +66,7 @@ def create_collaborative_session(
         "number_format": number_format or {"thousands": ",", "decimal": "."},
         "price_mode": price_mode,
         "raw_text": raw_text,
+        "bill_cost_shared": False,  # Whether to divide Bill-e cost among participants
         "participants": [
             {
                 "id": str(uuid.uuid4())[:8],
@@ -150,7 +151,7 @@ def verify_owner_device(
 
 # --- Editor Device Tracking ---
 
-EDITOR_FREE_SESSIONS = 10  # Free sessions before paywall
+EDITOR_FREE_SESSIONS = 0  # Free sessions before paywall
 
 def check_editor_device_limit(
     redis_client,
@@ -342,7 +343,7 @@ def set_editor_premium(
 
 # --- Host Session Tracking (by phone number) ---
 
-HOST_FREE_SESSIONS = 10  # Free sessions before paywall
+HOST_FREE_SESSIONS = 0  # Free sessions before paywall
 
 
 def check_host_session_limit(
