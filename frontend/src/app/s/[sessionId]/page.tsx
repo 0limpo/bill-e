@@ -726,27 +726,93 @@ export default function SessionPage() {
                   </button>
                 </label>
 
-                {/* Preview cards */}
-                {billCostShared && (
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {/* Host card - shows recovery (negative = green) */}
-                    <div className="bg-card rounded-lg p-2 text-center border border-border">
-                      <div className="text-xs text-muted-foreground mb-1">Host (tú)</div>
-                      <div className="text-sm font-semibold text-green-500">
-                        -{formatPriceCLP(hostRecovery)}
+                {/* Preview: Full dropdown examples */}
+                {billCostShared && (() => {
+                  // Find host participant and calculate their example total
+                  const hostParticipant = session?.participants?.find((p) => p.role === "owner");
+                  const hostName = hostParticipant?.name || "Host";
+
+                  // Example totals (we'll use placeholder values for preview)
+                  const exampleSubtotal = 15000; // Example subtotal
+                  const exampleCharges = 1500; // Example charges (propina, etc)
+                  const hostBaseTotal = exampleSubtotal + exampleCharges;
+                  const hostFinalTotal = hostBaseTotal - hostRecovery;
+
+                  const otherBaseTotal = exampleSubtotal + exampleCharges;
+                  const otherFinalTotal = otherBaseTotal + billCostPerPerson;
+
+                  return (
+                    <div className="mt-3 space-y-2">
+                      {/* Host dropdown example */}
+                      <div className="bg-card rounded-lg border border-border overflow-hidden">
+                        <div className="flex items-center justify-between p-2 bg-card">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                              style={{ backgroundColor: getAvatarColor(hostName, 0) }}
+                            >
+                              {getInitials(hostName)}
+                            </div>
+                            <span className="text-sm font-medium">{hostName} (tú)</span>
+                          </div>
+                          <span className="text-sm font-semibold">{formatCurrency(hostFinalTotal, decimals)}</span>
+                        </div>
+                        <div className="px-3 pb-2 pt-0 text-xs space-y-1">
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>{t("totals.subtotal")}</span>
+                            <span>{formatCurrency(exampleSubtotal, decimals)}</span>
+                          </div>
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>{t("charges.tip")}</span>
+                            <span>+{formatCurrency(exampleCharges, decimals)}</span>
+                          </div>
+                          <div className="flex justify-between text-green-500">
+                            <span>{t("share.billECost")} ({t("share.billERecovered")})</span>
+                            <span>-{formatCurrency(hostRecovery, decimals)}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold border-t border-border/30 pt-1 mt-1">
+                            <span>{t("items.total")}</span>
+                            <span>{formatCurrency(hostFinalTotal, decimals)}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">{t("paywall.youRecover")}</div>
-                    </div>
-                    {/* Others card - shows what they pay (positive = orange) */}
-                    <div className="bg-card rounded-lg p-2 text-center border border-border">
-                      <div className="text-xs text-muted-foreground mb-1 truncate">{t("paywall.otherParticipants")} ({participantCount - 1})</div>
-                      <div className="text-sm font-semibold text-orange-500">
-                        +{formatPriceCLP(billCostPerPerson)}
+
+                      {/* Other participant dropdown example */}
+                      <div className="bg-card rounded-lg border border-border overflow-hidden">
+                        <div className="flex items-center justify-between p-2 bg-card">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                              style={{ backgroundColor: getAvatarColor(otherParticipantName, 1) }}
+                            >
+                              {getInitials(otherParticipantName)}
+                            </div>
+                            <span className="text-sm font-medium">{otherParticipantName}</span>
+                          </div>
+                          <span className="text-sm font-semibold">{formatCurrency(otherFinalTotal, decimals)}</span>
+                        </div>
+                        <div className="px-3 pb-2 pt-0 text-xs space-y-1">
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>{t("totals.subtotal")}</span>
+                            <span>{formatCurrency(exampleSubtotal, decimals)}</span>
+                          </div>
+                          <div className="flex justify-between text-muted-foreground">
+                            <span>{t("charges.tip")}</span>
+                            <span>+{formatCurrency(exampleCharges, decimals)}</span>
+                          </div>
+                          <div className="flex justify-between text-orange-500">
+                            <span>{t("share.billECost")}</span>
+                            <span>+{formatCurrency(billCostPerPerson, decimals)}</span>
+                          </div>
+                          <div className="flex justify-between font-semibold border-t border-border/30 pt-1 mt-1">
+                            <span>{t("items.total")}</span>
+                            <span>{formatCurrency(otherFinalTotal, decimals)}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">{t("paywall.eachPays")}</div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             )}
 
