@@ -123,6 +123,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.otherParticipants": "Otros participantes",
     "paywall.youRecover": "Recuperas",
     "paywall.eachPays": "c/u paga",
+    "paywall.you": "tú",
 
     // Share - Bill-e cost
     "share.billECost": "Bill-e",
@@ -320,6 +321,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.otherParticipants": "Other participants",
     "paywall.youRecover": "You recover",
     "paywall.eachPays": "each pays",
+    "paywall.you": "you",
 
     // Share - Bill-e cost
     "share.billECost": "Bill-e",

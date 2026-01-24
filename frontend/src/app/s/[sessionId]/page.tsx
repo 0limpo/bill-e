@@ -753,7 +753,7 @@ export default function SessionPage() {
                             >
                               {getInitials(hostName)}
                             </div>
-                            <span className="text-sm font-medium">{hostName} (tú)</span>
+                            <span className="text-sm font-medium">{hostName} ({t("paywall.you")})</span>
                           </div>
                           <span className="text-sm font-semibold">{formatCurrency(hostFinalTotal, decimals)}</span>
                         </div>
