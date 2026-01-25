@@ -100,15 +100,21 @@ export function StepAssign({
     return `${frontendUrl}/s/${sessionId}`;
   };
 
+  // Generate share message with context
+  const getShareMessage = () => {
+    return `${t("share.inviteMessage")}\n${getEditorLink()}`;
+  };
+
   const copyEditorLink = async () => {
+    const message = getShareMessage();
     try {
-      await navigator.clipboard.writeText(getEditorLink());
+      await navigator.clipboard.writeText(message);
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
     } catch {
       // Fallback for older browsers
       const input = document.createElement("input");
-      input.value = getEditorLink();
+      input.value = message;
       document.body.appendChild(input);
       input.select();
       document.execCommand("copy");

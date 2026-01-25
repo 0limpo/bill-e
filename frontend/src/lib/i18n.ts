@@ -128,6 +128,7 @@ export const translations: Record<Language, Record<string, string>> = {
     // Share - Bill-e cost
     "share.billECost": "Bill-e",
     "share.billERecovered": "recuperado",
+    "share.inviteMessage": "🧾 ¡Ayúdame a dividir la cuenta! Entra aquí y elige lo que consumiste:",
 
     // Payment
     "payment.back": "Volver",
@@ -326,6 +327,7 @@ export const translations: Record<Language, Record<string, string>> = {
     // Share - Bill-e cost
     "share.billECost": "Bill-e",
     "share.billERecovered": "recovered",
+    "share.inviteMessage": "🧾 Help me split the bill! Click here and select what you had:",
 
     // Payment
     "payment.back": "Back",
@@ -499,6 +501,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.you": "você",
     "share.billECost": "Bill-e",
     "share.billERecovered": "recuperado",
+    "share.inviteMessage": "🧾 Me ajude a dividir a conta! Entre aqui e escolha o que você consumiu:",
     "payment.back": "Voltar",
     "payment.productName": "Bill-e Premium",
     "payment.productDuration": "1 ano",
@@ -662,6 +665,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.you": "你",
     "share.billECost": "Bill-e",
     "share.billERecovered": "已收回",
+    "share.inviteMessage": "🧾 帮我分账单！点击这里选择你消费的东西：",
     "payment.back": "返回",
     "payment.productName": "Bill-e高级版",
     "payment.productDuration": "1年",
@@ -825,6 +829,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.you": "vous",
     "share.billECost": "Bill-e",
     "share.billERecovered": "récupéré",
+    "share.inviteMessage": "🧾 Aide-moi à partager l'addition ! Clique ici et choisis ce que tu as consommé :",
     "payment.back": "Retour",
     "payment.productName": "Bill-e Premium",
     "payment.productDuration": "1 an",
@@ -988,6 +993,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.you": "du",
     "share.billECost": "Bill-e",
     "share.billERecovered": "zurückerhalten",
+    "share.inviteMessage": "🧾 Hilf mir, die Rechnung aufzuteilen! Klicke hier und wähle aus, was du hattest:",
     "payment.back": "Zurück",
     "payment.productName": "Bill-e Premium",
     "payment.productDuration": "1 Jahr",
@@ -1151,6 +1157,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.you": "あなた",
     "share.billECost": "Bill-e",
     "share.billERecovered": "回収済み",
+    "share.inviteMessage": "🧾 請求書の分割を手伝って！ここをクリックして、あなたが注文したものを選んでください：",
     "payment.back": "戻る",
     "payment.productName": "Bill-e プレミアム",
     "payment.productDuration": "1年",
@@ -1314,6 +1321,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.you": "вы",
     "share.billECost": "Bill-e",
     "share.billERecovered": "возвращено",
+    "share.inviteMessage": "🧾 Помоги мне разделить счёт! Нажми сюда и выбери, что ты заказывал:",
     "payment.back": "Назад",
     "payment.productName": "Bill-e Премиум",
     "payment.productDuration": "1 год",
@@ -1477,6 +1485,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.you": "आप",
     "share.billECost": "Bill-e",
     "share.billERecovered": "वसूला गया",
+    "share.inviteMessage": "🧾 बिल बांटने में मेरी मदद करो! यहां क्लिक करो और चुनो कि तुमने क्या लिया:",
     "payment.back": "वापस",
     "payment.productName": "Bill-e प्रीमियम",
     "payment.productDuration": "1 साल",
@@ -1640,6 +1649,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.you": "kamu",
     "share.billECost": "Bill-e",
     "share.billERecovered": "dikembalikan",
+    "share.inviteMessage": "🧾 Bantu aku bagi tagihan! Klik di sini dan pilih apa yang kamu pesan:",
     "payment.back": "Kembali",
     "payment.productName": "Bill-e Premium",
     "payment.productDuration": "1 tahun",
