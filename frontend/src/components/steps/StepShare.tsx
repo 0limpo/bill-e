@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronDown, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronDown, Share2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
@@ -45,6 +45,7 @@ export function StepShare({
   ownerParticipantId,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState(false);
 
   // Bill-e cost sharing calculations
   const participantCount = participants.length;
@@ -139,14 +140,11 @@ export function StepShare({
     }));
   };
 
-  // Share on WhatsApp
-  const shareOnWhatsApp = () => {
-    // Track share event
-    if (sessionId) trackShare(sessionId, "whatsapp");
-
+  // Generate share message
+  const generateShareMessage = () => {
     const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "https://bill-e.vercel.app";
 
-    let message = `🧾 *Resumen de la cuenta*\n\n`;
+    let message = `🧾 *${t("share.billSummary")}*\n\n`;
 
     participants.forEach((p) => {
       const { total } = calculateParticipantTotal(p.id, session);
@@ -162,9 +160,38 @@ export function StepShare({
     message += `\n💰 *Total: ${fmt(totalAmount)}*`;
 
     if (sessionId) {
-      message += `\n\n🔗 Ver detalle:\n${frontendUrl}/s/${sessionId}?view=results`;
+      message += `\n\n🔗 ${t("share.viewDetails")}:\n${frontendUrl}/s/${sessionId}?view=results`;
     }
 
+    return message;
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = async () => {
+    const message = generateShareMessage();
+    if (sessionId) trackShare(sessionId, "copy");
+
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = message;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  // Share on WhatsApp
+  const shareOnWhatsApp = () => {
+    if (sessionId) trackShare(sessionId, "whatsapp");
+    const message = generateShareMessage();
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
   };
@@ -296,14 +323,28 @@ export function StepShare({
           </Button>
         )}
         {isOwner && (
-          <Button
-            size="lg"
-            className="flex-1 h-12 font-semibold"
-            onClick={shareOnWhatsApp}
-          >
-            <Share2 className="w-4 h-4 mr-2" />
-            {t("finalized.shareWhatsApp")}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-12 px-4"
+              onClick={copyToClipboard}
+            >
+              {copied ? (
+                <Check className="w-5 h-5 text-green-600" />
+              ) : (
+                <Copy className="w-5 h-5" />
+              )}
+            </Button>
+            <Button
+              size="lg"
+              className="flex-1 h-12 font-semibold"
+              onClick={shareOnWhatsApp}
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              {t("finalized.shareWhatsApp")}
+            </Button>
+          </>
         )}
       </div>
     </div>
