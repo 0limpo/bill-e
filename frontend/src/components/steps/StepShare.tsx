@@ -163,6 +163,8 @@ export function StepShare({
       message += `\n\n🔗 ${t("share.viewDetails")}:\n${frontendUrl}/s/${sessionId}?view=results`;
     }
 
+    message += `\n\n✨ ${t("share.cta")}:\n${frontendUrl}`;
+
     return message;
   };
 

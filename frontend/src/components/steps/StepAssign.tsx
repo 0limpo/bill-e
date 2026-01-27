@@ -102,7 +102,8 @@ export function StepAssign({
 
   // Generate share message with context
   const getShareMessage = () => {
-    return `${t("share.inviteMessage")}\n${getEditorLink()}`;
+    const frontendUrl = typeof window !== "undefined" ? window.location.origin : "https://bill-e.vercel.app";
+    return `${t("share.inviteMessage")}\n${getEditorLink()}\n\n✨ ${t("share.cta")}:\n${frontendUrl}`;
   };
 
   const copyEditorLink = async () => {
