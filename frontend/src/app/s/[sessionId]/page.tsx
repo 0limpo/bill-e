@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/hooks/useSession";
@@ -884,6 +885,14 @@ export default function SessionPage() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-3">
           <div className="flex items-center">
+            {/* Home button */}
+            <Link
+              href="/"
+              className="flex items-center justify-center w-8 h-8 bg-primary rounded-full text-white font-bold text-sm shrink-0"
+            >
+              B
+            </Link>
+
             {/* Stepper container - takes remaining space, centers content */}
             <div className="flex-1 flex justify-center">
               <div className="flex items-center">
