@@ -2203,7 +2203,7 @@ async def check_premium_status(email: str):
 # EDITOR VERIFICATION ENDPOINTS
 # =====================================================
 
-FREE_SESSIONS_LIMIT = 0  # Free sessions before paywall
+FREE_SESSIONS_LIMIT = 10  # Free sessions before paywall
 
 @app.post("/api/editor/request-code")
 async def request_editor_code(request: Request):
