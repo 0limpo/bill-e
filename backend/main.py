@@ -1669,16 +1669,19 @@ async def payment_webhook(request: Request):
             # Emit boleta electrónica (non-blocking - premium already activated)
             if boleta_available:
                 try:
+                    # Use google_email as receptor (payer's email)
+                    receptor_email = google_email or payment.get("payer_email")
                     boleta_result = emit_boleta_async(
                         redis_client=redis_client,
                         payment_id=commerce_order,
                         monto_total=payment.get("amount", 0),
                         descripcion="Bill-e Premium - 1 año",
                         commerce_order=commerce_order,
-                        email_receptor=payer_email
+                        email_receptor=receptor_email
                     )
                     payment["boleta_status"] = "success" if boleta_result.get("success") else "failed"
                     payment["boleta_folio"] = boleta_result.get("folio")
+                    print(f"Boleta emitida para Flow payment: folio={boleta_result.get('folio')}, email={receptor_email}")
                 except Exception as boleta_error:
                     print(f"Boleta error (non-critical): {boleta_error}")
                     payment["boleta_status"] = "error"
@@ -2156,6 +2159,34 @@ async def mp_webhook(request: Request):
                     print(f"PostgreSQL user premium status updated for: {google_email}")
             except Exception as pg_error:
                 print(f"PostgreSQL update error (non-critical): {pg_error}")
+
+        # Emit boleta electrónica (non-blocking - premium already activated)
+        if boleta_available and payment.get("status") == "paid":
+            try:
+                # Use google_email or MP payer email as receptor
+                receptor_email = payment.get("google_email") or mp_payer_email
+                boleta_result = emit_boleta_async(
+                    redis_client=redis_client,
+                    payment_id=external_reference,
+                    monto_total=payment.get("amount", 0),
+                    descripcion="Bill-e Premium - 1 año",
+                    commerce_order=external_reference,
+                    email_receptor=receptor_email
+                )
+                payment["boleta_status"] = "success" if boleta_result.get("success") else "failed"
+                payment["boleta_folio"] = boleta_result.get("folio")
+                print(f"Boleta emitida para MP payment: folio={boleta_result.get('folio')}, email={receptor_email}")
+
+                # Save updated payment with boleta info
+                ttl = redis_client.ttl(f"payment:{external_reference}")
+                redis_client.setex(
+                    f"payment:{external_reference}",
+                    ttl if ttl > 0 else 604800,
+                    json.dumps(payment)
+                )
+            except Exception as boleta_error:
+                print(f"Boleta error (non-critical): {boleta_error}")
+                payment["boleta_status"] = "error"
 
         return {"status": "ok"}
 
