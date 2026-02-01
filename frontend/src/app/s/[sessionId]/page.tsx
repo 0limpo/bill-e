@@ -893,6 +893,9 @@ export default function SessionPage() {
               B
             </Link>
 
+            {/* Separator */}
+            <div className="w-px h-8 bg-border mx-3" />
+
             {/* Stepper container - takes remaining space, centers content */}
             <div className="flex-1 flex justify-center">
               <div className="flex items-center">
@@ -904,15 +907,15 @@ export default function SessionPage() {
                 <div key={s.num} className="flex items-center">
                   {/* Step */}
                   <button
-                    className="flex flex-col items-center gap-1.5 w-[72px]"
+                    className="flex flex-col items-center gap-1 w-[60px]"
                     onClick={() => !isViewOnly && s.num <= step && goToStep(s.num)}
                     disabled={isViewOnly || s.num > step}
                   >
                     {/* Circle */}
                     <span
-                      className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold transition-all ${
+                      className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                         s.num === step
-                          ? "bg-primary text-white shadow-[0_0_0_4px_rgba(59,130,246,0.2)]"
+                          ? "bg-primary text-white shadow-[0_0_0_3px_rgba(59,130,246,0.2)]"
                           : s.num < step
                           ? "bg-primary/30 text-primary"
                           : "bg-secondary text-muted-foreground/40"
@@ -922,20 +925,20 @@ export default function SessionPage() {
                     </span>
                     {/* Label */}
                     <span
-                      className={`text-sm font-medium flex items-center justify-center gap-1 ${
+                      className={`text-xs font-medium flex items-center justify-center gap-0.5 ${
                         s.num === step
                           ? "text-foreground"
                           : "text-muted-foreground"
                       }`}
                     >
-                      {s.num < step && <span className="text-primary text-xs">✓</span>}
+                      {s.num < step && <span className="text-primary text-[10px]">✓</span>}
                       {s.label}
                     </span>
                   </button>
                   {/* Line between steps */}
                   {idx < 2 && (
                     <div
-                      className={`w-8 h-0.5 mx-1.5 mb-6 rounded-full ${
+                      className={`w-6 h-0.5 mx-1 mb-5 rounded-full ${
                         s.num < step ? "bg-primary/50" : "bg-secondary"
                       }`}
                     />
