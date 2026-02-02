@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "cl.bille.twa",
+      "package_name": "app.vercel.bill_e.twa",
       "sha256_cert_fingerprints": [
-        "REEMPLAZAR_CON_SHA256_DE_PWABUILDER"
+        "76:0A:B6:2D:D8:90:D6:57:03:7B:75:0C:E2:D3:5C:B2:82:49:2D:7D:50:42:F9:76:27:69:AD:2C:F1:A2:38:38"
       ]
     }
   }
