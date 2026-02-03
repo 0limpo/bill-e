@@ -2,60 +2,90 @@
 
 Bill-e es una PWA lista para ser publicada en Play Store usando TWA (Trusted Web Activity).
 
-## Requisitos previos
+---
 
+## Estado actual (Febrero 2026)
+
+### Completado
 - [x] manifest.json configurado
 - [x] Service Worker funcionando
 - [x] Iconos 192x192 y 512x512
 - [x] HTTPS (Vercel)
-- [x] assetlinks.json preparado
-- [ ] Cuenta de desarrollador Google Play ($25 USD)
-- [ ] SHA256 fingerprint del certificado
+- [x] assetlinks.json configurado con SHA256
+- [x] Cuenta de desarrollador Google Play creada
+- [x] APK/AAB generado con PWABuilder
+- [x] App creada en Play Console
+
+### Pendiente
+- [ ] Completar verificacion de identidad (1-3 dias)
+- [ ] Subir AAB a Internal Testing
+- [ ] Completar ficha de tienda (screenshots, descripcion)
+- [ ] Closed testing
+- [ ] Publicar en produccion
 
 ---
 
-## Paso 1: Crear cuenta de desarrollador
+## Configuracion actual
+
+### Google Play Console
+- **Cuenta**: jimenezgonzalom@gmail.com
+- **Account ID**: 5625217078568591523
+- **Tipo**: Personal (no organizacion)
+- **App ID**: 4975380859220625270
+
+### TWA Package
+- **Package ID**: `app.vercel.bill_e.twa`
+- **App name**: Bill-e
+- **URL**: https://bill-e.vercel.app
+
+### Digital Asset Links
+- **URL**: https://bill-e.vercel.app/.well-known/assetlinks.json
+- **SHA256**: `76:0A:B6:2D:D8:90:D6:57:03:7B:75:0C:E2:D3:5C:B2:82:49:2D:7D:50:42:F9:76:27:69:AD:2C:F1:A2:38:38`
+
+### Archivos de firma (GUARDAR EN LUGAR SEGURO)
+- **Ubicacion**: `Bill-e - Google Play package/`
+- **Keystore**: `signing.keystore`
+- **Password**: `gbpPKMLyKasV`
+- **Key alias**: `my-key-alias`
+
+---
+
+## Proceso de publicacion
+
+### Paso 1: Crear cuenta de desarrollador (COMPLETADO)
 
 1. Ir a https://play.google.com/console
-2. Iniciar sesion con cuenta Google
-3. Pagar $25 USD (pago unico, no es suscripcion)
-4. Completar informacion del desarrollador
+2. Tipo de cuenta: Personal (Organizacion requiere D-U-N-S)
+3. Pagar $25 USD
+4. Verificar identidad (carnet/pasaporte)
+5. Verificar dispositivo Android (instalar app Play Console)
+6. Verificar telefono (se habilita despues de los anteriores)
 
----
-
-## Paso 2: Generar APK/AAB con PWABuilder
+### Paso 2: Generar AAB con PWABuilder (COMPLETADO)
 
 1. Ir a https://www.pwabuilder.com/
-2. Ingresar la URL de produccion (ej: `https://bill-e.cl`)
-3. Esperar el analisis
-4. Click "Package for stores" → "Android"
-5. Configurar:
+2. Ingresar URL: `https://bill-e.vercel.app`
+3. Click "Package for stores" → "Android"
+4. Configurar:
 
 | Campo | Valor |
 |-------|-------|
-| Package ID | `cl.bille.twa` |
+| Package ID | `app.vercel.bill_e.twa` |
 | App name | Bill-e |
 | Short name | Bill-e |
-| App version | 1.0.0 |
-| App version code | 1 |
-| Host | bill-e.cl (tu dominio) |
-| Start URL | / |
-| Theme color | #3F7BF6 |
-| Background color | #121214 |
+| Include source code | No |
 | Signing key | Let PWABuilder create a new signing key |
 
-6. Click "Generate"
-7. Descargar el ZIP
+5. Descargar ZIP con:
+   - `Bill-e.aab` (subir a Play Store)
+   - `Bill-e.apk` (para testing local)
+   - `signing.keystore` (GUARDAR)
+   - `signing-key-info.txt` (GUARDAR)
+   - `assetlinks.json` (copiar SHA256)
 
----
+### Paso 3: Configurar Digital Asset Links (COMPLETADO)
 
-## Paso 3: Actualizar Digital Asset Links
-
-El ZIP de PWABuilder incluye un archivo con el **SHA256 fingerprint** del certificado.
-
-1. Abrir el archivo `assetlinks.json` incluido en el ZIP
-2. Copiar el valor de `sha256_cert_fingerprints`
-3. Editar `frontend/public/.well-known/assetlinks.json`:
+Archivo: `frontend/public/.well-known/assetlinks.json`
 
 ```json
 [
@@ -63,45 +93,41 @@ El ZIP de PWABuilder incluye un archivo con el **SHA256 fingerprint** del certif
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "cl.bille.twa",
+      "package_name": "app.vercel.bill_e.twa",
       "sha256_cert_fingerprints": [
-        "AA:BB:CC:DD:EE:FF:..."  // <-- Pegar el SHA256 real aqui
+        "76:0A:B6:2D:D8:90:D6:57:03:7B:75:0C:E2:D3:5C:B2:82:49:2D:7D:50:42:F9:76:27:69:AD:2C:F1:A2:38:38"
       ]
     }
   }
 ]
 ```
 
-4. Commit y push los cambios
-5. Verificar que el archivo es accesible: `https://bill-e.cl/.well-known/assetlinks.json`
+Verificar: https://bill-e.vercel.app/.well-known/assetlinks.json
 
----
+### Paso 4: Subir a Play Console (EN PROGRESO)
 
-## Paso 4: Subir a Play Console
+Google requiere proceso escalonado:
 
-1. Ir a Play Console → "Crear app"
-2. Completar informacion basica:
-   - Nombre: Bill-e
-   - Idioma: Espanol (Chile)
-   - Tipo: App
-   - Gratis/Pago: Gratis (con compras in-app)
+1. **Internal Testing** (actual)
+   - Test and release → Internal testing → Get started
+   - Subir `Bill-e.aab`
+   - Agregar testers por email (hasta 100)
 
-3. Subir el archivo `.aab` (Android App Bundle) del ZIP
-
-4. Completar la ficha de Play Store:
-   - Descripcion corta (80 chars): "Divide cuentas de restaurante facil con tus amigos"
-   - Descripcion larga: Explicar funcionalidades
-   - Icono: 512x512 (ya existe en `/public/icon-512.png`)
-   - Screenshots: Minimo 2 capturas de pantalla
+2. **Finish setting up your app**
+   - Completar ficha de tienda
+   - Screenshots (minimo 2)
+   - Descripcion corta y larga
    - Categoria: Finanzas
-   - Correo de contacto
-
-5. Completar cuestionarios:
    - Clasificacion de contenido
-   - Publico objetivo
    - Politica de privacidad (URL requerida)
 
-6. Enviar a revision
+3. **Closed Testing**
+   - Probar con grupo mas amplio
+   - Recoger feedback
+
+4. **Production**
+   - Se habilita despues de closed testing
+   - Enviar a revision de Google
 
 ---
 
@@ -116,35 +142,67 @@ El ZIP de PWABuilder incluye un archivo con el **SHA256 fingerprint** del certif
 
 Bill-e califica para **15%** (o **9%** cuando aplique el acuerdo Epic) porque el premium no otorga "ventaja de gameplay".
 
+### Pagos
+- Google deposita el dia **15 de cada mes**
+- Umbral minimo: **$1 USD**
+- Tiempo de transferencia: 2-7 dias
+
+### Impuestos (Chile)
+- Google cobra y paga el IVA al SII por ti
+- Registrar RUT de empresa en Play Console evita 19% extra sobre comision
+- Declarar ingresos como "servicios digitales" o "servicios exportados"
+
 ---
 
-## Actualizaciones
+## Actualizaciones futuras
 
-Las actualizaciones de la PWA se reflejan automaticamente en la app de Play Store (es la misma web). Solo necesitas subir un nuevo AAB si:
+Las actualizaciones de la PWA se reflejan **automaticamente** en la app de Play Store (es la misma web).
 
+Solo necesitas subir un nuevo AAB si:
 - Cambias el package name
 - Cambias el certificado de firma
 - Necesitas actualizar la version minima de Android
+- Cambias configuracion del manifest de la TWA
+
+Para subir nueva version:
+1. Incrementar version en PWABuilder
+2. Usar el **mismo keystore** (signing.keystore)
+3. Subir nuevo AAB a Play Console
 
 ---
 
 ## Troubleshooting
 
 ### La app muestra barra de navegador
-El archivo `assetlinks.json` no esta configurado correctamente o no es accesible. Verificar:
+El archivo `assetlinks.json` no esta configurado correctamente. Verificar:
 ```bash
-curl -I https://bill-e.cl/.well-known/assetlinks.json
-# Debe retornar 200 OK y Content-Type: application/json
+curl https://bill-e.vercel.app/.well-known/assetlinks.json
 ```
+Debe retornar JSON con el SHA256 correcto.
 
 ### Error de verificacion de firma
-El SHA256 en `assetlinks.json` no coincide con el certificado del APK. Regenerar desde PWABuilder con el mismo keystore.
+El SHA256 en `assetlinks.json` no coincide con el certificado del AAB.
+- Verificar que el package_name coincide
+- Verificar que el SHA256 es el correcto
 
 ### La app no pasa revision
 Causas comunes:
 - Falta politica de privacidad
-- Screenshots no cumplen requisitos
-- Descripcion muy corta o con errores
+- Screenshots no cumplen requisitos (minimo 2)
+- Descripcion muy corta
+- Contenido no cumple politicas de Google
+
+---
+
+## Archivos importantes
+
+| Archivo | Ubicacion | Proposito |
+|---------|-----------|-----------|
+| manifest.json | `frontend/public/manifest.json` | Configuracion PWA |
+| Service Worker | `frontend/public/sw.js` | Cache y offline |
+| assetlinks.json | `frontend/public/.well-known/assetlinks.json` | Verificacion TWA |
+| signing.keystore | `Bill-e - Google Play package/` | Firma del AAB |
+| Bill-e.aab | `Bill-e - Google Play package/` | Bundle para Play Store |
 
 ---
 
@@ -154,3 +212,4 @@ Causas comunes:
 - [Google Play Console](https://play.google.com/console)
 - [Digital Asset Links Validator](https://developers.google.com/digital-asset-links/tools/generator)
 - [TWA Documentation](https://developer.android.com/develop/ui/views/layout/webapps/guide-trusted-web-activities-version2)
+- [Play Console Help](https://support.google.com/googleplay/android-developer)
