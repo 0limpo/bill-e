@@ -7,6 +7,7 @@ import { createPayment, storePendingPayment } from "@/lib/payment";
 import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
 import { trackPaymentStarted } from "@/lib/tracking";
 import { getStoredUser, getStoredToken, startOAuthLogin, handleAuthCallback, verifyToken, setStoredUser, type AuthUser } from "@/lib/auth";
+import { isTWA, isPlayBillingAvailable, getPaymentContext, type PaymentContext } from "@/lib/twa";
 
 declare global {
   interface Window {
@@ -34,10 +35,26 @@ function PaymentPageContent() {
   const [lang] = useState<Language>(() => detectLanguage());
   const t = getTranslator(lang);
 
+  // TWA / Play Store detection
+  const [paymentContext, setPaymentContext] = useState<PaymentContext>('web');
+  const [playBillingAvailable, setPlayBillingAvailable] = useState(false);
+
   const walletBrickRef = useRef<boolean>(false);
   const cardBrickRef = useRef<boolean>(false);
 
   const amount = 1990; // CLP
+
+  // Detect if running in TWA (Play Store app)
+  useEffect(() => {
+    const context = getPaymentContext();
+    setPaymentContext(context);
+    setPlayBillingAvailable(isPlayBillingAvailable());
+
+    if (context === 'twa') {
+      console.log('Running in TWA (Play Store app)');
+      console.log('Play Billing available:', isPlayBillingAvailable());
+    }
+  }, []);
 
   // Check if user is authenticated on mount (also handle OAuth callback)
   useEffect(() => {
@@ -495,6 +512,25 @@ function PaymentPageContent() {
         {/* Payment forms */}
         {(status === "ready" || status === "error") && user?.email && (
           <>
+            {/* TWA Notice - Show when in Play Store app */}
+            {paymentContext === 'twa' && (
+              <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-primary mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-primary">Google Play Store</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {playBillingAvailable
+                        ? "Google Play Billing disponible. Pronto podrás pagar directamente desde la app."
+                        : "Estás usando la app de Play Store. Los pagos se procesan de forma segura."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Logged in user info */}
             <div className="bg-card rounded-lg p-3 mb-4 flex items-center gap-3">
               <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
