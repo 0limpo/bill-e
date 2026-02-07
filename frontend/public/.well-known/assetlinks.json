@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "app.vercel.bill_e.twa",
       "sha256_cert_fingerprints": [
-        "76:0A:B6:2D:D8:90:D6:57:03:7B:75:0C:E2:D3:5C:B2:82:49:2D:7D:50:42:F9:76:27:69:AD:2C:F1:A2:38:38"
+        "76:0A:B6:2D:D8:90:D6:57:03:7B:75:0C:E2:D3:5C:B2:82:49:2D:7D:50:42:F9:76:27:69:AD:2C:F1:A2:38:38",
+        "BC:18:D5:F0:57:68:E6:0E:77:A8:71:07:B7:20:00:4E:B3:FE:92:CD:86:07:AE:FE:A4:DF:D5:26:5E:E3:3A:DB"
       ]
     }
   }
