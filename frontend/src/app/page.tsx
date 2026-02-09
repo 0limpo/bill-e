@@ -7,6 +7,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { Loader2 } from "lucide-react";
 import { createCollaborativeSession } from "@/lib/api";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
+import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 
 // Helper to manage recent session in localStorage
 const RECENT_SESSION_KEY = "bill-e-recent-session";
@@ -38,13 +39,13 @@ function getRecentSession(): RecentSession | null {
   }
 }
 
-function getTimeAgo(timestamp: number): string {
+function getTimeAgo(timestamp: number, t: (key: string) => string): string {
   const minutes = Math.floor((Date.now() - timestamp) / 60000);
-  if (minutes < 1) return "hace un momento";
-  if (minutes < 60) return `hace ${minutes} min`;
+  if (minutes < 1) return t("home.justNow");
+  if (minutes < 60) return t("home.minutesAgo").replace("{n}", String(minutes));
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `hace ${hours}h`;
-  return "hace más de 24h";
+  if (hours < 24) return t("home.hoursAgo").replace("{n}", String(hours));
+  return t("home.moreThan24h");
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://bill-e-backend-lfwp.onrender.com";
@@ -99,9 +100,13 @@ export default function LandingPage() {
   const [inputKey, setInputKey] = useState(0);
   const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
   const [photoSource, setPhotoSource] = useState<"camera" | "gallery">("camera");
+  const [lang, setLang] = useState<Language>("es");
 
-  // Load recent session on mount and track app open
+  const t = getTranslator(lang);
+
+  // Load recent session on mount, detect language, and track app open
   useEffect(() => {
+    setLang(detectLanguage());
     setRecentSession(getRecentSession());
     trackAppOpen();
   }, []);
@@ -119,12 +124,12 @@ export default function LandingPage() {
     setError(null);
 
     try {
-      setStatus("Comprimiendo imagen...");
+      setStatus(t("home.compressing"));
       const rawBase64 = await fileToBase64(file);
       const base64 = await compressImage(rawBase64);
 
       // Step 1: Create empty session
-      setStatus("Conectando al servidor...");
+      setStatus(t("home.connecting"));
       const sessionResponse = await fetch(`${API_URL}/api/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -132,14 +137,14 @@ export default function LandingPage() {
 
       if (!sessionResponse.ok) {
         const errorText = await sessionResponse.text();
-        throw new Error(`Error creando sesión: ${errorText}`);
+        throw new Error(`${t("home.errorCreatingSession")}: ${errorText}`);
       }
 
       const sessionData = await sessionResponse.json();
       const sessionId = sessionData.session_id;
 
       // Step 2: Process with OCR
-      setStatus("Analizando boleta...");
+      setStatus(t("home.analyzing"));
       const ocrResponse = await fetch(`${API_URL}/api/session/${sessionId}/ocr`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -148,7 +153,7 @@ export default function LandingPage() {
 
       if (!ocrResponse.ok) {
         const errorText = await ocrResponse.text();
-        throw new Error(`Error en OCR: ${errorText}`);
+        throw new Error(`${t("home.errorOcr")}: ${errorText}`);
       }
 
       const ocrData = await ocrResponse.json();
@@ -158,7 +163,7 @@ export default function LandingPage() {
       trackOcrComplete(sessionId, data.items?.length || 0, true);
 
       // Step 3: Create collaborative session with OCR data
-      setStatus("Creando sesión...");
+      setStatus(t("home.creatingSession"));
       const session = await createCollaborativeSession({
         items: data.items || [],
         total: data.total || 0,
@@ -176,10 +181,10 @@ export default function LandingPage() {
       router.push(`/s/${session.session_id}?owner=${session.owner_token}`);
     } catch (err) {
       console.error("Error:", err);
-      const message = err instanceof Error ? err.message : "Error al procesar";
+      const message = err instanceof Error ? err.message : t("home.errorProcessing");
       // Simplify error message for users
       if (message.includes("Failed to fetch") || message.includes("NetworkError")) {
-        setError("Error de conexión. El servidor puede estar iniciando, intenta de nuevo en 30 segundos.");
+        setError(t("home.connectionError"));
       } else {
         setError(message);
       }
@@ -216,7 +221,7 @@ export default function LandingPage() {
           <span className="font-bold text-foreground" style={{ fontSize: '1.875rem', marginLeft: '2px' }}>ill-e</span>
         </div>
         <p className="text-base text-muted-foreground">
-          Divide cuentas fácilmente
+          {t("app.subtitle")}
         </p>
       </div>
 
@@ -225,7 +230,7 @@ export default function LandingPage() {
         {isLoading ? (
           <div className="h-14 flex items-center justify-center gap-2 text-muted-foreground">
             <Loader2 className="w-5 h-5 animate-spin" />
-            {status || "Procesando..."}
+            {status || t("home.processing")}
           </div>
         ) : (
           <div className="flex gap-3">
@@ -237,7 +242,7 @@ export default function LandingPage() {
                 setTimeout(() => cameraInputRef.current?.click(), 50);
               }}
             >
-              Cámara
+              {t("home.camera")}
             </button>
             <button
               className="flex-1 h-14 text-lg font-semibold bg-primary/20 hover:bg-primary/30 rounded-xl transition-colors text-foreground"
@@ -247,7 +252,7 @@ export default function LandingPage() {
                 setTimeout(() => galleryInputRef.current?.click(), 50);
               }}
             >
-              Galería
+              {t("home.gallery")}
             </button>
           </div>
         )}
@@ -266,8 +271,8 @@ export default function LandingPage() {
           >
             <span className="text-xl">📋</span>
             <div className="text-left flex-1">
-              <p className="text-sm font-medium text-foreground">Continuar sesión</p>
-              <p className="text-xs text-muted-foreground">{getTimeAgo(recentSession.createdAt)}</p>
+              <p className="text-sm font-medium text-foreground">{t("home.continueSession")}</p>
+              <p className="text-xs text-muted-foreground">{getTimeAgo(recentSession.createdAt, t)}</p>
             </div>
             <span className="text-muted-foreground">→</span>
           </button>
@@ -281,8 +286,8 @@ export default function LandingPage() {
             1
           </div>
           <div>
-            <p className="font-medium text-foreground text-sm">Escanea y verifica</p>
-            <p className="text-xs text-muted-foreground">Toma foto de la boleta y revisa los items</p>
+            <p className="font-medium text-foreground text-sm">{t("home.step1Title")}</p>
+            <p className="text-xs text-muted-foreground">{t("home.step1Desc")}</p>
           </div>
         </div>
         <div className="bg-card rounded-xl p-3 flex items-start gap-3">
@@ -290,8 +295,8 @@ export default function LandingPage() {
             2
           </div>
           <div>
-            <p className="font-medium text-foreground text-sm">Agrega participantes y asigna</p>
-            <p className="text-xs text-muted-foreground">Indica quién consumió qué</p>
+            <p className="font-medium text-foreground text-sm">{t("home.step2Title")}</p>
+            <p className="text-xs text-muted-foreground">{t("home.step2Desc")}</p>
           </div>
         </div>
         <div className="bg-card rounded-xl p-3 flex items-start gap-3">
@@ -299,8 +304,8 @@ export default function LandingPage() {
             3
           </div>
           <div>
-            <p className="font-medium text-foreground text-sm">Revisa y comparte</p>
-            <p className="text-xs text-muted-foreground">Ve el detalle de cada persona y comparte el link</p>
+            <p className="font-medium text-foreground text-sm">{t("home.step3Title")}</p>
+            <p className="text-xs text-muted-foreground">{t("home.step3Desc")}</p>
           </div>
         </div>
       </div>
@@ -313,7 +318,7 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="mt-6 text-center">
         <p className="text-xs text-muted-foreground">
-          Hecho con ❤️
+          {t("home.madeWith")}
         </p>
       </footer>
     </div>
