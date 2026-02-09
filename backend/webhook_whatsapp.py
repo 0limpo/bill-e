@@ -474,7 +474,7 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
         'session_id': session_id,
         'phone': phone_number,
         'created_at': datetime.now().isoformat(),
-        'expires_at': (datetime.now() + timedelta(hours=24)).isoformat(),
+        'expires_at': (datetime.now() + timedelta(hours=1)).isoformat(),
         'items': session_items,
         'people': [],
         'total': total,
@@ -489,14 +489,14 @@ def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
         'confidence': bill_data.get('confidence', 'medium')
     }
 
-    # Guardar en Redis con TTL de 24 horas
+    # Guardar en Redis con TTL de 1 hora
     try:
         redis_client.setex(
             f"session:{session_id}",
-            86400,  # 24 horas
+            3600,  # 1 hora
             json.dumps(session_data)
         )
-        print(f"✅ Sesión creada: {session_id} (24 horas TTL)")
+        print(f"✅ Sesión creada: {session_id} (1 hora TTL)")
     except Exception as e:
         print(f"❌ Error guardando sesión: {str(e)}")
         raise
@@ -856,10 +856,10 @@ async def create_new_session(phone_number: str) -> str:
         "tip": 0,
         "people": [],
         "items": [],
-        "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        "expires_at": (datetime.utcnow() + timedelta(hours=1)).isoformat()
     }
 
-    redis_client.setex(f"session:{session_id}", 86400, json.dumps(session_data))
+    redis_client.setex(f"session:{session_id}", 3600, json.dumps(session_data))
     
     print(f"✅ Sesión simple creada: {session_id}")
     return session_id

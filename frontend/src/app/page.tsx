@@ -10,7 +10,7 @@ import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking"
 
 // Helper to manage recent session in localStorage
 const RECENT_SESSION_KEY = "bill-e-recent-session";
-const SESSION_MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_MAX_AGE = 1 * 60 * 60 * 1000; // 1 hour
 
 interface RecentSession {
   sessionId: string;

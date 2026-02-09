@@ -209,7 +209,7 @@ async def calculate_bill(session_id: str, request: Request):
             "timestamp": datetime.now().isoformat(),
             **data
         }
-        redis_client.setex(f"result:{session_id}", 86400, json.dumps(result))
+        redis_client.setex(f"result:{session_id}", 3600, json.dumps(result))
     
     return {"status": "ok", "message": "Resultado guardado"}
 
@@ -226,14 +226,14 @@ async def create_session():
         session = BillSession(
             id=session_id,
             created_at=datetime.now().isoformat(),
-            expires_at=(datetime.now() + timedelta(hours=24)).isoformat()
+            expires_at=(datetime.now() + timedelta(hours=1)).isoformat()
         )
 
-        # Guardar en Redis (expira en 24 horas)
+        # Guardar en Redis (expira en 1 hora)
         if redis_client:
             redis_client.setex(
                 f"session:{session_id}",
-                86400,  # 24 horas en segundos
+                3600,  # 1 hora en segundos
                 session.json()
             )
         
