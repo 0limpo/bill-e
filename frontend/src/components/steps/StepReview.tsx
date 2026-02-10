@@ -189,7 +189,7 @@ export function StepReview({
   const addItem = () => {
     const newItem: Item = {
       id: String(Date.now()),
-      name: "Nuevo Item",
+      name: t("items.newItem"),
       quantity: 1,
       price: 0,
     };

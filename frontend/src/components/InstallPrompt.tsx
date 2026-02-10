@@ -25,11 +25,18 @@ function detectBrowser(): BrowserType {
   return 'unknown';
 }
 
-export function InstallPrompt() {
+interface InstallPromptProps {
+  t?: (key: string) => string;
+}
+
+export function InstallPrompt({ t }: InstallPromptProps) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [browser, setBrowser] = useState<BrowserType>('unknown');
   const [showInstructions, setShowInstructions] = useState(false);
+
+  // Fallback translator if t is not provided
+  const tr = t || ((key: string) => key);
 
   useEffect(() => {
     // Check if already installed
@@ -75,10 +82,10 @@ export function InstallPrompt() {
         <span className="text-2xl">📲</span>
         <div className="text-left">
           <p className="text-sm font-medium text-foreground">
-            Agregar a página de inicio
+            {tr("install.addToHome")}
           </p>
           <p className="text-xs text-muted-foreground">
-            Accede más rápido, sin abrir el navegador
+            {tr("install.addToHomeDesc")}
           </p>
         </div>
       </button>
@@ -90,25 +97,25 @@ export function InstallPrompt() {
     'ios-safari': {
       icon: '📤',
       steps: [
-        'Toca el botón Compartir (📤)',
-        'Selecciona "Añadir a pantalla de inicio"',
-        'Toca "Añadir"'
+        tr("install.iosSafari1"),
+        tr("install.iosSafari2"),
+        tr("install.iosSafari3"),
       ]
     },
     'ios-other': {
       icon: '🧭',
       steps: [
-        'Abre esta página en Safari',
-        'Toca el botón Compartir (📤)',
-        'Selecciona "Añadir a pantalla de inicio"'
+        tr("install.iosOther1"),
+        tr("install.iosOther2"),
+        tr("install.iosOther3"),
       ]
     },
     'android-firefox': {
       icon: '🦊',
       steps: [
-        'Toca el menú (⋮)',
-        'Selecciona "Instalar"',
-        'O abre en Chrome para mejor experiencia'
+        tr("install.androidFirefox1"),
+        tr("install.androidFirefox2"),
+        tr("install.androidFirefox3"),
       ]
     }
   };
@@ -127,10 +134,10 @@ export function InstallPrompt() {
         <span className="text-2xl">{browserInstructions.icon}</span>
         <div className="text-left flex-1">
           <p className="text-sm font-medium text-foreground">
-            Agregar a página de inicio
+            {tr("install.addToHome")}
           </p>
           <p className="text-xs text-muted-foreground">
-            Accede más rápido, sin abrir el navegador
+            {tr("install.addToHomeDesc")}
           </p>
         </div>
         <span className="text-muted-foreground text-sm">
@@ -140,7 +147,7 @@ export function InstallPrompt() {
 
       {showInstructions && (
         <div className="mt-2 px-4 py-3 bg-card border border-border rounded-xl">
-          <p className="text-xs text-muted-foreground mb-2">Cómo hacerlo:</p>
+          <p className="text-xs text-muted-foreground mb-2">{tr("install.howTo")}</p>
           <ol className="space-y-1">
             {browserInstructions.steps.map((step, i) => (
               <li key={i} className="text-sm text-foreground flex gap-2">

@@ -520,11 +520,11 @@ function PaymentPageContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <div>
-                    <p className="text-sm font-medium text-primary">Google Play Store</p>
+                    <p className="text-sm font-medium text-primary">{t("payment.playStore")}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {playBillingAvailable
-                        ? "Google Play Billing disponible. Pronto podrás pagar directamente desde la app."
-                        : "Estás usando la app de Play Store. Los pagos se procesan de forma segura."}
+                        ? t("payment.playBillingAvailable")
+                        : t("payment.playStoreSecure")}
                     </p>
                   </div>
                 </div>

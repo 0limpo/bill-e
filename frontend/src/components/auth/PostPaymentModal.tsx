@@ -105,6 +105,7 @@ export function PostPaymentModal({
               providers={providers}
               redirectTo={redirectTo}
               onError={setError}
+              t={t}
             />
           ) : (
             <p className="text-sm text-muted-foreground text-center py-2">

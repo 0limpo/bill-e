@@ -312,7 +312,7 @@ export default function LandingPage() {
 
       {/* Install Prompt */}
       <div className="mt-6">
-        <InstallPrompt />
+        <InstallPrompt t={t} />
       </div>
 
       {/* Footer */}

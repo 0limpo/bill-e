@@ -310,7 +310,7 @@ export default function SessionPage() {
       storePendingJoin(joinName.trim()); // Store name for after payment
       setShowPaywall(true);
     } else if (!result.success) {
-      setJoinError("No se pudo unir. La sesión puede estar finalizada o no existe.");
+      setJoinError(t("session.joinError"));
     } else {
       // Successfully joined
       trackGuestJoined(sessionId, result.isNew || false);
@@ -537,6 +537,7 @@ export default function SessionPage() {
                   providers={authProviders}
                   redirectTo={`${window.location.origin}/payment?session=${sessionId}&type=editor`}
                   variant="compact"
+                  t={t}
                 />
               ) : (
                 <div className="flex justify-center py-2">
@@ -624,7 +625,7 @@ export default function SessionPage() {
               value={joinName}
               onChange={(e) => setJoinName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleJoin()}
-              placeholder="Ej: Carlos"
+              placeholder={t("session.namePlaceholder")}
               className="w-full px-4 py-3 bg-secondary rounded-xl text-foreground placeholder:text-muted-foreground outline-none focus:ring-2 focus:ring-primary mb-4"
               autoFocus={selectableParticipants.length === 0}
             />
@@ -731,7 +732,7 @@ export default function SessionPage() {
                 {billCostShared && (() => {
                   // Find host participant and calculate their example total
                   const hostParticipant = session?.participants?.find((p) => p.role === "owner");
-                  const hostName = hostParticipant?.name || "Host";
+                  const hostName = hostParticipant?.name || t("session.host");
 
                   // Example totals (we'll use placeholder values for preview)
                   const exampleSubtotal = 15000; // Example subtotal
@@ -855,6 +856,7 @@ export default function SessionPage() {
                 providers={authProviders}
                 redirectTo={`${window.location.origin}/s/${sessionId}${ownerToken ? `?owner=${ownerToken}` : ""}`}
                 variant="compact"
+                t={t}
               />
             ) : (
               <div className="flex justify-center py-2">
@@ -951,7 +953,7 @@ export default function SessionPage() {
             {/* Right column: Role + Sessions */}
             <div className="flex flex-col items-end gap-0.5">
               <span className="text-xs text-primary/60">
-                {isOwner ? "Host" : currentParticipant?.name || "Editor"}
+                {isOwner ? t("session.host") : currentParticipant?.name || t("session.editor")}
               </span>
               {isOwner && session?.host_sessions_limit && !session?.host_is_premium && (
                 <span className="text-[10px] text-muted-foreground/60">

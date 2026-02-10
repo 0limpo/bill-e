@@ -1,23 +1,31 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
 
 function AuthErrorContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const error = searchParams.get("error") || "unknown";
+  const [lang, setLang] = useState<Language>("es");
+
+  useEffect(() => {
+    setLang(detectLanguage());
+  }, []);
+
+  const t = getTranslator(lang);
 
   const messages: Record<string, string> = {
-    access_denied: "Acceso denegado. Cancelaste el inicio de sesion.",
-    invalid_state: "La sesion expiro. Por favor intenta de nuevo.",
-    token_exchange_failed: "Error al conectar con el proveedor de autenticacion.",
-    user_info_failed: "No se pudo obtener la informacion de tu cuenta.",
-    database_error: "Error en el servidor. Por favor intenta mas tarde.",
-    missing_params: "Respuesta incompleta del proveedor.",
-    provider_mismatch: "Error de seguridad. Por favor intenta de nuevo.",
-    no_access_token: "No se recibio token de acceso.",
-    unknown: "Ocurrio un error desconocido.",
+    access_denied: t("auth.accessDenied"),
+    invalid_state: t("auth.invalidState"),
+    token_exchange_failed: t("auth.tokenExchangeFailed"),
+    user_info_failed: t("auth.userInfoFailed"),
+    database_error: t("auth.databaseError"),
+    missing_params: t("auth.missingParams"),
+    provider_mismatch: t("auth.providerMismatch"),
+    no_access_token: t("auth.noAccessToken"),
+    unknown: t("auth.unknownError"),
   };
 
   return (
@@ -50,7 +58,7 @@ function AuthErrorContent() {
           </div>
 
           <h2 className="text-xl font-bold text-foreground mb-2">
-            Error de autenticacion
+            {t("auth.errorTitle")}
           </h2>
           <p className="text-sm text-muted-foreground mb-6">
             {messages[error] || messages.unknown}
@@ -61,13 +69,13 @@ function AuthErrorContent() {
               onClick={() => router.back()}
               className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-medium"
             >
-              Intentar de nuevo
+              {t("auth.tryAgain")}
             </button>
             <button
               onClick={() => router.push("/")}
               className="w-full py-3 bg-secondary text-foreground rounded-xl font-medium"
             >
-              Volver al inicio
+              {t("auth.goHome")}
             </button>
           </div>
         </div>

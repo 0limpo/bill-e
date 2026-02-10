@@ -14,6 +14,7 @@ interface SignInButtonsProps {
   onError?: (error: string) => void;
   variant?: "default" | "compact";
   showLabels?: boolean;
+  t?: (key: string) => string;
 }
 
 export function SignInButtons({
@@ -22,6 +23,7 @@ export function SignInButtons({
   onError,
   variant = "default",
   showLabels = true,
+  t,
 }: SignInButtonsProps) {
   const [loading, setLoading] = useState<AuthProvider | null>(null);
 
@@ -33,7 +35,7 @@ export function SignInButtons({
       window.location.href = authUrl;
     } catch (error) {
       console.error("Sign in error:", error);
-      onError?.(`Error al iniciar sesión con ${PROVIDER_INFO[provider].name}`);
+      onError?.(t ? t("auth.signInError").replace("{provider}", PROVIDER_INFO[provider].name) : `Error al iniciar sesión con ${PROVIDER_INFO[provider].name}`);
       setLoading(null);
     }
   };
@@ -83,7 +85,7 @@ export function SignInButtons({
             <>
               <ProviderIcon provider={provider} />
               {showLabels && (
-                <span>Continuar con {PROVIDER_INFO[provider].name}</span>
+                <span>{t ? t("auth.continueWith").replace("{provider}", PROVIDER_INFO[provider].name) : `Continuar con ${PROVIDER_INFO[provider].name}`}</span>
               )}
             </>
           )}
