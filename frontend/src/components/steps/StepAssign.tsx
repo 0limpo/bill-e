@@ -450,7 +450,7 @@ export function StepAssign({
             >
               <Share2 className="w-5 h-5" />
             </button>
-            <span className="text-xs text-muted-foreground">Invitar</span>
+            <span className="text-xs text-muted-foreground">{t("assign.invite")}</span>
 
             {/* Share Popup - Fixed position modal */}
             {showSharePopup && (
@@ -463,7 +463,7 @@ export function StepAssign({
                 {/* Popup */}
                 <div className="relative w-full max-w-sm p-4 bg-card border border-border rounded-xl shadow-lg">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-foreground">Invitar editores</h3>
+                    <h3 className="font-semibold text-foreground">{t("assign.inviteEditors")}</h3>
                     <button
                       onClick={() => setShowSharePopup(false)}
                       className="text-muted-foreground hover:text-foreground"
@@ -472,7 +472,7 @@ export function StepAssign({
                     </button>
                   </div>
                   <p className="text-sm text-muted-foreground mb-4">
-                    Comparte este link para que te ayuden a asignar los consumos. No podrán editar items ni avanzar de paso.
+                    {t("assign.inviteEditorsDesc")}
                   </p>
                   <div className="flex gap-2">
                     <input
