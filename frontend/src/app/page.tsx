@@ -101,7 +101,12 @@ export default function LandingPage() {
   const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
   const [photoSource, setPhotoSource] = useState<"camera" | "gallery">("camera");
   const [lang, setLang] = useState<Language>("es");
-  const [billCount, setBillCount] = useState(0);
+  const [billCount, setBillCount] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return parseInt(localStorage.getItem('bill-e-bill-count') || '0', 10);
+    }
+    return 0;
+  });
 
   const t = getTranslator(lang);
 
@@ -111,9 +116,12 @@ export default function LandingPage() {
     setRecentSession(getRecentSession());
     trackAppOpen();
 
-    // Load bill count
+    // Load bill count (update cache in background)
     getBillHistory(getDeviceId())
-      .then((res) => setBillCount(res.count))
+      .then((res) => {
+        setBillCount(res.count);
+        localStorage.setItem('bill-e-bill-count', String(res.count));
+      })
       .catch(() => {});
   }, []);
 
@@ -286,15 +294,17 @@ export default function LandingPage() {
         )}
 
         {/* My bills button */}
-        {billCount > 0 && !isLoading && (
+        {billCount > 0 && (
           <button
-            className="mt-4 w-full flex items-center justify-center gap-2 p-3 border border-border rounded-xl text-muted-foreground text-sm hover:border-primary hover:text-foreground hover:bg-primary/5 transition-all"
+            className="mt-4 w-full p-3 bg-card hover:bg-card/80 border border-border rounded-xl transition-colors flex items-center gap-3"
             onClick={() => router.push("/bills")}
           >
-            {t("bills.myBills")}
-            <span className="bg-primary/15 text-primary text-xs font-semibold px-2 py-0.5 rounded-lg">
-              {billCount}
-            </span>
+            <span className="text-xl">🧾</span>
+            <div className="text-left flex-1">
+              <p className="text-sm font-medium text-foreground">{t("bills.myBills")}</p>
+              <p className="text-xs text-muted-foreground">{t("bills.count").replace("{n}", String(billCount))}</p>
+            </div>
+            <span className="text-muted-foreground">→</span>
           </button>
         )}
       </div>

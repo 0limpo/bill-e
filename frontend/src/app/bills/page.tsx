@@ -132,7 +132,7 @@ export default function BillsHistoryPage() {
           <div className="h-6 bg-gradient-to-t from-background to-transparent" />
           <div className="bg-background px-4 pb-6 pointer-events-auto">
             <button
-              className="w-full h-12 rounded-xl bg-card border border-border text-foreground font-medium text-sm hover:bg-card/80 transition-colors flex items-center justify-center gap-2"
+              className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
               onClick={() => router.push("/")}
             >
               <ChevronLeft className="w-4 h-4" />
@@ -148,6 +148,13 @@ export default function BillsHistoryPage() {
 function BillCard({ bill, t, onClick }: { bill: BillHistoryItem; t: (key: string) => string; onClick: () => void }) {
   const date = new Date(bill.created_at);
   const timeStr = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const isToday = date.toDateString() === new Date().toDateString();
+  const dateStr = isToday ? timeStr : `${date.getDate()}/${date.getMonth() + 1} · ${timeStr}`;
+
+  // Better name fallback: bill_name > merchant_name > default + short date
+  const displayName = bill.bill_name
+    || bill.merchant_name
+    || `${t("bills.defaultName")} ${date.getDate()}/${date.getMonth() + 1}`;
 
   return (
     <button
@@ -157,7 +164,7 @@ function BillCard({ bill, t, onClick }: { bill: BillHistoryItem; t: (key: string
       {/* Row 1: name + avatars + total */}
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-foreground truncate flex-1 min-w-0">
-          {bill.bill_name || t("bills.defaultName")}
+          {displayName}
         </span>
 
         {/* Avatar stack */}
@@ -202,7 +209,7 @@ function BillCard({ bill, t, onClick }: { bill: BillHistoryItem; t: (key: string
           )}
         </span>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground/60">{timeStr}</span>
+          <span className="text-xs text-muted-foreground/60">{dateStr}</span>
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40" />
         </div>
       </div>

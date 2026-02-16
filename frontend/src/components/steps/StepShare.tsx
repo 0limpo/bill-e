@@ -23,6 +23,7 @@ interface StepShareProps {
   participants: Participant[];
   assignments: Record<string, Assignment[]>;
   onBack?: () => void;
+  onBackToBills?: () => void;
   t: (key: string) => string;
   isOwner?: boolean;
   sessionId?: string;
@@ -37,6 +38,7 @@ export function StepShare({
   participants,
   assignments,
   onBack,
+  onBackToBills,
   t,
   isOwner = false,
   sessionId,
@@ -322,6 +324,12 @@ export function StepShare({
           <Button variant="outline" size="lg" className={isOwner ? "flex-1 h-12" : "w-full h-12"} onClick={onBack}>
             <ChevronLeft className="w-4 h-4 mr-2" />
             {t("steps.back")}
+          </Button>
+        )}
+        {!onBack && onBackToBills && (
+          <Button size="lg" className="w-full h-12 font-semibold" onClick={onBackToBills}>
+            <ChevronLeft className="w-4 h-4 mr-2" />
+            {t("bills.backToBills")}
           </Button>
         )}
         {isOwner && (

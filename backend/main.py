@@ -679,6 +679,17 @@ async def get_bill_history_endpoint(device_id: str = None, user_id: str = None, 
         return {"bills": [], "count": 0}
 
 
+@app.get("/api/session/{session_id}/snapshot")
+async def get_session_snapshot(session_id: str):
+    """Get a read-only snapshot of a finalized session from PostgreSQL."""
+    if not postgres_available:
+        raise HTTPException(status_code=404, detail="No snapshot available")
+    snapshot = postgres_db.get_session_snapshot_by_id(session_id)
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    return snapshot
+
+
 @app.post("/api/session/{session_id}/join")
 async def join_session(session_id: str, request: Request):
     try:

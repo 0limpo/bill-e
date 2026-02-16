@@ -48,7 +48,7 @@ export default function SessionPage() {
   const sessionId = params.sessionId as string;
   const urlOwnerToken = searchParams.get("owner");
   const viewMode = searchParams.get("view");
-  const isViewOnly = viewMode === "results";
+  const isViewOnlyParam = viewMode === "results";
   const paymentSuccess = searchParams.get("payment") === "success";
   const payerType = searchParams.get("payer"); // "host" or "editor"
   const authIsPremium = searchParams.get("is_premium");
@@ -75,7 +75,7 @@ export default function SessionPage() {
     }
   }, [sessionId, urlOwnerToken]);
 
-  const [step, setStep] = useState(isViewOnly ? 3 : 1);
+  const [step, setStep] = useState(isViewOnlyParam ? 3 : 1);
   const [lang, setLang] = useState<Language>("es");
   const [joinName, setJoinName] = useState("");
   const [joining, setJoining] = useState(false);
@@ -148,17 +148,20 @@ export default function SessionPage() {
     interactionPause: 15000,
   });
 
+  // View-only: either from URL param or snapshot from PostgreSQL
+  const isViewOnly = isViewOnlyParam || (session?.is_snapshot ?? false);
+
   // Detect language
   useEffect(() => {
     setLang(detectLanguage());
   }, []);
 
-  // If session is already finalized, go directly to step 3
+  // If session is already finalized or is a snapshot, go directly to step 3
   useEffect(() => {
-    if (session?.status === "finalized" && step !== 3) {
+    if ((session?.status === "finalized" || session?.is_snapshot) && step !== 3) {
       setStep(3);
     }
-  }, [session?.status, step]);
+  }, [session?.status, session?.is_snapshot, step]);
 
   // Sync bill name from session (only on initial load)
   useEffect(() => {
@@ -1164,6 +1167,7 @@ export default function SessionPage() {
             participants={participants}
             assignments={assignments}
             onBack={isViewOnly ? undefined : () => goToStep(2)}
+            onBackToBills={isViewOnly ? () => router.push("/bills") : undefined}
             t={t}
             isOwner={isOwner}
             sessionId={sessionId}

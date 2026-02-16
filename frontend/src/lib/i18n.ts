@@ -312,6 +312,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "Octubre",
     "bills.november": "Noviembre",
     "bills.december": "Diciembre",
+    "bills.backToBills": "Volver a mis boletas",
   },
   en: {
     // App
@@ -619,6 +620,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "October",
     "bills.november": "November",
     "bills.december": "December",
+    "bills.backToBills": "Back to my bills",
   },
   pt: {
     "app.title": "Bill-e",
@@ -883,6 +885,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "Outubro",
     "bills.november": "Novembro",
     "bills.december": "Dezembro",
+    "bills.backToBills": "Voltar às minhas contas",
   },
   zh: {
     "app.title": "Bill-e",
@@ -1146,6 +1149,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "十月",
     "bills.november": "十一月",
     "bills.december": "十二月",
+    "bills.backToBills": "返回我的账单",
   },
   fr: {
     "app.title": "Bill-e",
@@ -1409,6 +1413,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "Octobre",
     "bills.november": "Novembre",
     "bills.december": "Décembre",
+    "bills.backToBills": "Retour à mes additions",
   },
   de: {
     "app.title": "Bill-e",
@@ -1672,6 +1677,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "Oktober",
     "bills.november": "November",
     "bills.december": "Dezember",
+    "bills.backToBills": "Zurück zu meinen Rechnungen",
   },
   ja: {
     "app.title": "Bill-e",
@@ -1935,6 +1941,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "10月",
     "bills.november": "11月",
     "bills.december": "12月",
+    "bills.backToBills": "明細一覧に戻る",
   },
   ru: {
     "app.title": "Bill-e",
@@ -2198,6 +2205,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "Октябрь",
     "bills.november": "Ноябрь",
     "bills.december": "Декабрь",
+    "bills.backToBills": "Назад к моим счетам",
   },
   hi: {
     "app.title": "Bill-e",
@@ -2461,6 +2469,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "अक्टूबर",
     "bills.november": "नवंबर",
     "bills.december": "दिसंबर",
+    "bills.backToBills": "मेरे बिलों पर वापस",
   },
   id: {
     "app.title": "Bill-e",
@@ -2725,6 +2734,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "bills.october": "Oktober",
     "bills.november": "November",
     "bills.december": "Desember",
+    "bills.backToBills": "Kembali ke tagihan saya",
   },
 };
 

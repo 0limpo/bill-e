@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { getStoredUser } from "@/lib/auth";
 import {
   loadSession,
+  loadSessionSnapshot,
   pollSession,
   joinSession,
   selectExistingParticipant,
@@ -108,9 +109,25 @@ export function useSession({
     try {
       setLoading(true);
       setError(null);
-      const data = await loadSession(sessionId, ownerToken || undefined);
+      let data: SessionResponse;
+      try {
+        data = await loadSession(sessionId, ownerToken || undefined);
+      } catch (err) {
+        // If session not found in Redis (404), try loading snapshot from PostgreSQL
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (errMsg.includes("404") || errMsg.includes("not found") || errMsg.includes("Not Found")) {
+          try {
+            data = await loadSessionSnapshot(sessionId);
+          } catch {
+            // Snapshot also not found - throw original error
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
       setSession(data);
-      lastUpdate.current = data.last_updated;
+      lastUpdate.current = data.last_updated || "";
 
       // Restore current participant from localStorage or set owner
       const stored = localStorage.getItem(`bill-e-participant-${sessionId}`);
@@ -142,6 +159,8 @@ export function useSession({
 
   useEffect(() => {
     if (!session || !sessionId) return;
+    // Don't poll for snapshots (read-only, data from PostgreSQL)
+    if (session.is_snapshot) return;
 
     const poll = async () => {
       if (!pollingActive.current) return;

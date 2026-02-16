@@ -31,6 +31,7 @@ export interface SessionResponse {
   bill_cost_shared?: boolean;  // Whether to divide Bill-e cost among participants
   bill_name?: string;
   merchant_name?: string;
+  is_snapshot?: boolean;  // True when loaded from PostgreSQL snapshot (read-only)
   // Host session tracking (only for owners)
   host_sessions_used?: number;
   host_sessions_limit?: number;
@@ -513,6 +514,13 @@ export async function createCollaborativeSession(
     method: "POST",
     body: JSON.stringify({ ...data, device_id: deviceId }),
   });
+}
+
+/**
+ * Load a read-only snapshot of a finalized session from PostgreSQL
+ */
+export async function loadSessionSnapshot(sessionId: string): Promise<SessionResponse> {
+  return apiRequest<SessionResponse>(`/api/session/${sessionId}/snapshot`);
 }
 
 // --- Analytics ---

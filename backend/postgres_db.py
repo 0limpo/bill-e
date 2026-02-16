@@ -1410,6 +1410,46 @@ def get_bill_history(device_ids: List[str] = None, user_id: str = None, limit: i
         return results
 
 
+def get_session_snapshot_by_id(session_id: str) -> Optional[Dict]:
+    """Get a full session snapshot by session_id for read-only viewing."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        snapshot = db.query(SessionSnapshot).filter(
+            SessionSnapshot.session_id == session_id,
+            SessionSnapshot.status == SessionStatus.FINALIZED
+        ).first()
+
+        if not snapshot:
+            return None
+
+        return {
+            "session_id": snapshot.session_id,
+            "status": "finalized",
+            "items": snapshot.items or [],
+            "participants": snapshot.participants or [],
+            "assignments": snapshot.assignments or {},
+            "charges": snapshot.charges or [],
+            "subtotal": snapshot.subtotal,
+            "total": snapshot.total,
+            "bill_name": snapshot.bill_name or snapshot.merchant_name or "",
+            "merchant_name": snapshot.merchant_name or "",
+            "created_at": snapshot.created_at.isoformat() if snapshot.created_at else None,
+            "currency": snapshot.currency or "CLP",
+            "totals": snapshot.totals or [],
+            "bill_cost_shared": False,
+            "decimal_places": 0,
+            "number_format": {"thousands": ".", "decimal": ","},
+            "is_owner": False,
+            "is_snapshot": True,
+            "host_step": 3,
+        }
+
+
 def get_session_metrics() -> Optional[Dict]:
     """Get aggregated session metrics for analytics."""
     if not db_available:
