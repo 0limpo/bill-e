@@ -116,7 +116,7 @@ export default function BillsHistoryPage() {
                   {group.label}
                 </p>
                 {group.bills.map((bill) => (
-                  <BillCard key={bill.session_id} bill={bill} t={t} onClick={() => {
+                  <BillCard key={bill.session_id} bill={bill} t={t} lang={lang} onClick={() => {
                     router.push(`/s/${bill.session_id}?view=results`);
                   }} />
                 ))}
@@ -145,27 +145,33 @@ export default function BillsHistoryPage() {
   );
 }
 
-function BillCard({ bill, t, onClick }: { bill: BillHistoryItem; t: (key: string) => string; onClick: () => void }) {
-  const date = new Date(bill.created_at);
-  const timeStr = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const isToday = date.toDateString() === new Date().toDateString();
-  const dateStr = isToday ? timeStr : `${date.getDate()}/${date.getMonth() + 1} · ${timeStr}`;
+const LOCALE_MAP: Record<string, string> = {
+  es: "es-CL", en: "en-US", pt: "pt-BR", zh: "zh-CN",
+  hi: "hi-IN", fr: "fr-FR", ru: "ru-RU", ja: "ja-JP",
+  de: "de-DE", id: "id-ID",
+};
 
-  // Better name fallback: bill_name > merchant_name > default + short date
-  const displayName = bill.bill_name
-    || bill.merchant_name
-    || `${t("bills.defaultName")} ${date.getDate()}/${date.getMonth() + 1}`;
+function BillCard({ bill, t, lang, onClick }: { bill: BillHistoryItem; t: (key: string) => string; lang: string; onClick: () => void }) {
+  const date = new Date(bill.created_at);
+  const locale = LOCALE_MAP[lang] || "es-CL";
+  const dateStr = date.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
+
+  // Better name fallback: bill_name > merchant_name > default
+  const displayName = bill.bill_name || bill.merchant_name || t("bills.defaultName");
 
   return (
     <button
       className="w-full bg-card rounded-xl p-3.5 mb-1.5 text-left hover:bg-card/80 active:bg-card/70 transition-colors"
       onClick={onClick}
     >
-      {/* Row 1: name + avatars + total */}
+      {/* Row 1: name/date + avatars + total */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-foreground truncate flex-1 min-w-0">
-          {displayName}
-        </span>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium text-foreground truncate block">
+            {displayName}
+          </span>
+          <span className="text-xs text-muted-foreground/60">{dateStr}</span>
+        </div>
 
         {/* Avatar stack */}
         <div className="flex flex-shrink-0">
@@ -196,7 +202,7 @@ function BillCard({ bill, t, onClick }: { bill: BillHistoryItem; t: (key: string
         </span>
       </div>
 
-      {/* Row 2: your share + time */}
+      {/* Row 2: your share + arrow */}
       <div className="flex items-center justify-between mt-1.5">
         <span className="text-xs text-muted-foreground">
           {bill.user_share != null && (
@@ -208,10 +214,7 @@ function BillCard({ bill, t, onClick }: { bill: BillHistoryItem; t: (key: string
             </>
           )}
         </span>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground/60">{dateStr}</span>
-          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40" />
-        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40" />
       </div>
     </button>
   );

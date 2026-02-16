@@ -101,12 +101,7 @@ export default function LandingPage() {
   const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
   const [photoSource, setPhotoSource] = useState<"camera" | "gallery">("camera");
   const [lang, setLang] = useState<Language>("es");
-  const [billCount, setBillCount] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return parseInt(localStorage.getItem('bill-e-bill-count') || '0', 10);
-    }
-    return 0;
-  });
+  const [billCount, setBillCount] = useState(0);
 
   const t = getTranslator(lang);
 
@@ -116,7 +111,11 @@ export default function LandingPage() {
     setRecentSession(getRecentSession());
     trackAppOpen();
 
-    // Load bill count (update cache in background)
+    // Read cached bill count immediately (sync, before API)
+    const cached = parseInt(localStorage.getItem('bill-e-bill-count') || '0', 10);
+    if (cached > 0) setBillCount(cached);
+
+    // Then update from API in background
     getBillHistory(getDeviceId())
       .then((res) => {
         setBillCount(res.count);
@@ -299,7 +298,6 @@ export default function LandingPage() {
             className="mt-4 w-full p-3 bg-card hover:bg-card/80 border border-border rounded-xl transition-colors flex items-center gap-3"
             onClick={() => router.push("/bills")}
           >
-            <span className="text-xl">🧾</span>
             <div className="text-left flex-1">
               <p className="text-sm font-medium text-foreground">{t("bills.myBills")}</p>
               <p className="text-xs text-muted-foreground">{t("bills.count").replace("{n}", String(billCount))}</p>
