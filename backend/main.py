@@ -814,6 +814,23 @@ async def finalize_session_endpoint(session_id: str, request: Request):
         if "error" in result:
             raise HTTPException(status_code=result.get("code", 400), detail=result["error"])
 
+        # Sync to PostgreSQL immediately so it appears in bill history
+        if postgres_available:
+            try:
+                session_data = get_collab_session(redis_client, session_id)
+                if session_data:
+                    session_data["session_id"] = session_id
+                    # Enrich with user_id
+                    owner_device_id = session_data.get("owner_device_id")
+                    if owner_device_id and not session_data.get("user_id"):
+                        found_user_id = postgres_db.get_user_id_for_device(owner_device_id)
+                        if found_user_id:
+                            session_data["user_id"] = found_user_id
+                    ttl = redis_client.ttl(f"session:{session_id}")
+                    postgres_db.upsert_session_snapshot(session_data, redis_ttl=ttl)
+            except Exception as sync_err:
+                print(f"Warning: Failed to sync finalized session to PostgreSQL: {sync_err}")
+
         return result
     except HTTPException:
         raise
