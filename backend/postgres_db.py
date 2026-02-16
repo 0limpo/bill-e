@@ -29,6 +29,32 @@ SessionLocal = None
 db_available = False
 
 
+def _run_migrations(eng):
+    """Add new columns to existing tables if they don't exist."""
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS bill_name VARCHAR(255)",
+        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS merchant_name VARCHAR(255)",
+        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS user_id UUID",
+        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS totals JSON",
+    ]
+    try:
+        with eng.connect() as conn:
+            for sql in migrations:
+                conn.execute(text(sql))
+            conn.commit()
+        # Create index if not exists
+        with eng.connect() as conn:
+            conn.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_session_snapshots_user_created "
+                "ON session_snapshots (user_id, created_at)"
+            ))
+            conn.commit()
+        print("Database migrations completed successfully")
+    except Exception as e:
+        print(f"Migration warning (may be OK): {e}")
+
+
 def init_db():
     """Initialize database connection and create tables."""
     global engine, SessionLocal, db_available
@@ -48,6 +74,10 @@ def init_db():
 
         # Create tables
         Base.metadata.create_all(bind=engine)
+
+        # Run migrations for new columns on existing tables
+        _run_migrations(engine)
+
         db_available = True
         print("PostgreSQL database initialized successfully")
         return True
