@@ -295,14 +295,11 @@ export default function LandingPage() {
         {/* My bills button */}
         {billCount > 0 && (
           <button
-            className="mt-4 w-full p-3 bg-card hover:bg-card/80 border border-border rounded-xl transition-colors flex items-center gap-3"
+            className="mt-4 w-full p-3 bg-card hover:bg-card/80 border border-border rounded-xl transition-colors text-left"
             onClick={() => router.push("/bills")}
           >
-            <div className="text-left flex-1">
-              <p className="text-sm font-medium text-foreground">{t("bills.myBills")}</p>
-              <p className="text-xs text-muted-foreground">{t("bills.count").replace("{n}", String(billCount))}</p>
-            </div>
-            <span className="text-muted-foreground">→</span>
+            <p className="text-sm font-medium text-foreground">{t("bills.myBills")}</p>
+            <p className="text-xs text-muted-foreground">{t("bills.count").replace("{n}", String(billCount))}</p>
           </button>
         )}
       </div>

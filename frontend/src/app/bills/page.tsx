@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Loader2, ChevronLeft } from "lucide-react";
 import { getBillHistory, getDeviceId, type BillHistoryItem } from "@/lib/api";
 import { getAvatarColor, getInitials, formatCurrency } from "@/lib/billEngine";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
@@ -202,20 +202,17 @@ function BillCard({ bill, t, lang, onClick }: { bill: BillHistoryItem; t: (key: 
         </span>
       </div>
 
-      {/* Row 2: your share + arrow */}
-      <div className="flex items-center justify-between mt-1.5">
-        <span className="text-xs text-muted-foreground">
-          {bill.user_share != null && (
-            <>
-              {t("bills.yourShare")}{" "}
-              <span className="text-foreground font-medium">
-                {formatCurrency(bill.user_share)}
-              </span>
-            </>
-          )}
-        </span>
-        <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40" />
-      </div>
+      {/* Row 2: your share */}
+      {bill.user_share != null && (
+        <div className="mt-1.5">
+          <span className="text-xs text-muted-foreground">
+            {t("bills.yourShare")}{" "}
+            <span className="text-foreground font-medium">
+              {formatCurrency(bill.user_share)}
+            </span>
+          </span>
+        </div>
+      )}
     </button>
   );
 }
