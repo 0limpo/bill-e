@@ -937,6 +937,7 @@ async def poll_session(session_id: str, last_update: str = None):
             "last_updated": current_update,
             "last_updated_by": session_data.get("last_updated_by", ""),
             "bill_cost_shared": session_data.get("bill_cost_shared", False),
+            "bill_name": session_data.get("bill_name", ""),
         }
     except HTTPException:
         raise

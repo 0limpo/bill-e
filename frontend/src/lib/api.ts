@@ -84,6 +84,7 @@ export interface PollResponse {
   number_format?: string;
   last_updated: string;
   bill_cost_shared?: boolean;
+  bill_name?: string;
 }
 
 // --- Helper ---

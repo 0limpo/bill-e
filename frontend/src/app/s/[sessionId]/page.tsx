@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
@@ -87,6 +87,7 @@ export default function SessionPage() {
 
   // Bill name
   const [billName, setBillName] = useState<string>("");
+  const billNameInitialized = useRef(false);
 
   // Editor limit tracking (device_id based)
   const [showPaywall, setShowPaywall] = useState(false);
@@ -159,12 +160,13 @@ export default function SessionPage() {
     }
   }, [session?.status, step]);
 
-  // Sync bill name from session
+  // Sync bill name from session (only on initial load)
   useEffect(() => {
-    if (session?.bill_name !== undefined && !billName) {
+    if (session?.bill_name && !billNameInitialized.current) {
       setBillName(session.bill_name);
+      billNameInitialized.current = true;
     }
-  }, [session?.bill_name, billName]);
+  }, [session?.bill_name]);
 
   // Handle post-payment redirect
   useEffect(() => {

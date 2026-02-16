@@ -168,6 +168,7 @@ export function useSession({
               charges: data.charges,
               number_format: data.number_format || prev.number_format,
               bill_cost_shared: data.bill_cost_shared ?? prev.bill_cost_shared,
+              bill_name: data.bill_name ?? prev.bill_name,
             };
           });
         }
