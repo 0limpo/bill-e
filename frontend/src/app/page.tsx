@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Loader2 } from "lucide-react";
 import { createCollaborativeSession, getBillHistory, getDeviceId } from "@/lib/api";
+import { getStoredUser } from "@/lib/auth";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 
@@ -116,7 +117,8 @@ export default function LandingPage() {
     if (cached > 0) setBillCount(cached);
 
     // Then update from API in background
-    getBillHistory(getDeviceId())
+    const user = getStoredUser();
+    getBillHistory(getDeviceId(), user?.id)
       .then((res) => {
         setBillCount(res.count);
         localStorage.setItem('bill-e-bill-count', String(res.count));
