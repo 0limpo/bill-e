@@ -76,6 +76,8 @@ interface StepReviewProps {
   onChargesChange: (charges: Charge[]) => void;
   onNext: () => void;
   t: (key: string) => string;
+  billName?: string;
+  onBillNameChange?: (name: string) => void;
 }
 
 export function StepReview({
@@ -90,6 +92,8 @@ export function StepReview({
   onChargesChange,
   onNext,
   t,
+  billName,
+  onBillNameChange,
 }: StepReviewProps) {
   const [expandedCharge, setExpandedCharge] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -234,6 +238,30 @@ export function StepReview({
 
   return (
     <div className="step-animate" ref={containerRef} onClick={handleBackgroundClick}>
+      {/* Bill Name Card */}
+      {onBillNameChange && (
+        <div className="bg-card rounded-2xl p-3.5 mb-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            value={billName || ""}
+            onChange={(e) => onBillNameChange(e.target.value)}
+            onBlur={(e) => onBillNameChange(e.target.value.trim())}
+            placeholder={t("bills.billName")}
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-[0.9375rem] font-medium text-foreground placeholder:text-muted-foreground/40"
+          />
+          {billName && (
+            <span className="text-[0.6875rem] text-muted-foreground/60 flex-shrink-0">
+              {t("bills.fromOcr")}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Items Section - Gray Box */}
       <div className="bg-card rounded-2xl p-4 mb-4">
         {items.map((item) => {

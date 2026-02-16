@@ -29,7 +29,8 @@ def create_collaborative_session(
     has_tip: bool = False,
     number_format: Dict = None,
     price_mode: str = "unitario",
-    device_id: str = ""
+    device_id: str = "",
+    merchant_name: str = ""
 ) -> Dict[str, Any]:
     session_id = str(uuid.uuid4())[:8]
     owner_token = str(uuid.uuid4())
@@ -51,6 +52,8 @@ def create_collaborative_session(
         "owner_token": owner_token,
         "owner_phone": owner_phone,
         "owner_device_id": device_id,
+        "merchant_name": merchant_name,
+        "bill_name": merchant_name or "",
         "status": SessionStatus.ASSIGNING.value,
         "host_step": 1,  # Track which step the host is on (1=Review, 2=Assign, 3=Share)
         "created_at": datetime.now().isoformat(),

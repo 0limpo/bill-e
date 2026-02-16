@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Loader2 } from "lucide-react";
-import { createCollaborativeSession } from "@/lib/api";
+import { createCollaborativeSession, getBillHistory, getDeviceId } from "@/lib/api";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 
@@ -101,6 +101,7 @@ export default function LandingPage() {
   const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
   const [photoSource, setPhotoSource] = useState<"camera" | "gallery">("camera");
   const [lang, setLang] = useState<Language>("es");
+  const [billCount, setBillCount] = useState(0);
 
   const t = getTranslator(lang);
 
@@ -109,6 +110,11 @@ export default function LandingPage() {
     setLang(detectLanguage());
     setRecentSession(getRecentSession());
     trackAppOpen();
+
+    // Load bill count
+    getBillHistory(getDeviceId())
+      .then((res) => setBillCount(res.count))
+      .catch(() => {});
   }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,6 +178,7 @@ export default function LandingPage() {
         charges: data.charges || [],
         raw_text: data.raw_text || "",
         decimal_places: data.decimal_places || 0,
+        merchant_name: data.merchant_name || "",
       });
 
       // Save session for "continue" feature
@@ -275,6 +282,19 @@ export default function LandingPage() {
               <p className="text-xs text-muted-foreground">{getTimeAgo(recentSession.createdAt, t)}</p>
             </div>
             <span className="text-muted-foreground">→</span>
+          </button>
+        )}
+
+        {/* My bills button */}
+        {billCount > 0 && !isLoading && (
+          <button
+            className="mt-4 w-full flex items-center justify-center gap-2 p-3 border border-border rounded-xl text-muted-foreground text-sm hover:border-primary hover:text-foreground hover:bg-primary/5 transition-all"
+            onClick={() => router.push("/bills")}
+          >
+            {t("bills.myBills")}
+            <span className="bg-primary/15 text-primary text-xs font-semibold px-2 py-0.5 rounded-lg">
+              {billCount}
+            </span>
           </button>
         )}
       </div>

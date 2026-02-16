@@ -302,6 +302,7 @@ class GeminiOCRService:
             prompt = """Extrae los datos de esta boleta y retorna JSON:
 
 {
+  "nombre_comercio": "Restaurante El Parrón",
   "precio_modo": "unitario",
   "moneda_tiene_decimales": false,
   "items": [
@@ -315,6 +316,7 @@ class GeminiOCRService:
 }
 
 DEFINICIONES:
+- nombre_comercio: nombre del restaurante, tienda o comercio (usualmente en las primeras líneas de la boleta). Vacío si no se detecta.
 - precio_modo: "unitario" si la boleta muestra precio por unidad, "total_linea" si muestra el total de la línea (cantidad × precio)
 - moneda_tiene_decimales: true solo si la moneda usa centavos (USD, EUR, etc). false para pesos chilenos (CLP), pesos mexicanos (MXN), etc.
 - items: productos consumidos (comida, bebida, servicios)
@@ -559,6 +561,7 @@ Retorna SOLO el JSON, sin explicaciones."""
                         'price_mode': price_mode,  # 'unitario' o 'total_linea'
                         'decimal_places': decimal_places,
                         'number_format': number_format,
+                        'merchant_name': data.get('nombre_comercio') or '',
                         'needs_review': needs_review,
                         'review_message': review_message,
                         'confidence_score': quality_score,

@@ -497,7 +497,8 @@ async def create_collaborative_session_endpoint(request: Request):
             raw_text=data.get("raw_text", ""),
             charges=data.get("charges", []),
             decimal_places=data.get("decimal_places", 0),
-            device_id=device_id
+            device_id=device_id,
+            merchant_name=data.get("merchant_name", "")
         )
 
         # Track user in PostgreSQL (host creating session)
@@ -558,6 +559,8 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
             "number_format": session_data.get("number_format", {"thousands": ",", "decimal": "."}),
             "price_mode": session_data.get("price_mode", "unitario"),  # 'unitario' o 'total_linea'
             "bill_cost_shared": session_data.get("bill_cost_shared", False),  # Whether to share Bill-e cost
+            "bill_name": session_data.get("bill_name", ""),
+            "merchant_name": session_data.get("merchant_name", ""),
             "expires_at": session_data["expires_at"],
             "last_updated": session_data.get("last_updated"),
             "last_updated_by": session_data.get("last_updated_by"),
@@ -600,6 +603,80 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/bill-name")
+async def update_bill_name(session_id: str, request: Request):
+    """Update the bill name for a session (owner only)."""
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+        bill_name = data.get("bill_name", "").strip()
+
+        session_data = get_collab_session(redis_client, session_id)
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        session_data["bill_name"] = bill_name
+        session_data["last_updated"] = datetime.now().isoformat()
+
+        # Save back to Redis (preserve TTL)
+        existing_ttl = redis_client.ttl(f"session:{session_id}")
+        redis_client.setex(
+            f"session:{session_id}",
+            existing_ttl if existing_ttl > 0 else 3600,
+            json.dumps(session_data)
+        )
+
+        return {"success": True, "bill_name": bill_name}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/bills/history")
+async def get_bill_history_endpoint(device_id: str = None, user_id: str = None, limit: int = 50):
+    """Get bill history for a user by device_id or user_id."""
+    try:
+        if not postgres_available:
+            return {"bills": [], "count": 0}
+
+        # Collect all device_ids for this user
+        device_ids = []
+        resolved_user_id = user_id
+
+        if device_id:
+            device_ids.append(device_id)
+            # Also look up user to get all their device_ids
+            if not resolved_user_id:
+                resolved_user_id = postgres_db.get_user_id_for_device(device_id)
+
+        if resolved_user_id:
+            # Get all device_ids for this user
+            with postgres_db.get_db() as db:
+                if db:
+                    user = db.query(postgres_db.User).filter(
+                        postgres_db.User.id == (uuid.UUID(resolved_user_id) if isinstance(resolved_user_id, str) else resolved_user_id)
+                    ).first()
+                    if user and user.device_ids:
+                        for did in user.device_ids:
+                            if did not in device_ids:
+                                device_ids.append(did)
+
+        bills = postgres_db.get_bill_history(
+            device_ids=device_ids if device_ids else None,
+            user_id=resolved_user_id,
+            limit=limit
+        )
+
+        return {"bills": bills or [], "count": len(bills or [])}
+    except Exception as e:
+        print(f"Error getting bill history: {e}")
+        return {"bills": [], "count": 0}
 
 
 @app.post("/api/session/{session_id}/join")
@@ -2704,6 +2781,13 @@ async def cron_sync_sessions(secret: str = None):
 
                     # Add session_id to data if not present
                     session_data["session_id"] = session_id
+
+                    # Enrich with user_id from device_id
+                    owner_device_id = session_data.get("owner_device_id")
+                    if owner_device_id and not session_data.get("user_id"):
+                        found_user_id = postgres_db.get_user_id_for_device(owner_device_id)
+                        if found_user_id:
+                            session_data["user_id"] = found_user_id
 
                     # Upsert to PostgreSQL
                     result = postgres_db.upsert_session_snapshot(session_data, redis_ttl=ttl)

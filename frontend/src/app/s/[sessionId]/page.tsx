@@ -13,6 +13,7 @@ import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, detectDecimals, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
 import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
 import { getStoredToken, getStoredUser, getAuthProviders, type AuthProvider } from "@/lib/auth";
+import { updateBillName } from "@/lib/api";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import {
   trackStep1Complete,
@@ -84,6 +85,9 @@ export default function SessionPage() {
   const [editingName, setEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
 
+  // Bill name
+  const [billName, setBillName] = useState<string>("");
+
   // Editor limit tracking (device_id based)
   const [showPaywall, setShowPaywall] = useState(false);
   const [sessionsUsed, setSessionsUsed] = useState(0);
@@ -154,6 +158,13 @@ export default function SessionPage() {
       setStep(3);
     }
   }, [session?.status, step]);
+
+  // Sync bill name from session
+  useEffect(() => {
+    if (session?.bill_name !== undefined && !billName) {
+      setBillName(session.bill_name);
+    }
+  }, [session?.bill_name, billName]);
 
   // Handle post-payment redirect
   useEffect(() => {
@@ -296,6 +307,13 @@ export default function SessionPage() {
   const assignments: Record<string, Assignment[]> = session?.assignments || {};
 
   // --- Handlers ---
+
+  const handleBillNameChange = (name: string) => {
+    setBillName(name);
+    if (ownerToken) {
+      updateBillName(sessionId, ownerToken, name).catch(() => {});
+    }
+  };
 
   const handleJoin = async () => {
     if (!joinName.trim()) return;
@@ -984,6 +1002,8 @@ export default function SessionPage() {
             onChargesChange={handleChargesChange}
             onNext={() => goToStep(2)}
             t={t}
+            billName={billName}
+            onBillNameChange={handleBillNameChange}
           />
         )}
 

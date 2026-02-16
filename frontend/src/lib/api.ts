@@ -29,6 +29,8 @@ export interface SessionResponse {
   tip_percentage?: number;
   has_tip?: boolean;
   bill_cost_shared?: boolean;  // Whether to divide Bill-e cost among participants
+  bill_name?: string;
+  merchant_name?: string;
   // Host session tracking (only for owners)
   host_sessions_used?: number;
   host_sessions_limit?: number;
@@ -464,6 +466,7 @@ export interface OCRResponse {
   tip?: number;
   charges?: ApiCharge[];
   raw_text?: string;
+  merchant_name?: string;
 }
 
 /**
@@ -501,6 +504,7 @@ export async function createCollaborativeSession(
     charges?: ApiCharge[];
     raw_text?: string;
     decimal_places?: number;
+    merchant_name?: string;
   }
 ): Promise<{ session_id: string; owner_token: string; frontend_url: string }> {
   const deviceId = getDeviceId();
@@ -743,4 +747,52 @@ export async function checkPremiumByEmail(
   return apiRequest<PremiumCheckResponse>(
     `/api/premium/check/${encodeURIComponent(email)}`
   );
+}
+
+// ============================================================================
+// Bill History
+// ============================================================================
+
+export interface BillHistoryItem {
+  session_id: string;
+  bill_name: string;
+  merchant_name: string;
+  total: number;
+  user_share: number | null;
+  participants: string[];
+  participants_count: number;
+  created_at: string;
+  currency: string;
+}
+
+export interface BillHistoryResponse {
+  bills: BillHistoryItem[];
+  count: number;
+}
+
+/**
+ * Get bill history for the current user
+ */
+export async function getBillHistory(
+  deviceId?: string,
+  userId?: string
+): Promise<BillHistoryResponse> {
+  const params = new URLSearchParams();
+  if (deviceId) params.set("device_id", deviceId);
+  if (userId) params.set("user_id", userId);
+  return apiRequest<BillHistoryResponse>(`/api/bills/history?${params.toString()}`);
+}
+
+/**
+ * Update the bill name for a session
+ */
+export async function updateBillName(
+  sessionId: string,
+  ownerToken: string,
+  billName: string
+): Promise<{ success: boolean; bill_name: string }> {
+  return apiRequest(`/api/session/${sessionId}/bill-name`, {
+    method: "POST",
+    body: JSON.stringify({ owner_token: ownerToken, bill_name: billName }),
+  });
 }

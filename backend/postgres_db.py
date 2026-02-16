@@ -277,6 +277,12 @@ class SessionSnapshot(Base):
     items_count = Column(Integer, default=0)
     participants_count = Column(Integer, default=0)
 
+    # Bill identity
+    bill_name = Column(String(255))
+    merchant_name = Column(String(255))
+    user_id = Column(UUID(as_uuid=True), index=True)
+    totals = Column(JSON)  # [{participant_id, name, total}, ...]
+
     # Host info
     host_device_id = Column(String(100), index=True)
     host_phone = Column(String(50))
@@ -308,6 +314,7 @@ class SessionSnapshot(Base):
     __table_args__ = (
         Index('ix_session_snapshots_status_created', 'status', 'created_at'),
         Index('ix_session_snapshots_host', 'host_device_id'),
+        Index('ix_session_snapshots_user_created', 'user_id', 'created_at'),
     )
 
 
@@ -1223,6 +1230,16 @@ def upsert_session_snapshot(session_data: Dict, redis_ttl: int = None) -> Option
         snapshot.items_count = len(snapshot.items) if snapshot.items else 0
         snapshot.participants_count = len(snapshot.participants) if snapshot.participants else 0
 
+        # Bill identity
+        snapshot.bill_name = session_data.get("bill_name")
+        snapshot.merchant_name = session_data.get("merchant_name")
+        snapshot.totals = session_data.get("totals")
+        if session_data.get("user_id"):
+            try:
+                snapshot.user_id = uuid.UUID(session_data["user_id"]) if isinstance(session_data["user_id"], str) else session_data["user_id"]
+            except (ValueError, AttributeError):
+                pass
+
         # Host info
         snapshot.host_device_id = session_data.get("owner_device_id")
         snapshot.host_phone = session_data.get("owner_phone")
@@ -1273,6 +1290,94 @@ def upsert_session_snapshot(session_data: Dict, redis_ttl: int = None) -> Option
             "items_count": snapshot.items_count,
             "participants_count": snapshot.participants_count
         }
+
+
+def get_user_id_for_device(device_id: str) -> Optional[str]:
+    """Find user_id that owns a given device_id (checking JSON device_ids array)."""
+    if not db_available or not device_id:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        from sqlalchemy import cast, String
+        # Query users where device_ids JSON array contains the device_id
+        users = db.query(User).all()
+        for user in users:
+            if user.device_ids and device_id in user.device_ids:
+                return str(user.id)
+        return None
+
+
+def get_bill_history(device_ids: List[str] = None, user_id: str = None, limit: int = 50) -> Optional[List[Dict]]:
+    """Get bill history for a user by their device_ids or user_id."""
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        from sqlalchemy import or_
+
+        # Build filter conditions
+        conditions = []
+        if device_ids:
+            for did in device_ids:
+                conditions.append(SessionSnapshot.host_device_id == did)
+        if user_id:
+            try:
+                uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+                conditions.append(SessionSnapshot.user_id == uid)
+            except (ValueError, AttributeError):
+                pass
+
+        if not conditions:
+            return []
+
+        snapshots = (
+            db.query(SessionSnapshot)
+            .filter(or_(*conditions))
+            .filter(SessionSnapshot.status == SessionStatus.FINALIZED)
+            .order_by(SessionSnapshot.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        results = []
+        for s in snapshots:
+            # Calculate user_share from totals (find participant with role=owner)
+            user_share = None
+            participants = s.participants or []
+            totals = s.totals or []
+            owner_participant_id = None
+            for p in participants:
+                if p.get("role") == "owner":
+                    owner_participant_id = p.get("id")
+                    break
+            if owner_participant_id and totals:
+                for t in totals:
+                    if t.get("participant_id") == owner_participant_id:
+                        user_share = t.get("total")
+                        break
+
+            # Extract participant names for avatars
+            participant_names = [p.get("name", "?") for p in participants]
+
+            results.append({
+                "session_id": s.session_id,
+                "bill_name": s.bill_name or s.merchant_name or "",
+                "merchant_name": s.merchant_name or "",
+                "total": s.total,
+                "user_share": user_share,
+                "participants": participant_names,
+                "participants_count": s.participants_count or len(participants),
+                "created_at": s.created_at.isoformat() if s.created_at else None,
+                "currency": s.currency or "CLP",
+            })
+
+        return results
 
 
 def get_session_metrics() -> Optional[Dict]:
