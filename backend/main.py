@@ -136,9 +136,10 @@ if analytics_available:
     app.add_middleware(AnalyticsMiddleware)
 
 # CORS para el frontend
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://bill-e.vercel.app,http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

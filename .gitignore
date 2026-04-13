@@ -35,3 +35,11 @@ _archive/
 contexto/
 gemini-translation-context/
 .claude/
+
+# Play Store package (contains keystore passwords)
+Bill-e - Google Play package/
+play console/
+
+# Mockups and temp files
+mockup-*.html
+nul
