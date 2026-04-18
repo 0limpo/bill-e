@@ -730,7 +730,7 @@ export function StepAssign({
                         const assign = itemAssignments.find((a) => a.participant_id === p.id);
                         const qty = assign?.quantity || 0;
                         const isAssigned = qty > 0;
-                        const canAdd = remaining > 0 || mode === "grupal";
+                        const canAdd = mode === "grupal" ? !isAssigned : remaining > 0;
 
                         return (
                           <div key={p.id} className="flex flex-col items-center gap-1 min-w-14">

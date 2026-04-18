@@ -103,6 +103,15 @@ export function getDeviceId(): string {
   return deviceId;
 }
 
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, body: string) {
+    super(body || `API error: ${status}`);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -117,7 +126,7 @@ async function apiRequest<T>(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(error || `API error: ${response.status}`);
+    throw new ApiError(response.status, error);
   }
 
   return response.json();

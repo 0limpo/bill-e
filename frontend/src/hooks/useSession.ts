@@ -22,6 +22,7 @@ import {
   addParticipantManual,
   updateHostStep as apiUpdateHostStep,
   updateBillCostShared as apiUpdateBillCostShared,
+  ApiError,
   type SessionResponse,
   type ApiCharge,
   type PollResponse,
@@ -114,8 +115,7 @@ export function useSession({
         data = await loadSession(sessionId, ownerToken || undefined);
       } catch (err) {
         // If session not found in Redis (404), try loading snapshot from PostgreSQL
-        const errMsg = err instanceof Error ? err.message : String(err);
-        if (errMsg.includes("404") || errMsg.includes("not found") || errMsg.includes("Not Found")) {
+        if (err instanceof ApiError && err.status === 404) {
           try {
             data = await loadSessionSnapshot(sessionId);
           } catch {

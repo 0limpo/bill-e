@@ -184,7 +184,10 @@ class GeminiOCRService:
             prompt = "Is this image a receipt, bill, invoice, or restaurant check? Answer only YES or NO."
 
             logger.info("🔍 Validando si imagen es boleta...")
-            response = self.model.generate_content([prompt, image])
+            response = self.model.generate_content(
+                [prompt, image],
+                generation_config={"temperature": 0},
+            )
 
             if response and response.text:
                 answer = response.text.strip().upper()
@@ -241,7 +244,10 @@ class GeminiOCRService:
             """
 
             logger.info("🤖 Enviando imagen a Gemini para análisis...")
-            response = self.model.generate_content([prompt, image])
+            response = self.model.generate_content(
+                [prompt, image],
+                generation_config={"temperature": 0},
+            )
 
             if response and response.text:
                 logger.info(f"✅ Gemini extrajo {len(response.text)} caracteres")
@@ -337,7 +343,10 @@ FORMATO NUMÉRICO:
 Retorna SOLO el JSON, sin explicaciones."""
 
             logger.info("🤖 Enviando imagen a Gemini para análisis estructurado...")
-            response = self.model.generate_content([prompt, image])
+            response = self.model.generate_content(
+                [prompt, image],
+                generation_config={"temperature": 0},
+            )
 
             if response and response.text:
                 response_text = response.text.strip()
