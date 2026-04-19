@@ -324,7 +324,7 @@ class GeminiOCRService:
 DEFINICIONES:
 - nombre_comercio: nombre del restaurante, tienda o comercio (usualmente en las primeras líneas de la boleta). Vacío si no se detecta.
 - precio_modo: "unitario" si la boleta muestra precio por unidad, "total_linea" si muestra el total de la línea (cantidad × precio)
-- moneda_tiene_decimales: true solo si la moneda usa centavos (USD, EUR, etc). false para pesos chilenos (CLP), pesos mexicanos (MXN), etc.
+- moneda_tiene_decimales: true solo si la moneda usa centavos (USD, EUR, se ven como X.YY en la boleta); false para monedas sin centavos (CLP, MXN, se ven como enteros o con separador de miles X.YYY)
 - items: productos consumidos (comida, bebida, servicios)
 - precio: el valor TAL CUAL aparece en la boleta (sin modificar). Si la boleta muestra $7000 para 2 cervezas, poner 7000
 - cargos: todo lo que suma o resta al subtotal DESPUÉS de los items:
