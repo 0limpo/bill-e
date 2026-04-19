@@ -324,9 +324,14 @@ class GeminiOCRService:
 DEFINICIONES:
 - nombre_comercio: nombre del restaurante, tienda o comercio (usualmente en las primeras líneas de la boleta). Vacío si no se detecta.
 - precio_modo: "unitario" si la boleta muestra precio por unidad, "total_linea" si muestra el total de la línea (cantidad × precio)
-- moneda_tiene_decimales: true solo si la moneda usa centavos (USD, EUR, etc). false para pesos chilenos (CLP), pesos mexicanos (MXN), etc.
+- moneda_tiene_decimales: se define por el formato VISUAL de los precios en la boleta:
+  * true  -> si los precios tienen 2 dígitos después del separador (ej: "$8.50", "€12,99") -> son centavos
+  * false -> si los precios tienen 3 dígitos después del separador (ej: "$6.900", "$1.250") -> el separador es de MILES, no decimal
+  * false -> si los precios son enteros sin separador visible (ej: "$7000")
 - items: productos consumidos (comida, bebida, servicios)
-- precio: el valor TAL CUAL aparece en la boleta (sin modificar). Si la boleta muestra $7000 para 2 cervezas, poner 7000
+- precio: el valor TAL CUAL aparece en la boleta (sin modificar, sin dividir por cantidad). Si la boleta muestra $7000 para 2 cervezas, poner 7000 (y precio_modo="total_linea"). Sin separador de miles en el JSON:
+  * Si moneda_tiene_decimales=false -> entero (ej: boleta "6.900" -> JSON 6900, boleta "7000" -> JSON 7000)
+  * Si moneda_tiene_decimales=true -> decimal con 2 dígitos (ej: boleta "8.50" -> JSON 8.50)
 - cargos: todo lo que suma o resta al subtotal DESPUÉS de los items:
   * Propinas (tip, gratuity, propina sugerida)
   * Impuestos (IVA, tax, sales tax)
@@ -335,10 +340,12 @@ DEFINICIONES:
 - tipo: "percent" si es porcentaje del subtotal, "fixed" si es monto fijo
 - es_descuento: true si resta, false si suma
 
-FORMATO NUMÉRICO:
-- NUNCA uses separador de miles (ni punto ni coma)
-- Si la moneda NO tiene decimales: números enteros (2500, no 2.500)
-- Si la moneda SÍ tiene decimales: usa punto decimal con máximo 2 dígitos (8.50)
+FORMATO NUMÉRICO (crítico, leer con atención):
+- Cuenta los dígitos después del punto/coma que ves en la boleta
+- 3 dígitos = separador de MILES. "6.900" significa seis mil novecientos -> JSON: 6900
+- 2 dígitos = centavos. "8.50" significa ocho con cincuenta -> JSON: 8.50
+- 0 dígitos = entero. "7000" -> JSON: 7000
+- Nunca dejes punto o coma en los números del JSON como separador de miles
 
 Retorna SOLO el JSON, sin explicaciones."""
 
