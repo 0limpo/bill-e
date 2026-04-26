@@ -682,6 +682,7 @@ export function StepReview({
       <StepGateModal
         open={gateState !== "closed"}
         mode={gateState === "error" ? "error" : "success"}
+        celebration="subtle"
         title={gateState === "error" ? t("gate.review.errorTitle") : t("gate.review.successTitle")}
         subtitle={gateState === "error"
           ? buildErrorSubtitle({ subtotal, total, originalSubtotal, originalTotal, fmt, t })

@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { CheckCircle2, AlertTriangle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -49,6 +50,8 @@ interface StepGateModalProps {
   /** Secondary CTA — typically "Seguir editando". Hidden when undefined. */
   secondaryLabel?: string;
   onSecondary?: () => void;
+  /** Celebration animation when mode='success'. Defaults to 'subtle'. */
+  celebration?: "subtle" | "festive";
 }
 
 /**
@@ -72,13 +75,27 @@ export function StepGateModal({
   onPrimary,
   secondaryLabel,
   onSecondary,
+  celebration = "subtle",
 }: StepGateModalProps) {
+  useEffect(() => {
+    if (!open || mode !== "success") return;
+    if (typeof window === "undefined") return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) return;
+    if ("vibrate" in navigator) {
+      try {
+        navigator.vibrate(celebration === "festive" ? [25, 50, 25] : 25);
+      } catch {}
+    }
+  }, [open, mode, celebration]);
+
   if (!open) return null;
 
   const isSuccess = mode === "success";
   const Icon = isSuccess ? CheckCircle2 : AlertTriangle;
   const accent = isSuccess ? "text-green-500" : "text-amber-500";
   const ringTone = isSuccess ? "bg-green-500/10" : "bg-amber-500/10";
+  const celClass = isSuccess ? `cel-card cel-${celebration}` : "";
 
   return (
     <div
@@ -94,23 +111,62 @@ export function StepGateModal({
       />
 
       {/* Card — full-width sheet on mobile, centered card on desktop */}
-      <div className="relative w-full sm:max-w-md bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 step-gate-enter">
+      <div className={`relative w-full sm:max-w-md bg-card rounded-t-3xl sm:rounded-2xl shadow-2xl p-6 step-gate-enter ${celClass}`}>
         {/* Icon + Title */}
         <div className="flex flex-col items-center text-center mb-4">
-          <div className={`w-14 h-14 rounded-full ${ringTone} flex items-center justify-center mb-3`}>
-            <Icon className={`w-8 h-8 ${accent}`} strokeWidth={2} />
-          </div>
-          <h2 id="step-gate-title" className="text-xl font-bold text-foreground">
+          {isSuccess ? (
+            <div className={`cel-icon ${accent}`}>
+              <div className="cel-halo" aria-hidden="true" />
+              {celebration === "festive" && (
+                <>
+                  <span className="confetti" aria-hidden="true" />
+                  <span className="confetti" aria-hidden="true" />
+                  <span className="confetti" aria-hidden="true" />
+                  <span className="confetti" aria-hidden="true" />
+                  <span className="confetti" aria-hidden="true" />
+                  <span className="confetti" aria-hidden="true" />
+                  <span className="confetti" aria-hidden="true" />
+                  <span className="confetti" aria-hidden="true" />
+                </>
+              )}
+              <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+                <circle
+                  className="cel-svg-circle"
+                  cx="32"
+                  cy="32"
+                  r="27"
+                  fill={celebration === "festive" ? "currentColor" : "none"}
+                  fillOpacity={celebration === "festive" ? 0.15 : 1}
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+                <path
+                  className="cel-svg-check"
+                  d="M19 33l9 9 18-18"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          ) : (
+            <div className={`w-14 h-14 rounded-full ${ringTone} flex items-center justify-center mb-3`}>
+              <Icon className={`w-8 h-8 ${accent}`} strokeWidth={2} />
+            </div>
+          )}
+          <h2 id="step-gate-title" className={`text-xl font-bold text-foreground ${isSuccess ? "cel-title" : ""}`}>
             {title}
           </h2>
           {subtitle && (
-            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+            <p className={`mt-1 text-sm text-muted-foreground ${isSuccess ? "cel-sub" : ""}`}>{subtitle}</p>
           )}
         </div>
 
         {/* Checklist */}
         {checklist && checklist.length > 0 && (
-          <ul className="space-y-2 mb-4">
+          <ul className={`space-y-2 mb-4 ${isSuccess ? "cel-list" : ""}`}>
             {checklist.map((it, i) => (
               <li
                 key={i}
@@ -191,7 +247,7 @@ export function StepGateModal({
           {primaryLabel && onPrimary && (
             <Button
               size="lg"
-              className="w-full h-12 text-base font-semibold"
+              className={`w-full h-12 text-base font-semibold ${isSuccess ? "cel-btn" : ""}`}
               onClick={onPrimary}
             >
               {primaryLabel}
@@ -202,7 +258,7 @@ export function StepGateModal({
             <Button
               variant="outline"
               size="lg"
-              className="w-full h-11 text-sm"
+              className={`w-full h-11 text-sm ${isSuccess ? "cel-btn" : ""}`}
               onClick={onSecondary}
             >
               {secondaryLabel}

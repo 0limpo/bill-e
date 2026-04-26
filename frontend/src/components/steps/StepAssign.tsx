@@ -814,6 +814,7 @@ export function StepAssign({
       <StepGateModal
         open={gateOpen}
         mode="success"
+        celebration="festive"
         title={t("gate.assign.successTitle")}
         subtitle={t("gate.assign.successSubtitle")}
         checklist={[
