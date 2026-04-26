@@ -103,6 +103,56 @@ export const translations: Record<Language, Record<string, string>> = {
     "verify.mismatch": "Hay diferencias",
     "verify.scannedCorrectly": "Boleta leída correctamente",
 
+    // Step-gate modal — Etapa 1 (Review)
+    "gate.review.successTitle": "¡Todo en orden!",
+    "gate.review.successSubtitle": "La boleta cuadra con tus items. Ya puedes asignar los consumos.",
+    "gate.review.errorTitle": "La cuenta no cuadra",
+    "gate.review.errorSubtitle": "Hay {diff} de diferencia entre los items escaneados y el total de tu boleta.",
+    "gate.review.itemsLabel": "{count} items detectados",
+    "gate.review.subtotalOk": "El subtotal coincide con la boleta",
+    "gate.review.totalOk": "El total coincide con la boleta",
+    "gate.review.compareItemsSubtotal": "Items escaneados",
+    "gate.review.compareReceiptSubtotal": "Subtotal de la boleta",
+    "gate.review.compareItemsTotal": "Items escaneados",
+    "gate.review.compareReceiptTotal": "Total de la boleta",
+    "gate.review.compareDiff": "Diferencia",
+    "gate.review.hintsHeader": "Revisa:",
+    "gate.review.hint1": "La calidad de la imagen",
+    "gate.review.hint2": "Que estén todos los items",
+    "gate.review.hint3": "Que los valores de los items estén correctos",
+    "gate.review.hint4": "Que estén todos los cargos y servicios con los valores correctos",
+    "gate.review.hint4Example": "propina, cubierto, IVA, etc.",
+    "gate.review.hint5": "Que los totales escaneados sean los correctos",
+    "gate.review.hint5Example": "subtotal y total",
+    "gate.review.primaryAdvance": "Avanzar a asignar",
+    "gate.review.secondaryFix": "Volver a editar",
+    "gate.review.secondaryKeepEditing": "Seguir editando",
+
+    // Etapa 1 — items: empty state, undo, editor, verification table
+    "items.empty.title": "No detectamos items",
+    "items.empty.subtitle": "La foto puede haber quedado borrosa o cortada.",
+    "items.empty.rescan": "Re-escanear boleta",
+    "items.empty.addManual": "Agregar item manualmente",
+    "items.deleted": "Item eliminado",
+    "items.undo": "Deshacer",
+    "items.editorNamePlaceholder": "Nombre del item",
+    "items.editorQuantity": "Cantidad",
+    "items.editorValue": "Valor",
+    "items.editorValueHelper": "Tal como aparece en la línea del item en tu boleta.",
+    "verify.calc": "Calculado",
+    "verify.scanned": "Boleta",
+
+    // Step-gate modal — Etapa 2 (Assign)
+    "gate.assign.successTitle": "¡Todo asignado!",
+    "gate.assign.successSubtitle": "Cada item tiene a alguien que lo consumió. Listo para cerrar la cuenta.",
+    "gate.assign.itemsAssignedLabel": "{a} de {b} items asignados",
+    "gate.assign.peopleLabel": "{n} personas en la cuenta",
+    "gate.assign.peopleDetail": "Cada uno verá su parte al compartir.",
+    "gate.assign.distributedLabel": "Total distribuido",
+    "gate.assign.distributedDetail": "Cargos y descuentos repartidos según la regla elegida.",
+    "gate.assign.primaryAdvance": "Avanzar a compartir",
+    "gate.assign.secondaryReview": "Revisar asignaciones",
+
     // Assignment
     "assign.remaining": "Falta por asignar",
     "assign.allAssigned": "Todo asignado",
@@ -410,6 +460,56 @@ export const translations: Record<Language, Record<string, string>> = {
     "verify.match": "Values match",
     "verify.mismatch": "There are differences",
     "verify.scannedCorrectly": "Receipt scanned correctly",
+
+    // Step-gate modal — Etapa 1 (Review)
+    "gate.review.successTitle": "All set!",
+    "gate.review.successSubtitle": "Your items match the receipt. Time to assign who had what.",
+    "gate.review.errorTitle": "The numbers don't add up",
+    "gate.review.errorSubtitle": "There's {diff} of difference between the scanned items and your receipt total.",
+    "gate.review.itemsLabel": "{count} items detected",
+    "gate.review.subtotalOk": "Subtotal matches the receipt",
+    "gate.review.totalOk": "Total matches the receipt",
+    "gate.review.compareItemsSubtotal": "Scanned items",
+    "gate.review.compareReceiptSubtotal": "Receipt subtotal",
+    "gate.review.compareItemsTotal": "Scanned items",
+    "gate.review.compareReceiptTotal": "Receipt total",
+    "gate.review.compareDiff": "Difference",
+    "gate.review.hintsHeader": "Check:",
+    "gate.review.hint1": "Image quality",
+    "gate.review.hint2": "That every item is there",
+    "gate.review.hint3": "That item values are correct",
+    "gate.review.hint4": "That every charge and service is included with the right value",
+    "gate.review.hint4Example": "tip, cover charge, VAT, etc.",
+    "gate.review.hint5": "That the scanned totals are correct",
+    "gate.review.hint5Example": "subtotal and total",
+    "gate.review.primaryAdvance": "Continue to assign",
+    "gate.review.secondaryFix": "Back to edit",
+    "gate.review.secondaryKeepEditing": "Keep editing",
+
+    // Etapa 1 — items
+    "items.empty.title": "No items detected",
+    "items.empty.subtitle": "The photo may have been blurry or cropped.",
+    "items.empty.rescan": "Rescan receipt",
+    "items.empty.addManual": "Add item manually",
+    "items.deleted": "Item deleted",
+    "items.undo": "Undo",
+    "items.editorNamePlaceholder": "Item name",
+    "items.editorQuantity": "Quantity",
+    "items.editorValue": "Value",
+    "items.editorValueHelper": "As printed on the item line of your receipt.",
+    "verify.calc": "Calculated",
+    "verify.scanned": "Receipt",
+
+    // Step-gate modal — Etapa 2 (Assign)
+    "gate.assign.successTitle": "Everything is assigned!",
+    "gate.assign.successSubtitle": "Each item has someone covering it. You're ready to close the bill.",
+    "gate.assign.itemsAssignedLabel": "{a} of {b} items assigned",
+    "gate.assign.peopleLabel": "{n} people on this bill",
+    "gate.assign.peopleDetail": "Everyone will see their share when you share the link.",
+    "gate.assign.distributedLabel": "Total distributed",
+    "gate.assign.distributedDetail": "Charges and discounts split using the rule you picked.",
+    "gate.assign.primaryAdvance": "Continue to share",
+    "gate.assign.secondaryReview": "Review assignments",
 
     // Assignment
     "assign.remaining": "Remaining to assign",
@@ -2661,7 +2761,6 @@ export const translations: Record<Language, Record<string, string>> = {
     "payment.premiumLinkedTo": "Premium akan terhubung ke akun ini",
     "postPayment.title": "Premium Aktif",
     "postPayment.subtitle": "Akun premium aktif selama 1 tahun",
-    "postPayment.protectTitle": "Lindungi pembelianmu",
     "postPayment.protectDesc": "Hubungkan akun untuk akses dari perangkat manapun dan tidak kehilangan premium jika ganti HP.",
     "postPayment.skipButton": "Nanti saja, pakai perangkat ini saja",
     "postPayment.warning": "Jika ganti perangkat, kamu bisa memulihkan premium dengan email pembelian Mercado Pago.",
@@ -2743,7 +2842,10 @@ export const translations: Record<Language, Record<string, string>> = {
  */
 export const getTranslator = (lang: Language) => {
   return (key: string): string => {
-    return translations[lang][key] || key;
+    // Fallback chain: target language → Spanish (canonical source) → key.
+    // This prevents users in pt/zh/hi/fr/ru/ja/de/id from ever seeing raw
+    // dotted keys when a new string hasn't been translated yet.
+    return translations[lang][key] || translations.es[key] || key;
   };
 };
 

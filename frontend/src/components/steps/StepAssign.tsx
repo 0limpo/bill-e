@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, ChevronDown, Minus, Plus, X, Check, Share2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StepGateModal } from "@/components/ui/StepGateModal";
 import {
   formatCurrency,
   detectDecimals,
@@ -86,7 +87,8 @@ export function StepAssign({
     return itemsWithUnits;
   });
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
+  // Persistent step-gate modal (success when all items are assigned).
+  const [gateOpen, setGateOpen] = useState(false);
   const [editingParticipantId, setEditingParticipantId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
   const [showSharePopup, setShowSharePopup] = useState(false);
@@ -308,17 +310,42 @@ export function StepAssign({
   const maxPriceLength = Math.max(...items.map((item) => fmt((item.quantity || 1) * (item.price || 0)).length));
   const priceWidth = `${maxPriceLength}ch`;
 
-  // Trigger celebration when all items become assigned
+  // Open the persistent gate modal when assignment reaches 100%.
+  // Replaces the auto-disappearing celebration with a modal that has
+  // a clear summary and an Avanzar CTA.
   useEffect(() => {
     if (isAllAssigned && prevAllAssignedRef.current === false) {
-      // Transitioned from not-assigned to all-assigned - show celebration
-      setShowCelebration(true);
+      setGateOpen(true);
       playCelebrationSound();
-      const timer = setTimeout(() => setShowCelebration(false), 4500);
-      return () => clearTimeout(timer);
     }
     prevAllAssignedRef.current = isAllAssigned;
   }, [isAllAssigned]);
+
+  // Bottom Continuar gate: if everything is assigned, route through the
+  // modal so the user explicitly confirms; otherwise advance directly.
+  const handleContinue = () => {
+    if (nextDisabled) return;
+    if (isAllAssigned) {
+      setGateOpen(true);
+    } else {
+      onNext();
+    }
+  };
+
+  // Build summary numbers for the gate modal.
+  const assignedItemCount = items.reduce((acc, item) => {
+    const itemId = item.id || item.name;
+    const itemQty = item.quantity || 1;
+    const mode = itemModes[itemId] || "individual";
+    return acc + (getTotalAssigned(itemId, itemQty, mode) >= itemQty ? 1 : 0);
+  }, 0);
+  const peopleInvolved = (() => {
+    const ids = new Set<string>();
+    Object.values(assignments).forEach((arr) => {
+      arr.forEach((a) => { if (a.quantity > 0) ids.add(a.participant_id); });
+    });
+    return ids.size;
+  })();
 
   return (
     <div className="step-animate">
@@ -515,18 +542,6 @@ export function StepAssign({
         </div>
       )}
 
-      {/* Floating celebration overlay */}
-      {showCelebration && (
-        <div className="verify-overlay">
-          <div className="verify-checkmark">
-            <svg viewBox="0 0 52 52" className="w-24 h-24">
-              <circle className="verify-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" strokeWidth="2"/>
-              <path className="verify-check" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16"/>
-            </svg>
-            <p className="verify-message">{t("assign.allAssigned")}</p>
-          </div>
-        </div>
-      )}
 
       {/* Items List */}
       <div className="space-y-2">
@@ -787,13 +802,30 @@ export function StepAssign({
         <Button
           size="lg"
           className="flex-1 h-12 font-semibold"
-          onClick={onNext}
+          onClick={handleContinue}
           disabled={nextDisabled}
         >
           {nextLabel || t("steps.continue")}
           {!nextDisabled && <ChevronRight className="w-4 h-4 ml-2" />}
         </Button>
       </div>
+
+      {/* Persistent step-gate modal — fires when every item is assigned. */}
+      <StepGateModal
+        open={gateOpen}
+        mode="success"
+        title={t("gate.assign.successTitle")}
+        subtitle={t("gate.assign.successSubtitle")}
+        checklist={[
+          { ok: true, label: t("gate.assign.itemsAssignedLabel").replace("{a}", String(assignedItemCount)).replace("{b}", String(items.length)), detail: fmt(totalAmount) },
+          { ok: true, label: t("gate.assign.peopleLabel").replace("{n}", String(peopleInvolved)), detail: t("gate.assign.peopleDetail") },
+          { ok: true, label: t("gate.assign.distributedLabel"), detail: t("gate.assign.distributedDetail") },
+        ]}
+        primaryLabel={nextLabel || t("gate.assign.primaryAdvance")}
+        onPrimary={() => { setGateOpen(false); onNext(); }}
+        secondaryLabel={t("gate.assign.secondaryReview")}
+        onSecondary={() => setGateOpen(false)}
+      />
     </div>
   );
 }

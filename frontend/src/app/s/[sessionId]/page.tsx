@@ -1009,6 +1009,7 @@ export default function SessionPage() {
             t={t}
             billName={billName}
             onBillNameChange={handleBillNameChange}
+            onRescan={() => router.push("/")}
           />
         )}
 

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, Camera, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StepGateModal, type StepGateChecklistItem } from "@/components/ui/StepGateModal";
 import { formatCurrency, formatNumber, detectDecimals, type Item, type Charge } from "@/lib/billEngine";
 import { playCelebrationSound } from "@/lib/sounds";
 
@@ -78,6 +79,7 @@ interface StepReviewProps {
   t: (key: string) => string;
   billName?: string;
   onBillNameChange?: (name: string) => void;
+  onRescan?: () => void;
 }
 
 export function StepReview({
@@ -94,11 +96,20 @@ export function StepReview({
   t,
   billName,
   onBillNameChange,
+  onRescan,
 }: StepReviewProps) {
   const [expandedCharge, setExpandedCharge] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
+  // Persistent step-gate modal state.
+  // closed  = no modal showing
+  // success = totals match: summary + Avanzar
+  // error   = totals do not match: diagnostic + Volver a editar
+  const [gateState, setGateState] = useState<"closed" | "success" | "error">("closed");
+  // Snackbar state for undo after item delete (Rec 4).
+  const [lastDeleted, setLastDeleted] = useState<{ item: Item; index: number } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevMatchRef = useRef<boolean | null>(null);
+  const initialEvaluationRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Clear selection when clicking outside
@@ -159,25 +170,45 @@ export function StepReview({
   const hasVerificationData = (originalSubtotal !== undefined && originalSubtotal > 0) || (originalTotal !== undefined && originalTotal > 0);
   const isMatch = subtotalMatches && (originalTotal === undefined || originalTotal === 0 || totalMatches);
 
-  // Trigger celebration when totals start matching
+  // Auto-open the gate modal once after the OCR result lands.
+  // success when totals match, error when they do not. Skips when there
+  // is no verification reference (no original subtotal/total scanned).
   useEffect(() => {
-    if (isMatch && prevMatchRef.current === false) {
-      // Transitioned from not-matching to matching - show immediately
-      setShowCelebration(true);
+    if (initialEvaluationRef.current) return;
+    if (items.length === 0) return;
+    initialEvaluationRef.current = true;
+    const tmr = setTimeout(() => {
+      if (hasVerificationData) {
+        if (isMatch) {
+          setGateState("success");
+          playCelebrationSound();
+        } else {
+          setGateState("error");
+        }
+      }
+      prevMatchRef.current = isMatch;
+    }, 900);
+    return () => clearTimeout(tmr);
+  }, [items.length, hasVerificationData, isMatch]);
+
+  // Re-celebrate when the user fixes a mismatch and totals match again.
+  useEffect(() => {
+    if (!initialEvaluationRef.current) return;
+    if (isMatch && prevMatchRef.current === false && gateState === "closed") {
+      setGateState("success");
       playCelebrationSound();
-      const timer = setTimeout(() => setShowCelebration(false), 4500);
-      return () => clearTimeout(timer);
-    } else if (isMatch && prevMatchRef.current === null) {
-      // First render and already matching - delay to let user see items first
-      const delayTimer = setTimeout(() => {
-        setShowCelebration(true);
-        playCelebrationSound();
-        setTimeout(() => setShowCelebration(false), 4500);
-      }, 1500);
-      return () => clearTimeout(delayTimer);
     }
     prevMatchRef.current = isMatch;
-  }, [isMatch]);
+  }, [isMatch, gateState]);
+
+  // Bottom Continuar button gate.
+  const handleContinue = () => {
+    if (!hasVerificationData) {
+      onNext();
+      return;
+    }
+    setGateState(isMatch ? "success" : "error");
+  };
 
   // Item handlers
   const updateItem = (id: string, updates: Partial<Item>) => {
@@ -187,17 +218,36 @@ export function StepReview({
   };
 
   const deleteItem = (id: string) => {
-    onItemsChange(items.filter((item) => (item.id || item.name) !== id));
+    const idx = items.findIndex((it) => (it.id || it.name) === id);
+    if (idx < 0) return;
+    const removed = items[idx];
+    onItemsChange(items.filter((_, i) => i !== idx));
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setLastDeleted({ item: removed, index: idx });
+    undoTimerRef.current = setTimeout(() => setLastDeleted(null), 5000);
+  };
+
+  const undoDelete = () => {
+    if (!lastDeleted) return;
+    const next = [...items];
+    const insertAt = Math.min(lastDeleted.index, next.length);
+    next.splice(insertAt, 0, lastDeleted.item);
+    onItemsChange(next);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setLastDeleted(null);
   };
 
   const addItem = () => {
+    const newId = String(Date.now());
     const newItem: Item = {
-      id: String(Date.now()),
+      id: newId,
       name: t("items.newItem"),
       quantity: 1,
       price: 0,
     };
     onItemsChange([...items, newItem]);
+    setEditingItemId(newId);
+    setExpandedCharge(null);
   };
 
   // Charge handlers
@@ -264,106 +314,137 @@ export function StepReview({
 
       {/* Items Section - Gray Box */}
       <div className="bg-card rounded-2xl p-4 mb-4">
-        {items.map((item) => {
-          const itemId = item.id || item.name;
-          const qty = item.quantity || 1;
-          const unitPrice = item.price || 0;
-          const lineTotal = unitPrice * qty;
-
-          // Determinar qué precio mostrar/editar según el modo
-          const displayPrice = priceMode === "total_linea" ? lineTotal : unitPrice;
-
-          const isEditing = editingItemId === itemId;
-
-          // Handler para guardar precio según modo
-          const handlePriceSave = (val: string | number) => {
-            const newValue = Math.max(0, Number(val));
-            if (priceMode === "total_linea") {
-              // Usuario editó total de línea, calcular precio unitario
-              updateItem(itemId, { price: qty > 0 ? newValue / qty : newValue });
-            } else {
-              // Usuario editó precio unitario
-              updateItem(itemId, { price: newValue });
-            }
-          };
-
-          return (
-            <div
-              key={itemId}
-              className={`breakdown-row ${isEditing ? "bg-secondary/50 rounded-lg -mx-2 px-2" : ""}`}
-              onClick={() => {
-                setEditingItemId(isEditing ? null : itemId);
-                setExpandedCharge(null); // Clear charge expansion when clicking item
-              }}
-            >
-              {/* Left: Qty + Name */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <InlineInput
-                  type="number"
-                  value={qty}
-                  className="edit-qty"
-                  onSave={(val) => updateItem(itemId, { quantity: Math.max(1, Math.round(Number(val))) })}
-                />
-                <InlineInput
-                  type="text"
-                  value={item.name}
-                  className="edit-name"
-                  onSave={(val) => updateItem(itemId, { name: String(val) })}
-                  placeholder="Nombre del item"
-                />
-              </div>
-
-              {/* Right: Price + Delete */}
-              <div className="flex items-center gap-2">
-                <InlineInput
-                  type="number"
-                  value={displayPrice}
-                  className="edit-price"
-                  onSave={handlePriceSave}
-                  decimals={decimals}
-                />
-                {isEditing && (
-                  <button
-                    className="w-7 h-7 flex items-center justify-center rounded-full bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteItem(itemId);
-                      setEditingItemId(null);
-                    }}
-                    title={t("items.deleteItem")}
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
+        {items.length === 0 ? (
+          /* Empty state — Rec 4 */
+          <div className="items-empty">
+            <div className="items-empty-icon">
+              <Camera className="w-5 h-5" />
             </div>
-          );
-        })}
-
-        {/* Add Item Button */}
-        <button className="breakdown-add-btn" onClick={() => { addItem(); setEditingItemId(null); setExpandedCharge(null); }}>
-          <Plus className="w-4 h-4" />
-          {t("items.addManualItem")}
-        </button>
-
-        {/* Subtotal */}
-        <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
-          <span>{t("totals.subtotal")}</span>
-          <span>{fmt(subtotal)}</span>
-        </div>
-
-        {/* Floating celebration overlay */}
-        {showCelebration && (
-          <div className="verify-overlay">
-            <div className="verify-checkmark">
-              <svg viewBox="0 0 52 52" className="w-24 h-24">
-                <circle className="verify-circle" cx="26" cy="26" r="24" fill="none" stroke="currentColor" strokeWidth="2"/>
-                <path className="verify-check" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" d="M14 27l8 8 16-16"/>
-              </svg>
-              <p className="verify-message">{t("verify.scannedCorrectly")}</p>
-            </div>
+            <p className="items-empty-title">{t("items.empty.title")}</p>
+            <p className="items-empty-sub">{t("items.empty.subtitle")}</p>
+            {onRescan && (
+              <Button size="lg" className="w-full h-11 mb-2" onClick={onRescan}>
+                {t("items.empty.rescan")}
+              </Button>
+            )}
+            <button className="add-row-btn" onClick={addItem}>
+              <Plus className="w-4 h-4" />
+              {t("items.empty.addManual")}
+            </button>
           </div>
+        ) : (
+          <>
+            {items.map((item) => {
+              const itemId = item.id || item.name;
+              const qty = item.quantity || 1;
+              const unitPrice = item.price || 0;
+              const lineTotal = unitPrice * qty;
+              // Display price reflects what bill-e detected from the receipt;
+              // Rec 3: this is the "valor" the user verifies as-is (no calc).
+              const displayPrice = priceMode === "total_linea" ? lineTotal : unitPrice;
+              const isEditing = editingItemId === itemId;
+
+              const handlePriceSave = (val: string | number) => {
+                const newValue = Math.max(0, Number(val));
+                if (priceMode === "total_linea") {
+                  updateItem(itemId, { price: qty > 0 ? newValue / qty : newValue });
+                } else {
+                  updateItem(itemId, { price: newValue });
+                }
+              };
+
+              return (
+                <div key={itemId}>
+                  {/* Collapsed row — Rec 2: chip ×N + name + $ price */}
+                  <div
+                    className="item-row"
+                    onClick={() => {
+                      setEditingItemId(isEditing ? null : itemId);
+                      setExpandedCharge(null);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <span className="item-row-qty">×{qty}</span>
+                      <span className="item-row-name">{item.name}</span>
+                    </div>
+                    <span className="item-row-price">
+                      <span className="sym">$</span>
+                      <span className="val">{formatNumber(displayPrice, decimals)}</span>
+                    </span>
+                  </div>
+
+                  {/* Expanded editor — Rec 3 */}
+                  {isEditing && (
+                    <div className="item-editor" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="text"
+                        className="item-editor-name"
+                        value={item.name}
+                        onChange={(e) => updateItem(itemId, { name: e.target.value })}
+                        placeholder={t("items.editorNamePlaceholder")}
+                      />
+                      <div className="item-editor-grid">
+                        <span className="item-editor-label">{t("items.editorQuantity")}</span>
+                        <div className="item-editor-stepper">
+                          <button
+                            type="button"
+                            aria-label="−"
+                            onClick={() => updateItem(itemId, { quantity: Math.max(1, qty - 1) })}
+                          >−</button>
+                          <span className="item-editor-stepper-value">{qty}</span>
+                          <button
+                            type="button"
+                            aria-label="+"
+                            onClick={() => updateItem(itemId, { quantity: qty + 1 })}
+                          >+</button>
+                        </div>
+
+                        <span className="item-editor-label">{t("items.editorValue")}</span>
+                        <div className="item-editor-price">
+                          <span className="sym">$</span>
+                          <input
+                            type="text"
+                            inputMode={decimals > 0 ? "decimal" : "numeric"}
+                            value={formatNumber(displayPrice, decimals)}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
+                              const num = parseFloat(raw);
+                              if (!isNaN(num)) handlePriceSave(num);
+                            }}
+                          />
+                        </div>
+
+                        <p className="item-editor-helper">{t("items.editorValueHelper")}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="item-editor-delete"
+                        onClick={() => { deleteItem(itemId); setEditingItemId(null); }}
+                      >
+                        {t("items.deleteItem")}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Add Item Button — outline 44px (Rec 4-style) */}
+            <button className="add-row-btn" onClick={addItem}>
+              <Plus className="w-4 h-4" />
+              {t("items.addManualItem")}
+            </button>
+
+            {/* Subtotal */}
+            <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
+              <span>{t("totals.subtotal")}</span>
+              <span>{fmt(subtotal)}</span>
+            </div>
+          </>
         )}
+
       </div>
 
       {/* Charges Section - Gray Box */}
@@ -521,72 +602,66 @@ export function StepReview({
         </button>
       </div>
 
-      {/* Verification Section - Gray Box */}
+      {/* Verification — Rec 5 Versión 2: compact 2-col table comparing calc vs receipt */}
       {hasVerificationData && (
         <div className="rounded-2xl p-4 mb-4 bg-card">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-foreground uppercase tracking-wide">{t("verify.title")}</span>
-              {isMatch && (
-                <span className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-3 h-3 text-white/85" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                </span>
-              )}
-            </div>
+          <div className="verify-table">
+            <div className="head first"></div>
+            <div className="head">{t("verify.calc")}</div>
+            <div className="head">{t("verify.scanned")}</div>
+
+            {originalSubtotal !== undefined && originalSubtotal > 0 && (
+              <>
+                <div className="row-label">
+                  {subtotalMatches ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="3"><polyline points="5 13 9 17 19 7"/></svg>
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="3"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  )}
+                  <span>{t("totals.subtotal")}</span>
+                </div>
+                <div className="row-val">{fmt(subtotal)}</div>
+                <div className={`row-val editable ${subtotalMatches ? "" : "warn"}`}>
+                  <input
+                    type="text"
+                    inputMode={decimals > 0 ? "decimal" : "numeric"}
+                    value={formatNumber(originalSubtotal, decimals)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
+                      const num = parseFloat(raw);
+                      if (!isNaN(num)) onOriginalSubtotalChange?.(Math.max(0, num));
+                    }}
+                  />
+                </div>
+              </>
+            )}
+
+            {originalTotal !== undefined && originalTotal > 0 && (
+              <>
+                <div className="row-label">
+                  {totalMatches ? (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="3"><polyline points="5 13 9 17 19 7"/></svg>
+                  ) : (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="3"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  )}
+                  <span>{t("totals.total")}</span>
+                </div>
+                <div className="row-val">{fmt(total)}</div>
+                <div className={`row-val editable ${totalMatches ? "" : "warn"}`}>
+                  <input
+                    type="text"
+                    inputMode={decimals > 0 ? "decimal" : "numeric"}
+                    value={formatNumber(originalTotal, decimals)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
+                      const num = parseFloat(raw);
+                      if (!isNaN(num)) onOriginalTotalChange?.(Math.max(0, num));
+                    }}
+                  />
+                </div>
+              </>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground mb-3">{t("verify.subtitle")}</p>
-
-          {/* Subtotal comparison */}
-          {originalSubtotal !== undefined && originalSubtotal > 0 && (
-            <div className="flex items-center justify-between py-2 border-b border-border/30">
-              <span className="text-sm">{t("verify.receiptSubtotal")}</span>
-              <div className="flex items-center gap-2">
-                <InlineInput
-                  type="number"
-                  value={originalSubtotal}
-                  className="edit-price text-sm"
-                  onSave={(val) => onOriginalSubtotalChange?.(Math.max(0, Number(val)))}
-                  decimals={decimals}
-                />
-                {subtotalMatches ? (
-                  <span className="w-4 h-4 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-2.5 h-2.5 text-white/85" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </span>
-                ) : (
-                  <span className="text-orange-500 text-xs">({subtotal > originalSubtotal ? "+" : ""}{fmt(subtotal - originalSubtotal)})</span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Total comparison */}
-          {originalTotal !== undefined && originalTotal > 0 && (
-            <div className="flex items-center justify-between py-2">
-              <span className="text-sm">{t("verify.receiptTotal")}</span>
-              <div className="flex items-center gap-2">
-                <InlineInput
-                  type="number"
-                  value={originalTotal}
-                  className="edit-price text-sm"
-                  onSave={(val) => onOriginalTotalChange?.(Math.max(0, Number(val)))}
-                  decimals={decimals}
-                />
-                {totalMatches ? (
-                  <span className="w-4 h-4 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-2.5 h-2.5 text-white/85" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </span>
-                ) : (
-                  <span className="text-orange-500 text-xs">({total > originalTotal ? "+" : ""}{fmt(total - originalTotal)})</span>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -598,10 +673,103 @@ export function StepReview({
 
       {/* Next Button */}
       <div className="mt-8">
-        <Button size="lg" className="w-full h-12 text-base font-semibold" onClick={onNext}>
+        <Button size="lg" className="w-full h-12 text-base font-semibold" onClick={handleContinue}>
           {t("steps.continue")}
         </Button>
       </div>
+
+      {/* Persistent step-gate modal */}
+      <StepGateModal
+        open={gateState !== "closed"}
+        mode={gateState === "error" ? "error" : "success"}
+        title={gateState === "error" ? t("gate.review.errorTitle") : t("gate.review.successTitle")}
+        subtitle={gateState === "error"
+          ? buildErrorSubtitle({ subtotal, total, originalSubtotal, originalTotal, fmt, t })
+          : t("gate.review.successSubtitle")}
+        checklist={gateState === "success" ? buildSuccessChecklist({ items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, fmt, t }) : undefined}
+        compare={gateState === "error" ? buildCompareBlock({ subtotal, total, originalSubtotal, originalTotal, fmt, t }) : undefined}
+        hintsHeader={gateState === "error" ? t("gate.review.hintsHeader") : undefined}
+        hints={gateState === "error" ? [
+          { text: t("gate.review.hint1") },
+          { text: t("gate.review.hint2") },
+          { text: t("gate.review.hint3") },
+          { text: t("gate.review.hint4"), example: t("gate.review.hint4Example") },
+          { text: t("gate.review.hint5"), example: t("gate.review.hint5Example") },
+        ] : undefined}
+        primaryLabel={gateState === "success" ? t("gate.review.primaryAdvance") : undefined}
+        onPrimary={gateState === "success" ? () => { setGateState("closed"); onNext(); } : undefined}
+        secondaryLabel={gateState === "error" ? t("gate.review.secondaryFix") : t("gate.review.secondaryKeepEditing")}
+        onSecondary={() => setGateState("closed")}
+      />
+
+      {/* Undo snackbar — Rec 4 */}
+      {lastDeleted && (
+        <div className="undo-snackbar" role="status" aria-live="polite">
+          <span>{t("items.deleted")}</span>
+          <button onClick={undoDelete}>{t("items.undo")}</button>
+        </div>
+      )}
     </div>
   );
+}
+
+/** Show the diff for the worst-cased value (subtotal or total). */
+function buildErrorSubtitle(args: {
+  subtotal: number;
+  total: number;
+  originalSubtotal?: number;
+  originalTotal?: number;
+  fmt: (n: number) => string;
+  t: (key: string) => string;
+}): string {
+  const { subtotal, total, originalSubtotal, originalTotal, fmt, t } = args;
+  const subDiff = originalSubtotal !== undefined && originalSubtotal > 0 ? Math.abs(subtotal - originalSubtotal) : 0;
+  const totDiff = originalTotal !== undefined && originalTotal > 0 ? Math.abs(total - originalTotal) : 0;
+  const diff = totDiff > 0 ? totDiff : subDiff;
+  return t("gate.review.errorSubtitle").replace("{diff}", fmt(diff));
+}
+
+/** Items / receipt / diff comparison block. Prefers totals when present. */
+function buildCompareBlock(args: {
+  subtotal: number;
+  total: number;
+  originalSubtotal?: number;
+  originalTotal?: number;
+  fmt: (n: number) => string;
+  t: (key: string) => string;
+}) {
+  const { subtotal, total, originalSubtotal, originalTotal, fmt, t } = args;
+  const useTotal = originalTotal !== undefined && originalTotal > 0;
+  const a = useTotal ? total : subtotal;
+  const b = useTotal ? (originalTotal as number) : (originalSubtotal ?? 0);
+  const diff = Math.abs(a - b);
+  return {
+    rowA: { label: useTotal ? t("gate.review.compareItemsTotal") : t("gate.review.compareItemsSubtotal"), value: fmt(a) },
+    rowB: { label: useTotal ? t("gate.review.compareReceiptTotal") : t("gate.review.compareReceiptSubtotal"), value: fmt(b) },
+    diff: { label: t("gate.review.compareDiff"), value: fmt(diff) },
+  };
+}
+
+/** Three confirmations shown in the success modal. */
+function buildSuccessChecklist(args: {
+  items: Item[];
+  subtotal: number;
+  total: number;
+  originalSubtotal?: number;
+  originalTotal?: number;
+  subtotalMatches: boolean;
+  totalMatches: boolean;
+  fmt: (n: number) => string;
+  t: (key: string) => string;
+}): StepGateChecklistItem[] {
+  const { items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, fmt, t } = args;
+  const list: StepGateChecklistItem[] = [];
+  list.push({ ok: true, label: t("gate.review.itemsLabel").replace("{count}", String(items.length)), detail: fmt(subtotal) });
+  if (originalSubtotal !== undefined && originalSubtotal > 0) {
+    list.push({ ok: subtotalMatches, label: t("gate.review.subtotalOk"), detail: fmt(subtotal) });
+  }
+  if (originalTotal !== undefined && originalTotal > 0) {
+    list.push({ ok: totalMatches, label: t("gate.review.totalOk"), detail: fmt(total) });
+  }
+  return list;
 }
