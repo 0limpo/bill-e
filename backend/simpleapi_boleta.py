@@ -220,6 +220,18 @@ def emit_boleta_async(
     Premium is activated regardless of boleta success (don't block user).
     Failed boletas are stored for manual retry.
     """
+    # Idempotency check — webhook retries from Flow/MP must not generate
+    # duplicate folios. Cache the full result on first successful emission.
+    existing = redis_client.get(f"boleta:{commerce_order}")
+    if existing:
+        try:
+            cached = json.loads(existing)
+            if cached.get("success"):
+                print(f"Boleta already issued for {commerce_order}, returning cached folio={cached.get('folio')}")
+                return cached
+        except Exception:
+            pass  # cache corrupted, proceed to re-emit
+
     result = emit_boleta(
         monto_total=monto_total,
         descripcion=descripcion,
@@ -240,12 +252,15 @@ def emit_boleta_async(
         "email": email_receptor
     }
 
-    # Store with 30-day TTL
+    # Cache the full result (with pdf_url, trackId in camelCase) so
+    # callers always get the same shape on first call vs idempotent return.
     redis_client.setex(
         f"boleta:{commerce_order}",
         30 * 24 * 60 * 60,  # 30 days
-        json.dumps(boleta_record)
+        json.dumps(result),
     )
+    # boleta_record (snake_case) se mantiene por compatibilidad si algun
+    # reporte futuro lo lee desde otra ruta de persistencia.
 
     # If failed, add to retry queue
     if not result["success"]:

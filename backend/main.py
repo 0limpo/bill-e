@@ -1789,6 +1789,32 @@ async def payment_webhook(request: Request):
                     payment["boleta_status"] = "success" if boleta_result.get("success") else "failed"
                     payment["boleta_folio"] = boleta_result.get("folio")
                     print(f"Boleta emitida para Flow payment: folio={boleta_result.get('folio')}, email={receptor_email}")
+
+                    # Send boleta PDF to user (Res. SII N°12/2025 compliance)
+                    # Idempotent via Redis flag — webhook retries don't re-send email.
+                    if (
+                        boleta_result.get("success")
+                        and boleta_result.get("pdf_url")
+                        and receptor_email
+                        and not redis_client.exists(f"boleta_email_sent:{commerce_order}")
+                    ):
+                        try:
+                            from email_service import send_boleta_email
+                            email_result = send_boleta_email(
+                                recipient_email=receptor_email,
+                                folio=str(boleta_result.get("folio") or ""),
+                                pdf_url=boleta_result.get("pdf_url"),
+                                monto_total=payment.get("amount", 0),
+                                descripcion="Bill-e Premium - 1 año",
+                            )
+                            if email_result.get("success"):
+                                redis_client.setex(
+                                    f"boleta_email_sent:{commerce_order}",
+                                    30 * 24 * 60 * 60,
+                                    "1",
+                                )
+                        except Exception as email_error:
+                            print(f"Boleta email send failed (non-critical): {email_error}")
                 except Exception as boleta_error:
                     print(f"Boleta error (non-critical): {boleta_error}")
                     payment["boleta_status"] = "error"
@@ -2165,11 +2191,15 @@ async def mp_webhook(request: Request):
             print(f"Webhook received but no payment_id found: {params}, {body}")
             return {"status": "ok", "message": "No payment_id"}
 
-        # Verify webhook signature (log warning but don't block - for debugging)
+        # Verify webhook signature — fail-closed in production to prevent
+        # forged "approved" callbacks from unlocking premium without paying.
         data_id = str(body.get("data", {}).get("id", payment_id))
         if not mp_verify_signature(x_signature, x_request_id, data_id):
-            print(f"WARNING: Invalid webhook signature for payment {payment_id} - processing anyway")
-            # Don't block for now - need to fix MERCADOPAGO_WEBHOOK_SECRET
+            is_production = os.getenv("ENV", "development").lower() == "production"
+            if is_production:
+                print(f"REJECTED: Invalid webhook signature for payment {payment_id} (ENV=production)")
+                raise HTTPException(status_code=401, detail="Invalid webhook signature")
+            print(f"WARNING: Invalid webhook signature for payment {payment_id} (dev mode, processing anyway)")
 
         # Get payment details from MercadoPago
         print(f"Fetching payment details from MP API: {payment_id}")
@@ -2283,6 +2313,32 @@ async def mp_webhook(request: Request):
                 payment["boleta_status"] = "success" if boleta_result.get("success") else "failed"
                 payment["boleta_folio"] = boleta_result.get("folio")
                 print(f"Boleta emitida para MP payment: folio={boleta_result.get('folio')}, email={receptor_email}")
+
+                # Send boleta PDF to user (Res. SII N°12/2025 compliance)
+                # Idempotent via Redis flag — webhook retries don't re-send email.
+                if (
+                    boleta_result.get("success")
+                    and boleta_result.get("pdf_url")
+                    and receptor_email
+                    and not redis_client.exists(f"boleta_email_sent:{external_reference}")
+                ):
+                    try:
+                        from email_service import send_boleta_email
+                        email_result = send_boleta_email(
+                            recipient_email=receptor_email,
+                            folio=str(boleta_result.get("folio") or ""),
+                            pdf_url=boleta_result.get("pdf_url"),
+                            monto_total=payment.get("amount", 0),
+                            descripcion="Bill-e Premium - 1 año",
+                        )
+                        if email_result.get("success"):
+                            redis_client.setex(
+                                f"boleta_email_sent:{external_reference}",
+                                30 * 24 * 60 * 60,
+                                "1",
+                            )
+                    except Exception as email_error:
+                        print(f"Boleta email send failed (non-critical): {email_error}")
 
                 # Save updated payment with boleta info
                 ttl = redis_client.ttl(f"payment:{external_reference}")

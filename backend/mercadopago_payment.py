@@ -274,8 +274,14 @@ def verify_webhook_signature(
         True if signature is valid, False otherwise
     """
     if not MP_WEBHOOK_SECRET:
-        # If no secret configured, skip validation (log warning)
-        print("WARNING: MERCADOPAGO_WEBHOOK_SECRET not configured, skipping signature validation")
+        # Fail-closed in production: refuse to validate without a secret.
+        # Without this gate, webhooks would be trusted blindly, allowing
+        # anyone who knows a payment_id to forge "approved" callbacks
+        # and unlock premium without paying.
+        if os.getenv("ENV", "development").lower() == "production":
+            print("CRITICAL: MERCADOPAGO_WEBHOOK_SECRET not set in production, rejecting webhook")
+            return False
+        print("WARNING: MERCADOPAGO_WEBHOOK_SECRET not configured (dev mode), skipping signature validation")
         return True
 
     if not x_signature or not x_request_id:
