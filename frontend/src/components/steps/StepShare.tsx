@@ -54,9 +54,13 @@ export function StepShare({
   const billCostPerPerson = billCostShared && participantCount >= 2
     ? Math.round(premiumPrice / participantCount)
     : 0;
-  // Host recovery = what they get back from others (N-1 shares)
+  // Host recovery = what the other N-1 participants transfer to the host
   const hostRecovery = billCostShared && participantCount >= 2
-    ? premiumPrice - billCostPerPerson
+    ? billCostPerPerson * (participantCount - 1)
+    : 0;
+  // Host's actual share — absorbs any rounding residual so Σ === totalAmount exactly
+  const billCostForHost = billCostShared && participantCount >= 2
+    ? premiumPrice - hostRecovery
     : 0;
 
   // Detect decimals from items to match receipt format
@@ -150,10 +154,9 @@ export function StepShare({
 
     participants.forEach((p) => {
       const { total } = calculateParticipantTotal(p.id, session);
-      // Calculate Bill-e cost for this participant
       const isHost = p.id === ownerParticipantId;
       const billECost = billCostShared
-        ? (isHost ? -hostRecovery : billCostPerPerson)
+        ? (isHost ? billCostForHost : billCostPerPerson)
         : 0;
       const finalTotal = total + billECost;
       message += `• ${p.name}: ${fmt(finalTotal)}\n`;
@@ -209,11 +212,11 @@ export function StepShare({
           const isExpanded = expandedParticipants[p.id];
           const participantItems = getParticipantItems(p.id);
 
-          // Calculate Bill-e cost for this participant
+          // Host absorbs the rounding residual; everyone else pays billCostPerPerson.
+          // Σ finalTotals === totalAmount exactly for any participantCount.
           const isHostParticipant = p.id === ownerParticipantId;
-          // Host gets negative (recovery), others pay positive
           const billECostForParticipant = billCostShared
-            ? (isHostParticipant ? -hostRecovery : billCostPerPerson)
+            ? (isHostParticipant ? billCostForHost : billCostPerPerson)
             : 0;
           const finalTotal = total + billECostForParticipant;
 
@@ -279,23 +282,11 @@ export function StepShare({
                         </div>
                       ))}
 
-                    {/* Bill-e cost line (only if shared) */}
-                    {billCostShared && billECostForParticipant !== 0 && (
-                      <div
-                        className={`flex items-center justify-between py-1 text-sm ${
-                          billECostForParticipant < 0 ? "text-green-600" : "text-orange-500"
-                        }`}
-                      >
-                        <span className="flex items-center gap-1">
-                          {t("share.billECost")}
-                          {billECostForParticipant < 0 && (
-                            <span className="text-xs opacity-70">({t("share.billERecovered")})</span>
-                          )}
-                        </span>
-                        <span className="tabular-nums">
-                          {billECostForParticipant < 0 ? "-" : "+"}
-                          {fmt(Math.abs(billECostForParticipant))}
-                        </span>
+                    {/* Bill-e cost line — same for everyone */}
+                    {billCostShared && billECostForParticipant > 0 && (
+                      <div className="flex items-center justify-between py-1 text-sm text-orange-500">
+                        <span>{t("share.billECost")}</span>
+                        <span className="tabular-nums">+{fmt(billECostForParticipant)}</span>
                       </div>
                     )}
 
@@ -304,6 +295,18 @@ export function StepShare({
                       <span>{t("items.total")}</span>
                       <span className="tabular-nums text-foreground">{fmt(finalTotal)}</span>
                     </div>
+
+                    {/* Host-only informative note */}
+                    {billCostShared && isHostParticipant && (
+                      <div className="mt-2.5 px-3 py-2 bg-primary/10 border border-primary/25 rounded-lg text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
+                        <span className="text-primary font-semibold flex-shrink-0" aria-hidden="true">i</span>
+                        <span>
+                          {t("share.billEHostNote")
+                            .replace("{paid}", fmt(premiumPrice))
+                            .replace("{recovered}", fmt(hostRecovery))}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

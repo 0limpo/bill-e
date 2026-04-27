@@ -10,7 +10,7 @@ import { StepReview } from "@/components/steps/StepReview";
 import { StepAssign } from "@/components/steps/StepAssign";
 import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
-import { formatCurrency, detectDecimals, getAvatarColor, getInitials, type Item, type Charge, type Participant, type Assignment } from "@/lib/billEngine";
+import { formatCurrency, detectDecimals, getAvatarColor, getInitials, calculateParticipantTotal, type Item, type Charge, type Participant, type Assignment, type Session } from "@/lib/billEngine";
 import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
 import { getStoredToken, getStoredUser, getAuthProviders, type AuthProvider } from "@/lib/auth";
 import { updateBillName } from "@/lib/api";
@@ -678,7 +678,10 @@ export default function SessionPage() {
     const participantCount = participants.length;
     const canDivideBillCost = participantCount >= 2;
     const billCostPerPerson = canDivideBillCost ? Math.round(premiumPrice / participantCount) : 0;
-    const hostRecovery = premiumPrice - billCostPerPerson; // What host recovers from others
+    // Total transferred to the host by the other N-1 participants
+    const hostRecovery = canDivideBillCost ? billCostPerPerson * (participantCount - 1) : 0;
+    // Host's actual share — absorbs the rounding residual so Σ === totalAmount exactly
+    const billCostForHost = canDivideBillCost ? premiumPrice - hostRecovery : 0;
 
     // Find a sample "other" participant name for preview
     const otherParticipant = participants.find((p) => p.id !== session?.participants?.find((sp) => sp.role === "owner")?.id);
@@ -732,14 +735,26 @@ export default function SessionPage() {
             {/* Divide Bill-e toggle - only show if 2+ participants */}
             {canDivideBillCost && (
               <div className="mb-4 p-3 bg-secondary/50 rounded-xl">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm font-medium">{t("paywall.divideBillE")}</span>
+                <label className="flex items-start justify-between cursor-pointer gap-3">
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span id="divide-billE-label" className="text-sm font-medium">
+                      {t("paywall.divideBillE")}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatPriceCLP(premiumPrice)} ÷ {participantCount} ={" "}
+                      <strong className="text-foreground font-semibold">
+                        {formatPriceCLP(billCostPerPerson)}
+                      </strong>{" "}
+                      {t("paywall.eachPays")}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     role="switch"
                     aria-checked={billCostShared}
+                    aria-labelledby="divide-billE-label"
                     onClick={() => updateBillCostShared(!billCostShared)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
                       billCostShared ? "bg-primary" : "bg-muted"
                     }`}
                   >
@@ -751,26 +766,39 @@ export default function SessionPage() {
                   </button>
                 </label>
 
-                {/* Preview: Full dropdown examples */}
+                {/* Preview: cards based on the host's REAL totals */}
                 {billCostShared && (() => {
-                  // Find host participant and calculate their example total
                   const hostParticipant = session?.participants?.find((p) => p.role === "owner");
                   const hostName = hostParticipant?.name || t("session.host");
+                  const hostId = hostParticipant?.id;
 
-                  // Example totals (we'll use placeholder values for preview)
-                  const exampleSubtotal = 15000; // Example subtotal
-                  const exampleCharges = 1500; // Example charges (propina, etc)
-                  const hostBaseTotal = exampleSubtotal + exampleCharges;
-                  const hostFinalTotal = hostBaseTotal - hostRecovery;
+                  const previewSession: Session = { items, charges, participants, assignments };
 
-                  const otherBaseTotal = exampleSubtotal + exampleCharges;
-                  const otherFinalTotal = otherBaseTotal + billCostPerPerson;
+                  const hostBaseTotal = hostId
+                    ? calculateParticipantTotal(hostId, previewSession).total
+                    : 0;
+                  const otherBaseTotal = otherParticipant?.id
+                    ? calculateParticipantTotal(otherParticipant.id, previewSession).total
+                    : 0;
+
+                  // Fallback to per-capita average if no items assigned yet
+                  const tableTotal = participants.reduce((sum, p) => {
+                    return sum + calculateParticipantTotal(p.id, previewSession).total;
+                  }, 0);
+                  const avgPerPerson = participantCount > 0 ? Math.round(tableTotal / participantCount) : 0;
+
+                  const hostDisplayBase = hostBaseTotal > 0 ? hostBaseTotal : avgPerPerson;
+                  const otherDisplayBase = otherBaseTotal > 0 ? otherBaseTotal : avgPerPerson;
+
+                  // Same math as StepShare: host absorbs rounding residual, others pay billCostPerPerson
+                  const hostFinalTotal = hostDisplayBase + billCostForHost;
+                  const otherFinalTotal = otherDisplayBase + billCostPerPerson;
 
                   return (
                     <div className="mt-3 space-y-2">
-                      {/* Host dropdown example */}
+                      {/* Host card */}
                       <div className="bg-card rounded-lg border border-border overflow-hidden">
-                        <div className="flex items-center justify-between p-2 bg-card">
+                        <div className="flex items-center justify-between p-2">
                           <div className="flex items-center gap-2">
                             <div
                               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
@@ -785,26 +813,30 @@ export default function SessionPage() {
                         <div className="px-3 pb-2 pt-0 text-xs space-y-1">
                           <div className="flex justify-between text-muted-foreground">
                             <span>{t("totals.subtotal")}</span>
-                            <span>{formatCurrency(exampleSubtotal, decimals)}</span>
+                            <span>{formatCurrency(hostDisplayBase, decimals)}</span>
                           </div>
-                          <div className="flex justify-between text-muted-foreground">
-                            <span>{t("charges.tip")}</span>
-                            <span>+{formatCurrency(exampleCharges, decimals)}</span>
-                          </div>
-                          <div className="flex justify-between text-green-500">
-                            <span>{t("share.billECost")} ({t("share.billERecovered")})</span>
-                            <span>-{formatCurrency(hostRecovery, decimals)}</span>
+                          <div className="flex justify-between text-orange-500">
+                            <span>{t("share.billECost")}</span>
+                            <span>+{formatCurrency(billCostForHost, decimals)}</span>
                           </div>
                           <div className="flex justify-between font-semibold border-t border-border/30 pt-1 mt-1">
                             <span>{t("items.total")}</span>
                             <span>{formatCurrency(hostFinalTotal, decimals)}</span>
                           </div>
+                          <div className="mt-2 px-2.5 py-1.5 bg-primary/10 border border-primary/25 rounded-md text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1">
+                            <span className="text-primary font-semibold flex-shrink-0" aria-hidden="true">i</span>
+                            <span>
+                              {t("share.billEHostNote")
+                                .replace("{paid}", formatCurrency(premiumPrice, decimals))
+                                .replace("{recovered}", formatCurrency(hostRecovery, decimals))}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Other participant dropdown example */}
+                      {/* Other participant card */}
                       <div className="bg-card rounded-lg border border-border overflow-hidden">
-                        <div className="flex items-center justify-between p-2 bg-card">
+                        <div className="flex items-center justify-between p-2">
                           <div className="flex items-center gap-2">
                             <div
                               className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
@@ -819,11 +851,7 @@ export default function SessionPage() {
                         <div className="px-3 pb-2 pt-0 text-xs space-y-1">
                           <div className="flex justify-between text-muted-foreground">
                             <span>{t("totals.subtotal")}</span>
-                            <span>{formatCurrency(exampleSubtotal, decimals)}</span>
-                          </div>
-                          <div className="flex justify-between text-muted-foreground">
-                            <span>{t("charges.tip")}</span>
-                            <span>+{formatCurrency(exampleCharges, decimals)}</span>
+                            <span>{formatCurrency(otherDisplayBase, decimals)}</span>
                           </div>
                           <div className="flex justify-between text-orange-500">
                             <span>{t("share.billECost")}</span>
