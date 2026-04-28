@@ -4,9 +4,10 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
-import { Loader2 } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 import { createCollaborativeSession, getBillHistory, getDeviceId } from "@/lib/api";
-import { getStoredUser, clearAuth, type AuthUser } from "@/lib/auth";
+import { getStoredUser, clearAuth, getAuthProviders, type AuthUser, type AuthProvider } from "@/lib/auth";
+import { SignInButtons } from "@/components/auth/SignInButtons";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { getInitials } from "@/lib/billEngine";
@@ -106,6 +107,7 @@ export default function LandingPage() {
   const [billCount, setBillCount] = useState(0);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const t = getTranslator(lang);
@@ -129,6 +131,13 @@ export default function LandingPage() {
         localStorage.setItem('bill-e-bill-count', String(res.count));
       })
       .catch(() => {});
+
+    // Preload auth providers if anonymous (so the sign-in popover renders instantly)
+    if (!stored) {
+      getAuthProviders()
+        .then((data) => setAuthProviders(data.providers))
+        .catch(console.error);
+    }
   }, []);
 
   // Close account menu on click outside
@@ -234,9 +243,9 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 pt-6 pb-8 relative">
-      {/* Account avatar — top-right, only when logged in */}
-      {user && (
-        <div className="absolute top-3 right-3 z-10" ref={accountMenuRef}>
+      {/* Account control — top-right, swaps content based on auth state */}
+      <div className="absolute top-3 right-3 z-10" ref={accountMenuRef}>
+        {user ? (
           <button
             onClick={() => setShowAccountMenu((v) => !v)}
             className="w-9 h-9 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center transition-colors overflow-hidden"
@@ -251,20 +260,49 @@ export default function LandingPage() {
               </span>
             )}
           </button>
-          {showAccountMenu && (
-            <div className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-lg p-3">
-              <p className="text-xs text-muted-foreground mb-1">{t("home.signedInAs")}</p>
-              <p className="text-sm font-medium text-foreground truncate mb-3">{user.email}</p>
-              <button
-                onClick={handleSignOut}
-                className="w-full text-sm text-destructive hover:underline text-left"
-              >
-                {t("home.signOut")}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+        ) : (
+          <button
+            onClick={() => setShowAccountMenu((v) => !v)}
+            className="w-9 h-9 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors text-muted-foreground"
+            aria-label={t("home.signIn")}
+          >
+            <LogIn className="w-4 h-4" />
+          </button>
+        )}
+
+        {showAccountMenu && user && (
+          <div className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-lg p-3">
+            <p className="text-xs text-muted-foreground mb-1">{t("home.signedInAs")}</p>
+            <p className="text-sm font-medium text-foreground truncate mb-3">{user.email}</p>
+            <button
+              onClick={handleSignOut}
+              className="w-full text-sm text-destructive hover:underline text-left"
+            >
+              {t("home.signOut")}
+            </button>
+          </div>
+        )}
+
+        {showAccountMenu && !user && (
+          <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-border rounded-xl shadow-lg p-3">
+            <p className="text-sm font-medium text-foreground mb-3 text-center">
+              {t("home.signIn")}
+            </p>
+            {authProviders.length > 0 ? (
+              <SignInButtons
+                providers={authProviders}
+                redirectTo={typeof window !== "undefined" ? window.location.href : ""}
+                variant="compact"
+                t={t}
+              />
+            ) : (
+              <div className="flex justify-center py-2">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Hidden file inputs - key forces re-render to fix onChange issues */}
       <input
