@@ -254,14 +254,15 @@ export default function SessionPage() {
     handlePostPayment();
   }, [paymentSuccess, payerType, isOwner, session, finalize, router, updateHostStep, userEmail, join, selectParticipant, sessionId]);
 
-  // Load auth providers when paywall is opened
+  // Load auth providers when paywall opens OR when editor is on landing without auth
   useEffect(() => {
-    if (showPaywall && authProviders.length === 0) {
+    const onEditorLanding = !isOwner && !currentParticipant && !isViewOnlyParam && !userEmail;
+    if ((showPaywall || onEditorLanding) && authProviders.length === 0) {
       getAuthProviders()
         .then((data) => setAuthProviders(data.providers))
         .catch(console.error);
     }
-  }, [showPaywall, authProviders.length]);
+  }, [showPaywall, isOwner, currentParticipant, isViewOnlyParam, userEmail, authProviders.length]);
 
   // Handle return from OAuth - show paywall with message if no premium
   useEffect(() => {
@@ -550,10 +551,10 @@ export default function SessionPage() {
               )}
             </div>
 
-            {/* Already have premium - Sign in option */}
+            {/* Sign in to save history (editor paywall) */}
             <div className="bg-card rounded-2xl p-4 border border-border mb-4">
               <p className="text-sm text-center text-muted-foreground mb-3">
-                {t("paywall.alreadyHavePremium")}
+                {t("paywall.saveHistory")}
               </p>
               {authProviders.length > 0 ? (
                 <SignInButtons
@@ -588,6 +589,30 @@ export default function SessionPage() {
             <h1 className="text-2xl font-bold mb-2">Bill-e</h1>
             <p className="text-muted-foreground">{t("join.title")}</p>
           </div>
+
+          {/* Sign-in pitch (only if not logged in) */}
+          {!userEmail && (
+            <div className="bg-card rounded-2xl p-4 border border-border mb-4">
+              <p className="text-sm font-medium text-center mb-1">
+                {t("join.signInPitchTitle")}
+              </p>
+              <p className="text-xs text-muted-foreground text-center mb-3">
+                {t("join.signInPitchSubtitle")}
+              </p>
+              {authProviders.length > 0 ? (
+                <SignInButtons
+                  providers={authProviders}
+                  redirectTo={typeof window !== "undefined" ? window.location.href : ""}
+                  variant="compact"
+                  t={t}
+                />
+              ) : (
+                <div className="flex justify-center py-2">
+                  <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Option 1: Select existing participant */}
           {selectableParticipants.length > 0 && (
