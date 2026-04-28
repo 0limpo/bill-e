@@ -1,6 +1,7 @@
 # collaborative_session.py
 # Sistema de sesiones colaborativas para Bill-e
 
+import os
 import uuid
 import json
 import re
@@ -93,8 +94,8 @@ def create_collaborative_session(
     return {
         "session_id": session_id,
         "owner_token": owner_token,
-        "editor_url": f"https://bill-e.vercel.app/s/{session_id}",
-        "owner_url": f"https://bill-e.vercel.app/s/{session_id}?owner={owner_token}",
+        "editor_url": f"{os.getenv('FRONTEND_URL', 'https://billeocr.com')}/s/{session_id}",
+        "owner_url": f"{os.getenv('FRONTEND_URL', 'https://billeocr.com')}/s/{session_id}?owner={owner_token}",
         "expires_at": session_data["expires_at"]
     }
 

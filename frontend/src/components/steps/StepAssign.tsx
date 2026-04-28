@@ -98,13 +98,13 @@ export function StepAssign({
 
   // Generate editor link
   const getEditorLink = () => {
-    const frontendUrl = typeof window !== "undefined" ? window.location.origin : "https://bill-e.vercel.app";
+    const frontendUrl = typeof window !== "undefined" ? window.location.origin : "https://billeocr.com";
     return `${frontendUrl}/s/${sessionId}`;
   };
 
   // Generate share message with context
   const getShareMessage = () => {
-    const frontendUrl = typeof window !== "undefined" ? window.location.origin : "https://bill-e.vercel.app";
+    const frontendUrl = typeof window !== "undefined" ? window.location.origin : "https://billeocr.com";
     return `${t("share.inviteMessage")}\n${getEditorLink()}\n\n✨ ${t("share.cta")}:\n${frontendUrl}`;
   };
 

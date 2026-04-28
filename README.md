@@ -9,7 +9,7 @@ Bot inteligente de WhatsApp para dividir cuentas de restaurantes entre amigos.
 
 ## 🌐 Demo en vivo
 
-- **Frontend**: https://bill-e.vercel.app/s/{session_id}
+- **Frontend**: https://billeocr.com/s/{session_id}
 - **Backend API**: https://bill-e-backend-lfwp.onrender.com
 - **Health Check**: https://bill-e-backend-lfwp.onrender.com/health
 
@@ -159,7 +159,7 @@ GET /health                                # Estado del servicio
 • Ensalada César - $6.600
 
 🔗 Divide tu cuenta aquí:
-https://bill-e.vercel.app/s/abc123...
+https://billeocr.com/s/abc123...
 
 ⏰ Link expira en 2 horas
 ```
@@ -247,8 +247,8 @@ WHATSAPP_PHONE_NUMBER_ID=123456789
 WHATSAPP_VERIFY_TOKEN=tu_token_secreto
 
 # URLs
-BASE_URL=https://bill-e.vercel.app
-FRONTEND_URL=https://bill-e.vercel.app
+BASE_URL=https://billeocr.com
+FRONTEND_URL=https://billeocr.com
 
 # Stripe (próximamente)
 STRIPE_SECRET_KEY=sk_test_xxx

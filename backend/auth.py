@@ -21,7 +21,7 @@ MICROSOFT_CLIENT_SECRET = os.getenv("MICROSOFT_CLIENT_SECRET", "")
 
 # URLs
 BACKEND_URL = os.getenv("BACKEND_URL", "https://bill-e-backend-lfwp.onrender.com")
-FRONTEND_URL = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://billeocr.com")
 
 # OAuth endpoints
 OAUTH_CONFIG = {

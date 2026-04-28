@@ -136,7 +136,7 @@ if analytics_available:
     app.add_middleware(AnalyticsMiddleware)
 
 # CORS para el frontend
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://bill-e.vercel.app,http://localhost:3000").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://billeocr.com,https://www.billeocr.com,https://bill-e.vercel.app,http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -1518,7 +1518,7 @@ async def create_payment_order(request: CreatePaymentRequest):
 
         # Build callback URLs
         backend_url = os.getenv("BACKEND_URL", "https://bill-e-backend-lfwp.onrender.com")
-        frontend_url = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+        frontend_url = os.getenv("FRONTEND_URL", "https://billeocr.com")
 
         url_confirmation = f"{backend_url}/api/payment/webhook"
 
@@ -1615,7 +1615,7 @@ async def payment_flow_return(request: Request, token: str = None):
     Flow redirects the user here after payment (can be GET or POST).
     We redirect them to the frontend payment success page.
     """
-    frontend_url = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+    frontend_url = os.getenv("FRONTEND_URL", "https://billeocr.com")
 
     try:
         # Get token from query params (GET) or form data (POST)
@@ -1947,7 +1947,7 @@ async def create_mp_preference(request: MPPreferenceRequest):
 
         # Build callback URLs
         backend_url = os.getenv("BACKEND_URL", "https://bill-e-backend-lfwp.onrender.com")
-        frontend_url = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+        frontend_url = os.getenv("FRONTEND_URL", "https://billeocr.com")
 
         notification_url = f"{backend_url}/api/mercadopago/webhook"
 
@@ -3416,7 +3416,7 @@ async def oauth_callback(
     """
     from fastapi.responses import RedirectResponse
 
-    frontend_url = os.getenv("FRONTEND_URL", "https://bill-e.vercel.app")
+    frontend_url = os.getenv("FRONTEND_URL", "https://billeocr.com")
 
     if error:
         return RedirectResponse(f"{frontend_url}/auth/error?error={error}")

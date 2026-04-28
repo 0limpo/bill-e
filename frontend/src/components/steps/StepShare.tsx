@@ -148,7 +148,7 @@ export function StepShare({
 
   // Generate share message
   const generateShareMessage = () => {
-    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "https://bill-e.vercel.app";
+    const frontendUrl = process.env.NEXT_PUBLIC_FRONTEND_URL || "https://billeocr.com";
 
     let message = `🧾 *${t("share.billSummary")}*\n\n`;
 
