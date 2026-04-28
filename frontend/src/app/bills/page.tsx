@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { getBillHistory, getDeviceId, type BillHistoryItem } from "@/lib/api";
 import { getAvatarColor, getInitials, formatCurrency } from "@/lib/billEngine";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
-import { getStoredUser, getAuthProviders, type AuthProvider, type AuthUser } from "@/lib/auth";
+import { getStoredUser, setStoredUser, getAuthProviders, handleAuthCallback, verifyToken, type AuthProvider, type AuthUser } from "@/lib/auth";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 
 const MONTH_KEYS = [
@@ -59,6 +59,8 @@ function groupBillsByDate(bills: BillHistoryItem[], t: (key: string) => string):
 
 export default function BillsHistoryPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnedFromAuth = searchParams.has("token");
   const [bills, setBills] = useState<BillHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Language>("es");
@@ -85,6 +87,35 @@ export default function BillsHistoryPage() {
         .catch(console.error);
     }
   }, []);
+
+  // Process OAuth callback on return: store user + reload bill list, clean URL
+  useEffect(() => {
+    if (!returnedFromAuth) return;
+    const cb = handleAuthCallback();
+    const token = cb?.token;
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      const verified = await verifyToken(token);
+      if (cancelled) return;
+      if (verified) {
+        setStoredUser(verified);
+        setUser(verified);
+        // Reload bills now that we have a user_id
+        getBillHistory(getDeviceId(), verified.id)
+          .then((res) => setBills(res.bills))
+          .catch(() => {});
+      }
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete("token");
+      newUrl.searchParams.delete("user_id");
+      newUrl.searchParams.delete("is_premium");
+      router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [returnedFromAuth, router]);
 
   const grouped = groupBillsByDate(bills, t);
 

@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Loader2, LogIn } from "lucide-react";
 import { createCollaborativeSession, getBillHistory, getDeviceId } from "@/lib/api";
-import { getStoredUser, clearAuth, getAuthProviders, type AuthUser, type AuthProvider } from "@/lib/auth";
-import { SignInButtons } from "@/components/auth/SignInButtons";
+import { getStoredUser, clearAuth, setStoredUser, startOAuthLogin, handleAuthCallback, verifyToken, type AuthUser } from "@/lib/auth";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { getInitials } from "@/lib/billEngine";
@@ -95,9 +94,12 @@ async function compressImage(base64: string): Promise<string> {
 
 export default function LandingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnedFromAuth = searchParams.has("token");
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [inputKey, setInputKey] = useState(0);
@@ -107,7 +109,6 @@ export default function LandingPage() {
   const [billCount, setBillCount] = useState(0);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const t = getTranslator(lang);
@@ -131,14 +132,39 @@ export default function LandingPage() {
         localStorage.setItem('bill-e-bill-count', String(res.count));
       })
       .catch(() => {});
-
-    // Preload auth providers if anonymous (so the sign-in popover renders instantly)
-    if (!stored) {
-      getAuthProviders()
-        .then((data) => setAuthProviders(data.providers))
-        .catch(console.error);
-    }
   }, []);
+
+  // Process OAuth callback on return (verify token, store user, refresh bill count, clean URL)
+  useEffect(() => {
+    if (!returnedFromAuth) return;
+    const cb = handleAuthCallback();
+    const token = cb?.token;
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      const verified = await verifyToken(token);
+      if (cancelled) return;
+      if (verified) {
+        setStoredUser(verified);
+        setUser(verified);
+        // Refresh bill count now that we have a user_id
+        getBillHistory(getDeviceId(), verified.id)
+          .then((res) => {
+            setBillCount(res.count);
+            localStorage.setItem('bill-e-bill-count', String(res.count));
+          })
+          .catch(() => {});
+      }
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete("token");
+      newUrl.searchParams.delete("user_id");
+      newUrl.searchParams.delete("is_premium");
+      router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [returnedFromAuth, router]);
 
   // Close account menu on click outside
   useEffect(() => {
@@ -156,6 +182,18 @@ export default function LandingPage() {
     clearAuth();
     setUser(null);
     setShowAccountMenu(false);
+  };
+
+  const handleSignIn = async () => {
+    if (signingIn) return;
+    setSigningIn(true);
+    try {
+      const authUrl = await startOAuthLogin("google", getDeviceId(), window.location.href);
+      window.location.href = authUrl;
+    } catch (err) {
+      console.error("Sign in error:", err);
+      setSigningIn(false);
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -246,61 +284,47 @@ export default function LandingPage() {
       {/* Account control — top-right, swaps content based on auth state */}
       <div className="absolute top-3 right-3 z-10" ref={accountMenuRef}>
         {user ? (
-          <button
-            onClick={() => setShowAccountMenu((v) => !v)}
-            className="w-9 h-9 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center transition-colors overflow-hidden"
-            aria-label={t("home.accountMenu")}
-          >
-            {user.picture_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.picture_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-sm font-semibold text-foreground">
-                {getInitials(user.name || user.email)}
-              </span>
-            )}
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowAccountMenu((v) => !v)}
-            className="w-9 h-9 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-colors text-muted-foreground"
-            aria-label={t("home.signIn")}
-          >
-            <LogIn className="w-4 h-4" />
-          </button>
-        )}
-
-        {showAccountMenu && user && (
-          <div className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-lg p-3">
-            <p className="text-xs text-muted-foreground mb-1">{t("home.signedInAs")}</p>
-            <p className="text-sm font-medium text-foreground truncate mb-3">{user.email}</p>
+          <>
             <button
-              onClick={handleSignOut}
-              className="w-full text-sm text-destructive hover:underline text-left"
+              onClick={() => setShowAccountMenu((v) => !v)}
+              className="w-9 h-9 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center transition-colors overflow-hidden"
+              aria-label={t("home.accountMenu")}
             >
-              {t("home.signOut")}
+              {user.picture_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.picture_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-sm font-semibold text-foreground">
+                  {getInitials(user.name || user.email)}
+                </span>
+              )}
             </button>
-          </div>
-        )}
-
-        {showAccountMenu && !user && (
-          <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-border rounded-xl shadow-lg p-3">
-            <p className="text-sm font-medium text-foreground mb-3 text-center">
-              {t("home.signIn")}
-            </p>
-            {authProviders.length > 0 ? (
-              <SignInButtons
-                providers={authProviders}
-                redirectTo={typeof window !== "undefined" ? window.location.href : ""}
-                variant="compact"
-                t={t}
-              />
-            ) : (
-              <div className="flex justify-center py-2">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            {showAccountMenu && (
+              <div className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">{t("home.signedInAs")}</p>
+                <p className="text-sm font-medium text-foreground truncate mb-3">{user.email}</p>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-sm text-destructive hover:underline text-left"
+                >
+                  {t("home.signOut")}
+                </button>
               </div>
             )}
-          </div>
+          </>
+        ) : (
+          <button
+            onClick={handleSignIn}
+            disabled={signingIn}
+            className="px-3 h-9 rounded-full bg-secondary hover:bg-secondary/80 flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors disabled:opacity-60"
+          >
+            {signingIn ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <LogIn className="w-4 h-4" />
+            )}
+            <span>{t("home.signIn")}</span>
+          </button>
         )}
       </div>
 
