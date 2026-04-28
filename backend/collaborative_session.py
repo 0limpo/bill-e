@@ -155,7 +155,7 @@ def verify_owner_device(
 
 # --- Editor Device Tracking ---
 
-EDITOR_FREE_SESSIONS = 10  # Free sessions before paywall
+EDITOR_FREE_SESSIONS = 2  # Free sessions before paywall
 
 def check_editor_device_limit(
     redis_client,
@@ -630,7 +630,8 @@ def add_participant(
     redis_client,
     session_id: str,
     name: str,
-    phone: str
+    phone: str,
+    user_id: str = None
 ) -> Dict[str, Any]:
     session_data = get_session(redis_client, session_id)
 
@@ -645,6 +646,12 @@ def add_participant(
     if phone and phone not in ["N/A", "", "n/a"]:
         for p in session_data["participants"]:
             if p.get("phone") == phone:
+                # Backfill user_id if joining with auth and previously was anonymous
+                if user_id and not p.get("user_id"):
+                    p["user_id"] = user_id
+                    ttl = redis_client.ttl(f"session:{session_id}")
+                    if ttl > 0:
+                        redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
                 return {
                     "participant": p,
                     "is_existing": True,
@@ -658,6 +665,8 @@ def add_participant(
         "role": ParticipantRole.EDITOR.value,
         "joined_at": datetime.now().isoformat()
     }
+    if user_id:
+        new_participant["user_id"] = user_id
 
     session_data["participants"].append(new_participant)
     session_data["last_updated"] = datetime.now().isoformat()
@@ -672,6 +681,29 @@ def add_participant(
         "is_existing": False,
         "is_owner": False
     }
+
+
+def attach_user_id_to_participant(
+    redis_client,
+    session_id: str,
+    participant_id: str,
+    user_id: str
+) -> bool:
+    """Backfill user_id on an existing participant when editor logs in mid-session."""
+    session_data = get_session(redis_client, session_id)
+    if not session_data:
+        return False
+
+    for p in session_data["participants"]:
+        if p.get("id") == participant_id:
+            if p.get("user_id") == user_id:
+                return True
+            p["user_id"] = user_id
+            ttl = redis_client.ttl(f"session:{session_id}")
+            if ttl > 0:
+                redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+            return True
+    return False
 
 
 def update_assignment(

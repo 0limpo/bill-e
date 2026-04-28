@@ -54,6 +54,7 @@ try:
         verify_owner,
         verify_owner_device,
         add_participant,
+        attach_user_id_to_participant,
         update_assignment,
         finalize_session,
         calculate_totals,
@@ -722,7 +723,17 @@ async def join_session(session_id: str, request: Request):
                     "requires_payment": True
                 }
 
-        result = add_participant(redis_client, session_id, name, phone)
+        # Resolve user_id from google_email so editor history can find this bill later
+        editor_user_id = None
+        if google_email and postgres_available:
+            try:
+                user = postgres_db.get_user_by_email(google_email)
+                if user and user.get("id"):
+                    editor_user_id = str(user["id"])
+            except Exception as e:
+                print(f"Could not resolve user_id from email: {e}")
+
+        result = add_participant(redis_client, session_id, name, phone, user_id=editor_user_id)
 
         if "error" in result:
             raise HTTPException(status_code=result.get("code", 400), detail=result["error"])
@@ -769,6 +780,15 @@ async def select_existing_participant(session_id: str, request: Request):
                     "free_limit": limit_check.get("free_limit", 2),
                     "requires_payment": True
                 }
+
+            # Backfill user_id on the selected participant so editor history finds this bill later
+            if google_email and postgres_available:
+                try:
+                    user = postgres_db.get_user_by_email(google_email)
+                    if user and user.get("id"):
+                        attach_user_id_to_participant(redis_client, session_id, participant_id, str(user["id"]))
+                except Exception as e:
+                    print(f"Could not attach user_id to participant: {e}")
 
             # Register session for device tracking (if not already in this session)
             if not limit_check.get("is_returning"):

@@ -11,9 +11,9 @@ from contextlib import contextmanager
 
 from sqlalchemy import (
     create_engine, Column, String, Integer, Boolean, DateTime,
-    Text, JSON, Enum as SQLEnum, Index
+    Text, JSON, Enum as SQLEnum, Index, cast
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 import enum
@@ -1359,7 +1359,12 @@ def get_bill_history(device_ids: List[str] = None, user_id: str = None, limit: i
         if user_id:
             try:
                 uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+                # Match host (snapshot.user_id) OR editor (any participant has this user_id).
+                # participants is JSON; cast to JSONB on the fly to use containment operator.
                 conditions.append(SessionSnapshot.user_id == uid)
+                conditions.append(
+                    cast(SessionSnapshot.participants, JSONB).contains([{"user_id": str(uid)}])
+                )
             except (ValueError, AttributeError):
                 pass
 
