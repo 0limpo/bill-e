@@ -1066,6 +1066,35 @@ def set_premium_by_email(
         }
 
 
+def backfill_snapshots_user_id(user_id: str, device_id: str) -> int:
+    """
+    Set snapshot.user_id = user_id for all FINALIZED snapshots whose
+    host_device_id matches the given device_id and currently have user_id NULL.
+    Used when claiming a device: the user takes ownership of bills they
+    created on that device while anonymous.
+    Returns the number of rows updated.
+    """
+    if not db_available:
+        return 0
+
+    with get_db() as db:
+        if db is None:
+            return 0
+        try:
+            uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        except (ValueError, AttributeError):
+            return 0
+
+        count = (
+            db.query(SessionSnapshot)
+            .filter(SessionSnapshot.host_device_id == device_id)
+            .filter(SessionSnapshot.user_id.is_(None))
+            .update({SessionSnapshot.user_id: uid}, synchronize_session=False)
+        )
+        db.flush()
+        return count
+
+
 def link_device_to_user(user_id: str, device_id: str) -> Optional[Dict]:
     """Link a device_id to an existing user."""
     if not db_available:

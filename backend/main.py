@@ -3808,6 +3808,49 @@ async def get_current_user(authorization: str = None):
     }
 
 
+@app.post("/api/auth/claim-device")
+async def claim_device(request: Request):
+    """
+    Add the caller's current device_id to user.device_ids and backfill
+    snapshot.user_id for all anonymous bills created on that device.
+    Used to recover bills that were created anonymously on a device the
+    user has now decided to associate with their account.
+    """
+    if not auth_available or not postgres_available:
+        raise HTTPException(status_code=503, detail="Service not available")
+
+    try:
+        body = await request.json()
+        token = body.get("token")
+        device_id = body.get("device_id")
+
+        if not token or not device_id:
+            raise HTTPException(status_code=400, detail="token and device_id required")
+
+        payload = oauth_auth.verify_session_token(token)
+        if not payload:
+            raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+        user_id = payload["user_id"]
+
+        link_result = postgres_db.link_device_to_user(user_id, device_id)
+        if not link_result:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        backfilled = postgres_db.backfill_snapshots_user_id(user_id, device_id)
+
+        return {
+            "linked": True,
+            "device_count": len(link_result.get("device_ids", [])),
+            "device_ids": link_result.get("device_ids", []),
+            "snapshots_backfilled": backfilled,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Claim device failed: {e}")
+
+
 @app.get("/api/debug/auth-status")
 async def debug_auth_status(token: str = None, device_id: str = None):
     """

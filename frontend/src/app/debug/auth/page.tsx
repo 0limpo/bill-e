@@ -31,9 +31,10 @@ export default function DebugAuthPage() {
   const [data, setData] = useState<DebugResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [origin, setOrigin] = useState<string>("");
+  const [claiming, setClaiming] = useState(false);
+  const [claimResult, setClaimResult] = useState<string | null>(null);
 
-  useEffect(() => {
-    setOrigin(typeof window !== "undefined" ? window.location.origin : "");
+  const loadStatus = () => {
     const token = getStoredToken();
     const deviceId = getDeviceId();
 
@@ -52,7 +53,41 @@ export default function DebugAuthPage() {
       })
       .then(setData)
       .catch((e) => setError(String(e)));
+  };
+
+  useEffect(() => {
+    setOrigin(typeof window !== "undefined" ? window.location.origin : "");
+    loadStatus();
   }, []);
+
+  const handleClaimDevice = async () => {
+    const token = getStoredToken();
+    const deviceId = getDeviceId();
+    if (!token || !deviceId) return;
+
+    setClaiming(true);
+    setClaimResult(null);
+    try {
+      const r = await fetch(`${API_URL}/api/auth/claim-device`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, device_id: deviceId }),
+      });
+      if (!r.ok) {
+        const text = await r.text();
+        throw new Error(`${r.status}: ${text}`);
+      }
+      const json = await r.json();
+      setClaimResult(
+        `Listo. Devices linkeados ahora: ${json.device_count}. Boletas reasignadas (user_id seteado): ${json.snapshots_backfilled}.`
+      );
+      loadStatus();
+    } catch (e) {
+      setClaimResult(`Error: ${String(e)}`);
+    } finally {
+      setClaiming(false);
+    }
+  };
 
   const stored = getStoredUser();
 
@@ -101,6 +136,34 @@ export default function DebugAuthPage() {
                 ))}
               </ul>
             </div>
+
+            {!data.current_device_is_linked && (
+              <div className="mt-4 pt-4 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Linkea este device a tu cuenta para que sus boletas anónimas se asocien a tu user.
+                  {data.orphan_count_for_current_device > 0 && (
+                    <>
+                      {" "}Esto reasignará{" "}
+                      <strong className="text-foreground">
+                        {data.orphan_count_for_current_device} boleta
+                        {data.orphan_count_for_current_device !== 1 ? "s" : ""}
+                      </strong>
+                      .
+                    </>
+                  )}
+                </p>
+                <button
+                  onClick={handleClaimDevice}
+                  disabled={claiming}
+                  className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors"
+                >
+                  {claiming ? "Linkeando..." : "Linkear este device a mi cuenta"}
+                </button>
+                {claimResult && (
+                  <p className="text-xs mt-2 text-muted-foreground">{claimResult}</p>
+                )}
+              </div>
+            )}
           </Card>
 
           <Card title={`Boletas visibles (${data.visible_snapshots_count})`}>
