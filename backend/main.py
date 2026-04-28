@@ -3808,6 +3808,106 @@ async def get_current_user(authorization: str = None):
     }
 
 
+@app.get("/api/debug/auth-status")
+async def debug_auth_status(token: str = None, device_id: str = None):
+    """
+    Diagnostic endpoint: shows which devices are linked to the user account
+    and which session snapshots are reachable through the current query logic.
+    Helps diagnose 'I see N bills here but M bills there' issues.
+    """
+    if not auth_available or not postgres_available:
+        raise HTTPException(status_code=503, detail="Service not available")
+
+    if not token:
+        raise HTTPException(status_code=400, detail="token query param required")
+
+    payload = oauth_auth.verify_session_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    user_id = payload["user_id"]
+
+    try:
+        from sqlalchemy import or_, cast
+        from sqlalchemy.dialects.postgresql import JSONB
+
+        with postgres_db.get_db() as db:
+            if db is None:
+                raise HTTPException(status_code=503, detail="Database unavailable")
+
+            uid = uuid.UUID(user_id)
+            user_row = db.query(postgres_db.User).filter(postgres_db.User.id == uid).first()
+            if not user_row:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            linked_devices = list(user_row.device_ids or [])
+
+            # Snapshots accessible via the existing query logic
+            conditions = [postgres_db.SessionSnapshot.host_device_id == d for d in linked_devices]
+            conditions.append(postgres_db.SessionSnapshot.user_id == uid)
+            conditions.append(
+                cast(postgres_db.SessionSnapshot.participants, JSONB).contains([{"user_id": str(uid)}])
+            )
+            visible = (
+                db.query(postgres_db.SessionSnapshot)
+                .filter(or_(*conditions))
+                .filter(postgres_db.SessionSnapshot.status == postgres_db.SessionStatus.FINALIZED)
+                .all()
+            ) if conditions else []
+
+            visible_summary = []
+            for s in visible:
+                methods = []
+                if s.host_device_id and s.host_device_id in linked_devices:
+                    methods.append("linked_device")
+                if s.user_id and s.user_id == uid:
+                    methods.append("snapshot_user_id")
+                if not methods:
+                    methods.append("participant_user_id")
+                visible_summary.append({
+                    "session_id": s.session_id,
+                    "host_device_id": s.host_device_id,
+                    "snapshot_user_id_set": s.user_id is not None,
+                    "created_at": s.created_at.isoformat() if s.created_at else None,
+                    "matched_via": methods,
+                })
+
+            # Snapshots reachable only via the current localStorage device_id
+            # (potential orphans not yet linked to the user)
+            orphans = []
+            if device_id and device_id not in linked_devices:
+                orphan_rows = (
+                    db.query(postgres_db.SessionSnapshot)
+                    .filter(postgres_db.SessionSnapshot.host_device_id == device_id)
+                    .filter(postgres_db.SessionSnapshot.status == postgres_db.SessionStatus.FINALIZED)
+                    .all()
+                )
+                for s in orphan_rows:
+                    orphans.append({
+                        "session_id": s.session_id,
+                        "host_device_id": s.host_device_id,
+                        "snapshot_user_id_set": s.user_id is not None,
+                        "created_at": s.created_at.isoformat() if s.created_at else None,
+                    })
+
+            return {
+                "user_id": user_id,
+                "email": payload.get("email"),
+                "linked_device_count": len(linked_devices),
+                "linked_device_ids": linked_devices,
+                "current_device_id": device_id,
+                "current_device_is_linked": device_id in linked_devices if device_id else None,
+                "visible_snapshots_count": len(visible_summary),
+                "visible_snapshots": visible_summary,
+                "orphan_count_for_current_device": len(orphans),
+                "orphan_snapshots_for_current_device": orphans,
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Debug query failed: {e}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
