@@ -115,6 +115,9 @@ export default function SessionPage() {
   const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
   const [showNoPremiumWarning, setShowNoPremiumWarning] = useState(false);
 
+  // Host post-finalize sign-in pitch (one-time, dismissible, localStorage-gated)
+  const [showHostSignInPitch, setShowHostSignInPitch] = useState(false);
+
   const {
     session,
     loading,
@@ -254,15 +257,35 @@ export default function SessionPage() {
     handlePostPayment();
   }, [paymentSuccess, payerType, isOwner, session, finalize, router, updateHostStep, userEmail, join, selectParticipant, sessionId]);
 
-  // Load auth providers when paywall opens OR when editor is on landing without auth
+  // Load auth providers when paywall opens, editor is on landing without auth, or host pitch shows
   useEffect(() => {
     const onEditorLanding = !isOwner && !currentParticipant && !isViewOnlyParam && !userEmail;
-    if ((showPaywall || onEditorLanding) && authProviders.length === 0) {
+    if ((showPaywall || onEditorLanding || showHostSignInPitch) && authProviders.length === 0) {
       getAuthProviders()
         .then((data) => setAuthProviders(data.providers))
         .catch(console.error);
     }
-  }, [showPaywall, isOwner, currentParticipant, isViewOnlyParam, userEmail, authProviders.length]);
+  }, [showPaywall, isOwner, currentParticipant, isViewOnlyParam, userEmail, showHostSignInPitch, authProviders.length]);
+
+  // Trigger host sign-in pitch on first finalized session (host only, anonymous, dismissed-once)
+  useEffect(() => {
+    if (
+      isOwner &&
+      !userEmail &&
+      session?.status === "finalized" &&
+      typeof window !== "undefined" &&
+      !localStorage.getItem("host_signin_pitch_shown")
+    ) {
+      setShowHostSignInPitch(true);
+    }
+  }, [isOwner, userEmail, session?.status]);
+
+  const dismissHostSignInPitch = () => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("host_signin_pitch_shown", "1");
+    }
+    setShowHostSignInPitch(false);
+  };
 
   // Handle return from OAuth - show paywall with message if no premium
   useEffect(() => {
@@ -959,6 +982,37 @@ export default function SessionPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Host post-finalize sign-in pitch (one-time, dismissible) */}
+      {showHostSignInPitch && (
+        <div className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl p-6 max-w-sm w-full border border-border">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-2">✨</div>
+              <h2 className="text-xl font-bold mb-2">{t("host.pitchTitle")}</h2>
+              <p className="text-sm text-muted-foreground">{t("host.pitchSubtitle")}</p>
+            </div>
+            {authProviders.length > 0 ? (
+              <SignInButtons
+                providers={authProviders}
+                redirectTo={typeof window !== "undefined" ? window.location.href : ""}
+                variant="default"
+                t={t}
+              />
+            ) : (
+              <div className="flex justify-center py-2">
+                <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+            <button
+              onClick={dismissHostSignInPitch}
+              className="w-full mt-3 text-sm text-muted-foreground hover:text-foreground"
+            >
+              {t("host.pitchDismiss")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-md mx-auto px-4 py-3">

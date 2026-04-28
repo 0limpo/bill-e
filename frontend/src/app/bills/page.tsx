@@ -6,7 +6,8 @@ import { Loader2, ChevronLeft } from "lucide-react";
 import { getBillHistory, getDeviceId, type BillHistoryItem } from "@/lib/api";
 import { getAvatarColor, getInitials, formatCurrency } from "@/lib/billEngine";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
-import { getStoredUser } from "@/lib/auth";
+import { getStoredUser, getAuthProviders, type AuthProvider, type AuthUser } from "@/lib/auth";
+import { SignInButtons } from "@/components/auth/SignInButtons";
 
 const MONTH_KEYS = [
   "bills.january", "bills.february", "bills.march", "bills.april",
@@ -61,19 +62,28 @@ export default function BillsHistoryPage() {
   const [bills, setBills] = useState<BillHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [lang, setLang] = useState<Language>("es");
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [authProviders, setAuthProviders] = useState<AuthProvider[]>([]);
 
   const t = getTranslator(lang);
 
   useEffect(() => {
     setLang(detectLanguage());
 
-    const user = getStoredUser();
-    getBillHistory(getDeviceId(), user?.id)
+    const storedUser = getStoredUser();
+    setUser(storedUser);
+    getBillHistory(getDeviceId(), storedUser?.id)
       .then((res) => {
         setBills(res.bills);
         setLoading(false);
       })
       .catch(() => setLoading(false));
+
+    if (!storedUser) {
+      getAuthProviders()
+        .then((data) => setAuthProviders(data.providers))
+        .catch(console.error);
+    }
   }, []);
 
   const grouped = groupBillsByDate(bills, t);
@@ -93,6 +103,32 @@ export default function BillsHistoryPage() {
           {t("bills.count").replace("{n}", String(bills.length))}
         </span>
       </div>
+
+      {/* Sign-in banner (only if not logged in) */}
+      {!user && (
+        <div className="w-full max-w-md px-4 mb-3">
+          <div className="bg-card rounded-2xl p-4 border border-border">
+            <p className="text-sm text-foreground font-medium mb-1">
+              {t("bills.signInBannerTitle")}
+            </p>
+            <p className="text-xs text-muted-foreground mb-3">
+              {t("bills.signInBannerSubtitle")}
+            </p>
+            {authProviders.length > 0 ? (
+              <SignInButtons
+                providers={authProviders}
+                redirectTo={typeof window !== "undefined" ? window.location.href : ""}
+                variant="compact"
+                t={t}
+              />
+            ) : (
+              <div className="flex justify-center py-2">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       <div className="w-full max-w-md px-4 pb-24">

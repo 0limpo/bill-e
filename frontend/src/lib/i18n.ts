@@ -262,6 +262,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "El host finalizó. ¡Puedes ver los resultados!",
     "editor.waitingForHost": "Esperando al host...",
     "editor.noItemsYet": "Aún no hay items escaneados",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "¡Boleta lista!",
+    "host.pitchSubtitle": "Inicia sesión y tus boletas te seguirán en cualquier dispositivo",
+    "host.pitchDismiss": "Tal vez después",
     "steps.goToAssign": "Ir a asignar items",
     "steps.viewResults": "Ver resultados",
 
@@ -344,6 +349,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "Mis boletas",
+    "bills.signInBannerTitle": "Sincroniza tus boletas",
+    "bills.signInBannerSubtitle": "Inicia sesión y accede a tu historial desde cualquier dispositivo",
     "bills.count": "{n} boletas",
     "bills.today": "Hoy",
     "bills.thisWeek": "Esta semana",
@@ -690,6 +697,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "The host has finalized. You can view the results!",
     "editor.waitingForHost": "Waiting for host...",
     "editor.noItemsYet": "No items scanned yet",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "Bill ready!",
+    "host.pitchSubtitle": "Sign in so your bills follow you across devices",
+    "host.pitchDismiss": "Maybe later",
     "steps.goToAssign": "Go to assign items",
     "steps.viewResults": "View results",
 
@@ -772,6 +784,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "My bills",
+    "bills.signInBannerTitle": "Sync your bills",
+    "bills.signInBannerSubtitle": "Sign in to access your history from any device",
     "bills.count": "{n} bills",
     "bills.today": "Today",
     "bills.thisWeek": "This week",
@@ -1040,6 +1054,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "O anfitrião finalizou. Você pode ver os resultados!",
     "editor.waitingForHost": "Aguardando o anfitrião...",
     "editor.noItemsYet": "Ainda não há itens escaneados",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "Conta pronta!",
+    "host.pitchSubtitle": "Faça login e suas contas vão te seguir em qualquer dispositivo",
+    "host.pitchDismiss": "Talvez depois",
     "steps.goToAssign": "Ir para atribuir itens",
     "steps.viewResults": "Ver resultados",
     "error.noItems": "Sem itens",
@@ -1107,6 +1126,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "Minhas contas",
+    "bills.signInBannerTitle": "Sincronize suas contas",
+    "bills.signInBannerSubtitle": "Faça login para acessar seu histórico em qualquer dispositivo",
     "bills.count": "{n} contas",
     "bills.today": "Hoje",
     "bills.thisWeek": "Esta semana",
@@ -1375,6 +1396,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "主持人已完成。您可以查看结果！",
     "editor.waitingForHost": "等待主持人...",
     "editor.noItemsYet": "还没有扫描的项目",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "账单完成！",
+    "host.pitchSubtitle": "登录后，您的账单可在任何设备上访问",
+    "host.pitchDismiss": "稍后再说",
     "steps.goToAssign": "去分配项目",
     "steps.viewResults": "查看结果",
     "error.noItems": "没有项目",
@@ -1441,6 +1467,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "我的账单",
+    "bills.signInBannerTitle": "同步您的账单",
+    "bills.signInBannerSubtitle": "登录以从任何设备访问您的历史记录",
     "bills.count": "{n} 张账单",
     "bills.today": "今天",
     "bills.thisWeek": "本周",
@@ -1709,6 +1737,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "L'hôte a finalisé. Vous pouvez voir les résultats!",
     "editor.waitingForHost": "En attente de l'hôte...",
     "editor.noItemsYet": "Pas encore d'articles scannés",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "Addition prête !",
+    "host.pitchSubtitle": "Connecte-toi pour retrouver tes additions sur tous tes appareils",
+    "host.pitchDismiss": "Plus tard",
     "steps.goToAssign": "Aller attribuer les articles",
     "steps.viewResults": "Voir les résultats",
     "error.noItems": "Pas d'articles",
@@ -1775,6 +1808,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "Mes additions",
+    "bills.signInBannerTitle": "Synchronise tes additions",
+    "bills.signInBannerSubtitle": "Connecte-toi pour accéder à ton historique depuis n'importe quel appareil",
     "bills.count": "{n} additions",
     "bills.today": "Aujourd'hui",
     "bills.thisWeek": "Cette semaine",
@@ -2043,6 +2078,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "Der Gastgeber hat abgeschlossen. Du kannst die Ergebnisse sehen!",
     "editor.waitingForHost": "Warte auf Gastgeber...",
     "editor.noItemsYet": "Noch keine gescannten Artikel",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "Rechnung fertig!",
+    "host.pitchSubtitle": "Anmelden, damit deine Rechnungen dir auf allen Geräten folgen",
+    "host.pitchDismiss": "Vielleicht später",
     "steps.goToAssign": "Zu Artikel zuweisen",
     "steps.viewResults": "Ergebnisse anzeigen",
     "error.noItems": "Keine Artikel",
@@ -2109,6 +2149,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "Meine Rechnungen",
+    "bills.signInBannerTitle": "Rechnungen synchronisieren",
+    "bills.signInBannerSubtitle": "Anmelden, um den Verlauf von jedem Gerät aus aufzurufen",
     "bills.count": "{n} Rechnungen",
     "bills.today": "Heute",
     "bills.thisWeek": "Diese Woche",
@@ -2377,6 +2419,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "ホストが完了しました。結果を確認できます！",
     "editor.waitingForHost": "ホストを待っています...",
     "editor.noItemsYet": "まだスキャンされた項目がありません",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "明細完成！",
+    "host.pitchSubtitle": "ログインすれば、どのデバイスからでも明細にアクセスできます",
+    "host.pitchDismiss": "後で",
     "steps.goToAssign": "割り当てに進む",
     "steps.viewResults": "結果を見る",
     "error.noItems": "項目がありません",
@@ -2443,6 +2490,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "明細一覧",
+    "bills.signInBannerTitle": "明細を同期",
+    "bills.signInBannerSubtitle": "ログインすると、どのデバイスからでも履歴にアクセスできます",
     "bills.count": "{n} 件",
     "bills.today": "今日",
     "bills.thisWeek": "今週",
@@ -2711,6 +2760,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "Хост завершил. Можете смотреть результаты!",
     "editor.waitingForHost": "Ожидание хоста...",
     "editor.noItemsYet": "Пока нет отсканированных позиций",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "Счёт готов!",
+    "host.pitchSubtitle": "Войди, чтобы счета были доступны на любом устройстве",
+    "host.pitchDismiss": "Может быть позже",
     "steps.goToAssign": "Перейти к назначению",
     "steps.viewResults": "Смотреть результаты",
     "error.noItems": "Нет позиций",
@@ -2777,6 +2831,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "Мои счета",
+    "bills.signInBannerTitle": "Синхронизируй счета",
+    "bills.signInBannerSubtitle": "Войди, чтобы получить доступ к истории с любого устройства",
     "bills.count": "{n} счетов",
     "bills.today": "Сегодня",
     "bills.thisWeek": "На этой неделе",
@@ -3045,6 +3101,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "होस्ट ने पूरा किया। नतीजे देख सकते हैं!",
     "editor.waitingForHost": "होस्ट का इंतज़ार...",
     "editor.noItemsYet": "अभी कोई आइटम स्कैन नहीं हुआ",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "बिल तैयार!",
+    "host.pitchSubtitle": "साइन इन करें ताकि आपके बिल किसी भी डिवाइस पर मिल सकें",
+    "host.pitchDismiss": "शायद बाद में",
     "steps.goToAssign": "असाइन करने जाएं",
     "steps.viewResults": "नतीजे देखें",
     "error.noItems": "कोई आइटम नहीं",
@@ -3111,6 +3172,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "मेरे बिल",
+    "bills.signInBannerTitle": "अपने बिल सिंक करें",
+    "bills.signInBannerSubtitle": "साइन इन करें और किसी भी डिवाइस से अपना इतिहास एक्सेस करें",
     "bills.count": "{n} बिल",
     "bills.today": "आज",
     "bills.thisWeek": "इस सप्ताह",
@@ -3379,6 +3442,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "editor.hostFinalized": "Host sudah selesai. Kamu bisa melihat hasilnya!",
     "editor.waitingForHost": "Menunggu host...",
     "editor.noItemsYet": "Belum ada item yang dipindai",
+
+    // Host post-finalize sign-in pitch
+    "host.pitchTitle": "Tagihan siap!",
+    "host.pitchSubtitle": "Masuk agar tagihanmu bisa diakses dari perangkat mana pun",
+    "host.pitchDismiss": "Mungkin nanti",
     "steps.goToAssign": "Pergi ke penetapan item",
     "steps.viewResults": "Lihat hasil",
     "error.noItems": "Tidak ada item",
@@ -3445,6 +3513,8 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Bills history
     "bills.myBills": "Tagihan saya",
+    "bills.signInBannerTitle": "Sinkronkan tagihanmu",
+    "bills.signInBannerSubtitle": "Masuk untuk mengakses riwayatmu dari perangkat mana pun",
     "bills.count": "{n} tagihan",
     "bills.today": "Hari ini",
     "bills.thisWeek": "Minggu ini",
