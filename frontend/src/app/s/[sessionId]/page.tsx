@@ -12,7 +12,7 @@ import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, detectDecimals, getAvatarColor, getInitials, calculateParticipantTotal, type Item, type Charge, type Participant, type Assignment, type Session } from "@/lib/billEngine";
 import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
-import { getStoredToken, getStoredUser, getAuthProviders, type AuthProvider } from "@/lib/auth";
+import { getStoredToken, getStoredUser, setStoredUser, getAuthProviders, handleAuthCallback, verifyToken, type AuthProvider } from "@/lib/auth";
 import { updateBillName } from "@/lib/api";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import {
@@ -287,19 +287,41 @@ export default function SessionPage() {
     setShowHostSignInPitch(false);
   };
 
-  // Handle return from OAuth - show paywall with message if no premium
+  // Process OAuth return: verify token, store user, update local state, clean URL.
+  // Runs for both editor (sign-in from landing) and host (sign-in from paywall).
   useEffect(() => {
-    if (returnedFromAuth && authIsPremium === "False") {
-      setShowNoPremiumWarning(true);
-      setShowPaywall(true);
-      // Clean URL params
+    if (!returnedFromAuth) return;
+    const cb = handleAuthCallback();
+    const token = cb?.token;
+    if (!token) return;
+    let cancelled = false;
+    (async () => {
+      const verified = await verifyToken(token);
+      if (cancelled) return;
+      if (verified) {
+        setStoredUser(verified);
+        setUserEmail(verified.email);
+      }
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete("token");
       newUrl.searchParams.delete("user_id");
       newUrl.searchParams.delete("is_premium");
       router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [returnedFromAuth, router]);
+
+  // Host-only: if owner came back from auth without premium, surface the paywall
+  // with a "no premium linked" warning. Editors signing in from the landing
+  // (just to save history) skip this — they keep navigating normally.
+  useEffect(() => {
+    if (returnedFromAuth && authIsPremium === "False" && isOwner) {
+      setShowNoPremiumWarning(true);
+      setShowPaywall(true);
     }
-  }, [returnedFromAuth, authIsPremium, router]);
+  }, [returnedFromAuth, authIsPremium, isOwner]);
 
   const t = getTranslator(lang);
 
