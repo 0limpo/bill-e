@@ -162,7 +162,7 @@ export function StepShare({
       message += `• ${p.name}: ${fmt(finalTotal)}\n`;
     });
 
-    message += `\n💰 *Total: ${fmt(totalAmount)}*`;
+    message += `\n💰 *${t("totals.total")}: ${fmt(totalAmount)}*`;
 
     if (sessionId) {
       message += `\n\n🔗 ${t("share.viewDetails")}:\n${frontendUrl}/s/${sessionId}?view=results`;

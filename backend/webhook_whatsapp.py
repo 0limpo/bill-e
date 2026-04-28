@@ -320,61 +320,37 @@ async def process_image_message(phone_number: str, image_data: dict):
                 })
 
             # Crear sesión colaborativa (con 2 links: owner y editor)
-            if create_collaborative_session:
-                session_result = create_collaborative_session(
-                    redis_client=redis_client,
-                    owner_phone=phone_number,
-                    items=formatted_items,
-                    total=total,
-                    subtotal=subtotal,
-                    tip=tip,
-                    raw_text=result.get('raw_text', ''),
-                    charges=result.get('charges', []),
-                    decimal_places=result.get('decimal_places', 0),
-                    has_tip=result.get('has_tip', False),
-                    number_format=result.get('number_format', {'thousands': ',', 'decimal': '.'}),
-                    price_mode=result.get('price_mode', 'unitario')
-                )
+            session_result = create_collaborative_session(
+                redis_client=redis_client,
+                owner_phone=phone_number,
+                items=formatted_items,
+                total=total,
+                subtotal=subtotal,
+                tip=tip,
+                raw_text=result.get('raw_text', ''),
+                charges=result.get('charges', []),
+                decimal_places=result.get('decimal_places', 0),
+                has_tip=result.get('has_tip', False),
+                number_format=result.get('number_format', {'thousands': ',', 'decimal': '.'}),
+                price_mode=result.get('price_mode', 'unitario')
+            )
 
-                # Formatear mensaje con ambos links (i18n)
-                quality_score = validation.get('quality_score', 0) if validation else 0
-                decimal_places = result.get('decimal_places', 0)
-                number_format = result.get('number_format', {'thousands': ',', 'decimal': '.'})
-                if i18n_available:
-                    message = format_collaborative_message_i18n(
-                        lang=lang,
-                        total=total,
-                        subtotal=subtotal,
-                        tip=tip,
-                        items_count=len(items),
-                        owner_url=session_result['owner_url'],
-                        editor_url=session_result['editor_url'],
-                        is_verified=(quality_score == 100),
-                        decimal_places=decimal_places,
-                        number_format=number_format
-                    )
-                else:
-                    message = format_collaborative_message(
-                        total=total,
-                        subtotal=subtotal,
-                        tip=tip,
-                        items_count=len(items),
-                        owner_url=session_result['owner_url'],
-                        editor_url=session_result['editor_url'],
-                        validation=validation
-                    )
-
-                print(f"✅ Sesión colaborativa creada: {session_result['session_id']}")
-            else:
-                # Fallback a sesión simple si no está disponible
-                session_id = create_session_with_bill_data(
-                    phone_number=phone_number,
-                    bill_data=result
-                )
-                message = format_success_message_enhanced(
-                    enhanced_result=result,
-                    session_id=session_id
-                )
+            quality_score = validation.get('quality_score', 0) if validation else 0
+            decimal_places = result.get('decimal_places', 0)
+            number_format = result.get('number_format', {'thousands': ',', 'decimal': '.'})
+            message = format_collaborative_message_i18n(
+                lang=lang,
+                total=total,
+                subtotal=subtotal,
+                tip=tip,
+                items_count=len(items),
+                owner_url=session_result['owner_url'],
+                editor_url=session_result['editor_url'],
+                is_verified=(quality_score == 100),
+                decimal_places=decimal_places,
+                number_format=number_format
+            )
+            print(f"✅ Sesión colaborativa creada: {session_result['session_id']}")
 
             await send_whatsapp_message(phone_number, message)
             print(f"✅ Boleta procesada exitosamente para {phone_number}")
@@ -440,269 +416,7 @@ async def download_whatsapp_media(media_url: str) -> bytes:
         print(f"❌ Error en download_whatsapp_media: {e}")
         return None
 
-def create_session_with_bill_data(phone_number: str, bill_data: dict) -> str:
-    """
-    Crea sesión con datos de boleta procesada.
-    """
-    session_id = str(uuid.uuid4())
 
-    # Extraer datos
-    items = bill_data.get('items', [])
-    total = bill_data.get('total', 0)
-    subtotal = bill_data.get('subtotal', 0)
-    tip = bill_data.get('tip', 0)
-    validation = bill_data.get('validation', {})
-    ocr_source = bill_data.get('ocr_source', 'unknown')
-
-    # Convertir items al formato de sesión PRESERVANDO consolidación
-    session_items = []
-    for i, item in enumerate(items):
-        session_items.append({
-            'id': f"item-{i}",
-            'name': item['name'],
-            'price': item['price'],
-            'quantity': item.get('quantity', 1),
-            'assigned_to': [],
-            'confidence': item.get('confidence', 'medium'),
-            'duplicates_found': item.get('duplicates_found', 0),
-            'normalized_name': item.get('normalized_name', ''),
-            'group_total': item.get('group_total', item['price'] * item.get('quantity', 1))
-        })
-
-    # Crear sesión
-    session_data = {
-        'session_id': session_id,
-        'phone': phone_number,
-        'created_at': datetime.now().isoformat(),
-        'expires_at': (datetime.now() + timedelta(hours=1)).isoformat(),
-        'items': session_items,
-        'people': [],
-        'total': total,
-        'subtotal': subtotal,
-        'tip': tip,
-        'tip_percentage': 0.1,
-        'state': 'SHOWING_RESULT',
-        'result': None,
-        'ocr_source': ocr_source,
-        'validation': validation,
-        'raw_text': bill_data.get('raw_text', ''),
-        'confidence': bill_data.get('confidence', 'medium')
-    }
-
-    # Guardar en Redis con TTL de 1 hora
-    try:
-        redis_client.setex(
-            f"session:{session_id}",
-            3600,  # 1 hora
-            json.dumps(session_data)
-        )
-        print(f"✅ Sesión creada: {session_id} (1 hora TTL)")
-    except Exception as e:
-        print(f"❌ Error guardando sesión: {str(e)}")
-        raise
-
-    return session_id
-
-def format_success_message(bill_data: dict, session_id: str) -> str:
-    """Formatear mensaje de éxito con resumen de la boleta en formato chileno"""
-    
-    def format_chilean_currency(amount):
-        """Formatear moneda en estilo chileno: $111.793"""
-        return f"${amount:,.0f}".replace(',', '.')
-    
-    # Contar items
-    items_count = len(bill_data['items'])
-    
-    # Crear lista de items (máximo 3 para el mensaje)
-    items_preview = ""
-    for i, item in enumerate(bill_data['items'][:3]):
-        price_formatted = format_chilean_currency(item['price'])
-        items_preview += f"• {item['name']}: {price_formatted}\n"
-    
-    if items_count > 3:
-        items_preview += f"• ... y {items_count - 3} más\n"
-    
-    frontend_url = f"{os.getenv('FRONTEND_URL', 'http://localhost:3000')}/s/{session_id}"
-    
-    # Formatear números en estilo chileno
-    total_formatted = format_chilean_currency(bill_data['total'])
-    subtotal_formatted = format_chilean_currency(bill_data['subtotal'])
-    tip_formatted = format_chilean_currency(bill_data['tip'])
-    
-    message = f"""🎉 ¡Boleta procesada exitosamente!
-
-📊 **Resumen:**
-💰 Total: {total_formatted}
-🧾 Subtotal: {subtotal_formatted}
-💸 Propina: {tip_formatted}
-📝 Items: {items_count}
-
-{items_preview}
-🔗 **Divide tu cuenta aquí:**
-👉 {frontend_url}
-
-💡 Comparte este link con tus amigos para que vean cuánto debe pagar cada uno."""
-    
-    return message
-
-def format_success_message_simple(ocr_result: dict, session_id: str) -> str:
-    """
-    Formatea mensaje de WhatsApp con el resultado del OCR simplificado.
-    """
-    total = ocr_result.get('total', 0)
-    subtotal = ocr_result.get('subtotal', 0)
-    tip = ocr_result.get('tip', 0)
-    items = ocr_result.get('items', [])
-    confidence_score = ocr_result.get('confidence_score', 0)
-    confidence = ocr_result.get('confidence', 'medium')
-    currency = ocr_result.get('currency', 'CLP')
-
-    # Emoji de calidad
-    quality_emoji = "✅" if confidence == "high" else "⚠️" if confidence == "medium" else "❌"
-
-    # Header
-    message = f"🎉 ¡Boleta procesada!\n\n"
-    message += f"{quality_emoji} Confianza: {confidence_score}/100\n\n"
-
-    # Resumen financiero
-    message += f"📊 *Resumen:*\n"
-    message += f"💰 Total: ${total:,}\n"
-
-    if subtotal > 0:
-        message += f"💵 Subtotal: ${subtotal:,}\n"
-
-    if tip and tip > 0:
-        tip_percent = (tip / subtotal * 100) if subtotal and subtotal > 0 else 0
-        message += f"🎁 Propina: ${tip:,} ({tip_percent:.0f}%)\n"
-
-    message += f"📝 Items: {len(items)}\n\n"
-
-    # Primeros 3 items
-    if items:
-        message += f"📦 *Items:*\n"
-        for item in items[:3]:
-            quantity = item.get('quantity', 1)
-            name = item['name']
-            price = item['price']
-            total_item = price * quantity
-
-            if quantity > 1:
-                message += f"• {quantity}x {name} - ${total_item:,}\n"
-            else:
-                message += f"• {name} - ${price:,}\n"
-
-        if len(items) > 3:
-            message += f"... y {len(items) - 3} más\n"
-
-    message += "\n"
-
-    # Link
-    frontend_url = os.getenv('FRONTEND_URL', 'https://bill-e.vercel.app')
-    message += f"🔗 *Divide tu cuenta aquí:*\n"
-    message += f"{frontend_url}/s/{session_id}\n\n"
-
-    # Footer
-    message += f"⏰ Link válido por 24 horas"
-
-    return message
-
-
-def format_success_message_enhanced(enhanced_result: dict, session_id: str) -> str:
-    """
-    Formatea mensaje de WhatsApp - versión simplificada sin debug.
-    """
-    total = enhanced_result.get('total', 0)
-    subtotal = enhanced_result.get('subtotal', 0)
-    tip = enhanced_result.get('tip', 0)
-    items = enhanced_result.get('items', [])
-    validation = enhanced_result.get('validation', {})
-
-    # Score simplificado: 100 = verified, <100 = review
-    quality_score = validation.get('quality_score', 0)
-
-    # Calcular porcentaje de propina
-    tip_percent = ((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 0
-
-    # URL del frontend
-    frontend_url = os.getenv('FRONTEND_URL', 'https://bill-e.vercel.app')
-    url = f"{frontend_url}/s/{session_id}"
-
-    if quality_score == 100:
-        # Mensaje para totales verificados
-        message = f"🧾 ¡Boleta procesada satisfactoriamente!\n\n"
-        message += f"✅ *Totales verificados*\n\n"
-        message += f"📋 Resumen:\n"
-        message += f"💰 Total: ${total:,.0f}\n"
-        message += f"📊 Subtotal: ${subtotal:,.0f}\n"
-        message += f"🎁 Propina: ${tip:,.0f} ({tip_percent:.0f}%)\n"
-        message += f"📝 Items: {len(items)}\n\n"
-        message += f"🔗 Divide tu cuenta aquí:\n"
-        message += f"{url}\n\n"
-        message += f"⏰ Link válido por 24 horas"
-    else:
-        # Mensaje para revisar
-        message = f"🧾 ¡Boleta procesada!\n\n"
-        message += f"⚠️ *Verificar totales e items*\n\n"
-        message += f"📋 Resumen:\n"
-        message += f"💰 Total: ${total:,.0f}\n"
-        message += f"📊 Subtotal: ${subtotal:,.0f}\n"
-        message += f"🎁 Propina: ${tip:,.0f} ({tip_percent:.0f}%)\n"
-        message += f"📝 Items: {len(items)}\n\n"
-        message += f"🔗 Edita los datos aquí:\n"
-        message += f"{url}\n\n"
-        message += f"⏰ Link válido por 24 horas"
-
-    return message
-
-
-def format_collaborative_message(
-    total: float,
-    subtotal: float,
-    tip: float,
-    items_count: int,
-    owner_url: str,
-    editor_url: str,
-    validation: dict = None
-) -> str:
-    """
-    Formatea mensaje de WhatsApp para sesiones colaborativas.
-    Incluye 2 links: owner (para el anfitrión) y editor (para compartir).
-    """
-    # Calcular porcentaje de propina
-    tip_percent = ((tip or 0) / subtotal * 100) if subtotal and subtotal > 0 else 0
-
-    # Quality score para verificación
-    quality_score = validation.get('quality_score', 0) if validation else 0
-
-    # Emoji de estado
-    status_emoji = "✅" if quality_score == 100 else "⚠️"
-    status_text = "Totales verificados" if quality_score == 100 else "Revisar totales"
-
-    # Add v=B parameter to URLs
-    owner_url_final = f"{owner_url}&v=B" if "?" in owner_url else f"{owner_url}?v=B"
-    editor_url_final = f"{editor_url}?v=B"
-
-    message = f"""🧾 *¡Boleta procesada!*
-
-{status_emoji} {status_text}
-
-💰 Total: ${total:,.0f}
-📝 {items_count} items
-
-━━━━━━━━━━━━━━━━━━
-
-📌 *Tu link de anfitrión* (guárdalo):
-{owner_url_final}
-
-🔗 *Link para compartir* con tus amigos:
-{editor_url_final}
-
-⏰ Expira en 24 horas"""
-
-    return message
-
-
-# Función mejorada para procesar mensajes de texto
 async def process_text_message(phone_number: str, message: str):
     """Procesar mensajes de texto"""
 

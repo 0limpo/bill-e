@@ -454,7 +454,7 @@ export default function SessionPage() {
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
           <p className="text-muted-foreground">
-            {waitingForAutoFinalize ? "Finalizando..." : waitingForAutoJoin ? "Uniéndose..." : "Cargando sesión..."}
+            {waitingForAutoFinalize ? t("session.loadingFinalizing") : waitingForAutoJoin ? t("session.loadingJoining") : t("session.loadingSession")}
           </p>
         </div>
       </div>

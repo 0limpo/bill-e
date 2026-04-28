@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { detectLanguageFromHeader, translations } from "@/lib/i18n";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,20 +15,25 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Bill-e",
-  description: "Divide cuentas fácil con tus amigos",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers();
+  const lang = detectLanguageFromHeader(h.get("accept-language"));
+  const description = translations[lang]["app.subtitle"] || translations.es["app.subtitle"];
+  return {
     title: "Bill-e",
-  },
-  icons: {
-    icon: "/icon-192.png",
-    apple: "/apple-touch-icon.png",
-  },
-};
+    description,
+    manifest: "/manifest.json",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "Bill-e",
+    },
+    icons: {
+      icon: "/icon-192.png",
+      apple: "/apple-touch-icon.png",
+    },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#3F7BF6",
@@ -36,13 +43,15 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const h = await headers();
+  const lang = detectLanguageFromHeader(h.get("accept-language"));
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
