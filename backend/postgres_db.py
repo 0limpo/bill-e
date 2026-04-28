@@ -1353,20 +1353,32 @@ def get_bill_history(device_ids: List[str] = None, user_id: str = None, limit: i
 
         # Build filter conditions
         conditions = []
-        if device_ids:
-            for did in device_ids:
-                conditions.append(SessionSnapshot.host_device_id == did)
+
+        # Expand device_ids with all devices linked to this user, so a logged-in
+        # user sees their bills across every browser/device they've signed in from
+        # (anonymous bills created before login still attach via host_device_id).
+        all_device_ids = set(device_ids or [])
+        uid = None
         if user_id:
             try:
                 uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
-                # Match host (snapshot.user_id) OR editor (any participant has this user_id).
-                # participants is JSON; cast to JSONB on the fly to use containment operator.
-                conditions.append(SessionSnapshot.user_id == uid)
-                conditions.append(
-                    cast(SessionSnapshot.participants, JSONB).contains([{"user_id": str(uid)}])
-                )
             except (ValueError, AttributeError):
-                pass
+                uid = None
+            if uid:
+                user_row = db.query(User).filter(User.id == uid).first()
+                if user_row and user_row.device_ids:
+                    all_device_ids.update(user_row.device_ids)
+
+        for did in all_device_ids:
+            conditions.append(SessionSnapshot.host_device_id == did)
+
+        if uid:
+            # Match host (snapshot.user_id) OR editor (any participant has this user_id).
+            # participants is JSON; cast to JSONB on the fly to use containment operator.
+            conditions.append(SessionSnapshot.user_id == uid)
+            conditions.append(
+                cast(SessionSnapshot.participants, JSONB).contains([{"user_id": str(uid)}])
+            )
 
         if not conditions:
             return []
