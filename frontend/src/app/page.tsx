@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Loader2 } from "lucide-react";
 import { createCollaborativeSession, getBillHistory, getDeviceId } from "@/lib/api";
-import { getStoredUser } from "@/lib/auth";
+import { getStoredUser, clearAuth, type AuthUser } from "@/lib/auth";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
+import { getInitials } from "@/lib/billEngine";
 
 // Helper to manage recent session in localStorage
 const RECENT_SESSION_KEY = "bill-e-recent-session";
@@ -103,6 +104,9 @@ export default function LandingPage() {
   const [photoSource, setPhotoSource] = useState<"camera" | "gallery">("camera");
   const [lang, setLang] = useState<Language>("es");
   const [billCount, setBillCount] = useState(0);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const t = getTranslator(lang);
 
@@ -117,14 +121,33 @@ export default function LandingPage() {
     if (cached > 0) setBillCount(cached);
 
     // Then update from API in background
-    const user = getStoredUser();
-    getBillHistory(getDeviceId(), user?.id)
+    const stored = getStoredUser();
+    setUser(stored);
+    getBillHistory(getDeviceId(), stored?.id)
       .then((res) => {
         setBillCount(res.count);
         localStorage.setItem('bill-e-bill-count', String(res.count));
       })
       .catch(() => {});
   }, []);
+
+  // Close account menu on click outside
+  useEffect(() => {
+    if (!showAccountMenu) return;
+    const onClick = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setShowAccountMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [showAccountMenu]);
+
+  const handleSignOut = () => {
+    clearAuth();
+    setUser(null);
+    setShowAccountMenu(false);
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -210,7 +233,39 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 pt-6 pb-8">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 pt-6 pb-8 relative">
+      {/* Account avatar — top-right, only when logged in */}
+      {user && (
+        <div className="absolute top-3 right-3 z-10" ref={accountMenuRef}>
+          <button
+            onClick={() => setShowAccountMenu((v) => !v)}
+            className="w-9 h-9 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center transition-colors overflow-hidden"
+            aria-label={t("home.accountMenu")}
+          >
+            {user.picture_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={user.picture_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-sm font-semibold text-foreground">
+                {getInitials(user.name || user.email)}
+              </span>
+            )}
+          </button>
+          {showAccountMenu && (
+            <div className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-lg p-3">
+              <p className="text-xs text-muted-foreground mb-1">{t("home.signedInAs")}</p>
+              <p className="text-sm font-medium text-foreground truncate mb-3">{user.email}</p>
+              <button
+                onClick={handleSignOut}
+                className="w-full text-sm text-destructive hover:underline text-left"
+              >
+                {t("home.signOut")}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Hidden file inputs - key forces re-render to fix onChange issues */}
       <input
         key={`camera-${inputKey}`}
