@@ -96,6 +96,14 @@ except ImportError as e:
     print(f"Warning: Boleta integration not available: {e}")
     boleta_available = False
 
+# Importar Polar.sh (international payments via Merchant of Record)
+try:
+    import polar_service
+    polar_available = True
+except ImportError as e:
+    print(f"Warning: Polar integration not available: {e}")
+    polar_available = False
+
 # Importar MercadoPago Integration
 try:
     from mercadopago_payment import (
@@ -1920,6 +1928,113 @@ async def get_payment_price():
     if payment_available:
         return {"price": get_premium_price(), "currency": "CLP"}
     return {"price": 1990, "currency": "CLP"}
+
+
+# =====================================================
+# POLAR.SH PAYMENT ENDPOINTS (international, MoR)
+# =====================================================
+
+class PolarCheckoutRequest(BaseModel):
+    email: Optional[str] = None
+    session_id: Optional[str] = None
+    user_type: str = "host"  # "host" or "editor"
+    owner_token: Optional[str] = None
+
+
+@app.post("/api/polar/checkout")
+async def create_polar_checkout(req: PolarCheckoutRequest):
+    """Create a Polar hosted checkout session and return its URL."""
+    if not polar_available or not polar_service.is_configured():
+        raise HTTPException(status_code=503, detail="Polar not configured")
+
+    product_id = os.getenv("POLAR_PRODUCT_ID")
+    frontend_url = os.getenv("FRONTEND_URL", "https://billeocr.com")
+
+    if req.session_id:
+        owner_qs = f"&owner={req.owner_token}" if req.user_type == "host" and req.owner_token else ""
+        success_url = f"{frontend_url}/s/{req.session_id}?payment=success&payer={req.user_type}{owner_qs}"
+    else:
+        success_url = f"{frontend_url}/?payment=success"
+
+    user_id = None
+    if req.email and postgres_available:
+        try:
+            user = postgres_db.get_user_by_email(req.email)
+            if user:
+                user_id = user.get("id")
+        except Exception as e:
+            print(f"Polar: lookup by email failed: {e}")
+
+    metadata = {
+        "user_email": req.email or "",
+        "session_id": req.session_id or "",
+        "user_type": req.user_type,
+    }
+    if user_id:
+        metadata["user_id"] = user_id
+
+    checkout = await polar_service.create_checkout(
+        product_id=product_id,
+        customer_email=req.email,
+        success_url=success_url,
+        metadata=metadata,
+    )
+
+    if not checkout:
+        raise HTTPException(status_code=502, detail="Failed to create Polar checkout")
+
+    return {
+        "checkout_id": checkout.get("id"),
+        "checkout_url": checkout.get("url"),
+    }
+
+
+@app.post("/api/polar/webhook")
+async def polar_webhook(request: Request):
+    """Receive Polar webhook events. Grants premium on order.paid."""
+    if not polar_available:
+        raise HTTPException(status_code=503, detail="Polar not configured")
+
+    payload = await request.body()
+    headers = {k: v for k, v in request.headers.items()}
+
+    if not polar_service.verify_webhook_signature(payload, headers):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        event = json.loads(payload)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    event_type = event.get("type")
+    data = event.get("data") or {}
+    print(f"Polar webhook received: {event_type}")
+
+    if event_type == "order.paid":
+        metadata = data.get("metadata") or {}
+        customer = data.get("customer") or {}
+        email = (
+            metadata.get("user_email")
+            or customer.get("email")
+            or data.get("customer_email")
+        )
+
+        if email and postgres_available:
+            try:
+                expires = datetime.utcnow() + timedelta(days=365)
+                payment_id = data.get("id")
+                postgres_db.set_premium_by_email(
+                    email=email,
+                    premium_expires=expires,
+                    payment_id=None,  # Polar order id is not a UUID — log separately
+                )
+                print(f"Polar: granted premium to {email} until {expires.isoformat()} (order {payment_id})")
+            except Exception as e:
+                print(f"Polar: failed to grant premium for {email}: {e}")
+        else:
+            print(f"Polar order.paid received without resolvable email: metadata={metadata}")
+
+    return {"received": True}
 
 
 # =====================================================

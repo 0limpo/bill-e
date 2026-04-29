@@ -757,6 +757,27 @@ export async function processMPCardPayment(params: {
 }
 
 // ============================================================================
+// Polar.sh (international payments via Merchant of Record)
+// ============================================================================
+
+export interface PolarCheckoutResponse {
+  checkout_id: string;
+  checkout_url: string;
+}
+
+export async function createPolarCheckout(params: {
+  email?: string;
+  session_id?: string;
+  user_type: "host" | "editor";
+  owner_token?: string;
+}): Promise<PolarCheckoutResponse> {
+  return apiRequest<PolarCheckoutResponse>("/api/polar/checkout", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+// ============================================================================
 // Premium Check (by Google email)
 // ============================================================================
 
