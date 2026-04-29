@@ -4079,6 +4079,8 @@ async def debug_auth_status(token: str = None, device_id: str = None):
             return {
                 "user_id": user_id,
                 "email": payload.get("email"),
+                "is_premium": bool(user_row.is_premium),
+                "premium_expires": user_row.premium_expires.isoformat() if user_row.premium_expires else None,
                 "linked_device_count": len(linked_devices),
                 "linked_device_ids": linked_devices,
                 "current_device_id": device_id,

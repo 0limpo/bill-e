@@ -17,6 +17,8 @@ interface DebugSnapshot {
 interface DebugResponse {
   user_id: string;
   email: string;
+  is_premium?: boolean;
+  premium_expires?: string | null;
   linked_device_count: number;
   linked_device_ids: string[];
   current_device_id: string;
@@ -114,6 +116,10 @@ export default function DebugAuthPage() {
             <Row label="Email" value={data.email} />
             <Row label="User ID" value={data.user_id} mono />
             <Row label="Stored user (localStorage)" value={stored?.email || "(none)"} />
+            <Row label="Premium" value={data.is_premium ? "Sí" : "No"} />
+            {data.premium_expires && (
+              <Row label="Expira" value={new Date(data.premium_expires).toLocaleString()} />
+            )}
           </Card>
 
           <Card title="Devices linkeados a tu cuenta">
