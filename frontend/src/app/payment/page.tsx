@@ -8,6 +8,7 @@ import { detectLanguage, getTranslator, type Language } from "@/lib/i18n";
 import { trackPaymentStarted } from "@/lib/tracking";
 import { getStoredUser, getStoredToken, startOAuthLogin, handleAuthCallback, verifyToken, setStoredUser, type AuthUser } from "@/lib/auth";
 import { isTWA, isPlayBillingAvailable, getPaymentContext, type PaymentContext } from "@/lib/twa";
+import { getCountryCode, getPaymentRail, type PaymentRail } from "@/lib/geo";
 
 declare global {
   interface Window {
@@ -39,6 +40,11 @@ function PaymentPageContent() {
   const [paymentContext, setPaymentContext] = useState<PaymentContext>('web');
   const [playBillingAvailable, setPlayBillingAvailable] = useState(false);
 
+  // Geo gate: payments are temporarily disabled in Chile (pending boleta
+  // electrónica integration) and not yet enabled in the rest of the world
+  // (pending Polar.sh integration).
+  const [paymentRail, setPaymentRail] = useState<PaymentRail | "detecting">("detecting");
+
   const walletBrickRef = useRef<boolean>(false);
   const cardBrickRef = useRef<boolean>(false);
 
@@ -54,6 +60,18 @@ function PaymentPageContent() {
       console.log('Running in TWA (Play Store app)');
       console.log('Play Billing available:', isPlayBillingAvailable());
     }
+  }, []);
+
+  // Resolve payment rail from caller's country
+  useEffect(() => {
+    let cancelled = false;
+    getCountryCode().then((country) => {
+      if (cancelled) return;
+      setPaymentRail(getPaymentRail(country));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Check if user is authenticated on mount (also handle OAuth callback)
@@ -383,6 +401,51 @@ function PaymentPageContent() {
       router.push("/");
     }
   };
+
+  // Geo gate — show loader, blocked screen, or coming-soon placeholder.
+  if (paymentRail === "detecting") {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin opacity-60" />
+      </div>
+    );
+  }
+
+  if (paymentRail === "blocked" || paymentRail === "international") {
+    const title =
+      paymentRail === "blocked"
+        ? t("payment.notAvailableTitle")
+        : t("payment.comingSoonTitle");
+    const subtitle =
+      paymentRail === "blocked"
+        ? t("payment.notAvailableSubtitleChile")
+        : t("payment.comingSoonSubtitle");
+    return (
+      <div className="min-h-screen bg-background text-foreground flex flex-col">
+        <div className="p-4 border-b border-border">
+          <button
+            onClick={handleBack}
+            className="text-muted-foreground hover:text-foreground flex items-center gap-2"
+          >
+            ← {t("payment.back")}
+          </button>
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto">
+          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
+            <span className="text-3xl">🌎</span>
+          </div>
+          <h1 className="text-xl font-semibold mb-3">{title}</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed mb-8">{subtitle}</p>
+          <button
+            onClick={handleBack}
+            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+          >
+            {t("payment.back")}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
