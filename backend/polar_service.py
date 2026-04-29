@@ -38,16 +38,15 @@ async def create_checkout(
     customer_email: Optional[str] = None,
     success_url: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
-) -> Optional[Dict[str, Any]]:
+) -> Dict[str, Any]:
     """Create a hosted checkout session in Polar.
 
-    Returns the API response on success (contains `id` and `url`),
-    or None on failure.
+    On success returns the API response (contains `id` and `url`).
+    On failure returns {"_error": ..., "_status": ..., "_base": ...}.
     """
     token = os.getenv("POLAR_ACCESS_TOKEN")
     if not token:
-        print("POLAR_ACCESS_TOKEN not configured")
-        return None
+        return {"_error": "POLAR_ACCESS_TOKEN not configured", "_status": 0}
 
     body: Dict[str, Any] = {"product_id": product_id}
     if customer_email:
@@ -71,11 +70,12 @@ async def create_checkout(
             )
         if res.status_code in (200, 201):
             return res.json()
-        print(f"Polar checkout error ({base}) {res.status_code}: {res.text}")
-        return None
+        body_text = res.text[:500]
+        print(f"Polar checkout error ({base}) {res.status_code}: {body_text}")
+        return {"_error": body_text, "_status": res.status_code, "_base": base}
     except Exception as e:
         print(f"Polar checkout exception ({base}): {e}")
-        return None
+        return {"_error": str(e), "_status": 0, "_base": base}
 
 
 def verify_webhook_signature(payload: bytes, headers: Dict[str, str]) -> bool:

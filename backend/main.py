@@ -1980,8 +1980,14 @@ async def create_polar_checkout(req: PolarCheckoutRequest):
         metadata=metadata,
     )
 
-    if not checkout:
-        raise HTTPException(status_code=502, detail="Failed to create Polar checkout")
+    if not checkout or "_error" in checkout:
+        err = (checkout or {}).get("_error", "unknown")
+        status = (checkout or {}).get("_status", 0)
+        base = (checkout or {}).get("_base", "")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Polar {status} ({base}): {err}",
+        )
 
     return {
         "checkout_id": checkout.get("id"),
