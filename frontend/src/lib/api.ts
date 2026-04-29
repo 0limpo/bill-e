@@ -526,10 +526,22 @@ export async function createCollaborativeSession(
 }
 
 /**
- * Load a read-only snapshot of a finalized session from PostgreSQL
+ * Load a read-only snapshot of a finalized session from PostgreSQL.
+ * Pass token + deviceId so the backend can flag is_owner=true when the caller
+ * is the original host.
  */
-export async function loadSessionSnapshot(sessionId: string): Promise<SessionResponse> {
-  return apiRequest<SessionResponse>(`/api/session/${sessionId}/snapshot`);
+export async function loadSessionSnapshot(
+  sessionId: string,
+  token?: string,
+  deviceId?: string,
+): Promise<SessionResponse> {
+  const params = new URLSearchParams();
+  if (token) params.set("token", token);
+  if (deviceId) params.set("device_id", deviceId);
+  const query = params.toString();
+  return apiRequest<SessionResponse>(
+    `/api/session/${sessionId}/snapshot${query ? `?${query}` : ""}`
+  );
 }
 
 // --- Analytics ---

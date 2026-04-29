@@ -682,11 +682,33 @@ async def get_bill_history_endpoint(device_id: str = None, user_id: str = None, 
 
 
 @app.get("/api/session/{session_id}/snapshot")
-async def get_session_snapshot(session_id: str):
-    """Get a read-only snapshot of a finalized session from PostgreSQL."""
+async def get_session_snapshot(
+    session_id: str,
+    token: Optional[str] = None,
+    device_id: Optional[str] = None,
+):
+    """Get a read-only snapshot of a finalized session from PostgreSQL.
+
+    Optional ?token= and ?device_id= let the caller identify themselves so
+    the response can flag is_owner=True when they're the original host.
+    """
     if not postgres_available:
         raise HTTPException(status_code=404, detail="No snapshot available")
-    snapshot = postgres_db.get_session_snapshot_by_id(session_id)
+
+    user_id: Optional[str] = None
+    if token and auth_available:
+        try:
+            payload = oauth_auth.verify_session_token(token)
+            if payload:
+                user_id = payload.get("sub") or payload.get("user_id")
+        except Exception:
+            user_id = None
+
+    snapshot = postgres_db.get_session_snapshot_by_id(
+        session_id,
+        user_id=user_id,
+        device_id=device_id,
+    )
     if not snapshot:
         raise HTTPException(status_code=404, detail="Snapshot not found")
     return snapshot

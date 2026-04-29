@@ -1296,8 +1296,8 @@ export default function SessionPage() {
             charges={charges}
             participants={participants}
             assignments={assignments}
-            onBack={isViewOnly ? undefined : () => goToStep(2)}
-            onBackToBills={isViewOnly ? () => router.push("/bills") : undefined}
+            onBack={isViewOnly ? () => router.push("/bills") : () => goToStep(2)}
+            onBackToBills={undefined}
             t={t}
             isOwner={isOwner}
             sessionId={sessionId}

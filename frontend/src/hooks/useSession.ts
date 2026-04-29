@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getStoredUser } from "@/lib/auth";
+import { getStoredUser, getStoredToken } from "@/lib/auth";
 import {
   loadSession,
   loadSessionSnapshot,
+  getDeviceId,
   pollSession,
   joinSession,
   selectExistingParticipant,
@@ -117,7 +118,11 @@ export function useSession({
         // If session not found in Redis (404), try loading snapshot from PostgreSQL
         if (err instanceof ApiError && err.status === 404) {
           try {
-            data = await loadSessionSnapshot(sessionId);
+            data = await loadSessionSnapshot(
+              sessionId,
+              getStoredToken() ?? undefined,
+              getDeviceId(),
+            );
           } catch {
             // Snapshot also not found - throw original error
             throw err;

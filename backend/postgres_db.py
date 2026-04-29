@@ -1456,8 +1456,17 @@ def get_bill_history(device_ids: List[str] = None, user_id: str = None, limit: i
         return results
 
 
-def get_session_snapshot_by_id(session_id: str) -> Optional[Dict]:
-    """Get a full session snapshot by session_id for read-only viewing."""
+def get_session_snapshot_by_id(
+    session_id: str,
+    user_id: Optional[str] = None,
+    device_id: Optional[str] = None,
+) -> Optional[Dict]:
+    """Get a full session snapshot by session_id for read-only viewing.
+
+    Computes is_owner=True when the caller is the original host:
+    snapshot.user_id == user_id, OR snapshot.host_device_id matches device_id,
+    OR snapshot.host_device_id is in user.device_ids.
+    """
     if not db_available:
         return None
 
@@ -1472,6 +1481,25 @@ def get_session_snapshot_by_id(session_id: str) -> Optional[Dict]:
 
         if not snapshot:
             return None
+
+        is_owner = False
+        uid = None
+        if user_id:
+            try:
+                uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+            except (ValueError, AttributeError):
+                uid = None
+
+        if uid and snapshot.user_id == uid:
+            is_owner = True
+
+        if not is_owner and device_id and snapshot.host_device_id == device_id:
+            is_owner = True
+
+        if not is_owner and uid:
+            user_row = db.query(User).filter(User.id == uid).first()
+            if user_row and user_row.device_ids and snapshot.host_device_id in user_row.device_ids:
+                is_owner = True
 
         return {
             "session_id": snapshot.session_id,
@@ -1490,7 +1518,7 @@ def get_session_snapshot_by_id(session_id: str) -> Optional[Dict]:
             "bill_cost_shared": False,
             "decimal_places": 0,
             "number_format": {"thousands": ".", "decimal": ","},
-            "is_owner": False,
+            "is_owner": is_owner,
             "is_snapshot": True,
             "host_step": 3,
         }
