@@ -28,7 +28,9 @@ function PaymentPageContent() {
   const userType = (searchParams.get("type") as "host" | "editor") || "editor";
   const ownerToken = searchParams.get("owner") || "";
 
-  const [status, setStatus] = useState<PaymentStatus>("need_auth");
+  // Start in "loading" so the auth screen doesn't flash before checkAuth
+  // has had a chance to inspect localStorage and resolve the user.
+  const [status, setStatus] = useState<PaymentStatus>("loading");
   const [error, setError] = useState<string>("");
   const [preferenceId, setPreferenceId] = useState<string>("");
   const [mpInstance, setMpInstance] = useState<any>(null);

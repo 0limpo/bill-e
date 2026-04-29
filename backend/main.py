@@ -1965,13 +1965,13 @@ async def create_polar_checkout(req: PolarCheckoutRequest):
         except Exception as e:
             print(f"Polar: lookup by email failed: {e}")
 
-    metadata = {
-        "user_email": req.email or "",
-        "session_id": req.session_id or "",
-        "user_type": req.user_type,
-    }
+    metadata: Dict[str, str] = {"user_type": req.user_type}
+    if req.email:
+        metadata["user_email"] = req.email
+    if req.session_id:
+        metadata["session_id"] = req.session_id
     if user_id:
-        metadata["user_id"] = user_id
+        metadata["user_id"] = str(user_id)
 
     checkout = await polar_service.create_checkout(
         product_id=product_id,
