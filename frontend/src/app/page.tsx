@@ -490,6 +490,15 @@ export default function LandingPage() {
         <p className="text-xs text-muted-foreground">
           {t("home.madeWith")}
         </p>
+        <p className="mt-2 text-xs text-muted-foreground/70">
+          <a href="/privacy" className="hover:text-foreground underline-offset-2 hover:underline">
+            {t("footer.privacy")}
+          </a>
+          <span className="mx-2">·</span>
+          <a href="/terms" className="hover:text-foreground underline-offset-2 hover:underline">
+            {t("footer.terms")}
+          </a>
+        </p>
       </footer>
     </div>
   );
