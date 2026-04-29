@@ -42,22 +42,28 @@ export function SignInButtons({
 
   if (variant === "compact") {
     return (
-      <div className="flex gap-3 justify-center">
+      <div className="flex flex-col gap-2">
         {providers.map((provider) => (
           <button
             key={provider}
             onClick={() => handleSignIn(provider)}
             disabled={loading !== null}
-            className="w-12 h-12 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-50"
+            className="w-full h-11 px-4 rounded-xl flex items-center justify-center gap-2 text-sm font-medium transition-all hover:scale-[1.01] disabled:opacity-50"
             style={{
               backgroundColor: PROVIDER_INFO[provider].bgColor,
-              border: `2px solid ${PROVIDER_INFO[provider].color}`,
+              color: provider === "facebook" ? "#ffffff" : "#333333",
+              border: provider === "facebook" ? "none" : "1px solid #ddd",
             }}
           >
             {loading === provider ? (
               <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              <ProviderIcon provider={provider} />
+              <>
+                <ProviderIcon provider={provider} />
+                <span>
+                  {t("auth.continueWith").replace("{provider}", PROVIDER_INFO[provider].name)}
+                </span>
+              </>
             )}
           </button>
         ))}
