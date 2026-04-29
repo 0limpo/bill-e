@@ -17,7 +17,15 @@ from typing import Any, Dict, Optional
 
 import httpx
 
-POLAR_BASE_URL = "https://api.polar.sh"
+PRODUCTION_BASE_URL = "https://api.polar.sh"
+SANDBOX_BASE_URL = "https://sandbox-api.polar.sh"
+
+
+def _base_url() -> str:
+    """Return Polar API base URL. Defaults to sandbox to avoid accidental
+    real charges; set POLAR_ENV=production once the org is live."""
+    env = (os.getenv("POLAR_ENV") or "sandbox").strip().lower()
+    return PRODUCTION_BASE_URL if env == "production" else SANDBOX_BASE_URL
 
 
 def is_configured() -> bool:
@@ -50,10 +58,11 @@ async def create_checkout(
         # Polar requires metadata values to be strings
         body["metadata"] = {k: str(v) for k, v in metadata.items() if v is not None}
 
+    base = _base_url()
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(
-                f"{POLAR_BASE_URL}/v1/checkouts/",
+                f"{base}/v1/checkouts/",
                 json=body,
                 headers={
                     "Authorization": f"Bearer {token}",
@@ -62,10 +71,10 @@ async def create_checkout(
             )
         if res.status_code in (200, 201):
             return res.json()
-        print(f"Polar checkout error {res.status_code}: {res.text}")
+        print(f"Polar checkout error ({base}) {res.status_code}: {res.text}")
         return None
     except Exception as e:
-        print(f"Polar checkout exception: {e}")
+        print(f"Polar checkout exception ({base}): {e}")
         return None
 
 
