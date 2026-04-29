@@ -93,6 +93,22 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
 }
 
 /**
+ * Refresh the cached user (from a successful payment, OAuth callback, etc.)
+ * by re-verifying the stored token and overwriting the localStorage entry.
+ * Returns the fresh user, or null if there's no token / verification failed.
+ */
+export async function refreshStoredUser(): Promise<AuthUser | null> {
+  const token = getStoredToken();
+  if (!token) return null;
+  const user = await verifyToken(token);
+  if (user) {
+    setStoredUser(user);
+    return user;
+  }
+  return null;
+}
+
+/**
  * Get current user from stored token
  */
 export async function getCurrentUser(): Promise<AuthUser | null> {

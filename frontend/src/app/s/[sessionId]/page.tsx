@@ -12,7 +12,7 @@ import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, detectDecimals, getAvatarColor, getInitials, calculateParticipantTotal, type Item, type Charge, type Participant, type Assignment, type Session } from "@/lib/billEngine";
 import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
-import { getStoredToken, getStoredUser, setStoredUser, getAuthProviders, handleAuthCallback, verifyToken, type AuthProvider } from "@/lib/auth";
+import { getStoredToken, getStoredUser, setStoredUser, getAuthProviders, handleAuthCallback, verifyToken, refreshStoredUser, type AuthProvider } from "@/lib/auth";
 import { updateBillName } from "@/lib/api";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import {
@@ -197,6 +197,25 @@ export default function SessionPage() {
       billNameInitialized.current = true;
     }
   }, [session?.bill_name]);
+
+  // After a successful payment (Polar / MP), the cached user in localStorage
+  // still has stale is_premium=false. Re-verify the token so the rest of
+  // this page sees the fresh value before any guards run.
+  useEffect(() => {
+    if (!paymentSuccess) return;
+    let cancelled = false;
+    (async () => {
+      const fresh = await refreshStoredUser();
+      if (cancelled || !fresh) return;
+      // userEmail derives from getStoredUser() which we just updated, but
+      // the React state in this page tracks it independently — nothing to
+      // do here, the next render picks up the new localStorage value via
+      // getStoredUser() calls inside other effects.
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [paymentSuccess]);
 
   // Handle post-payment redirect
   useEffect(() => {

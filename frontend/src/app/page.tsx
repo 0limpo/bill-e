@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Loader2, LogIn } from "lucide-react";
 import { createCollaborativeSession, getBillHistory, getDeviceId } from "@/lib/api";
-import { getStoredUser, clearAuth, setStoredUser, startOAuthLogin, handleAuthCallback, verifyToken, type AuthUser } from "@/lib/auth";
+import { getStoredUser, clearAuth, setStoredUser, startOAuthLogin, handleAuthCallback, verifyToken, refreshStoredUser, type AuthUser } from "@/lib/auth";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { getInitials } from "@/lib/billEngine";
@@ -97,6 +97,7 @@ export default function LandingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnedFromAuth = searchParams.has("token");
+  const returnedFromPayment = searchParams.get("payment") === "success";
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -134,6 +135,26 @@ export default function LandingPage() {
       })
       .catch(() => {});
   }, []);
+
+  // After a successful Polar payment, the redirect drops us here without
+  // an OAuth token. Re-verify the existing stored token so the cached
+  // is_premium flag in localStorage matches what the backend now knows.
+  useEffect(() => {
+    if (!returnedFromPayment) return;
+    let cancelled = false;
+    (async () => {
+      const fresh = await refreshStoredUser();
+      if (cancelled) return;
+      if (fresh) setUser(fresh);
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete("payment");
+      newUrl.searchParams.delete("payer");
+      router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [returnedFromPayment, router]);
 
   // Process OAuth callback on return (verify token, store user, refresh bill count, clean URL)
   useEffect(() => {
