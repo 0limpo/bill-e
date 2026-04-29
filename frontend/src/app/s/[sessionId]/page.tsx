@@ -1165,6 +1165,7 @@ export default function SessionPage() {
             billName={billName}
             onBillNameChange={handleBillNameChange}
             onRescan={() => router.push("/")}
+            decimals={decimals}
           />
         )}
 

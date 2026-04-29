@@ -80,6 +80,8 @@ interface StepReviewProps {
   billName?: string;
   onBillNameChange?: (name: string) => void;
   onRescan?: () => void;
+  // Optional override — see StepAssign for the rationale.
+  decimals?: number;
 }
 
 export function StepReview({
@@ -97,6 +99,7 @@ export function StepReview({
   billName,
   onBillNameChange,
   onRescan,
+  decimals: decimalsProp,
 }: StepReviewProps) {
   const [expandedCharge, setExpandedCharge] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -282,8 +285,9 @@ export function StepReview({
     onChargesChange(charges.filter((c) => c.id !== id));
   };
 
-  // Detect decimals from items to match receipt format
-  const decimals = detectDecimals(items);
+  // Prefer explicit decimals from parent (which knows session.decimal_places),
+  // fall back to item-level detection.
+  const decimals = decimalsProp ?? detectDecimals(items);
   const fmt = (amount: number) => formatCurrency(amount, decimals);
 
   // Clear selections when clicking on background
