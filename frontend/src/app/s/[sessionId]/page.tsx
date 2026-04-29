@@ -1287,6 +1287,7 @@ export default function SessionPage() {
             nextDisabled={!isOwner && session?.status !== "finalized"}
             nextLabel={!isOwner && session?.status !== "finalized" ? t("editor.waitingForHost") : undefined}
             sessionId={sessionId}
+            decimals={decimals}
             />
           </>
         )}
@@ -1306,6 +1307,7 @@ export default function SessionPage() {
             billCostShared={billCostShared}
             premiumPrice={premiumPrice}
             ownerParticipantId={session?.participants?.find((p) => p.role === "owner")?.id}
+            decimals={decimals}
           />
         )}
       </main>

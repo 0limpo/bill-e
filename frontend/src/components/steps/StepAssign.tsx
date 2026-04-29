@@ -40,6 +40,10 @@ interface StepAssignProps {
   nextLabel?: string;
   // Session ID for share link
   sessionId?: string;
+  // Optional override — when provided, takes precedence over detectDecimals(items).
+  // Needed because items can carry integer prices while the currency still
+  // requires decimals (e.g. USD with $10 → must render $10.00).
+  decimals?: number;
 }
 
 export function StepAssign({
@@ -63,6 +67,7 @@ export function StepAssign({
   nextDisabled = false,
   nextLabel,
   sessionId,
+  decimals: decimalsProp,
 }: StepAssignProps) {
   // Initialize modes from persisted item.mode values
   const [itemModes, setItemModes] = useState<Record<string, "individual" | "grupal">>(() => {
@@ -170,8 +175,9 @@ export function StepAssign({
     });
   }, [assignments]);
 
-  // Detect decimals from items to match receipt format
-  const decimals = detectDecimals(items);
+  // Prefer explicit decimals from parent (which knows session.decimal_places),
+  // fall back to item-level detection.
+  const decimals = decimalsProp ?? detectDecimals(items);
   const fmt = (amount: number) => formatCurrency(amount, decimals);
 
   // Clear all unit-based assignments for an item

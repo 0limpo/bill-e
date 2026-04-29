@@ -30,6 +30,8 @@ interface StepShareProps {
   billCostShared?: boolean;
   premiumPrice?: number;
   ownerParticipantId?: string;
+  // Optional override — see StepAssign for why this is needed.
+  decimals?: number;
 }
 
 export function StepShare({
@@ -45,6 +47,7 @@ export function StepShare({
   billCostShared = false,
   premiumPrice = 1990,
   ownerParticipantId,
+  decimals: decimalsProp,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
@@ -63,8 +66,9 @@ export function StepShare({
     ? premiumPrice - hostRecovery
     : 0;
 
-  // Detect decimals from items to match receipt format
-  const decimals = detectDecimals(items);
+  // Prefer explicit decimals from parent (which knows session.decimal_places),
+  // fall back to item-level detection.
+  const decimals = decimalsProp ?? detectDecimals(items);
   const fmt = (amount: number) => formatCurrency(amount, decimals);
 
   // Build session object for calculations
