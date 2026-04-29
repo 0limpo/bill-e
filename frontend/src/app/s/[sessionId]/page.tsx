@@ -335,8 +335,10 @@ export default function SessionPage() {
     mode: item.mode,
   }));
 
-  // Use decimal_places from backend (OCR), fallback to detection
-  const decimals = session?.decimal_places ?? detectDecimals(items);
+  // Use the max of backend decimal_places and what the items actually need.
+  // ?? alone fails when backend returns 0 (default) but items have decimals,
+  // which made the host see CLP-style integers while editors saw the decimals.
+  const decimals = Math.max(session?.decimal_places ?? 0, detectDecimals(items));
 
   const priceMode = session?.price_mode || "unitario";
 
