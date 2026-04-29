@@ -18,11 +18,12 @@ const SESSION_MAX_AGE = 1 * 60 * 60 * 1000; // 1 hour
 interface RecentSession {
   sessionId: string;
   ownerToken: string;
+  role?: "host" | "editor";
   createdAt: number;
 }
 
 function saveRecentSession(sessionId: string, ownerToken: string) {
-  const data: RecentSession = { sessionId, ownerToken, createdAt: Date.now() };
+  const data: RecentSession = { sessionId, ownerToken, role: "host", createdAt: Date.now() };
   localStorage.setItem(RECENT_SESSION_KEY, JSON.stringify(data));
 }
 
@@ -400,7 +401,11 @@ export default function LandingPage() {
         {recentSession && !isLoading && (
           <button
             className="mt-4 w-full p-3 bg-card hover:bg-card/80 border border-border rounded-xl transition-colors flex items-center gap-3"
-            onClick={() => router.push(`/s/${recentSession.sessionId}?owner=${recentSession.ownerToken}`)}
+            onClick={() => router.push(
+              recentSession.role === "editor"
+                ? `/s/${recentSession.sessionId}`
+                : `/s/${recentSession.sessionId}?owner=${recentSession.ownerToken}`
+            )}
           >
             <span className="text-xl">📋</span>
             <div className="text-left flex-1">

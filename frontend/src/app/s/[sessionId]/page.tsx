@@ -166,6 +166,30 @@ export default function SessionPage() {
     }
   }, [session?.status, session?.is_snapshot, step]);
 
+  // Editor entry: once an editor has a participant, save the session as
+  // "recent" (so the home page Continue button works for editors too) and
+  // skip the read-only step 1 by jumping to step 2. Fires once per mount.
+  const editorEntryDoneRef = useRef(false);
+  useEffect(() => {
+    if (editorEntryDoneRef.current) return;
+    if (isOwner) return;
+    if (!currentParticipant) return;
+    if (isViewOnly) return;
+    editorEntryDoneRef.current = true;
+    try {
+      localStorage.setItem(
+        "bill-e-recent-session",
+        JSON.stringify({
+          sessionId,
+          ownerToken: "",
+          role: "editor",
+          createdAt: Date.now(),
+        }),
+      );
+    } catch {}
+    if (step === 1) setStep(2);
+  }, [isOwner, currentParticipant, isViewOnly, sessionId, step]);
+
   // Sync bill name from session (only on initial load)
   useEffect(() => {
     if (session?.bill_name && !billNameInitialized.current) {
@@ -211,11 +235,11 @@ export default function SessionPage() {
 
         console.log("Join/select result:", result);
 
-        // Go to step 1 after successful join (same pattern as host going to step 3)
+        // Go to step 2 (assign) after successful join
         if (result.success) {
-          console.log("Join successful, setting step to 1");
+          console.log("Join successful, setting step to 2");
           clearPendingJoin(); // Only clear on success
-          setStep(1);
+          setStep(2);
           window.scrollTo(0, 0);
           clearPaymentParams();
         } else if (result.limitReached) {
