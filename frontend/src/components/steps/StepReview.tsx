@@ -110,6 +110,9 @@ export function StepReview({
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevMatchRef = useRef<boolean | null>(null);
   const initialEvaluationRef = useRef(false);
+  // Tracks whether the user has dismissed the gate modal for the current
+  // match state. Reset only when totals flip mismatch → match (re-celebration).
+  const gateAcknowledgedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Clear selection when clicking outside
@@ -195,15 +198,21 @@ export function StepReview({
   useEffect(() => {
     if (!initialEvaluationRef.current) return;
     if (isMatch && prevMatchRef.current === false && gateState === "closed") {
+      gateAcknowledgedRef.current = false;
       setGateState("success");
       playCelebrationSound();
     }
     prevMatchRef.current = isMatch;
   }, [isMatch, gateState]);
 
-  // Bottom Continuar button gate.
+  // Bottom Continuar button gate. If the user already dismissed the modal
+  // for the current match state, just advance without re-opening it.
   const handleContinue = () => {
     if (!hasVerificationData) {
+      onNext();
+      return;
+    }
+    if (gateAcknowledgedRef.current) {
       onNext();
       return;
     }
@@ -700,7 +709,10 @@ export function StepReview({
         primaryLabel={gateState === "success" ? t("gate.review.primaryAdvance") : undefined}
         onPrimary={gateState === "success" ? () => { setGateState("closed"); onNext(); } : undefined}
         secondaryLabel={gateState === "error" ? t("gate.review.secondaryFix") : t("gate.review.secondaryKeepEditing")}
-        onSecondary={() => setGateState("closed")}
+        onSecondary={() => {
+          gateAcknowledgedRef.current = true;
+          setGateState("closed");
+        }}
       />
 
       {/* Undo snackbar — Rec 4 */}
