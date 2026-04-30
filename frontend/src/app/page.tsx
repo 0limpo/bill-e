@@ -372,7 +372,7 @@ export default function LandingPage() {
       {/* Logo */}
       <div className="text-center mb-6">
         <div className="inline-flex items-center justify-center mb-2">
-          <span className="inline-flex items-center justify-center w-11 h-11 bg-primary rounded-full font-bold text-white leading-none" style={{ fontSize: '1.875rem' }}>B</span>
+          <img src="/logo.png" alt="Bill-e" className="w-11 h-11" />
           <span className="font-bold text-foreground" style={{ fontSize: '1.875rem', marginLeft: '2px' }}>ill-e</span>
         </div>
         <p className="text-base text-muted-foreground">
