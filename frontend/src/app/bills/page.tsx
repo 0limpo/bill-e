@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, ChevronLeft } from "lucide-react";
+import { Loader2, ChevronLeft, Check } from "lucide-react";
 import { getBillHistory, getDeviceId, type BillHistoryItem } from "@/lib/api";
 import { getAvatarColor, getInitials, formatCurrency } from "@/lib/billEngine";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
@@ -281,17 +281,18 @@ function BillCard({ bill, t, lang, onClick }: { bill: BillHistoryItem; t: (key: 
             </span>
           ) : <span />}
           {bill.paid_count != null && bill.participants_count > 0 && (
-            <span className={`text-xs ${
-              bill.paid_count === bill.participants_count
-                ? "text-green-600 font-medium"
-                : "text-muted-foreground"
-            }`}>
-              {bill.paid_count === bill.participants_count
-                ? t("bills.allPaid")
-                : t("bills.paidProgress")
-                    .replace("{paid}", String(bill.paid_count))
-                    .replace("{total}", String(bill.participants_count))}
-            </span>
+            bill.paid_count === bill.participants_count ? (
+              <span className="text-xs text-green-600 font-medium inline-flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" />
+                {t("bills.paidLabel")}
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                {t("bills.paidProgress")
+                  .replace("{paid}", String(bill.paid_count))
+                  .replace("{total}", String(bill.participants_count))}
+              </span>
+            )
           )}
         </div>
       )}

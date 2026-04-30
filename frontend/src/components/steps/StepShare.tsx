@@ -305,7 +305,7 @@ export function StepShare({
           return (
             <div
               key={p.id}
-              className={`rounded-xl bg-card transition-all ${isPaid ? "opacity-60" : ""}`}
+              className="rounded-xl bg-card transition-colors"
             >
               {/* Participant Row */}
               <div className="w-full flex items-center justify-between p-3 gap-2">
