@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronDown, Share2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,8 @@ import {
   type Session,
 } from "@/lib/billEngine";
 import { trackShare } from "@/lib/tracking";
+import { toggleParticipantPaid, getDeviceId } from "@/lib/api";
+import { getStoredToken } from "@/lib/auth";
 
 interface StepShareProps {
   items: Item[];
@@ -32,6 +34,10 @@ interface StepShareProps {
   ownerParticipantId?: string;
   // Optional override — see StepAssign for why this is needed.
   decimals?: number;
+  // Toggle-paid only persists when the session is a finalized snapshot
+  // (toggle_participant_paid acts on SessionSnapshot, not the live Redis
+  // session). Pass true once the session has been written to Postgres.
+  isSnapshot?: boolean;
 }
 
 export function StepShare({
@@ -48,9 +54,51 @@ export function StepShare({
   premiumPrice = 1990,
   ownerParticipantId,
   decimals: decimalsProp,
+  isSnapshot = false,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
+  // Local mirror of paid_at per participant — initialized from props and
+  // toggled optimistically on click. Server is the source of truth on next
+  // page load, but in-flight UI feels instant.
+  const [paidMap, setPaidMap] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(participants.map((p) => [p.id, p.paid_at ?? null]))
+  );
+  useEffect(() => {
+    setPaidMap((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const p of participants) {
+        if (!(p.id in next)) {
+          next[p.id] = p.paid_at ?? null;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [participants]);
+
+  const handleTogglePaid = async (participantId: string) => {
+    if (!isOwner || !sessionId) return;
+    const previous = paidMap[participantId] ?? null;
+    const optimistic = previous ? null : new Date().toISOString();
+    setPaidMap((m) => ({ ...m, [participantId]: optimistic }));
+    try {
+      const res = await toggleParticipantPaid(
+        sessionId,
+        participantId,
+        getStoredToken() ?? undefined,
+        getDeviceId(),
+      );
+      const updated = res.participants.find((p) => p.id === participantId);
+      if (updated) {
+        setPaidMap((m) => ({ ...m, [participantId]: updated.paid_at ?? null }));
+      }
+    } catch (e) {
+      console.error("Failed to toggle paid:", e);
+      setPaidMap((m) => ({ ...m, [participantId]: previous }));
+    }
+  };
 
   // Bill-e cost sharing calculations
   const participantCount = participants.length;
@@ -224,17 +272,19 @@ export function StepShare({
             : 0;
           const finalTotal = total + billECostForParticipant;
 
+          const isPaid = !!paidMap[p.id];
+
           return (
             <div
               key={p.id}
-              className="rounded-xl bg-card transition-colors"
+              className={`rounded-xl bg-card transition-all ${isPaid ? "opacity-60" : ""}`}
             >
               {/* Participant Row */}
-              <button
-                className="w-full flex items-center justify-between p-3"
-                onClick={() => toggleExpanded(p.id)}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-full flex items-center justify-between p-3 gap-2">
+                <button
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                  onClick={() => toggleExpanded(p.id)}
+                >
                   <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isExpanded ? "" : "-rotate-90"}`} />
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
@@ -243,9 +293,31 @@ export function StepShare({
                     {getInitials(p.name)}
                   </div>
                   <span className="font-medium truncate">{p.name}</span>
-                </div>
-                <span className="font-semibold tabular-nums text-foreground">{fmt(finalTotal)}</span>
-              </button>
+                </button>
+                <span className={`font-semibold tabular-nums ${isPaid ? "text-green-600" : "text-foreground"}`}>
+                  {fmt(finalTotal)}
+                </span>
+                {isOwner && isSnapshot ? (
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePaid(p.id)}
+                    aria-label={isPaid ? t("share.markUnpaid") : t("share.markPaid")}
+                    className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                      isPaid
+                        ? "bg-green-600 border-green-600 text-white"
+                        : "border-muted-foreground/40 hover:border-foreground"
+                    }`}
+                  >
+                    {isPaid && <Check className="w-4 h-4" />}
+                  </button>
+                ) : (
+                  isPaid && (
+                    <span className="shrink-0 text-xs text-green-600 font-medium">
+                      {t("share.paidLabel")}
+                    </span>
+                  )
+                )}
+              </div>
 
               {/* Expanded Details */}
               {isExpanded && (

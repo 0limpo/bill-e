@@ -398,6 +398,7 @@ export default function SessionPage() {
     id: p.id,
     name: p.name,
     phone: p.phone,
+    paid_at: (p as { paid_at?: string | null }).paid_at ?? null,
   }));
 
   const assignments: Record<string, Assignment[]> = session?.assignments || {};
@@ -1352,6 +1353,7 @@ export default function SessionPage() {
             premiumPrice={premiumPrice}
             ownerParticipantId={session?.participants?.find((p) => p.role === "owner")?.id}
             decimals={decimals}
+            isSnapshot={session?.is_snapshot ?? false}
           />
         )}
       </main>

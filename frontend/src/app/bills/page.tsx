@@ -269,15 +269,30 @@ function BillCard({ bill, t, lang, onClick }: { bill: BillHistoryItem; t: (key: 
         </span>
       </div>
 
-      {/* Row 2: your share */}
-      {bill.user_share != null && (
-        <div className="mt-1.5">
-          <span className="text-xs text-muted-foreground">
-            {t("bills.yourShare")}{" "}
-            <span className="text-foreground font-medium">
-              {formatCurrency(bill.user_share)}
+      {/* Row 2: your share + paid progress */}
+      {(bill.user_share != null || (bill.paid_count != null && bill.participants_count > 0)) && (
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          {bill.user_share != null ? (
+            <span className="text-xs text-muted-foreground">
+              {t("bills.yourShare")}{" "}
+              <span className="text-foreground font-medium">
+                {formatCurrency(bill.user_share)}
+              </span>
             </span>
-          </span>
+          ) : <span />}
+          {bill.paid_count != null && bill.participants_count > 0 && (
+            <span className={`text-xs ${
+              bill.paid_count === bill.participants_count
+                ? "text-green-600 font-medium"
+                : "text-muted-foreground"
+            }`}>
+              {bill.paid_count === bill.participants_count
+                ? t("bills.allPaid")
+                : t("bills.paidProgress")
+                    .replace("{paid}", String(bill.paid_count))
+                    .replace("{total}", String(bill.participants_count))}
+            </span>
+          )}
         </div>
       )}
     </button>

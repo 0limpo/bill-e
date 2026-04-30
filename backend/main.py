@@ -689,6 +689,46 @@ async def get_bill_history_endpoint(device_id: str = None, user_id: str = None, 
         return {"bills": [], "count": 0}
 
 
+class TogglePaidRequest(BaseModel):
+    token: Optional[str] = None
+    device_id: Optional[str] = None
+
+
+@app.post("/api/session/{session_id}/participant/{participant_id}/toggle-paid")
+async def toggle_participant_paid(
+    session_id: str,
+    participant_id: str,
+    req: TogglePaidRequest,
+):
+    """Toggle paid_at on a participant. Only the original host may call this."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    user_id: Optional[str] = None
+    if req.token and auth_available:
+        try:
+            payload = oauth_auth.verify_session_token(req.token)
+            if payload:
+                user_id = payload.get("sub") or payload.get("user_id")
+        except Exception:
+            user_id = None
+
+    snapshot = postgres_db.get_session_snapshot_by_id(
+        session_id,
+        user_id=user_id,
+        device_id=req.device_id,
+    )
+    if not snapshot:
+        raise HTTPException(status_code=404, detail="Snapshot not found")
+    if not snapshot.get("is_owner"):
+        raise HTTPException(status_code=403, detail="Only the host can mark participants as paid")
+
+    result = postgres_db.toggle_participant_paid(session_id, participant_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    return result
+
+
 @app.get("/api/session/{session_id}/snapshot")
 async def get_session_snapshot(
     session_id: str,

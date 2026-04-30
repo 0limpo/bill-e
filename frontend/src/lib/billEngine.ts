@@ -39,6 +39,7 @@ export interface Participant {
   id: string;
   name: string;
   phone?: string;
+  paid_at?: string | null;
 }
 
 export interface Session {

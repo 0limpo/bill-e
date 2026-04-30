@@ -1441,6 +1441,9 @@ def get_bill_history(device_ids: List[str] = None, user_id: str = None, limit: i
             # Extract participant names for avatars
             participant_names = [p.get("name", "?") for p in participants]
 
+            # Count participants flagged as paid (paid_at not null)
+            paid_count = sum(1 for p in participants if p.get("paid_at"))
+
             results.append({
                 "session_id": s.session_id,
                 "bill_name": s.bill_name or s.merchant_name or "",
@@ -1449,11 +1452,62 @@ def get_bill_history(device_ids: List[str] = None, user_id: str = None, limit: i
                 "user_share": user_share,
                 "participants": participant_names,
                 "participants_count": s.participants_count or len(participants),
+                "paid_count": paid_count,
                 "created_at": s.created_at.isoformat() if s.created_at else None,
                 "currency": s.currency or "CLP",
             })
 
         return results
+
+
+def toggle_participant_paid(
+    session_id: str,
+    participant_id: str,
+) -> Optional[Dict]:
+    """Toggle the paid_at timestamp on a participant inside a finalized snapshot.
+
+    Returns the updated participants list and a paid_count, or None if the
+    snapshot or participant doesn't exist.
+    """
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        snapshot = db.query(SessionSnapshot).filter(
+            SessionSnapshot.session_id == session_id,
+            SessionSnapshot.status == SessionStatus.FINALIZED,
+        ).first()
+
+        if not snapshot:
+            return None
+
+        participants = list(snapshot.participants or [])
+        found = False
+        for p in participants:
+            if p.get("id") == participant_id:
+                if p.get("paid_at"):
+                    p["paid_at"] = None
+                else:
+                    p["paid_at"] = datetime.utcnow().isoformat()
+                found = True
+                break
+
+        if not found:
+            return None
+
+        # JSON column needs explicit reassignment for SQLAlchemy to detect change
+        snapshot.participants = participants
+        db.flush()
+
+        paid_count = sum(1 for p in participants if p.get("paid_at"))
+        return {
+            "participants": participants,
+            "paid_count": paid_count,
+            "participants_count": len(participants),
+        }
 
 
 def get_session_snapshot_by_id(

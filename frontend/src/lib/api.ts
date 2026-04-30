@@ -812,8 +812,35 @@ export interface BillHistoryItem {
   user_share: number | null;
   participants: string[];
   participants_count: number;
+  paid_count?: number;
   created_at: string;
   currency: string;
+}
+
+export interface ToggleParticipantPaidResponse {
+  participants: Array<{
+    id: string;
+    name: string;
+    paid_at: string | null;
+    [key: string]: unknown;
+  }>;
+  paid_count: number;
+  participants_count: number;
+}
+
+export async function toggleParticipantPaid(
+  sessionId: string,
+  participantId: string,
+  token?: string,
+  deviceId?: string,
+): Promise<ToggleParticipantPaidResponse> {
+  return apiRequest<ToggleParticipantPaidResponse>(
+    `/api/session/${sessionId}/participant/${participantId}/toggle-paid`,
+    {
+      method: "POST",
+      body: JSON.stringify({ token, device_id: deviceId }),
+    },
+  );
 }
 
 export interface BillHistoryResponse {
