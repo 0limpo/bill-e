@@ -1472,6 +1472,8 @@ def toggle_participant_paid(
     if not db_available:
         return None
 
+    from sqlalchemy.orm.attributes import flag_modified
+
     with get_db() as db:
         if db is None:
             return None
@@ -1484,22 +1486,23 @@ def toggle_participant_paid(
         if not snapshot:
             return None
 
-        participants = list(snapshot.participants or [])
+        # Deep-copy the JSON so SQLAlchemy sees brand-new objects — JSON
+        # columns don't track in-place dict mutations.
+        participants = [dict(p) for p in (snapshot.participants or [])]
         found = False
         for p in participants:
             if p.get("id") == participant_id:
-                if p.get("paid_at"):
-                    p["paid_at"] = None
-                else:
-                    p["paid_at"] = datetime.utcnow().isoformat()
+                p["paid_at"] = None if p.get("paid_at") else datetime.utcnow().isoformat()
                 found = True
                 break
 
         if not found:
             return None
 
-        # JSON column needs explicit reassignment for SQLAlchemy to detect change
         snapshot.participants = participants
+        # Force the ORM to mark the column dirty even if the assignment alone
+        # wouldn't trigger detection.
+        flag_modified(snapshot, "participants")
         db.flush()
 
         paid_count = sum(1 for p in participants if p.get("paid_at"))

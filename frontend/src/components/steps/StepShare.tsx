@@ -58,19 +58,25 @@ export function StepShare({
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
-  // Local mirror of paid_at per participant — initialized from props and
-  // toggled optimistically on click. Server is the source of truth on next
-  // page load, but in-flight UI feels instant.
-  const [paidMap, setPaidMap] = useState<Record<string, string | null>>(() =>
-    Object.fromEntries(participants.map((p) => [p.id, p.paid_at ?? null]))
-  );
+
+  // Optimistic-paid model: we don't mirror paid_at into local state. Instead
+  // we read paid_at directly from props, except for participants whose
+  // toggle is in flight or whose latest server-confirmed value hasn't yet
+  // propagated through the session prop. `pending` holds the optimistic
+  // value; we drop the entry once props reflect it.
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+  // Per-participant lock: blocks double-click while a request is in flight.
+  const [inFlight, setInFlight] = useState<Set<string>>(new Set());
+
+  // Drop pending entries once the prop has caught up to the optimistic value.
   useEffect(() => {
-    setPaidMap((prev) => {
+    setPending((prev) => {
       const next = { ...prev };
       let changed = false;
-      for (const p of participants) {
-        if (!(p.id in next)) {
-          next[p.id] = p.paid_at ?? null;
+      for (const [id, optimistic] of Object.entries(prev)) {
+        const fromProps = !!participants.find((p) => p.id === id)?.paid_at;
+        if (fromProps === optimistic) {
+          delete next[id];
           changed = true;
         }
       }
@@ -78,25 +84,47 @@ export function StepShare({
     });
   }, [participants]);
 
+  const isParticipantPaid = (p: Participant): boolean =>
+    p.id in pending ? pending[p.id] : !!p.paid_at;
+
   const handleTogglePaid = async (participantId: string) => {
-    if (!isOwner || !sessionId) return;
-    const previous = paidMap[participantId] ?? null;
-    const optimistic = previous ? null : new Date().toISOString();
-    setPaidMap((m) => ({ ...m, [participantId]: optimistic }));
+    if (!isOwner || !isSnapshot || !sessionId) return;
+    if (inFlight.has(participantId)) return;
+
+    const current = participants.find((pp) => pp.id === participantId);
+    const currentlyPaid = participantId in pending ? pending[participantId] : !!current?.paid_at;
+    const desired = !currentlyPaid;
+
+    setPending((m) => ({ ...m, [participantId]: desired }));
+    setInFlight((s) => {
+      const next = new Set(s);
+      next.add(participantId);
+      return next;
+    });
+
     try {
-      const res = await toggleParticipantPaid(
+      await toggleParticipantPaid(
         sessionId,
         participantId,
         getStoredToken() ?? undefined,
         getDeviceId(),
       );
-      const updated = res.participants.find((p) => p.id === participantId);
-      if (updated) {
-        setPaidMap((m) => ({ ...m, [participantId]: updated.paid_at ?? null }));
-      }
+      // The server confirmed. We keep pending until props reflect the new
+      // value — that prevents a flicker if session polling still has the
+      // old paid_at cached. The useEffect above clears pending then.
     } catch (e) {
       console.error("Failed to toggle paid:", e);
-      setPaidMap((m) => ({ ...m, [participantId]: previous }));
+      setPending((m) => {
+        const next = { ...m };
+        delete next[participantId];
+        return next;
+      });
+    } finally {
+      setInFlight((s) => {
+        const next = new Set(s);
+        next.delete(participantId);
+        return next;
+      });
     }
   };
 
@@ -272,7 +300,7 @@ export function StepShare({
             : 0;
           const finalTotal = total + billECostForParticipant;
 
-          const isPaid = !!paidMap[p.id];
+          const isPaid = isParticipantPaid(p);
 
           return (
             <div
@@ -294,15 +322,16 @@ export function StepShare({
                   </div>
                   <span className="font-medium truncate">{p.name}</span>
                 </button>
-                <span className={`font-semibold tabular-nums ${isPaid ? "text-green-600" : "text-foreground"}`}>
+                <span className="font-semibold tabular-nums text-foreground">
                   {fmt(finalTotal)}
                 </span>
                 {isOwner && isSnapshot ? (
                   <button
                     type="button"
                     onClick={() => handleTogglePaid(p.id)}
+                    disabled={inFlight.has(p.id)}
                     aria-label={isPaid ? t("share.markUnpaid") : t("share.markPaid")}
-                    className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${
+                    className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors disabled:opacity-50 ${
                       isPaid
                         ? "bg-green-600 border-green-600 text-white"
                         : "border-muted-foreground/40 hover:border-foreground"
