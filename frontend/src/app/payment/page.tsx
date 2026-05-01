@@ -52,6 +52,7 @@ function PaymentPageContent() {
 
   const walletBrickRef = useRef<boolean>(false);
   const cardBrickRef = useRef<boolean>(false);
+  const polarAutoFiredRef = useRef<boolean>(false);
 
   const amount = PREMIUM_PRICE_USD; // USD — Polar charges in USD for international
 
@@ -78,6 +79,39 @@ function PaymentPageContent() {
       cancelled = true;
     };
   }, []);
+
+  // Auto-fire Polar checkout once we have a signed-in international user.
+  // Skips the previous "Continue to payment" intermediate screen — the user
+  // already committed by clicking Buy in the paywall and signing in.
+  useEffect(() => {
+    if (paymentRail !== "international") return;
+    if (!user?.email) return;
+    if (polarAutoFiredRef.current) return;
+    if (polarError) return;
+    polarAutoFiredRef.current = true;
+
+    (async () => {
+      setPolarLoading(true);
+      setPolarError(null);
+      try {
+        const res = await createPolarCheckout({
+          email: user.email,
+          session_id: sessionId || undefined,
+          user_type: userType,
+          owner_token: ownerToken || undefined,
+        });
+        if (res.checkout_url) {
+          window.location.href = res.checkout_url;
+        } else {
+          throw new Error("missing checkout_url");
+        }
+      } catch (e) {
+        console.error("Polar checkout error:", e);
+        setPolarError(t("payment.polarError"));
+        setPolarLoading(false);
+      }
+    })();
+  }, [paymentRail, user?.email, sessionId, userType, ownerToken, t, polarError]);
 
   // Check if user is authenticated on mount (also handle OAuth callback)
   useEffect(() => {
@@ -486,9 +520,10 @@ function PaymentPageContent() {
       );
     }
 
-    const handlePolarPay = async () => {
-      setPolarLoading(true);
+    const retryPolarPay = async () => {
+      polarAutoFiredRef.current = false;
       setPolarError(null);
+      setPolarLoading(true);
       try {
         const res = await createPolarCheckout({
           email: user.email,
@@ -519,30 +554,28 @@ function PaymentPageContent() {
           </button>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto">
-          <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-5">
-            <span className="text-3xl">💳</span>
-          </div>
-          <h1 className="text-xl font-semibold mb-3">{t("payment.polarTitle")}</h1>
-          <p className="text-sm text-muted-foreground leading-relaxed mb-8">
-            {t("payment.polarSubtitle")}
-          </p>
-          {polarError && (
-            <p className="text-sm text-destructive mb-4">{polarError}</p>
-          )}
-          <button
-            onClick={handlePolarPay}
-            disabled={polarLoading}
-            className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-60 transition-colors flex items-center justify-center"
-          >
-            {polarLoading ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          {polarError ? (
+            <>
+              <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-5">
+                <span className="text-3xl">⚠️</span>
+              </div>
+              <p className="text-sm text-destructive mb-6">{polarError}</p>
+              <button
+                onClick={retryPolarPay}
+                disabled={polarLoading}
+                className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-60 transition-colors"
+              >
+                {t("payment.retry")}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+              <p className="text-sm text-muted-foreground">
                 {t("payment.polarRedirecting")}
-              </span>
-            ) : (
-              t("payment.polarCta")
-            )}
-          </button>
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
