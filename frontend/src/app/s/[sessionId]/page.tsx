@@ -632,8 +632,15 @@ export default function SessionPage() {
       }
 
       const handlePayment = () => {
-        // Redirect to payment page → Polar checkout
-        router.push(`/payment?session=${sessionId}&type=editor`);
+        // Redirect to payment page → Polar checkout. Propagate the
+        // `country` override (used during international testing) so the
+        // /payment page lands on the same payment rail as this paywall.
+        const country = typeof window !== "undefined"
+          ? new URL(window.location.href).searchParams.get("country")
+          : null;
+        const params = new URLSearchParams({ session: sessionId, type: "editor" });
+        if (country) params.set("country", country);
+        router.push(`/payment?${params.toString()}`);
       };
 
       return (
@@ -883,11 +890,16 @@ export default function SessionPage() {
       if (canDivideBillCost) {
         await updateBillCostShared(billCostShared);
       }
-      // Redirect to payment page with MercadoPago Bricks
+      // Propagate the `country` override (used during international testing)
+      // so the /payment page lands on the same payment rail as this paywall.
+      const country = typeof window !== "undefined"
+        ? new URL(window.location.href).searchParams.get("country")
+        : null;
       const params = new URLSearchParams({
         session: sessionId,
         type: "host",
         ...(ownerToken ? { owner: ownerToken } : {}),
+        ...(country ? { country } : {}),
       });
       router.push(`/payment?${params.toString()}`);
     };
