@@ -3,8 +3,9 @@
 Polar uses the Standard Webhooks scheme for webhook signing:
 https://www.standardwebhooks.com/
 
-The signing secret comes prefixed with `whsec_` and the payload to sign is
-"{webhook-id}.{webhook-timestamp}.{body}" using HMAC-SHA256.
+The signing secret is base64-encoded and shipped with a prefix (`polar_whs_`
+in Polar production, `whsec_` in sandbox / canonical Standard Webhooks). The
+payload to sign is "{webhook-id}.{webhook-timestamp}.{body}" using HMAC-SHA256.
 """
 
 from __future__ import annotations
@@ -94,14 +95,17 @@ def verify_webhook_signature(payload: bytes, headers: Dict[str, str]) -> bool:
     if not webhook_id or not webhook_timestamp or not webhook_signature:
         return False
 
-    # Standard Webhooks: secret is "whsec_<base64>". Some providers omit the
-    # prefix and ship a raw string — handle both.
-    if secret.startswith("whsec_"):
-        try:
-            secret_bytes = base64.b64decode(secret[len("whsec_"):])
-        except Exception:
-            secret_bytes = secret.encode()
-    else:
+    # Standard Webhooks: the secret is "<prefix>_<base64>". Polar production
+    # uses the "polar_whs_" prefix; older / sandbox uses the canonical "whsec_".
+    # Some providers also ship a raw string with no prefix — handle all cases.
+    secret_body = secret
+    for prefix in ("polar_whs_", "whsec_"):
+        if secret.startswith(prefix):
+            secret_body = secret[len(prefix):]
+            break
+    try:
+        secret_bytes = base64.b64decode(secret_body)
+    except Exception:
         secret_bytes = secret.encode()
 
     signed_content = f"{webhook_id}.{webhook_timestamp}.{payload.decode('utf-8', errors='replace')}"
