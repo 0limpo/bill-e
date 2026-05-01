@@ -232,3 +232,18 @@ export function formatPriceCLP(amount: number): string {
     maximumFractionDigits: 0,
   }).format(amount);
 }
+
+/**
+ * Format price in USD. Premium price is charged in USD via Polar for
+ * international markets while Chile remains blocked.
+ */
+export function formatPriceUSD(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+export const PREMIUM_PRICE_USD = 3.49;

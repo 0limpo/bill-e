@@ -10,6 +10,7 @@ import { getStoredUser, getStoredToken, startOAuthLogin, handleAuthCallback, ver
 import { isTWA, isPlayBillingAvailable, getPaymentContext, type PaymentContext } from "@/lib/twa";
 import { getCountryCode, getPaymentRail, type PaymentRail } from "@/lib/geo";
 import { createPolarCheckout } from "@/lib/api";
+import { PREMIUM_PRICE_USD } from "@/lib/payment";
 
 declare global {
   interface Window {
@@ -52,7 +53,7 @@ function PaymentPageContent() {
   const walletBrickRef = useRef<boolean>(false);
   const cardBrickRef = useRef<boolean>(false);
 
-  const amount = 1990; // CLP
+  const amount = PREMIUM_PRICE_USD; // USD — Polar charges in USD for international
 
   // Detect if running in TWA (Play Store app)
   useEffect(() => {

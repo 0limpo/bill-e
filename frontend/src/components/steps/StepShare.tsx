@@ -18,6 +18,7 @@ import {
 import { trackShare } from "@/lib/tracking";
 import { toggleParticipantPaid, getDeviceId } from "@/lib/api";
 import { getStoredToken } from "@/lib/auth";
+import { PREMIUM_PRICE_USD } from "@/lib/payment";
 
 interface StepShareProps {
   items: Item[];
@@ -51,7 +52,7 @@ export function StepShare({
   isOwner = false,
   sessionId,
   billCostShared = false,
-  premiumPrice = 1990,
+  premiumPrice = PREMIUM_PRICE_USD,
   ownerParticipantId,
   decimals: decimalsProp,
   isSnapshot = false,
@@ -128,18 +129,19 @@ export function StepShare({
     }
   };
 
-  // Bill-e cost sharing calculations
+  // Bill-e cost sharing calculations (USD, 2 decimals)
   const participantCount = participants.length;
+  const round2 = (n: number) => Math.round(n * 100) / 100;
   const billCostPerPerson = billCostShared && participantCount >= 2
-    ? Math.round(premiumPrice / participantCount)
+    ? round2(premiumPrice / participantCount)
     : 0;
   // Host recovery = what the other N-1 participants transfer to the host
   const hostRecovery = billCostShared && participantCount >= 2
-    ? billCostPerPerson * (participantCount - 1)
+    ? round2(billCostPerPerson * (participantCount - 1))
     : 0;
   // Host's actual share — absorbs any rounding residual so Σ === totalAmount exactly
   const billCostForHost = billCostShared && participantCount >= 2
-    ? premiumPrice - hostRecovery
+    ? round2(premiumPrice - hostRecovery)
     : 0;
 
   // Prefer explicit decimals from parent (which knows session.decimal_places),

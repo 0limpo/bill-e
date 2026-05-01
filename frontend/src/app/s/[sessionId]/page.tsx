@@ -11,7 +11,8 @@ import { StepAssign } from "@/components/steps/StepAssign";
 import { StepShare } from "@/components/steps/StepShare";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, detectDecimals, getAvatarColor, getInitials, calculateParticipantTotal, type Item, type Charge, type Participant, type Assignment, type Session } from "@/lib/billEngine";
-import { startPaymentFlow, formatPriceCLP } from "@/lib/payment";
+import { startPaymentFlow, formatPriceCLP, formatPriceUSD, PREMIUM_PRICE_USD } from "@/lib/payment";
+import { getCountryCode, getPaymentRail, type PaymentRail } from "@/lib/geo";
 import { getStoredToken, getStoredUser, setStoredUser, getAuthProviders, handleAuthCallback, verifyToken, refreshStoredUser, type AuthProvider } from "@/lib/auth";
 import { updateBillName } from "@/lib/api";
 import { SignInButtons } from "@/components/auth/SignInButtons";
@@ -94,8 +95,21 @@ export default function SessionPage() {
   const [sessionsUsed, setSessionsUsed] = useState(0);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [premiumPrice] = useState(1990); // Default, could fetch from API
+  const [premiumPrice] = useState(PREMIUM_PRICE_USD);
   const [selectingParticipant, setSelectingParticipant] = useState<string | null>(null);
+
+  // Geo gate for paywall: Chile is blocked until boleta electrónica is live.
+  const [paymentRail, setPaymentRail] = useState<PaymentRail | "detecting">("detecting");
+  useEffect(() => {
+    let cancelled = false;
+    getCountryCode().then((country) => {
+      if (cancelled) return;
+      setPaymentRail(getPaymentRail(country));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Store pending join info for after payment
   const storePendingJoin = (name: string, participantId?: string) => {
@@ -587,8 +601,38 @@ export default function SessionPage() {
 
     // Paywall screen (shown when free session limit reached)
     if (showPaywall) {
+      // Geo gate: Chile is blocked until boleta SII integration ships.
+      if (paymentRail === "detecting") {
+        return (
+          <div className="min-h-screen bg-background flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        );
+      }
+      if (paymentRail === "blocked") {
+        return (
+          <div className="min-h-screen bg-background flex items-center justify-center p-4">
+            <div className="w-full max-w-sm text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-5">
+                <span className="text-3xl">🌎</span>
+              </div>
+              <h1 className="text-xl font-semibold mb-3">{t("payment.notAvailableTitle")}</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+                {t("payment.notAvailableSubtitleChile")}
+              </p>
+              <button
+                onClick={() => window.history.back()}
+                className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+              >
+                {t("paywall.later")}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
       const handlePayment = () => {
-        // Redirect to payment page with MercadoPago Bricks
+        // Redirect to payment page → Polar checkout
         router.push(`/payment?session=${sessionId}&type=editor`);
       };
 
@@ -620,7 +664,7 @@ export default function SessionPage() {
               </div>
 
               <div className="flex items-baseline gap-1 mb-4">
-                <span className="text-3xl font-bold">{formatPriceCLP(premiumPrice)}</span>
+                <span className="text-3xl font-bold">{formatPriceUSD(premiumPrice)}</span>
               </div>
 
               <Button
@@ -790,14 +834,45 @@ export default function SessionPage() {
 
   // --- Host Paywall (shown when host reaches free session limit) ---
   if (isOwner && showPaywall) {
-    // Calculate Bill-e cost sharing amounts
+    // Geo gate: Chile is blocked until boleta SII integration ships.
+    if (paymentRail === "detecting") {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
+    if (paymentRail === "blocked") {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="w-full max-w-sm text-center">
+            <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center mb-5">
+              <span className="text-3xl">🌎</span>
+            </div>
+            <h1 className="text-xl font-semibold mb-3">{t("payment.notAvailableTitle")}</h1>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-8">
+              {t("payment.notAvailableSubtitleChile")}
+            </p>
+            <button
+              onClick={() => window.history.back()}
+              className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors"
+            >
+              {t("paywall.later")}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // Calculate Bill-e cost sharing amounts (USD, 2 decimals)
     const participantCount = participants.length;
     const canDivideBillCost = participantCount >= 2;
-    const billCostPerPerson = canDivideBillCost ? Math.round(premiumPrice / participantCount) : 0;
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const billCostPerPerson = canDivideBillCost ? round2(premiumPrice / participantCount) : 0;
     // Total transferred to the host by the other N-1 participants
-    const hostRecovery = canDivideBillCost ? billCostPerPerson * (participantCount - 1) : 0;
+    const hostRecovery = canDivideBillCost ? round2(billCostPerPerson * (participantCount - 1)) : 0;
     // Host's actual share — absorbs the rounding residual so Σ === totalAmount exactly
-    const billCostForHost = canDivideBillCost ? premiumPrice - hostRecovery : 0;
+    const billCostForHost = canDivideBillCost ? round2(premiumPrice - hostRecovery) : 0;
 
     // Find a sample "other" participant name for preview
     const otherParticipant = participants.find((p) => p.id !== session?.participants?.find((sp) => sp.role === "owner")?.id);
@@ -845,7 +920,7 @@ export default function SessionPage() {
             </div>
 
             <div className="flex items-baseline gap-1 mb-4">
-              <span className="text-3xl font-bold">{formatPriceCLP(premiumPrice)}</span>
+              <span className="text-3xl font-bold">{formatPriceUSD(premiumPrice)}</span>
             </div>
 
             {/* Divide Bill-e toggle - only show if 2+ participants */}
@@ -857,9 +932,9 @@ export default function SessionPage() {
                       {t("paywall.divideBillE")}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {formatPriceCLP(premiumPrice)} ÷ {participantCount} ={" "}
+                      {formatPriceUSD(premiumPrice)} ÷ {participantCount} ={" "}
                       <strong className="text-foreground font-semibold">
-                        {formatPriceCLP(billCostPerPerson)}
+                        {formatPriceUSD(billCostPerPerson)}
                       </strong>{" "}
                       {t("paywall.eachPays")}
                     </span>
