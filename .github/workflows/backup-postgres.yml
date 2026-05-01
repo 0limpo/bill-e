@@ -1,0 +1,69 @@
+name: Daily PostgreSQL Backup to R2
+
+on:
+  schedule:
+    # 06:00 UTC daily (≈ 02:00–03:00 Chile, low traffic)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Install PostgreSQL 16 client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-16
+          pg_dump --version
+
+      - name: Run pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +%Y%m%d-%H%M%S)
+          BACKUP_FILE="bill-e-${DATE}.dump"
+          pg_dump --no-owner --no-acl --format=custom --file="${BACKUP_FILE}" "$DATABASE_URL"
+          ls -lh "${BACKUP_FILE}"
+          echo "BACKUP_FILE=${BACKUP_FILE}" >> "$GITHUB_ENV"
+
+      - name: Upload backup to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          aws s3 cp "$BACKUP_FILE" "s3://${R2_BUCKET}/postgres/${BACKUP_FILE}" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          echo "Backup uploaded: s3://${R2_BUCKET}/postgres/${BACKUP_FILE}"
+
+      - name: Prune backups older than 30 days
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          CUTOFF=$(date -u -d "30 days ago" +%Y%m%d)
+          aws s3api list-objects-v2 \
+            --bucket "$R2_BUCKET" \
+            --prefix "postgres/bill-e-" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+            --query "Contents[].Key" --output text 2>/dev/null | tr '\t' '\n' | while read -r key; do
+              [ -z "$key" ] && continue
+              filedate=$(echo "$key" | grep -oE '[0-9]{8}' | head -1)
+              if [ -n "$filedate" ] && [ "$filedate" -lt "$CUTOFF" ]; then
+                echo "Deleting old backup: $key"
+                aws s3 rm "s3://${R2_BUCKET}/${key}" \
+                  --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+              fi
+            done
