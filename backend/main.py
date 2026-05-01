@@ -66,6 +66,7 @@ try:
         set_premium_by_email,
         check_premium_by_email,
         get_premium_by_email,
+        clear_premium_by_email as redis_clear_premium_by_email,
         HOST_FREE_SESSIONS,
         SessionStatus
     )
@@ -3516,6 +3517,33 @@ async def get_admin_user(device_id: str, secret: str = None):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/admin/clear-premium")
+async def clear_premium_endpoint(email: str = None, secret: str = None):
+    """Clear premium status for a user by email across both Postgres and
+    Redis. Used by admin tooling to reset a tester's account between
+    end-to-end payment runs."""
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not email:
+        raise HTTPException(status_code=400, detail="email query param required")
+
+    pg_result = None
+    if postgres_available:
+        pg_result = postgres_db.clear_premium_by_email(email)
+
+    redis_result = None
+    try:
+        if redis_client:
+            redis_result = redis_clear_premium_by_email(redis_client, email)
+    except Exception as e:
+        redis_result = {"error": str(e)}
+
+    if not pg_result and not (redis_result and redis_result.get("deleted")):
+        raise HTTPException(status_code=404, detail="User not found in Postgres or Redis")
+
+    return {"postgres": pg_result, "redis": redis_result}
 
 
 # ==============================================================================

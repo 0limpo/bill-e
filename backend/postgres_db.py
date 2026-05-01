@@ -1066,6 +1066,37 @@ def set_premium_by_email(
         }
 
 
+def clear_premium_by_email(email: str) -> Optional[Dict]:
+    """
+    Clear premium status for a user by email. Used by admin tooling to
+    reset a tester's account between end-to-end payment runs.
+    Returns the updated record, or None if the user does not exist.
+    """
+    if not db_available:
+        return None
+
+    with get_db() as db:
+        if db is None:
+            return None
+
+        email_normalized = email.lower().strip()
+        user = db.query(User).filter(User.email == email_normalized).first()
+        if not user:
+            return None
+
+        user.is_premium = False
+        user.premium_expires = None
+        user.premium_payment_id = None
+        user.updated_at = datetime.utcnow()
+        db.flush()
+
+        return {
+            "email": email_normalized,
+            "is_premium": False,
+            "cleared_at": user.updated_at.isoformat(),
+        }
+
+
 def backfill_snapshots_user_id(user_id: str, device_id: str) -> int:
     """
     Set snapshot.user_id = user_id for all FINALIZED snapshots whose

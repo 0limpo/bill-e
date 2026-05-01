@@ -1087,6 +1087,17 @@ def check_premium_by_email(
     }
 
 
+def clear_premium_by_email(redis_client, email: str) -> Dict[str, Any]:
+    """Delete the Redis premium record for an email. Used by admin tooling
+    to reset a tester's account between end-to-end payment runs."""
+    if not email:
+        return {"deleted": 0}
+    email_normalized = email.lower().strip()
+    premium_key = f"premium_email:{email_normalized}"
+    deleted = redis_client.delete(premium_key)
+    return {"deleted": int(deleted), "email": email_normalized}
+
+
 def get_premium_by_email(
     redis_client,
     email: str
