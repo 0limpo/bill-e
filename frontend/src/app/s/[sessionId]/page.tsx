@@ -512,12 +512,15 @@ export default function SessionPage() {
       } else if (
         oldItem.name !== newItem.name ||
         oldItem.price !== newItem.price ||
-        oldItem.quantity !== newItem.quantity
+        oldItem.quantity !== newItem.quantity ||
+        oldItem.price_as_shown !== newItem.price_as_shown
       ) {
-        // Updated item
+        // Updated item — include price_as_shown so the displayed value
+        // (which the editor uses as source of truth) actually changes.
         await updateItemById(newItem.id!, {
           name: newItem.name,
           price: newItem.price,
+          price_as_shown: newItem.price_as_shown,
           quantity: newItem.quantity,
         });
       }
