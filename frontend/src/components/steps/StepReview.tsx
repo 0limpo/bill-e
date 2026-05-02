@@ -16,6 +16,57 @@ interface InlineInputProps {
   decimals?: number;  // For consistent decimal formatting
 }
 
+// Numeric input that holds a local value while focused to avoid the
+// thousand-separator formatter fighting the user's keystrokes. Commits
+// on blur or Enter.
+function PriceInput({
+  value,
+  decimals,
+  onSave,
+}: {
+  value: number;
+  decimals: number;
+  onSave: (val: number) => void;
+}) {
+  const [localVal, setLocalVal] = useState(formatNumber(value, decimals));
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) setLocalVal(formatNumber(value, decimals));
+  }, [value, decimals, isFocused]);
+
+  const commit = () => {
+    setIsFocused(false);
+    const raw = localVal.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
+    const num = parseFloat(raw);
+    if (!isNaN(num)) {
+      const clamped = Math.max(0, num);
+      if (clamped !== value) onSave(clamped);
+    } else {
+      setLocalVal(formatNumber(value, decimals));
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode={decimals > 0 ? "decimal" : "numeric"}
+      value={localVal}
+      onChange={(e) => setLocalVal(e.target.value)}
+      onFocus={() => {
+        setIsFocused(true);
+        // Show raw value on focus so the user can edit without fighting
+        // the formatter. Empty string when value is 0 to avoid leading 0.
+        setLocalVal(value === 0 ? "" : String(value));
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+      }}
+    />
+  );
+}
+
 function InlineInput({ type, value, onSave, className = "", placeholder, decimals = 0 }: InlineInputProps) {
   const [localVal, setLocalVal] = useState(String(value ?? ""));
   const [isFocused, setIsFocused] = useState(false);
@@ -479,15 +530,10 @@ export function StepReview({
                         <span className="item-editor-label">{t("items.editorValue")}</span>
                         <div className="item-editor-price">
                           <span className="sym">$</span>
-                          <input
-                            type="text"
-                            inputMode={decimals > 0 ? "decimal" : "numeric"}
-                            value={formatNumber(displayPrice, decimals)}
-                            onChange={(e) => {
-                              const raw = e.target.value.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
-                              const num = parseFloat(raw);
-                              if (!isNaN(num)) handlePriceSave(num);
-                            }}
+                          <PriceInput
+                            value={displayPrice}
+                            decimals={decimals}
+                            onSave={handlePriceSave}
                           />
                         </div>
 
