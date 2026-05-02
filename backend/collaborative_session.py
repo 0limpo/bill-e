@@ -1049,6 +1049,12 @@ def check_premium_by_email(
     """
     Check if an email has active premium.
     Returns premium status and expiry info.
+
+    Reads Redis first (hot path used by paywall checks). Falls back to
+    Postgres (durable store written by webhooks) so that a missing Redis
+    record doesn't strand a paid user behind the paywall — Polar's old
+    webhook was Postgres-only, and Redis can also be wiped on infra
+    rotation. Postgres is the source of truth on disagreement.
     """
     if not email:
         return {"is_premium": False, "error": "No email provided"}
@@ -1056,35 +1062,98 @@ def check_premium_by_email(
     email_normalized = email.lower().strip()
     premium_key = f"premium_email:{email_normalized}"
 
-    premium_json = redis_client.get(premium_key)
-    if not premium_json:
-        return {"is_premium": False, "email": email_normalized}
+    premium_json = None
+    try:
+        premium_json = redis_client.get(premium_key) if redis_client else None
+    except Exception as e:
+        print(f"check_premium_by_email: Redis read failed: {e}")
 
-    premium_data = json.loads(premium_json)
+    if premium_json:
+        premium_data = json.loads(premium_json)
+        expires_str = premium_data.get("premium_expires")
+        if expires_str:
+            try:
+                expires = datetime.fromisoformat(expires_str)
+                if expires < datetime.now():
+                    return {
+                        "is_premium": False,
+                        "email": email_normalized,
+                        "expired": True,
+                        "expired_at": expires_str,
+                    }
+            except Exception:
+                pass
 
-    # Check if premium has expired
-    expires_str = premium_data.get("premium_expires")
-    if expires_str:
-        try:
-            expires = datetime.fromisoformat(expires_str)
-            if expires < datetime.now():
+        return {
+            "is_premium": True,
+            "email": email_normalized,
+            "unlimited": premium_data.get("unlimited", True),
+            "user_type": premium_data.get("user_type", "host"),
+            "premium_expires": expires_str,
+            "premium_since": premium_data.get("premium_since"),
+            "source": "redis",
+        }
+
+    # Postgres fallback — the durable record written by webhooks.
+    try:
+        import postgres_db  # local import to avoid cycle at module load
+
+        user = postgres_db.get_user_by_email(email_normalized)
+        if not user or not user.get("is_premium"):
+            return {"is_premium": False, "email": email_normalized}
+
+        expires_value = user.get("premium_expires")
+        if expires_value:
+            expires_dt = (
+                expires_value
+                if isinstance(expires_value, datetime)
+                else datetime.fromisoformat(str(expires_value))
+            )
+            if expires_dt < datetime.now():
                 return {
                     "is_premium": False,
                     "email": email_normalized,
                     "expired": True,
-                    "expired_at": expires_str
+                    "expired_at": expires_dt.isoformat(),
                 }
-        except:
-            pass
+            expires_iso = expires_dt.isoformat()
+        else:
+            expires_iso = None
 
-    return {
-        "is_premium": True,
-        "email": email_normalized,
-        "unlimited": premium_data.get("unlimited", True),
-        "user_type": premium_data.get("user_type", "host"),
-        "premium_expires": expires_str,
-        "premium_since": premium_data.get("premium_since")
-    }
+        # Warm Redis so subsequent paywall checks hit the fast path.
+        if redis_client:
+            try:
+                redis_client.set(
+                    premium_key,
+                    json.dumps(
+                        {
+                            "email": email_normalized,
+                            "is_premium": True,
+                            "user_type": "host",
+                            "premium_since": (
+                                user.get("updated_at").isoformat()
+                                if isinstance(user.get("updated_at"), datetime)
+                                else None
+                            ),
+                            "premium_expires": expires_iso,
+                            "unlimited": True,
+                        }
+                    ),
+                )
+            except Exception as e:
+                print(f"check_premium_by_email: Redis write-through failed: {e}")
+
+        return {
+            "is_premium": True,
+            "email": email_normalized,
+            "unlimited": True,
+            "user_type": "host",
+            "premium_expires": expires_iso,
+            "source": "postgres",
+        }
+    except Exception as e:
+        print(f"check_premium_by_email: Postgres fallback failed: {e}")
+        return {"is_premium": False, "email": email_normalized, "error": str(e)}
 
 
 def clear_premium_by_email(redis_client, email: str) -> Dict[str, Any]:
