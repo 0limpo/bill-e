@@ -2065,21 +2065,33 @@ async def polar_webhook(request: Request):
             or customer.get("email")
             or data.get("customer_email")
         )
+        user_type = metadata.get("user_type") or "host"
+        payment_id = data.get("id")
 
-        if email and postgres_available:
+        if not email:
+            print(f"Polar order.paid received without resolvable email: metadata={metadata}")
+            return {"received": True}
+
+        # Grant premium in Redis (used by finalize_session / paywall checks)
+        # AND in PostgreSQL (durable record).
+        if redis_client:
+            try:
+                set_premium_by_email(redis_client, email, user_type)
+                print(f"Polar: Redis premium granted to {email} (user_type={user_type})")
+            except Exception as e:
+                print(f"Polar: failed to grant Redis premium for {email}: {e}")
+
+        if postgres_available:
             try:
                 expires = datetime.utcnow() + timedelta(days=365)
-                payment_id = data.get("id")
                 postgres_db.set_premium_by_email(
                     email=email,
                     premium_expires=expires,
                     payment_id=None,  # Polar order id is not a UUID — log separately
                 )
-                print(f"Polar: granted premium to {email} until {expires.isoformat()} (order {payment_id})")
+                print(f"Polar: Postgres premium granted to {email} until {expires.isoformat()} (order {payment_id})")
             except Exception as e:
-                print(f"Polar: failed to grant premium for {email}: {e}")
-        else:
-            print(f"Polar order.paid received without resolvable email: metadata={metadata}")
+                print(f"Polar: failed to grant Postgres premium for {email}: {e}")
 
     return {"received": True}
 
@@ -3517,6 +3529,16 @@ async def get_admin_user(device_id: str, secret: str = None):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/premium-users")
+async def list_premium_users_endpoint(secret: str = None):
+    """Return count + sample of users with active premium. Admin only."""
+    if secret != ADMIN_SECRET:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="PostgreSQL not configured")
+    return postgres_db.list_premium_users()
 
 
 @app.post("/api/admin/clear-premium")

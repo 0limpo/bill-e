@@ -1066,6 +1066,35 @@ def set_premium_by_email(
         }
 
 
+def list_premium_users() -> Dict:
+    """Return a count + sample list of premium users. Used by admin tooling."""
+    if not db_available:
+        return {"count": 0, "users": [], "error": "db_unavailable"}
+
+    with get_db() as db:
+        if db is None:
+            return {"count": 0, "users": [], "error": "db_unavailable"}
+
+        now = datetime.utcnow()
+        active = db.query(User).filter(
+            User.is_premium == True,
+            (User.premium_expires == None) | (User.premium_expires > now),
+        )
+        total = active.count()
+        sample = active.order_by(User.updated_at.desc()).limit(50).all()
+        return {
+            "count": total,
+            "users": [
+                {
+                    "email": u.email,
+                    "premium_expires": u.premium_expires.isoformat() if u.premium_expires else None,
+                    "updated_at": u.updated_at.isoformat() if u.updated_at else None,
+                }
+                for u in sample
+            ],
+        }
+
+
 def clear_premium_by_email(email: str) -> Optional[Dict]:
     """
     Clear premium status for a user by email. Used by admin tooling to
