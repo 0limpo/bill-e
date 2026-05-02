@@ -1334,16 +1334,17 @@ async def regroup_items_endpoint(session_id: str, request: Request):
         items = session_data.get("items", []) or []
 
         if mode == "expand":
+            # Preserve the original ID for the FIRST unit of each item so
+            # that toggling OFF and back ON without any edits leaves the
+            # IDs unchanged. Additional units get derived IDs that map back
+            # to the original on regroup.
             new_items = []
             for item in items:
                 qty = int(item.get("quantity", 1) or 1)
                 base_id = item.get("id") or item.get("name") or "item"
                 for i in range(qty):
-                    new_items.append({
-                        **item,
-                        "id": f"{base_id}_e{i}_{uuid.uuid4().hex[:6]}",
-                        "quantity": 1,
-                    })
+                    new_id = base_id if i == 0 else f"{base_id}_e{i}_{uuid.uuid4().hex[:6]}"
+                    new_items.append({**item, "id": new_id, "quantity": 1})
         else:  # group
             groups = {}
             order = []
@@ -1357,15 +1358,24 @@ async def regroup_items_endpoint(session_id: str, request: Request):
                 key = (name, price)
                 qty = int(item.get("quantity", 1) or 1)
                 if key not in groups:
+                    # First item in a group keeps its ID — combined with
+                    # the expand path's "i==0 keeps base_id", a clean
+                    # ON→OFF→ON round-trip leaves the canonical IDs intact.
                     groups[key] = {**item, "quantity": qty}
                     order.append(key)
                 else:
                     groups[key]["quantity"] = int(groups[key].get("quantity", 1) or 1) + qty
             new_items = [groups[k] for k in order]
 
+        # Only clear assignments if some old IDs disappeared — assignments
+        # referencing missing IDs would point to nothing. New IDs appearing
+        # (e.g. expand adding A_e1, A_e2, ...) is harmless: the original
+        # IDs survive and any existing assignments still resolve.
+        old_ids = {i.get("id") for i in items}
+        new_ids = {i.get("id") for i in new_items}
         session_data["items"] = new_items
-        # IDs changed → previous assignments are no longer valid.
-        session_data["assignments"] = {}
+        if not old_ids.issubset(new_ids):
+            session_data["assignments"] = {}
         session_data["last_updated"] = datetime.now().isoformat()
         session_data["last_updated_by"] = "owner"
 
