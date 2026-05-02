@@ -563,8 +563,10 @@ export function useSession({
       markInteraction();
       try {
         await regroupItems(sessionId, ownerToken, mode);
-        // Refetch the session to pick up the new items + cleared assignments.
-        const fresh = await loadSession(sessionId);
+        // Refetch the session, passing ownerToken so the backend keeps
+        // flagging is_owner=true. Without it the response would mark the
+        // caller as a guest editor and bump the UI back to step 2.
+        const fresh = await loadSession(sessionId, ownerToken);
         if (fresh) setSession(fresh as SessionResponse);
         return true;
       } catch (err) {
