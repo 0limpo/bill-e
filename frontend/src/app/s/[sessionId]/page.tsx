@@ -364,15 +364,61 @@ export default function SessionPage() {
     };
   }, [returnedFromAuth, router]);
 
-  // Host-only: if owner came back from auth without premium, surface the paywall
-  // with a "no premium linked" warning. Editors signing in from the landing
-  // (just to save history) skip this — they keep navigating normally.
+  // Post-OAuth bypass flow: when the user signs in from the paywall trying
+  // to recover an existing premium subscription, we either:
+  //  - is_premium=False  → keep the paywall open with a "no premium linked"
+  //                        warning so they know which account to try.
+  //  - is_premium=True   → premium recognized; close the paywall and
+  //                        finish what they were trying to do (host:
+  //                        finalize and go to step 3; editor: auto-join
+  //                        with the name they had typed).
+  // Editors signing in from the landing (just to save history) have no
+  // pending action and fall through harmlessly.
   useEffect(() => {
-    if (returnedFromAuth && authIsPremium === "False" && isOwner) {
-      setShowNoPremiumWarning(true);
-      setShowPaywall(true);
+    if (!returnedFromAuth) return;
+    if (!session) return;
+
+    if (authIsPremium === "False") {
+      if (isOwner) {
+        setShowNoPremiumWarning(true);
+        setShowPaywall(true);
+      }
+      return;
     }
-  }, [returnedFromAuth, authIsPremium, isOwner]);
+
+    if (authIsPremium !== "True") return;
+
+    if (isOwner) {
+      setShowPaywall(false);
+      setShowNoPremiumWarning(false);
+      if (session.status !== "finalized") {
+        setStep(3);
+        window.scrollTo(0, 0);
+        updateHostStep(3);
+        finalize().catch(() => {});
+      }
+      return;
+    }
+
+    // Editor came back from paywall sign-in with premium recognized.
+    const pj = getPendingJoin();
+    if (pj && !currentParticipant) {
+      const stored = getStoredUser();
+      const editorEmail = stored?.email || undefined;
+      const tryJoin = pj.participantId
+        ? selectParticipant(pj.participantId, pj.name, editorEmail)
+        : join(pj.name, undefined, editorEmail);
+      tryJoin.then((result) => {
+        if (result.success) {
+          clearPendingJoin();
+          setShowPaywall(false);
+          setShowNoPremiumWarning(false);
+          setStep(2);
+          window.scrollTo(0, 0);
+        }
+      });
+    }
+  }, [returnedFromAuth, authIsPremium, isOwner, session, currentParticipant, finalize, join, selectParticipant, updateHostStep]);
 
   const t = getTranslator(lang);
 
