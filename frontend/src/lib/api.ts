@@ -283,7 +283,7 @@ export async function updateItem(
   sessionId: string,
   ownerToken: string | null,
   itemId: string,
-  updates: Partial<{ name: string; price: number; quantity: number; mode: "individual" | "grupal" }>
+  updates: Partial<{ name: string; price: number; price_as_shown: number; quantity: number; mode: "individual" | "grupal" }>
 ): Promise<{ success: boolean }> {
   return apiRequest(`/api/session/${sessionId}/update-item`, {
     method: "POST",

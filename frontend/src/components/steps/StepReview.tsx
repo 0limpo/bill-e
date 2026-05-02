@@ -394,18 +394,31 @@ export function StepReview({
               const qty = item.quantity || 1;
               const unitPrice = item.price || 0;
               const lineTotal = unitPrice * qty;
-              // Display price reflects what bill-e detected from the receipt;
-              // Rec 3: this is the "valor" the user verifies as-is (no calc).
-              const displayPrice = priceMode === "total_linea" ? lineTotal : unitPrice;
+              // Display the literal value the receipt printed for this
+              // line (price_as_shown) when bill-e captured it. Falls back
+              // to the priceMode-based calculation for items added
+              // manually or where the OCR didn't preserve the raw value.
+              // This keeps the "as printed on the item line" helper text
+              // accurate even when Gemini misclassifies precio_modo.
+              const displayPrice =
+                item.price_as_shown != null
+                  ? item.price_as_shown
+                  : priceMode === "total_linea"
+                  ? lineTotal
+                  : unitPrice;
               const isEditing = editingItemId === itemId;
 
               const handlePriceSave = (val: string | number) => {
                 const newValue = Math.max(0, Number(val));
-                if (priceMode === "total_linea") {
-                  updateItem(itemId, { price: qty > 0 ? newValue / qty : newValue });
-                } else {
-                  updateItem(itemId, { price: newValue });
-                }
+                // The user is editing the value as it appears on the
+                // receipt line, so newValue IS the new price_as_shown.
+                // The internal unit price is derived: divide by qty when
+                // we know the line was a line total.
+                const isLineTotal =
+                  priceMode === "total_linea" ||
+                  (item.price_as_shown != null && qty > 1 && item.price_as_shown !== unitPrice);
+                const newUnitPrice = isLineTotal && qty > 0 ? newValue / qty : newValue;
+                updateItem(itemId, { price: newUnitPrice, price_as_shown: newValue });
               };
 
               return (

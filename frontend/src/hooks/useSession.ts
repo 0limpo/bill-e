@@ -62,7 +62,7 @@ export interface UseSessionReturn {
 
   // Item actions
   addNewItem: (name: string, price: number, quantity: number) => Promise<boolean>;
-  updateItemById: (itemId: string, updates: Partial<{ name: string; price: number; quantity: number; mode: "individual" | "grupal" }>) => Promise<boolean>;
+  updateItemById: (itemId: string, updates: Partial<{ name: string; price: number; price_as_shown: number; quantity: number; mode: "individual" | "grupal" }>) => Promise<boolean>;
   deleteItemById: (itemId: string) => Promise<boolean>;
   regroupAllItems: (mode: "group" | "expand") => Promise<boolean>;
 
@@ -472,7 +472,7 @@ export function useSession({
   const updateItemById = useCallback(
     async (
       itemId: string,
-      updates: Partial<{ name: string; price: number; quantity: number; mode: "individual" | "grupal" }>
+      updates: Partial<{ name: string; price: number; price_as_shown: number; quantity: number; mode: "individual" | "grupal" }>
     ): Promise<boolean> => {
       // Mode can be changed by anyone, other fields require owner
       const onlyModeChange = Object.keys(updates).length === 1 && "mode" in updates;

@@ -1138,6 +1138,7 @@ async def update_item(session_id: str, request: Request):
             raise HTTPException(status_code=403, detail="Solo el anfitrion puede editar nombre, precio y cantidad")
 
         # Actualizar el item
+        price_mode = session_data.get("price_mode") or "unitario"
         for item in session_data["items"]:
             if (item.get("id") or item.get("name")) == item_id:
                 # Owner-only fields
@@ -1148,6 +1149,24 @@ async def update_item(session_id: str, request: Request):
                         item["price"] = updates["price"]
                     if "quantity" in updates:
                         item["quantity"] = updates["quantity"]
+                    # Allow explicit price_as_shown updates (frontend can
+                    # send the literal value the user typed). Otherwise,
+                    # if price/quantity changed, recompute it so the
+                    # display stays consistent with what the receipt would
+                    # print for the new state.
+                    if "price_as_shown" in updates:
+                        item["price_as_shown"] = updates["price_as_shown"]
+                    elif "price" in updates or "quantity" in updates:
+                        try:
+                            qty_now = int(item.get("quantity", 1) or 1)
+                            price_now = float(item.get("price") or 0)
+                            item["price_as_shown"] = (
+                                price_now * qty_now
+                                if price_mode == "total_linea" and qty_now > 1
+                                else price_now
+                            )
+                        except (TypeError, ValueError):
+                            pass
                 # Anyone can change mode (individual/grupal)
                 if "mode" in updates:
                     item["mode"] = updates["mode"]
@@ -1333,6 +1352,15 @@ async def regroup_items_endpoint(session_id: str, request: Request):
 
         items = session_data.get("items", []) or []
 
+        # Keep `price_as_shown` consistent with what the receipt would
+        # have printed for the line. With qty=1 it always equals the unit
+        # price; with qty>1 it depends on whether the receipt printed unit
+        # prices ("unitario") or line totals ("total_linea").
+        price_mode = session_data.get("price_mode") or "unitario"
+
+        def shown_for(price: float, qty: int) -> float:
+            return float(price) * int(qty) if price_mode == "total_linea" and int(qty) > 1 else float(price)
+
         if mode == "expand":
             # Preserve the original ID for the FIRST unit of each item so
             # that toggling OFF and back ON without any edits leaves the
@@ -1342,9 +1370,11 @@ async def regroup_items_endpoint(session_id: str, request: Request):
             for item in items:
                 qty = int(item.get("quantity", 1) or 1)
                 base_id = item.get("id") or item.get("name") or "item"
+                unit = float(item.get("price") or 0)
                 for i in range(qty):
                     new_id = base_id if i == 0 else f"{base_id}_e{i}_{uuid.uuid4().hex[:6]}"
-                    new_items.append({**item, "id": new_id, "quantity": 1})
+                    # qty=1 → price_as_shown == unit price
+                    new_items.append({**item, "id": new_id, "quantity": 1, "price_as_shown": unit})
         else:  # group
             groups = {}
             order = []
@@ -1365,7 +1395,13 @@ async def regroup_items_endpoint(session_id: str, request: Request):
                     order.append(key)
                 else:
                     groups[key]["quantity"] = int(groups[key].get("quantity", 1) or 1) + qty
-            new_items = [groups[k] for k in order]
+            new_items = []
+            for k in order:
+                grouped_item = groups[k]
+                gqty = int(grouped_item.get("quantity", 1) or 1)
+                gprice = float(grouped_item.get("price") or 0)
+                grouped_item["price_as_shown"] = shown_for(gprice, gqty)
+                new_items.append(grouped_item)
 
         # Only clear assignments if some old IDs disappeared — assignments
         # referencing missing IDs would point to nothing. New IDs appearing
