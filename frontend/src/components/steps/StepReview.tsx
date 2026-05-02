@@ -356,7 +356,7 @@ export function StepReview({
             {/* Group toggle — lets the user split each unit onto its own
                 row to compare 1:1 with a non-deduplicated receipt. */}
             {onRegroup && (
-              <div className="flex items-center justify-between mb-3 px-1">
+              <div className="flex items-center justify-end gap-2 mb-3 px-1">
                 <span className="text-xs text-muted-foreground">
                   {t("items.groupToggle")}
                 </span>
