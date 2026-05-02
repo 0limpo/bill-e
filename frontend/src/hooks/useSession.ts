@@ -556,18 +556,28 @@ export function useSession({
   );
 
   // Group / expand the items list. Backend rebuilds the items array
-  // (different IDs) and clears assignments, so we refetch the session.
+  // and clears assignments. We apply the response directly instead of
+  // refetching the whole session — saves one round-trip and keeps the
+  // toggle responsive. Polling will reconcile any drift within 5s.
   const regroupAllItems = useCallback(
     async (mode: "group" | "expand"): Promise<boolean> => {
       if (!ownerToken) return false;
       markInteraction();
       try {
-        await regroupItems(sessionId, ownerToken, mode);
-        // Refetch the session, passing ownerToken so the backend keeps
-        // flagging is_owner=true. Without it the response would mark the
-        // caller as a guest editor and bump the UI back to step 2.
-        const fresh = await loadSession(sessionId, ownerToken);
-        if (fresh) setSession(fresh as SessionResponse);
+        const result = await regroupItems(sessionId, ownerToken, mode);
+        if (result?.items) {
+          setSession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  items: result.items as SessionResponse["items"],
+                  // Backend may have cleared assignments when IDs changed;
+                  // mirror that locally so step 2 doesn't show stale ones.
+                  assignments: {},
+                }
+              : prev
+          );
+        }
         return true;
       } catch (err) {
         console.error("Regroup items error:", err);

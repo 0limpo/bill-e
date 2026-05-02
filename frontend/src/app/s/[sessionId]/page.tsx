@@ -1313,7 +1313,7 @@ export default function SessionPage() {
             billName={billName}
             onBillNameChange={handleBillNameChange}
             onRescan={() => router.push("/")}
-            onRegroup={async (mode) => { await regroupAllItems(mode); }}
+            onRegroup={(mode) => regroupAllItems(mode)}
             decimals={decimals}
           />
         )}

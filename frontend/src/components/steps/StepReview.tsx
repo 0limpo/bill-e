@@ -80,7 +80,7 @@ interface StepReviewProps {
   billName?: string;
   onBillNameChange?: (name: string) => void;
   onRescan?: () => void;
-  onRegroup?: (mode: "group" | "expand") => Promise<void> | void;
+  onRegroup?: (mode: "group" | "expand") => Promise<boolean | void> | boolean | void;
   // Optional override — see StepAssign for the rationale.
   decimals?: number;
 }
@@ -367,11 +367,18 @@ export function StepReview({
                   disabled={regrouping}
                   onClick={async () => {
                     const next = !grouped;
+                    // Optimistic flip: move the toggle before awaiting
+                    // the round-trip so the gesture feels instant. The
+                    // disabled flag prevents a second click landing
+                    // mid-flight; if the request fails we roll back.
+                    setGrouped(next);
+                    setEditingItemId(null);
                     setRegrouping(true);
                     try {
-                      await onRegroup(next ? "group" : "expand");
-                      setGrouped(next);
-                      setEditingItemId(null);
+                      const ok = await onRegroup(next ? "group" : "expand");
+                      if (ok === false) setGrouped(!next);
+                    } catch {
+                      setGrouped(!next);
                     } finally {
                       setRegrouping(false);
                     }
