@@ -244,69 +244,63 @@ export default function SessionPage() {
         router.replace(newUrl.pathname + newUrl.search, { scroll: false });
       };
 
-      // Editor payment: auto-join with stored name, then go to step 1
-      // Check for pendingJoin existence (more reliable than payerType from URL)
+      // Editor payment: auto-join with stored name, then go to step 2.
       const pendingJoin = getPendingJoin();
       if (pendingJoin) {
-        console.log("Editor returned from payment, auto-joining with:", pendingJoin.name);
-
-        // Get the user's email explicitly (same pattern as host flow)
-        // This ensures premium verification works after payment
         const storedUser = getStoredUser();
         const editorEmail = storedUser?.email || undefined;
-        console.log("Editor email for premium check:", editorEmail);
 
-        // Re-attempt join with stored info (now premium, should succeed)
-        let result;
-        if (pendingJoin.participantId) {
-          console.log("Selecting existing participant:", pendingJoin.participantId);
-          result = await selectParticipant(pendingJoin.participantId, pendingJoin.name, editorEmail);
-        } else {
-          console.log("Joining as new participant");
-          result = await join(pendingJoin.name, undefined, editorEmail);
+        // Polar redirects the user the moment payment is recorded — the
+        // webhook that grants premium can lag a couple of seconds. Retry
+        // the join with backoff so a transient limitReached doesn't bounce
+        // a paid user back to the paywall.
+        const tryJoin = () =>
+          pendingJoin.participantId
+            ? selectParticipant(pendingJoin.participantId, pendingJoin.name, editorEmail)
+            : join(pendingJoin.name, undefined, editorEmail);
+
+        let result = await tryJoin();
+        for (let attempt = 1; attempt < 5 && !result.success && result.limitReached; attempt++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          result = await tryJoin();
         }
 
-        console.log("Join/select result:", result);
-
-        // Go to step 2 (assign) after successful join
         if (result.success) {
-          console.log("Join successful, setting step to 2");
-          clearPendingJoin(); // Only clear on success
+          clearPendingJoin();
           setStep(2);
           window.scrollTo(0, 0);
-          clearPaymentParams();
         } else if (result.limitReached) {
-          // Payment didn't process in time? Show paywall again
-          console.log("Limit still reached after payment, showing paywall");
-          clearPendingJoin(); // Clear to avoid infinite loop
+          // Webhook still hasn't landed after several retries — fall back
+          // to the paywall so the user isn't left in a frozen state.
+          clearPendingJoin();
           setSessionsUsed(result.sessionsUsed || 0);
           setShowPaywall(true);
-          clearPaymentParams();
         } else {
-          // Other failure - clear and show join screen
-          console.log("Join failed for unknown reason");
           clearPendingJoin();
-          clearPaymentParams();
         }
+        clearPaymentParams();
         return;
       }
 
-      // Host payment: auto-finalize and go to step 3
+      // Host payment: advance to step 3 immediately and finalize in the
+      // background. Going to step 3 unconditionally avoids stranding a paid
+      // user at step 1 while the webhook is still propagating premium.
       if (isOwner && session.status !== "finalized") {
-        // Wait for email to be loaded from localStorage before finalizing
-        // This ensures premium verification uses the correct email
         const storedUser = getStoredUser();
         if (!storedUser?.email && !userEmail) {
-          // No email yet, wait for next render when email is loaded
+          // Email not yet loaded from localStorage — wait for re-render.
           return;
         }
 
-        console.log("Auto-finalizing after payment success, email:", userEmail || storedUser?.email);
-        const result = await finalize();
-        if (result.success) {
-          setStep(3);
-          window.scrollTo(0, 0);
-          updateHostStep(3);
+        setStep(3);
+        window.scrollTo(0, 0);
+        updateHostStep(3);
+
+        // Best-effort finalize with retries to cover the webhook race.
+        let result = await finalize();
+        for (let attempt = 1; attempt < 5 && !result.success && result.limitReached; attempt++) {
+          await new Promise((r) => setTimeout(r, 1500));
+          result = await finalize();
         }
         clearPaymentParams();
       }
