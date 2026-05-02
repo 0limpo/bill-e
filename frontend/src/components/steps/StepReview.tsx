@@ -431,13 +431,22 @@ export function StepReview({
 
                         <p className="item-editor-helper">{t("items.editorValueHelper")}</p>
                       </div>
-                      <button
-                        type="button"
-                        className="item-editor-delete"
-                        onClick={() => { deleteItem(itemId); setEditingItemId(null); }}
-                      >
-                        {t("items.deleteItem")}
-                      </button>
+                      <div className="item-editor-actions">
+                        <button
+                          type="button"
+                          className="item-editor-delete"
+                          onClick={() => { deleteItem(itemId); setEditingItemId(null); }}
+                        >
+                          {t("items.deleteItem")}
+                        </button>
+                        <button
+                          type="button"
+                          className="item-editor-done"
+                          onClick={() => setEditingItemId(null)}
+                        >
+                          {t("items.editorDone")}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
