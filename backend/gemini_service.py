@@ -69,9 +69,12 @@ def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float =
     if not items:
         return []
 
-    # Normalizar nombres primero
-    for item in items:
+    # Normalizar nombres primero. Tag each item with its original
+    # position so we can later restore receipt order when the user
+    # toggles "expand" in the review step.
+    for idx, item in enumerate(items):
         item['normalized_name'] = normalize_item_name(item['name'])
+        item['_orig_idx'] = idx
 
     logger.info(f"🔍 Deduplicando {len(items)} items...")
 
@@ -108,14 +111,22 @@ def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float =
                 processed_indices.add(j)
                 logger.info(f"🔗 Agrupando: '{item['name']}' + '{other_item['name']}' (sim: {name_similarity:.2f})")
 
+        # original_indices: one entry per UNIT, recording the receipt
+        # position that unit came from. Preserves order across any
+        # group↔expand cycle in the review step.
+        indices = []
+        for g in group:
+            indices.extend([g['_orig_idx']] * (g.get('quantity', 1) or 1))
+
         # Consolidar el grupo
         if len(group) == 1:
             result_item = {
                 **item,
                 'quantity': item.get('quantity', 1),
+                'original_indices': indices,
             }
-            # Remove normalized_name from output
             result_item.pop('normalized_name', None)
+            result_item.pop('_orig_idx', None)
             deduplicated.append(result_item)
         else:
             # Tomar el nombre más limpio (el más corto sin caracteres raros)
@@ -133,6 +144,7 @@ def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float =
                 'name': cleanest_name,
                 'price': most_common_price,
                 'quantity': total_quantity,
+                'original_indices': indices,
             }
 
             deduplicated.append(consolidated)

@@ -303,6 +303,7 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
                         'price': price,  # Precio unitario (para cálculos)
                         'price_as_shown': price_as_shown,  # Precio como aparece en boleta
                         'quantity': quantity,
+                        'original_indices': item.get('original_indices', []),
                         'assigned_to': [],
                         'group_total': price * quantity
                     })
@@ -380,6 +381,7 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
                         'price': price,  # Precio unitario (para cálculos)
                         'price_as_shown': price_as_shown,  # Precio como aparece en boleta
                         'quantity': quantity,
+                        'original_indices': item.get('original_indices', []),
                         'assigned_to': [],
                         'group_total': price * quantity
                     })
@@ -1362,19 +1364,40 @@ async def regroup_items_endpoint(session_id: str, request: Request):
             return float(price) * int(qty) if price_mode == "total_linea" and int(qty) > 1 else float(price)
 
         if mode == "expand":
-            # Preserve the original ID for the FIRST unit of each item so
-            # that toggling OFF and back ON without any edits leaves the
-            # IDs unchanged. Additional units get derived IDs that map back
-            # to the original on regroup.
-            new_items = []
+            # Build one entry per UNIT, paired with its original receipt
+            # position (from original_indices). Then sort by position so
+            # the expanded list matches the receipt's line order. Units
+            # without a known position (manually added items) go to the
+            # end via float('inf'), with stable sort preserving their
+            # relative order.
+            unit_entries = []  # (orig_idx, item, unit_offset, base_id, unit_price)
             for item in items:
                 qty = int(item.get("quantity", 1) or 1)
                 base_id = item.get("id") or item.get("name") or "item"
                 unit = float(item.get("price") or 0)
+                indices = item.get("original_indices") or []
                 for i in range(qty):
-                    new_id = base_id if i == 0 else f"{base_id}_e{i}_{uuid.uuid4().hex[:6]}"
-                    # qty=1 → price_as_shown == unit price
-                    new_items.append({**item, "id": new_id, "quantity": 1, "price_as_shown": unit})
+                    idx = indices[i] if i < len(indices) else float("inf")
+                    unit_entries.append((idx, item, i, base_id, unit))
+
+            unit_entries.sort(key=lambda e: e[0])
+
+            new_items = []
+            for idx, item, i, base_id, unit in unit_entries:
+                # Preserve the original ID for the FIRST unit of each
+                # item so a clean ON→OFF→ON round-trip keeps canonical
+                # IDs. Additional units get derived IDs.
+                new_id = base_id if i == 0 else f"{base_id}_e{i}_{uuid.uuid4().hex[:6]}"
+                # Each unit carries its own original_indices=[idx] so
+                # subsequent group→expand cycles keep working.
+                unit_indices = [idx] if idx != float("inf") else []
+                new_items.append({
+                    **item,
+                    "id": new_id,
+                    "quantity": 1,
+                    "price_as_shown": unit,
+                    "original_indices": unit_indices,
+                })
         else:  # group
             groups = {}
             order = []
@@ -1387,14 +1410,17 @@ async def regroup_items_endpoint(session_id: str, request: Request):
                     price = 0.0
                 key = (name, price)
                 qty = int(item.get("quantity", 1) or 1)
+                item_indices = list(item.get("original_indices") or [])
                 if key not in groups:
                     # First item in a group keeps its ID — combined with
                     # the expand path's "i==0 keeps base_id", a clean
                     # ON→OFF→ON round-trip leaves the canonical IDs intact.
                     groups[key] = {**item, "quantity": qty}
+                    groups[key]["original_indices"] = item_indices
                     order.append(key)
                 else:
                     groups[key]["quantity"] = int(groups[key].get("quantity", 1) or 1) + qty
+                    groups[key]["original_indices"] = (groups[key].get("original_indices") or []) + item_indices
             new_items = []
             for k in order:
                 grouped_item = groups[k]
