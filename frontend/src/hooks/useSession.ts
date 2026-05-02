@@ -13,6 +13,7 @@ import {
   addItem,
   updateItem,
   deleteItem,
+  regroupItems,
   updateCharges,
   updateSubtotal,
   updateTotal,
@@ -63,6 +64,7 @@ export interface UseSessionReturn {
   addNewItem: (name: string, price: number, quantity: number) => Promise<boolean>;
   updateItemById: (itemId: string, updates: Partial<{ name: string; price: number; quantity: number; mode: "individual" | "grupal" }>) => Promise<boolean>;
   deleteItemById: (itemId: string) => Promise<boolean>;
+  regroupAllItems: (mode: "group" | "expand") => Promise<boolean>;
 
   // Assignment actions
   toggleAssignment: (itemId: string, participantId: string, currentlyAssigned: boolean) => Promise<boolean>;
@@ -553,6 +555,26 @@ export function useSession({
     [sessionId, ownerToken, session, markInteraction]
   );
 
+  // Group / expand the items list. Backend rebuilds the items array
+  // (different IDs) and clears assignments, so we refetch the session.
+  const regroupAllItems = useCallback(
+    async (mode: "group" | "expand"): Promise<boolean> => {
+      if (!ownerToken) return false;
+      markInteraction();
+      try {
+        await regroupItems(sessionId, ownerToken, mode);
+        // Refetch the session to pick up the new items + cleared assignments.
+        const fresh = await loadSession(sessionId);
+        if (fresh) setSession(fresh as SessionResponse);
+        return true;
+      } catch (err) {
+        console.error("Regroup items error:", err);
+        return false;
+      }
+    },
+    [sessionId, ownerToken, markInteraction]
+  );
+
   // Toggle assignment with optimistic update FIRST
   const toggleAssignment = useCallback(
     async (itemId: string, participantId: string, currentlyAssigned: boolean): Promise<boolean> => {
@@ -840,6 +862,7 @@ export function useSession({
     addNewItem,
     updateItemById,
     deleteItemById,
+    regroupAllItems,
     toggleAssignment,
     updateAssignmentQty,
     updateSessionCharges,

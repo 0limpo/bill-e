@@ -309,6 +309,21 @@ export async function deleteItem(
   });
 }
 
+/**
+ * Toggle the items list between grouped (collapsed by name+price) and
+ * expanded (one row per unit). Resets assignments because item IDs change.
+ */
+export async function regroupItems(
+  sessionId: string,
+  ownerToken: string,
+  mode: "group" | "expand"
+): Promise<{ success: boolean; items: unknown[]; mode: string }> {
+  return apiRequest(`/api/session/${sessionId}/items/regroup`, {
+    method: "POST",
+    body: JSON.stringify({ owner_token: ownerToken, mode }),
+  });
+}
+
 // --- Assignment Endpoints ---
 
 /**

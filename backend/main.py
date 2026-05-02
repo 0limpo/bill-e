@@ -1308,6 +1308,81 @@ async def delete_participant(session_id: str, participant_id: str, request: Requ
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/session/{session_id}/items/regroup")
+async def regroup_items_endpoint(session_id: str, request: Request):
+    """Switch the items list between grouped and expanded view.
+
+    mode="group":  merge consecutive items by (name, price), summing qty.
+    mode="expand": split each item with qty>1 into qty items with qty=1.
+
+    Clears assignments because item IDs change. Owner-only.
+    """
+    try:
+        data = await request.json()
+        owner_token = data.get("owner_token")
+        mode = data.get("mode")
+
+        if mode not in ("group", "expand"):
+            raise HTTPException(status_code=400, detail="mode must be 'group' or 'expand'")
+
+        session_data = get_collab_session(redis_client, session_id)
+        if not session_data:
+            raise HTTPException(status_code=404, detail="Sesion no encontrada")
+        if not verify_owner(session_data, owner_token):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+        items = session_data.get("items", []) or []
+
+        if mode == "expand":
+            new_items = []
+            for item in items:
+                qty = int(item.get("quantity", 1) or 1)
+                base_id = item.get("id") or item.get("name") or "item"
+                for i in range(qty):
+                    new_items.append({
+                        **item,
+                        "id": f"{base_id}_e{i}_{uuid.uuid4().hex[:6]}",
+                        "quantity": 1,
+                    })
+        else:  # group
+            groups = {}
+            order = []
+            for item in items:
+                # Group by case-insensitive name + numeric price
+                name = (item.get("name") or "").strip().lower()
+                try:
+                    price = float(item.get("price") or 0)
+                except (TypeError, ValueError):
+                    price = 0.0
+                key = (name, price)
+                qty = int(item.get("quantity", 1) or 1)
+                if key not in groups:
+                    groups[key] = {**item, "quantity": qty}
+                    order.append(key)
+                else:
+                    groups[key]["quantity"] = int(groups[key].get("quantity", 1) or 1) + qty
+            new_items = [groups[k] for k in order]
+
+        session_data["items"] = new_items
+        # IDs changed → previous assignments are no longer valid.
+        session_data["assignments"] = {}
+        session_data["last_updated"] = datetime.now().isoformat()
+        session_data["last_updated_by"] = "owner"
+
+        ttl = redis_client.ttl(f"session:{session_id}") if redis_client else 0
+        if redis_client and ttl > 0:
+            redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+        elif redis_client:
+            redis_client.setex(f"session:{session_id}", 86400, json.dumps(session_data))
+
+        return {"success": True, "items": new_items, "mode": mode}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.delete("/api/session/{session_id}/items/{item_id}")
 async def delete_item(session_id: str, item_id: str, request: Request):
     """Remove an item from the session (owner only)."""

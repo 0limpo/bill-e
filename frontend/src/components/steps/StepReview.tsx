@@ -80,6 +80,7 @@ interface StepReviewProps {
   billName?: string;
   onBillNameChange?: (name: string) => void;
   onRescan?: () => void;
+  onRegroup?: (mode: "group" | "expand") => Promise<void> | void;
   // Optional override — see StepAssign for the rationale.
   decimals?: number;
 }
@@ -99,10 +100,15 @@ export function StepReview({
   billName,
   onBillNameChange,
   onRescan,
+  onRegroup,
   decimals: decimalsProp,
 }: StepReviewProps) {
   const [expandedCharge, setExpandedCharge] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  // "Agrupar items" toggle. Default ON: items are merged by (name, price).
+  // OFF: each unit shown as its own row, in receipt order, at unit price.
+  const [grouped, setGrouped] = useState(true);
+  const [regrouping, setRegrouping] = useState(false);
   // Persistent step-gate modal state.
   // closed  = no modal showing
   // success = totals match: summary + Avanzar
@@ -347,6 +353,42 @@ export function StepReview({
           </div>
         ) : (
           <>
+            {/* Group toggle — lets the user split each unit onto its own
+                row to compare 1:1 with a non-deduplicated receipt. */}
+            {onRegroup && (
+              <div className="flex items-center justify-between mb-3 px-1">
+                <span className="text-xs text-muted-foreground">
+                  {t("items.groupToggle")}
+                </span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={grouped}
+                  disabled={regrouping}
+                  onClick={async () => {
+                    const next = !grouped;
+                    setRegrouping(true);
+                    try {
+                      await onRegroup(next ? "group" : "expand");
+                      setGrouped(next);
+                      setEditingItemId(null);
+                    } finally {
+                      setRegrouping(false);
+                    }
+                  }}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${
+                    grouped ? "bg-primary" : "bg-muted"
+                  } ${regrouping ? "opacity-60" : ""}`}
+                >
+                  <span
+                    className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      grouped ? "translate-x-5" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            )}
+
             {items.map((item) => {
               const itemId = item.id || item.name;
               const qty = item.quantity || 1;

@@ -148,6 +148,7 @@ export default function SessionPage() {
     addNewItem,
     updateItemById,
     deleteItemById,
+    regroupAllItems,
     updateSessionCharges,
     updateOriginalSubtotal,
     updateOriginalTotal,
@@ -1312,6 +1313,7 @@ export default function SessionPage() {
             billName={billName}
             onBillNameChange={handleBillNameChange}
             onRescan={() => router.push("/")}
+            onRegroup={async (mode) => { await regroupAllItems(mode); }}
             decimals={decimals}
           />
         )}
