@@ -31,7 +31,8 @@ def create_collaborative_session(
     number_format: Dict = None,
     price_mode: str = "unitario",
     device_id: str = "",
-    merchant_name: str = ""
+    merchant_name: str = "",
+    user_id: str = ""
 ) -> Dict[str, Any]:
     session_id = str(uuid.uuid4())[:8]
     owner_token = str(uuid.uuid4())
@@ -53,6 +54,7 @@ def create_collaborative_session(
         "owner_token": owner_token,
         "owner_phone": owner_phone,
         "owner_device_id": device_id,
+        "user_id": user_id or None,
         "merchant_name": merchant_name,
         "bill_name": merchant_name or "",
         "status": SessionStatus.ASSIGNING.value,
@@ -870,9 +872,11 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
             item = items_by_id.get(assignment_key)
             if not item:
                 continue
-            item_price = item.get("price", 0)
-            item_quantity = item.get("quantity", 1)
-            unit_price = item_price / item_quantity if item_quantity > 0 else item_price
+            # item.price is already the unit price (frontend stores precio
+            # unitario, OCR also stores it that way). Dividing by quantity
+            # again was treating it as a line total and undercharged every
+            # multi-quantity item.
+            unit_price = item.get("price", 0)
 
         item_quantity = item.get("quantity", 1)
 

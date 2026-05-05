@@ -192,14 +192,19 @@ export const calculateSubtotal = (
         const item = session.items.find(i => (i.id || i.name) === assignmentKey);
         if (item) {
           const numPeopleSharing = assigns.filter(a => a.quantity > 0).length;
+          const isGrupalMode = item.mode === "grupal";
 
-          if (numPeopleSharing > 1) {
-            // Shared item: multiple people sharing, divide total price among them
+          if (isGrupalMode && numPeopleSharing > 1) {
+            // Grupal: people share equally regardless of who got how many.
             const itemQty = item.quantity || 1;
             const totalItemPrice = item.price * itemQty;
             subtotal += totalItemPrice / numPeopleSharing;
           } else {
-            // Individual mode: this person has it alone
+            // Individual: each person pays for their assigned units, even
+            // when several people split a multi-quantity line. Splitting
+            // the whole line equally here was the cause of the per-person
+            // subtotals being off in the share view (one over, one under,
+            // sum stays correct).
             subtotal += item.price * (assignment.quantity || 0);
           }
         }
