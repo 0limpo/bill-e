@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Loader2, LogIn } from "lucide-react";
 import { createCollaborativeSession, getBillHistory, getDeviceId } from "@/lib/api";
-import { getStoredUser, clearAuth, setStoredUser, startOAuthLogin, handleAuthCallback, verifyToken, refreshStoredUser, type AuthUser } from "@/lib/auth";
+import { getStoredUser, clearAuth, setStoredUser, startOAuthLogin, handleAuthCallback, verifyToken, refreshStoredUser, ensureDeviceLinked, type AuthUser } from "@/lib/auth";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { getInitials } from "@/lib/billEngine";
@@ -128,7 +128,17 @@ export default function LandingPage() {
     // Then update from API in background
     const stored = getStoredUser();
     setUser(stored);
-    getBillHistory(getDeviceId(), stored?.id)
+
+    // If logged in but this device's id isn't in user.device_ids (PWA was
+    // reinstalled, storage cleared, etc.), link it silently and backfill
+    // any orphan bills created from here. Then refresh the count so newly
+    // recovered bills appear immediately.
+    ensureDeviceLinked()
+      .then(() => {
+        const refreshed = getStoredUser();
+        if (refreshed) setUser(refreshed);
+        return getBillHistory(getDeviceId(), refreshed?.id);
+      })
       .then((res) => {
         setBillCount(res.count);
         localStorage.setItem('bill-e-bill-count', String(res.count));

@@ -188,7 +188,7 @@ export default function DebugAuthPage() {
                 <tbody>
                   {data.visible_snapshots.map((s) => (
                     <tr key={s.session_id} className="border-b border-border/30">
-                      <td className="py-1 pr-2">{s.created_at?.slice(0, 10)}</td>
+                      <td className="py-1 pr-2">{formatLocalDate(s.created_at)}</td>
                       <td className="py-1 pr-2 font-mono">{s.host_device_id?.slice(0, 12)}…</td>
                       <td className="py-1 pr-2">{s.snapshot_user_id_set ? "sí" : "no"}</td>
                       <td className="py-1 text-primary">{s.matched_via?.join(", ")}</td>
@@ -221,7 +221,7 @@ export default function DebugAuthPage() {
                 <tbody>
                   {data.orphan_snapshots_for_current_device.map((s) => (
                     <tr key={s.session_id} className="border-b border-border/30">
-                      <td className="py-1 pr-2">{s.created_at?.slice(0, 10)}</td>
+                      <td className="py-1 pr-2">{formatLocalDate(s.created_at)}</td>
                       <td className="py-1 pr-2 font-mono">{s.session_id.slice(0, 12)}…</td>
                       <td className="py-1">{s.snapshot_user_id_set ? "sí" : "no"}</td>
                     </tr>
@@ -255,6 +255,18 @@ function Card({
       {children}
     </div>
   );
+}
+
+/**
+ * Render the snapshot's created_at in the user's local timezone (date only).
+ * Slicing the ISO string yields the UTC date, which can be off by a day for
+ * users in negative-offset timezones — confusing when diagnosing bills.
+ */
+function formatLocalDate(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso.slice(0, 10);
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "2-digit", day: "2-digit" });
 }
 
 function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {

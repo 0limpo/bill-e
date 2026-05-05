@@ -499,6 +499,28 @@ async def create_collaborative_session_endpoint(request: Request):
     try:
         data = await request.json()
         device_id = data.get("device_id", "")
+        auth_token = data.get("auth_token")
+
+        # Resolve user_id from auth_token. Setting it at session creation
+        # means the snapshot carries the user from the very first sync,
+        # so the bill is reachable cross-device immediately.
+        user_id = ""
+        if auth_token and auth_available:
+            try:
+                payload = oauth_auth.verify_session_token(auth_token)
+                if payload:
+                    user_id = payload.get("user_id") or payload.get("sub") or ""
+            except Exception:
+                user_id = ""
+
+        # If we resolved a user_id and have a device_id, link them — the
+        # user is creating bills from this device while logged in, so the
+        # device should belong to them going forward.
+        if postgres_available and user_id and device_id:
+            try:
+                postgres_db.link_device_to_user(user_id, device_id)
+            except Exception:
+                pass
 
         result = create_collaborative_session(
             redis_client=redis_client,
@@ -511,7 +533,8 @@ async def create_collaborative_session_endpoint(request: Request):
             charges=data.get("charges", []),
             decimal_places=data.get("decimal_places", 0),
             device_id=device_id,
-            merchant_name=data.get("merchant_name", "")
+            merchant_name=data.get("merchant_name", ""),
+            user_id=user_id
         )
 
         # Track user in PostgreSQL (host creating session)
@@ -910,6 +933,7 @@ async def finalize_session_endpoint(session_id: str, request: Request):
         data = await request.json()
         owner_token = data.get("owner_token")
         owner_email = data.get("owner_email")  # Optional - for email-based premium
+        auth_token = data.get("auth_token")    # Optional - JWT of logged-in user
 
         if not owner_token:
             raise HTTPException(status_code=400, detail="Token de owner requerido")
@@ -925,12 +949,40 @@ async def finalize_session_endpoint(session_id: str, request: Request):
                 session_data = get_collab_session(redis_client, session_id)
                 if session_data:
                     session_data["session_id"] = session_id
-                    # Enrich with user_id
-                    owner_device_id = session_data.get("owner_device_id")
-                    if owner_device_id and not session_data.get("user_id"):
-                        found_user_id = postgres_db.get_user_id_for_device(owner_device_id)
-                        if found_user_id:
-                            session_data["user_id"] = found_user_id
+
+                    # Resolve user_id, in priority order:
+                    # 1) Authenticated JWT on this request (most reliable —
+                    #    proves the user was actually logged in at finalize).
+                    # 2) user_id already on the session (set at creation).
+                    # 3) Fallback: lookup by owner_device_id in user.device_ids.
+                    auth_user_id = None
+                    if auth_token and auth_available:
+                        try:
+                            payload = oauth_auth.verify_session_token(auth_token)
+                            if payload:
+                                auth_user_id = payload.get("user_id") or payload.get("sub")
+                        except Exception:
+                            auth_user_id = None
+
+                    if auth_user_id:
+                        session_data["user_id"] = auth_user_id
+
+                        # Side-effect: link this device to the user. If their
+                        # device_id rotated (PWA reinstall, storage cleared)
+                        # we'd otherwise keep treating it as anonymous.
+                        owner_device_id = session_data.get("owner_device_id")
+                        if owner_device_id:
+                            try:
+                                postgres_db.link_device_to_user(auth_user_id, owner_device_id)
+                            except Exception:
+                                pass
+                    elif not session_data.get("user_id"):
+                        owner_device_id = session_data.get("owner_device_id")
+                        if owner_device_id:
+                            found_user_id = postgres_db.get_user_id_for_device(owner_device_id)
+                            if found_user_id:
+                                session_data["user_id"] = found_user_id
+
                     ttl = redis_client.ttl(f"session:{session_id}")
                     postgres_db.upsert_session_snapshot(session_data, redis_ttl=ttl)
             except Exception as sync_err:

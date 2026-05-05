@@ -148,6 +148,49 @@ export async function linkDeviceToAccount(
 }
 
 /**
+ * Ensure the current device is linked to the logged-in user. Safe to call
+ * on every app startup — short-circuits when nothing to do.
+ *
+ * Why we need this on top of OAuth's own device-linking:
+ * - PWAs can lose localStorage (reinstall, "clear site data", a different
+ *   browser engine on Android, etc.). When the device_id rotates, the
+ *   stored auth token still works, but the new device_id is not in
+ *   user.device_ids. Bills created from this device while logged in then
+ *   only carry user_id if it was set on the snapshot — and they never
+ *   show up via the device-id lookup on other devices.
+ * - We use /api/auth/claim-device instead of /api/auth/link-device because
+ *   claim-device also backfills snapshot.user_id for orphan bills already
+ *   created on this device. That recovers historic bills automatically.
+ */
+export async function ensureDeviceLinked(): Promise<void> {
+  if (typeof window === "undefined") return;
+  const user = getStoredUser();
+  const token = getStoredToken();
+  if (!user || !token) return;
+
+  // Lazy device_id read to avoid pulling api.ts (would create a cycle).
+  const deviceId = localStorage.getItem("bill-e-device-id");
+  if (!deviceId) return;
+
+  if (user.device_ids?.includes(deviceId)) return;
+
+  try {
+    const response = await fetch(`${API_URL}/api/auth/claim-device`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, device_id: deviceId }),
+    });
+    if (!response.ok) return;
+    const json = await response.json();
+    if (Array.isArray(json.device_ids)) {
+      setStoredUser({ ...user, device_ids: json.device_ids });
+    }
+  } catch {
+    // Best effort. Silent failure means next startup retries.
+  }
+}
+
+/**
  * Restore premium from user account to current device
  */
 export async function restorePremiumToDevice(

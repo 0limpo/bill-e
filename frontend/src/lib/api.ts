@@ -103,6 +103,18 @@ export function getDeviceId(): string {
   return deviceId;
 }
 
+/**
+ * Read the stored OAuth session token, if any. Inlined here (rather than
+ * importing from `auth.ts`) to avoid a circular dependency. Used to attach
+ * the user's identity to session-creation and finalize calls so the backend
+ * can tag the snapshot with user_id from the start — making the bill
+ * reachable from any device the user is logged in on.
+ */
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("bill-e-auth-token");
+}
+
 export class ApiError extends Error {
   status: number;
   constructor(status: number, body: string) {
@@ -422,11 +434,13 @@ export async function finalizeSession(
   ownerToken: string,
   ownerEmail?: string
 ): Promise<FinalizeSessionResponse> {
+  const authToken = getAuthToken();
   return apiRequest(`/api/session/${sessionId}/finalize`, {
     method: "POST",
     body: JSON.stringify({
       owner_token: ownerToken,
       ...(ownerEmail && { owner_email: ownerEmail }),
+      ...(authToken && { auth_token: authToken }),
     }),
   });
 }
@@ -534,9 +548,14 @@ export async function createCollaborativeSession(
   }
 ): Promise<{ session_id: string; owner_token: string; frontend_url: string }> {
   const deviceId = getDeviceId();
+  const authToken = getAuthToken();
   return apiRequest("/api/session/collaborative", {
     method: "POST",
-    body: JSON.stringify({ ...data, device_id: deviceId }),
+    body: JSON.stringify({
+      ...data,
+      device_id: deviceId,
+      ...(authToken && { auth_token: authToken }),
+    }),
   });
 }
 
