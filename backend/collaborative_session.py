@@ -858,43 +858,60 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
         unit_match = re.match(r'^(.+)_unit_(\d+)$', assignment_key)
 
         if unit_match:
-            # Unit assignment - find parent item
+            # Unit assignment: ESTA unidad específica se reparte entre los
+            # N participantes que la marcaron. Cada uno paga unit_price/N
+            # (la qty del assignment es siempre 1 en este caso).
             base_item_id = unit_match.group(1)
             item = items_by_id.get(base_item_id)
             if not item:
                 continue
-            # Unit price is the item's price (already per unit in frontend)
             unit_price = item.get("price", 0)
+            mode = "per_unit"
         else:
-            # Regular item assignment - skip if item has unit assignments (avoid double-counting)
+            # Skip if item has unit assignments (handled above per-unit, would
+            # double-count if we processed the base id too).
             if assignment_key in items_with_unit_assignments:
                 continue
             item = items_by_id.get(assignment_key)
             if not item:
                 continue
-            # item.price is already the unit price (frontend stores precio
-            # unitario, OCR also stores it that way). Dividing by quantity
-            # again was treating it as a line total and undercharged every
-            # multi-quantity item.
+            # item.price is already the unit price (frontend + OCR both
+            # store unit price, not line total).
             unit_price = item.get("price", 0)
+            # Grupal: el line total se reparte equitativamente entre todos
+            # los asignados, sin importar la qty individual de cada uno.
+            # Individual: cada uno paga por las unidades que tomó.
+            mode = "grupal" if item.get("mode") == "grupal" else "individual"
 
         item_quantity = item.get("quantity", 1)
+        num_sharers = sum(1 for a in item_assignments if a.get("quantity", 0) > 0)
 
         for assignment in item_assignments:
             p_id = assignment["participant_id"]
             qty = assignment.get("quantity", 1)
+            if p_id not in participant_subtotals or qty <= 0:
+                continue
 
-            if p_id in participant_subtotals:
+            if mode == "per_unit":
+                # Una unidad dividida entre N. La qty del assignment es 1
+                # (representa "yo me sumo a esta unidad"), no cantidad real.
+                amount = unit_price / max(1, num_sharers)
+            elif mode == "grupal" and num_sharers > 1:
+                line_total = unit_price * item_quantity
+                amount = line_total / num_sharers
+            else:
+                # Individual (default): el usuario paga por sus unidades.
                 amount = unit_price * qty
-                participant_subtotals[p_id] += amount
-                participant_items[p_id].append({
-                    "name": item.get("name", "Item"),
-                    "quantity": qty,
-                    "total_quantity": item_quantity,
-                    "amount": amount,
-                    "shared": len(item_assignments) > 1,
-                    "is_unit": unit_match is not None
-                })
+
+            participant_subtotals[p_id] += amount
+            participant_items[p_id].append({
+                "name": item.get("name", "Item"),
+                "quantity": qty,
+                "total_quantity": item_quantity,
+                "amount": amount,
+                "shared": num_sharers > 1,
+                "is_unit": unit_match is not None
+            })
 
     total_subtotal = sum(participant_subtotals.values())
     total_tip = session_data.get("tip") or 0
@@ -929,8 +946,16 @@ def calculate_totals(session_data: Dict) -> List[Dict]:
             else:
                 charge_amount = value
 
-            # Apply distribution
-            if distribution == "per_person":
+            # Apply distribution. Three modes, mirroring billEngine.ts:
+            #   - fixed_per_person: each participant pays the full charge
+            #     (e.g. cubierto fijo por persona).
+            #   - per_person:       split the charge equally between everyone.
+            #   - proportional (default): split by share of the subtotal.
+            # Without the fixed_per_person branch this fell through to
+            # proportional and silently undercharged.
+            if distribution == "fixed_per_person":
+                participant_charge = charge_amount
+            elif distribution == "per_person":
                 participant_charge = charge_amount / num_participants if num_participants > 0 else 0
             else:
                 participant_charge = charge_amount * ratio
