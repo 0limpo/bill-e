@@ -534,7 +534,8 @@ async def create_collaborative_session_endpoint(request: Request):
             decimal_places=data.get("decimal_places", 0),
             device_id=device_id,
             merchant_name=data.get("merchant_name", ""),
-            user_id=user_id
+            user_id=user_id,
+            items_include_charges=data.get("items_include_charges", False),
         )
 
         # Track user in PostgreSQL (host creating session)
@@ -594,6 +595,7 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
             "decimal_places": session_data.get("decimal_places", 0),  # 0 for CLP, 2 for USD
             "number_format": session_data.get("number_format", {"thousands": ",", "decimal": "."}),
             "price_mode": session_data.get("price_mode", "unitario"),  # 'unitario' o 'total_linea'
+            "items_include_charges": session_data.get("items_include_charges", False),  # IVA/tax incluido en items
             "bill_cost_shared": session_data.get("bill_cost_shared", False),  # Whether to share Bill-e cost
             "bill_name": session_data.get("bill_name", ""),
             "merchant_name": session_data.get("merchant_name", ""),

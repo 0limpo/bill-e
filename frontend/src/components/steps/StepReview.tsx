@@ -121,6 +121,12 @@ interface StepReviewProps {
   charges: Charge[];
   originalSubtotal?: number;
   originalTotal?: number;
+  // Cuando true, los precios de items ya incluyen los cargos referenciados
+  // (típico boleta UE/LATAM con IVA incluido). En ese caso ocultamos del
+  // listado los cargos `included_in_items`, escondemos la fila "Subtotal"
+  // (porque sería confusa: items_sum != subtotal_impreso pre-tax) y solo
+  // evaluamos el match del total para el gate modal.
+  itemsIncludeCharges?: boolean;
   priceMode?: "unitario" | "total_linea";
   onOriginalSubtotalChange?: (value: number) => void;
   onOriginalTotalChange?: (value: number) => void;
@@ -141,6 +147,7 @@ export function StepReview({
   charges,
   originalSubtotal,
   originalTotal,
+  itemsIncludeCharges = false,
   priceMode = "unitario",
   onOriginalSubtotalChange,
   onOriginalTotalChange,
@@ -215,10 +222,18 @@ export function StepReview({
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // Calculate totals
+  // Cuando los items ya incluyen el tax/IVA, ocultamos del listado los cargos
+  // marcados como included_in_items (solo visualmente — los datos crudos quedan
+  // intactos en el state). Cargos NO incluidos (propina aparte) siguen visibles.
+  const visibleCharges = itemsIncludeCharges
+    ? charges.filter((c) => !c.included_in_items)
+    : charges;
+
+  // Calculate totals usando solo cargos visibles (los included_in_items ya están
+  // dentro de items.price, sumarlos generaría doble conteo).
   const subtotal = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
 
-  const chargesAmount = charges.reduce((sum, charge) => {
+  const chargesAmount = visibleCharges.reduce((sum, charge) => {
     const amount = charge.valueType === "percent"
       ? (subtotal * charge.value) / 100
       : charge.value;
@@ -227,27 +242,38 @@ export function StepReview({
 
   const total = subtotal + chargesAmount;
 
-  // Check if values match for celebration
+  // Match logic. Cuando hay tax incluido en items, originalSubtotal del backend
+  // es la base imponible pre-tax (no coincide con sum(items) que ya tiene tax).
+  // Por eso ignoramos subtotalMatches en ese caso y solo evaluamos totalMatches.
   const subtotalMatches = originalSubtotal !== undefined && originalSubtotal > 0 && Math.abs(subtotal - originalSubtotal) < 1;
   const totalMatches = originalTotal !== undefined && originalTotal > 0 && Math.abs(total - originalTotal) < 1;
-  const hasVerificationData = (originalSubtotal !== undefined && originalSubtotal > 0) || (originalTotal !== undefined && originalTotal > 0);
-  const isMatch = subtotalMatches && (originalTotal === undefined || originalTotal === 0 || totalMatches);
+  const hasVerificationData = itemsIncludeCharges
+    ? (originalTotal !== undefined && originalTotal > 0)
+    : (originalSubtotal !== undefined && originalSubtotal > 0) || (originalTotal !== undefined && originalTotal > 0);
+  const isMatch = itemsIncludeCharges
+    ? totalMatches
+    : subtotalMatches && (originalTotal === undefined || originalTotal === 0 || totalMatches);
 
   // Auto-open the gate modal once after the OCR result lands.
   // success when totals match, error when they do not. Skips when there
   // is no verification reference (no original subtotal/total scanned).
+  // Wait until verification data is available before consuming the one-shot
+  // ref — items can land before subtotal/total in the session payload.
   useEffect(() => {
     if (initialEvaluationRef.current) return;
     if (items.length === 0) return;
-    initialEvaluationRef.current = true;
+    if (!hasVerificationData) return;
     const tmr = setTimeout(() => {
-      if (hasVerificationData) {
-        if (isMatch) {
-          setGateState("success");
-          playCelebrationSound();
-        } else {
-          setGateState("error");
-        }
+      // Set the ref INSIDE the timer so that if React StrictMode (dev) does
+      // mount → unmount → mount, the cleanup cancels this timer and the ref
+      // is still false on remount, allowing the second run to re-schedule.
+      if (initialEvaluationRef.current) return;
+      initialEvaluationRef.current = true;
+      if (isMatch) {
+        setGateState("success");
+        playCelebrationSound();
+      } else {
+        setGateState("error");
       }
       prevMatchRef.current = isMatch;
     }, 900);
@@ -567,11 +593,14 @@ export function StepReview({
               {t("items.addManualItem")}
             </button>
 
-            {/* Subtotal */}
-            <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
-              <span>{t("totals.subtotal")}</span>
-              <span>{fmt(subtotal)}</span>
-            </div>
+{/* Subtotal — oculto cuando los items ya incluyen tax (sería confuso
+                vs el subtotal pre-tax que viene de la boleta). */}
+            {!itemsIncludeCharges && (
+              <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
+                <span>{t("totals.subtotal")}</span>
+                <span>{fmt(subtotal)}</span>
+              </div>
+            )}
           </>
         )}
 
@@ -583,8 +612,8 @@ export function StepReview({
           <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
         </div>
 
-        {/* Charges */}
-        {charges.map((charge) => {
+        {/* Charges (filtramos los included_in_items cuando aplica) */}
+        {visibleCharges.map((charge) => {
           const amount = charge.valueType === "percent"
             ? (subtotal * charge.value) / 100
             : charge.value;
@@ -740,7 +769,7 @@ export function StepReview({
             <div className="head">{t("verify.calc")}</div>
             <div className="head">{t("verify.scanned")}</div>
 
-            {originalSubtotal !== undefined && originalSubtotal > 0 && (
+            {!itemsIncludeCharges && originalSubtotal !== undefined && originalSubtotal > 0 && (
               <>
                 <div className="row-label">
                   {subtotalMatches ? (
@@ -817,7 +846,7 @@ export function StepReview({
         subtitle={gateState === "error"
           ? buildErrorSubtitle({ subtotal, total, originalSubtotal, originalTotal, fmt, t })
           : t("gate.review.successSubtitle")}
-        checklist={gateState === "success" ? buildSuccessChecklist({ items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, fmt, t }) : undefined}
+        checklist={gateState === "success" ? buildSuccessChecklist({ items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, itemsIncludeCharges, fmt, t }) : undefined}
         compare={gateState === "error" ? buildCompareBlock({ subtotal, total, originalSubtotal, originalTotal, fmt, t }) : undefined}
         hintsHeader={gateState === "error" ? t("gate.review.hintsHeader") : undefined}
         hints={gateState === "error" ? [
@@ -893,13 +922,16 @@ function buildSuccessChecklist(args: {
   originalTotal?: number;
   subtotalMatches: boolean;
   totalMatches: boolean;
+  itemsIncludeCharges?: boolean;
   fmt: (n: number) => string;
   t: (key: string) => string;
 }): StepGateChecklistItem[] {
-  const { items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, fmt, t } = args;
+  const { items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, itemsIncludeCharges, fmt, t } = args;
   const list: StepGateChecklistItem[] = [];
   list.push({ ok: true, label: t("gate.review.itemsLabel").replace("{count}", String(items.length)), detail: fmt(subtotal) });
-  if (originalSubtotal !== undefined && originalSubtotal > 0) {
+  // Si los items ya incluyen tax, omitimos el check de subtotal — el subtotal
+  // pre-tax de la boleta no coincide con la suma de items y confunde al usuario.
+  if (!itemsIncludeCharges && originalSubtotal !== undefined && originalSubtotal > 0) {
     list.push({ ok: subtotalMatches, label: t("gate.review.subtotalOk"), detail: fmt(subtotal) });
   }
   if (originalTotal !== undefined && originalTotal > 0) {

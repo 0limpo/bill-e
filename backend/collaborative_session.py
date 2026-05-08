@@ -32,7 +32,8 @@ def create_collaborative_session(
     price_mode: str = "unitario",
     device_id: str = "",
     merchant_name: str = "",
-    user_id: str = ""
+    user_id: str = "",
+    items_include_charges: bool = False,
 ) -> Dict[str, Any]:
     session_id = str(uuid.uuid4())[:8]
     owner_token = str(uuid.uuid4())
@@ -72,6 +73,7 @@ def create_collaborative_session(
         "number_format": number_format or {"thousands": ",", "decimal": "."},
         "price_mode": price_mode,
         "raw_text": raw_text,
+        "items_include_charges": items_include_charges,
         "bill_cost_shared": False,  # Whether to divide Bill-e cost among participants
         "participants": [
             {

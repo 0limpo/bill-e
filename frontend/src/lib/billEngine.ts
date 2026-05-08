@@ -33,6 +33,9 @@ export interface Charge {
   isDiscount: boolean;
   distribution?: 'proportional' | 'per_person' | 'fixed_per_person';
   calculatedAmount?: number;
+  // True cuando el cargo ya está dentro de los precios de items (ej. IVA UE).
+  // El UI lo oculta del listado y excluye del cálculo de totales.
+  included_in_items?: boolean;
 }
 
 export interface Participant {

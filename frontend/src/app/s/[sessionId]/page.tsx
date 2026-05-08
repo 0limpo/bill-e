@@ -447,7 +447,10 @@ export default function SessionPage() {
     valueType: c.valueType,
     isDiscount: c.isDiscount,
     distribution: c.distribution,
+    included_in_items: c.included_in_items,
   }));
+
+  const itemsIncludeCharges = session?.items_include_charges ?? false;
 
   const participants: Participant[] = (session?.participants || []).map((p) => ({
     id: p.id,
@@ -1306,6 +1309,7 @@ export default function SessionPage() {
             charges={charges}
             originalSubtotal={session?.subtotal}
             originalTotal={session?.total}
+            itemsIncludeCharges={itemsIncludeCharges}
             priceMode={priceMode}
             onOriginalSubtotalChange={updateOriginalSubtotal}
             onOriginalTotalChange={updateOriginalTotal}

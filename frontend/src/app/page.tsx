@@ -290,6 +290,7 @@ export default function LandingPage() {
         raw_text: data.raw_text || "",
         decimal_places: data.decimal_places || 0,
         merchant_name: data.merchant_name || "",
+        items_include_charges: data.items_include_charges || false,
       });
 
       // Save session for "continue" feature
