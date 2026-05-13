@@ -12,6 +12,15 @@ from typing import Dict, Any, Optional, List
 from difflib import SequenceMatcher
 import google.generativeai as genai
 
+from prompt_v3 import (
+    Boleta,
+    PROMPT_V3,
+    boleta_to_bill_e,
+    flatten_schema,
+)
+
+_RESPONSE_SCHEMA = flatten_schema(Boleta.model_json_schema())  # v3 + thousand-sep override + valor_impreso fallback
+
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -166,11 +175,16 @@ class GeminiOCRService:
 
         try:
             genai.configure(api_key=self.api_key)
+            # flash-lite para validacion rapida (is_receipt) — barato.
             self.model = genai.GenerativeModel('gemini-2.5-flash-lite')
-            logger.info("✅ Gemini OCR Service inicializado correctamente")
+            # flash para extraccion estructurada con prompt v3 — flash-lite no
+            # da el accuracy necesario con el schema rico (cae a ~68%).
+            self.extraction_model = genai.GenerativeModel('gemini-2.5-flash')
+            logger.info("✅ Gemini OCR Service inicializado (validation=flash-lite, extraction=flash)")
         except Exception as e:
             logger.error(f"❌ Error inicializando Gemini: {str(e)}")
             self.model = None
+            self.extraction_model = None
 
     def is_receipt(self, image_bytes: bytes) -> bool:
         """
@@ -298,85 +312,62 @@ class GeminiOCRService:
 
     def process_image_structured(self, image_bytes: bytes) -> Optional[Dict[str, Any]]:
         """
-        Procesa una imagen de boleta usando Gemini y retorna JSON estructurado.
+        Procesa una imagen de boleta con prompt v3 + schema estructurado.
 
-        Args:
-            image_bytes: Bytes de la imagen
+        Pipeline:
+          1) Llama a gemini-2.5-flash con PROMPT_V3 + response_schema (Boleta).
+          2) Parsea el JSON estructurado, lo adapta al formato interno via boleta_to_bill_e.
+          3) Aplica post-proc (tip→percent, thousand-sep, dedup).
+          4) Aplica R1: needs_review solo si total mismatch O (sub mismatch SIN explicacion).
 
         Returns:
-            Dict con total, subtotal, propina e items o None si falla
+            Dict con total, subtotal, items, charges o None si falla.
         """
-        if not self.model:
-            logger.error("Gemini model no disponible")
+        if not self.extraction_model:
+            logger.error("Gemini extraction model no disponible")
             return None
 
         try:
-            # Convertir bytes a formato que Gemini entiende
             import PIL.Image
             import io
             image = PIL.Image.open(io.BytesIO(image_bytes))
 
-            # Prompt simplificado - extracción de datos, validación en Python
-            prompt = """Extrae los datos de esta boleta y retorna JSON:
-
-{
-  "nombre_comercio": "Restaurante El Parrón",
-  "precio_modo": "unitario",
-  "moneda_tiene_decimales": false,
-  "items": [
-    {"nombre": "Coca Cola", "cantidad": 2, "precio": 4000}
-  ],
-  "cargos": [
-    {"nombre": "Propina 10%", "tipo": "percent", "valor": 10, "es_descuento": false}
-  ],
-  "subtotal": 50000,
-  "total": 55000
-}
-
-DEFINICIONES:
-- nombre_comercio: nombre del restaurante, tienda o comercio (usualmente en las primeras líneas de la boleta). Vacío si no se detecta.
-- precio_modo: "unitario" si la boleta muestra precio por unidad, "total_linea" si muestra el total de la línea (cantidad × precio)
-- moneda_tiene_decimales: true solo si la moneda usa centavos (USD, EUR, se ven como X.YY en la boleta); false para monedas sin centavos (CLP, MXN, se ven como enteros o con separador de miles X.YYY)
-- items: productos consumidos (comida, bebida, servicios)
-- precio: el valor TAL CUAL aparece en la boleta (sin modificar). Si la boleta muestra $7000 para 2 cervezas, poner 7000
-- cargos: todo lo que suma o resta al subtotal DESPUÉS de los items:
-  * Propinas (tip, gratuity, propina sugerida)
-  * Impuestos (IVA, tax, sales tax)
-  * Descuentos (promo, happy hour, cupón)
-  * Recargos (service charge, cover)
-- tipo: "percent" si es porcentaje del subtotal, "fixed" si es monto fijo
-- es_descuento: true si resta, false si suma
-
-FORMATO NUMÉRICO:
-- NUNCA uses separador de miles (ni punto ni coma)
-- Si la moneda NO tiene decimales: números enteros (2500, no 2.500)
-- Si la moneda SÍ tiene decimales: usa punto decimal con máximo 2 dígitos (8.50)
-
-Retorna SOLO el JSON, sin explicaciones."""
-
-            logger.info("🤖 Enviando imagen a Gemini para análisis estructurado...")
-            response = self.model.generate_content(
-                [prompt, image],
-                generation_config={"temperature": 0},
+            logger.info("🤖 Enviando imagen a Gemini (flash + v3 schema)...")
+            response = self.extraction_model.generate_content(
+                [PROMPT_V3, image],
+                generation_config={
+                    "temperature": 0,
+                    "response_mime_type": "application/json",
+                    "response_schema": _RESPONSE_SCHEMA,
+                },
             )
 
             if response and response.text:
                 response_text = response.text.strip()
                 logger.info(f"✅ Gemini retornó {len(response_text)} caracteres")
-
-                # Limpiar respuesta (remover markdown si existe)
-                if response_text.startswith('```'):
-                    lines = response_text.split('\n')
-                    # Remover primera línea (```json) y última (```)
-                    response_text = '\n'.join(lines[1:-1])
-
-                # Log raw response from Gemini
                 logger.info(f"📄 Gemini RAW response:\n{response_text}")
 
-                # Parsear JSON
-                data = json.loads(response_text)
+                # Defensa: con response_mime_type=application/json el modelo
+                # devuelve JSON puro, pero por si algun fallback envuelve en
+                # markdown, lo limpiamos.
+                if response_text.startswith('```'):
+                    lines = response_text.split('\n')
+                    response_text = '\n'.join(lines[1:-1])
 
-                # Validar estructura mínima
+                # Pre-parse signal: contar numeros con 3 decimales (\d+\.\d{3}).
+                # En consumer prices reales con decimales (USD/EUR), los precios
+                # terminan en 2 digitos (1.99, 4.50). 3 digitos despues del punto
+                # es practicamente siempre separador de miles mal usado por el
+                # modelo (ej. CLP "3.760" leido como float 3.76, perdiendo el 0).
+                # Capturamos esto ANTES de json.loads porque el float lo destruye.
+                _three_decimal_count = len(re.findall(r'\d+\.\d{3}\b', response_text))
+                _two_decimal_count = len(re.findall(r'\d+\.\d{2}\b(?!\d)', response_text))
+
+                boleta_dict = json.loads(response_text)
+
+                # Adaptar Boleta -> formato interno Bill-e
+                data = boleta_to_bill_e(boleta_dict)
+
                 if 'total' in data and 'items' in data:
                     # Obtener modo de precio (unitario o total_linea)
                     price_mode = data.get('precio_modo') or 'unitario'
@@ -395,15 +386,33 @@ Retorna SOLO el JSON, sin explicaciones."""
                         else:
                             unit_price = price_from_receipt
 
+                        # price_as_shown = valor TAL CUAL aparece impreso en la boleta.
+                        # Para v3, el adapter ya convirtio a unitario internamente, asi
+                        # que `precio` no es el impreso. Usamos `_total_linea` (lo impreso
+                        # en la columna numerica) cuando exista. Para v1, _total_linea
+                        # no existe y caemos a price_from_receipt (igual que antes).
+                        price_as_shown = item.get('_total_linea')
+                        if price_as_shown is None:
+                            price_as_shown = price_from_receipt
+
                         items.append({
                             'name': item.get('nombre') or '',
                             'price': unit_price,  # Siempre guardamos precio unitario internamente
-                            'price_as_shown': price_from_receipt,  # Precio tal cual aparece en boleta
+                            'price_as_shown': price_as_shown,
                             'quantity': quantity
                         })
 
-                    # Convertir cargos de Gemini al formato interno
-                    # Todos los cargos (propina, taxes, etc.) se manejan igual
+                    # Set de IDs de cargos referenciados como "incluidos" en items.
+                    # Lo populamos solo para v3 (donde el adapter agrega `_incluye_ids`).
+                    _included_charge_ids = set()
+                    for it in data.get('items') or []:
+                        for cid in (it.get('_incluye_ids') or []):
+                            _included_charge_ids.add(cid)
+
+                    # Convertir cargos de Gemini al formato interno.
+                    # included_in_items=true marca cargos cuyo monto YA esta dentro
+                    # de los precios de items (ej. IVA UE/LATAM). El frontend los
+                    # oculta de la lista visual y excluye del calculo de total.
                     charges = []
 
                     for i, cargo in enumerate(data.get('cargos') or data.get('charges') or []):
@@ -412,6 +421,8 @@ Retorna SOLO el JSON, sin explicaciones."""
                         # Soportar 'tipo' (nuevo) y 'tipo_valor' (legacy)
                         tipo = cargo.get('tipo') or cargo.get('tipo_valor') or 'fixed'
                         es_descuento = cargo.get('es_descuento') or False
+                        cargo_id = cargo.get('_id')
+                        included = bool(cargo_id and cargo_id in _included_charge_ids)
 
                         # Todos los cargos usan distribución proporcional al consumo
                         distribution = 'proportional'
@@ -422,7 +433,9 @@ Retorna SOLO el JSON, sin explicaciones."""
                             'value': valor,
                             'valueType': tipo,
                             'isDiscount': es_descuento,
-                            'distribution': distribution
+                            'distribution': distribution,
+                            'included_in_items': included,
+                            '_valor_impreso': cargo.get('_valor_impreso'),
                         })
 
                     # === POST-PROCESAMIENTO: Convertir propinas fijas a porcentaje ===
@@ -452,54 +465,36 @@ Retorna SOLO el JSON, sin explicaciones."""
                     # Calcular suma de items
                     items_sum = sum(it['price'] * it['quantity'] for it in items)
 
-                    # Verificar si suma de items ≈ subtotal (tolerancia 2%)
+                    # Verificar si suma de items ≈ subtotal (tolerancia 2%).
+                    # En v3 el adapter ya hace la conversión `precio_tipo='total' → unitario`
+                    # por línea, así que NO aplicamos la heurística legacy de "dividir
+                    # por qty si no cuadra" — esa rompía boletas con descuentos globales
+                    # o tax incluido (donde el mismatch es por diseño, no por error de
+                    # precio_modo). La decisión final de needs_review se hace en el
+                    # bloque R1 más abajo.
                     tolerance = 0.02
                     diff_ratio = abs(items_sum - subtotal) / subtotal if subtotal > 0 else 0
 
                     needs_review = False
                     review_message = None
 
-                    if diff_ratio > tolerance and subtotal > 0:
-                        # Intentar corregir: quizás los precios son totales de línea
-                        # Para items con cantidad > 1, probar dividir
-                        corrected_items = []
-                        for it in items:
-                            if it['quantity'] > 1:
-                                original_price = it.get('price_as_shown') or it['price']
-                                # Probar si dividir el precio hace que cuadre mejor
-                                corrected_items.append({
-                                    'name': it['name'],
-                                    'price': it['price'] / it['quantity'],
-                                    'price_as_shown': original_price,  # Preservar precio original
-                                    'quantity': it['quantity']
-                                })
-                            else:
-                                corrected_items.append(it)
-
-                        corrected_sum = sum(it['price'] * it['quantity'] for it in corrected_items)
-                        corrected_diff = abs(corrected_sum - subtotal) / subtotal if subtotal > 0 else 0
-
-                        if corrected_diff < diff_ratio:
-                            # La corrección mejoró, usar items corregidos
-                            logger.info(f"🔧 Corrección aplicada: precios eran totales de línea")
-                            logger.info(f"   Antes: Σitems=${items_sum}, Subtotal=${subtotal}, Diff={diff_ratio*100:.1f}%")
-                            logger.info(f"   Después: Σitems=${corrected_sum}, Diff={corrected_diff*100:.1f}%")
-                            items = corrected_items
-                            items_sum = corrected_sum
-                            diff_ratio = corrected_diff
-                            # Actualizar price_mode ya que detectamos que eran totales de línea
-                            price_mode = 'total_linea'
-                            logger.info(f"   price_mode actualizado a 'total_linea'")
-
-                        # Si aún no cuadra, marcar para revisión
-                        if diff_ratio > tolerance:
-                            needs_review = True
-                            review_message = f"Suma de items (${items_sum}) difiere del subtotal (${subtotal}) en {diff_ratio*100:.1f}%"
-                            logger.warning(f"⚠️ {review_message}")
-
                     # Usar moneda_tiene_decimales de Gemini si está disponible
                     # Esto es más confiable que detectar por los valores
                     currency_has_decimals = data.get('moneda_tiene_decimales', None)
+
+                    # Override del flag del modelo cuando la evidencia raw del
+                    # JSON contradice. 3 decimales en consumer prices es casi
+                    # siempre thousand-sep mal usado (LATAM "3.760" leido como
+                    # float 3.76). Si hay >=3 numeros con 3 decimales y dominan
+                    # sobre los de 2 decimales, forzamos currency=false.
+                    if _three_decimal_count >= 3 and _three_decimal_count >= _two_decimal_count:
+                        if currency_has_decimals is True:
+                            logger.warning(
+                                f"⚠️  Modelo declaró moneda_tiene_decimales=true pero hay "
+                                f"{_three_decimal_count} numeros con 3 decimales (vs "
+                                f"{_two_decimal_count} con 2). Override a false."
+                            )
+                            currency_has_decimals = False
 
                     # Post-procesamiento: detectar si los precios parecen usar punto como separador de miles
                     # Esto ocurre cuando Gemini devuelve 2.500 (que JSON parsea como 2.5) en lugar de 2500
@@ -568,6 +563,105 @@ Retorna SOLO el JSON, sin explicaciones."""
                     # Formato numérico por defecto (chileno)
                     number_format = {'thousands': '.', 'decimal': ','}
 
+                    # === R1 — needs_review con lógica conservadora ===
+                    # passes_subtotal: items_sum ≈ subtotal_impreso (None si subtotal=0)
+                    # passes_total: items_sum + cargos_aplicados ≈ total (None si total=0)
+                    # cargos_aplicados=0 cuando items YA incluyen cargos (precios_items_incluyen_cargos).
+                    # R1 conservador: pass si passes_total=True Y (passes_subtotal=True
+                    # O hay razon para sub mismatch — descuento listado o tax incluido).
+                    items_include_charges = bool(data.get('precios_items_incluyen_cargos', False))
+                    has_discount_listed = any(c.get('isDiscount') for c in charges)
+                    sub_explicado = items_include_charges or has_discount_listed
+
+                    passes_subtotal = None
+                    if subtotal and subtotal > 0:
+                        passes_subtotal = (abs(items_sum - subtotal) / subtotal) <= tolerance
+
+                    applied_charges = 0.0
+                    if not items_include_charges:
+                        for ch in charges:
+                            v = ch.get('value') or 0
+                            is_disc = ch.get('isDiscount') or False
+                            magnitude = abs(v) if is_disc else v
+                            if ch.get('valueType') == 'percent':
+                                amt = items_sum * magnitude / 100
+                            else:
+                                amt = magnitude
+                            applied_charges += -amt if is_disc else amt
+                    computed_total = items_sum + applied_charges
+
+                    passes_total = None
+                    if total and total > 0:
+                        passes_total = (abs(computed_total - total) / total) <= tolerance
+
+                    # Fallback edge case: cuando el total no cuadra Y hay cargos %
+                    # cuyo cálculo (% × subtotal) no coincide con el `_valor_impreso`
+                    # que reportó Gemini, usamos `_valor_impreso` como fuente de
+                    # verdad. Convertimos esos cargos a fixed con ese valor y
+                    # recalculamos. Esto suele pasar cuando el modelo lee bien
+                    # el porcentaje pero el subtotal interno no es el mismo que
+                    # la boleta usó para calcular (off-by-1 item, redondeos, etc).
+                    if passes_total is False:
+                        any_fixed = False
+                        for ch in charges:
+                            if ch.get('included_in_items'):
+                                continue
+                            if ch.get('valueType') != 'percent':
+                                continue
+                            vp = ch.get('_valor_impreso')
+                            if not isinstance(vp, (int, float)) or vp <= 0:
+                                continue
+                            calculado = items_sum * (ch.get('value') or 0) / 100
+                            if abs(calculado - vp) / vp > tolerance:
+                                logger.info(
+                                    f"🔧 Cargo '{ch['name']}' (%={ch['value']}) calculó ${calculado:.2f} "
+                                    f"pero la boleta imprime ${vp}. Cambio a fixed con valor impreso."
+                                )
+                                ch['valueType'] = 'fixed'
+                                ch['value'] = vp
+                                any_fixed = True
+                        if any_fixed:
+                            # Recomputar applied_charges y passes_total con los cargos corregidos
+                            applied_charges = 0.0
+                            if not items_include_charges:
+                                for ch in charges:
+                                    v = ch.get('value') or 0
+                                    is_disc = ch.get('isDiscount') or False
+                                    magnitude = abs(v) if is_disc else v
+                                    if ch.get('valueType') == 'percent':
+                                        amt = items_sum * magnitude / 100
+                                    else:
+                                        amt = magnitude
+                                    applied_charges += -amt if is_disc else amt
+                            computed_total = items_sum + applied_charges
+                            passes_total = (abs(computed_total - total) / total) <= tolerance
+
+                    if passes_total is False:
+                        needs_review = True
+                        review_message = (
+                            f"Total calculado (${computed_total:.2f}) difiere del total impreso (${total})"
+                        )
+                    elif passes_subtotal is False and not sub_explicado:
+                        needs_review = True
+                        review_message = (
+                            f"Suma de items (${items_sum}) difiere del subtotal (${subtotal}) "
+                            f"y no hay descuento ni tax incluido que lo explique"
+                        )
+                    else:
+                        needs_review = False
+                        review_message = None
+
+                    r1_applied = (
+                        passes_subtotal is False and passes_total is True and sub_explicado
+                    )
+                    if r1_applied:
+                        reason = "tax incluido en items" if items_include_charges else "descuento listado"
+                        logger.info(f"✅ R1 rescató boleta: sub mismatch explicado por {reason}")
+
+                    # Limpiar campos internos antes de exponer al frontend
+                    for ch in charges:
+                        ch.pop('_valor_impreso', None)
+
                     # Quality score basado en validación
                     quality_score = 100 if not needs_review else 70
 
@@ -587,6 +681,8 @@ Retorna SOLO el JSON, sin explicaciones."""
                         'review_message': review_message,
                         'confidence_score': quality_score,
                         'ocr_source': 'gemini',
+                        'items_include_charges': items_include_charges,
+                        'r1_applied': r1_applied,
                         'validation': {
                             'quality_score': quality_score,
                             'is_valid': not needs_review,

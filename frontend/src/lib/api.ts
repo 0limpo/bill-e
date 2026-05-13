@@ -21,6 +21,7 @@ export interface SessionResponse {
   decimal_places: number;
   number_format: string;
   price_mode: "unitario" | "total_linea";
+  items_include_charges?: boolean;  // IVA/tax incluido en items: ocultar cargos referenciados
   expires_at: string;
   last_updated: string;
   totals: { participant_id: string; total: number }[];
@@ -67,6 +68,9 @@ export interface ApiCharge {
   valueType: "fixed" | "percent";
   distribution: "proportional" | "per_person" | "fixed_per_person";
   isDiscount: boolean;
+  // True cuando el cargo ya está dentro de los precios de items (ej. IVA UE).
+  // El frontend lo oculta del listado y excluye del cálculo de total.
+  included_in_items?: boolean;
 }
 
 export interface PollResponse {
@@ -545,6 +549,7 @@ export async function createCollaborativeSession(
     raw_text?: string;
     decimal_places?: number;
     merchant_name?: string;
+    items_include_charges?: boolean;
   }
 ): Promise<{ session_id: string; owner_token: string; frontend_url: string }> {
   const deviceId = getDeviceId();

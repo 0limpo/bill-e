@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, ChevronDown, ChevronRight, Camera, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepGateModal, type StepGateChecklistItem } from "@/components/ui/StepGateModal";
-import { formatCurrency, formatNumber, detectDecimals, type Item, type Charge } from "@/lib/billEngine";
+import { formatCurrency, formatNumber, parseFlexibleNumber, detectDecimals, type Item, type Charge } from "@/lib/billEngine";
 import { playCelebrationSound } from "@/lib/sounds";
 
 interface InlineInputProps {
@@ -37,8 +37,7 @@ function PriceInput({
 
   const commit = () => {
     setIsFocused(false);
-    const raw = localVal.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
-    const num = parseFloat(raw);
+    const num = parseFlexibleNumber(localVal);
     if (!isNaN(num)) {
       const clamped = Math.max(0, num);
       if (clamped !== value) onSave(clamped);
@@ -81,7 +80,7 @@ function InlineInput({ type, value, onSave, className = "", placeholder, decimal
   const handleBlur = () => {
     setIsFocused(false);
     const parsed = type === "number"
-      ? (parseFloat(localVal.replace(/[^\d.-]/g, "")) || 0)
+      ? (parseFlexibleNumber(localVal) || 0)
       : (localVal.trim() || "Item");
     if (parsed !== value) {
       onSave(parsed);
@@ -121,6 +120,12 @@ interface StepReviewProps {
   charges: Charge[];
   originalSubtotal?: number;
   originalTotal?: number;
+  // Cuando true, los precios de items ya incluyen los cargos referenciados
+  // (típico boleta UE/LATAM con IVA incluido). En ese caso ocultamos del
+  // listado los cargos `included_in_items`, escondemos la fila "Subtotal"
+  // (porque sería confusa: items_sum != subtotal_impreso pre-tax) y solo
+  // evaluamos el match del total para el gate modal.
+  itemsIncludeCharges?: boolean;
   priceMode?: "unitario" | "total_linea";
   onOriginalSubtotalChange?: (value: number) => void;
   onOriginalTotalChange?: (value: number) => void;
@@ -141,6 +146,7 @@ export function StepReview({
   charges,
   originalSubtotal,
   originalTotal,
+  itemsIncludeCharges = false,
   priceMode = "unitario",
   onOriginalSubtotalChange,
   onOriginalTotalChange,
@@ -215,10 +221,13 @@ export function StepReview({
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // Calculate totals
+  // Los cargos `included_in_items` se MUESTRAN en la lista (transparencia para
+  // el usuario: "esta boleta tenía IVA 21% incluido"), pero NO suman al total
+  // (sus montos ya están dentro de items.price — sumarlos sería doble conteo).
   const subtotal = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
 
   const chargesAmount = charges.reduce((sum, charge) => {
+    if (charge.included_in_items) return sum; // ya está dentro de items
     const amount = charge.valueType === "percent"
       ? (subtotal * charge.value) / 100
       : charge.value;
@@ -227,27 +236,58 @@ export function StepReview({
 
   const total = subtotal + chargesAmount;
 
-  // Check if values match for celebration
-  const subtotalMatches = originalSubtotal !== undefined && originalSubtotal > 0 && Math.abs(subtotal - originalSubtotal) < 1;
+  // Match logic. Replicamos R1 del backend en el frontend:
+  // - Si hay tax incluido en items, originalSubtotal del backend es pre-tax
+  //   (no coincide con sum(items) que ya tiene tax adentro).
+  // - Si hay descuentos globales, distinguimos dos casos:
+  //   (a) POST-subtotal (la mayoría): la boleta muestra Subtotal = items_sum
+  //       y el descuento se aplica después. items_sum ≈ originalSubtotal.
+  //   (b) PRE-subtotal (edge case): la boleta muestra Subtotal = items_sum −
+  //       descuento. items_sum − descuentos ≈ originalSubtotal.
+  //   Cuando es (b) mostramos una segunda fila "Subtotal con descuento" y la
+  //   comparamos con originalSubtotal en lugar del items_sum directo.
+  const discountsAmount = charges.reduce((sum, c) => {
+    if (!c.isDiscount) return sum;
+    const amt = c.valueType === "percent" ? (subtotal * c.value) / 100 : c.value;
+    return sum + amt;
+  }, 0);
+  const subtotalAfterDiscounts = subtotal - discountsAmount;
+  const subtotalRawMatches = originalSubtotal !== undefined && originalSubtotal > 0
+    && Math.abs(subtotal - originalSubtotal) < 1;
+  const subtotalAfterDiscMatches = originalSubtotal !== undefined && originalSubtotal > 0
+    && Math.abs(subtotalAfterDiscounts - originalSubtotal) < 1;
+  // Pre-subtotal: items_sum no cuadra pero items_sum−desc sí. Solo aplica
+  // si efectivamente hay descuentos visibles (no included_in_items).
+  const discountIsPreSubtotal = discountsAmount > 0 && !subtotalRawMatches && subtotalAfterDiscMatches;
+  const subtotalMatches = subtotalRawMatches || subtotalAfterDiscMatches;
   const totalMatches = originalTotal !== undefined && originalTotal > 0 && Math.abs(total - originalTotal) < 1;
-  const hasVerificationData = (originalSubtotal !== undefined && originalSubtotal > 0) || (originalTotal !== undefined && originalTotal > 0);
-  const isMatch = subtotalMatches && (originalTotal === undefined || originalTotal === 0 || totalMatches);
+  const hasVerificationData = itemsIncludeCharges
+    ? (originalTotal !== undefined && originalTotal > 0)
+    : (originalSubtotal !== undefined && originalSubtotal > 0) || (originalTotal !== undefined && originalTotal > 0);
+  const isMatch = itemsIncludeCharges
+    ? totalMatches
+    : subtotalMatches && (originalTotal === undefined || originalTotal === 0 || totalMatches);
 
   // Auto-open the gate modal once after the OCR result lands.
   // success when totals match, error when they do not. Skips when there
   // is no verification reference (no original subtotal/total scanned).
+  // Wait until verification data is available before consuming the one-shot
+  // ref — items can land before subtotal/total in the session payload.
   useEffect(() => {
     if (initialEvaluationRef.current) return;
     if (items.length === 0) return;
-    initialEvaluationRef.current = true;
+    if (!hasVerificationData) return;
     const tmr = setTimeout(() => {
-      if (hasVerificationData) {
-        if (isMatch) {
-          setGateState("success");
-          playCelebrationSound();
-        } else {
-          setGateState("error");
-        }
+      // Set the ref INSIDE the timer so that if React StrictMode (dev) does
+      // mount → unmount → mount, the cleanup cancels this timer and the ref
+      // is still false on remount, allowing the second run to re-schedule.
+      if (initialEvaluationRef.current) return;
+      initialEvaluationRef.current = true;
+      if (isMatch) {
+        setGateState("success");
+        playCelebrationSound();
+      } else {
+        setGateState("error");
       }
       prevMatchRef.current = isMatch;
     }, 900);
@@ -567,11 +607,24 @@ export function StepReview({
               {t("items.addManualItem")}
             </button>
 
-            {/* Subtotal */}
-            <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
-              <span>{t("totals.subtotal")}</span>
-              <span>{fmt(subtotal)}</span>
-            </div>
+{/* Subtotal — oculto cuando los items ya incluyen tax (sería confuso
+                vs el subtotal pre-tax que viene de la boleta). */}
+            {!itemsIncludeCharges && (
+              <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
+                <span>{t("totals.subtotal")}</span>
+                <span>{fmt(subtotal)}</span>
+              </div>
+            )}
+            {/* Subtotal post-descuento — solo cuando la boleta aplica el
+                descuento ANTES del subtotal (edge case). Mostramos ambas
+                filas: la base (items_sum) y la post-descuento, que es la
+                que la boleta imprime. */}
+            {!itemsIncludeCharges && discountIsPreSubtotal && (
+              <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
+                <span>{t("totals.subtotalAfterDiscount")}</span>
+                <span>{fmt(subtotalAfterDiscounts)}</span>
+              </div>
+            )}
           </>
         )}
 
@@ -583,12 +636,31 @@ export function StepReview({
           <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
         </div>
 
-        {/* Charges */}
+        {/* Charges. Los `included_in_items` se muestran como info (sin "+"
+            ni edición, ya están dentro de los precios de items). */}
         {charges.map((charge) => {
           const amount = charge.valueType === "percent"
             ? (subtotal * charge.value) / 100
             : charge.value;
           const isExpanded = expandedCharge === charge.id;
+          const isIncluded = !!charge.included_in_items;
+
+          // Cargo "incluido": muestra el monto sin signo, en gris, no clickeable.
+          if (isIncluded) {
+            return (
+              <div key={charge.id} className="breakdown-row charge opacity-60 cursor-default">
+                <span className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="truncate">{charge.name}</span>
+                  <span className="text-xs opacity-70 shrink-0">
+                    ({charge.value}{charge.valueType === "percent" ? "%" : "$"} · {t("charges.includedInItems")})
+                  </span>
+                </span>
+                <span className="font-medium shrink-0 ml-2">
+                  {fmt(amount)}
+                </span>
+              </div>
+            );
+          }
 
           return (
             <div key={charge.id}>
@@ -628,7 +700,7 @@ export function StepReview({
                       type="text"
                       inputMode="decimal"
                       value={charge.value}
-                      onChange={(e) => updateCharge(charge.id, { value: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => updateCharge(charge.id, { value: parseFlexibleNumber(e.target.value) || 0 })}
                       className="w-16 shrink-0 text-right bg-background rounded-lg px-3 py-2 text-sm outline-none"
                     />
                   </div>
@@ -740,7 +812,7 @@ export function StepReview({
             <div className="head">{t("verify.calc")}</div>
             <div className="head">{t("verify.scanned")}</div>
 
-            {originalSubtotal !== undefined && originalSubtotal > 0 && (
+            {!itemsIncludeCharges && originalSubtotal !== undefined && originalSubtotal > 0 && (
               <>
                 <div className="row-label">
                   {subtotalMatches ? (
@@ -748,17 +820,16 @@ export function StepReview({
                   ) : (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="3"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   )}
-                  <span>{t("totals.subtotal")}</span>
+                  <span>{discountIsPreSubtotal ? t("totals.subtotalAfterDiscount") : t("totals.subtotal")}</span>
                 </div>
-                <div className="row-val">{fmt(subtotal)}</div>
+                <div className="row-val">{fmt(discountIsPreSubtotal ? subtotalAfterDiscounts : subtotal)}</div>
                 <div className={`row-val editable ${subtotalMatches ? "" : "warn"}`}>
                   <input
                     type="text"
                     inputMode={decimals > 0 ? "decimal" : "numeric"}
                     value={formatNumber(originalSubtotal, decimals)}
                     onChange={(e) => {
-                      const raw = e.target.value.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
-                      const num = parseFloat(raw);
+                      const num = parseFlexibleNumber(e.target.value);
                       if (!isNaN(num)) onOriginalSubtotalChange?.(Math.max(0, num));
                     }}
                   />
@@ -783,8 +854,7 @@ export function StepReview({
                     inputMode={decimals > 0 ? "decimal" : "numeric"}
                     value={formatNumber(originalTotal, decimals)}
                     onChange={(e) => {
-                      const raw = e.target.value.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
-                      const num = parseFloat(raw);
+                      const num = parseFlexibleNumber(e.target.value);
                       if (!isNaN(num)) onOriginalTotalChange?.(Math.max(0, num));
                     }}
                   />
@@ -817,7 +887,7 @@ export function StepReview({
         subtitle={gateState === "error"
           ? buildErrorSubtitle({ subtotal, total, originalSubtotal, originalTotal, fmt, t })
           : t("gate.review.successSubtitle")}
-        checklist={gateState === "success" ? buildSuccessChecklist({ items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, fmt, t }) : undefined}
+        checklist={gateState === "success" ? buildSuccessChecklist({ items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, itemsIncludeCharges, fmt, t }) : undefined}
         compare={gateState === "error" ? buildCompareBlock({ subtotal, total, originalSubtotal, originalTotal, fmt, t }) : undefined}
         hintsHeader={gateState === "error" ? t("gate.review.hintsHeader") : undefined}
         hints={gateState === "error" ? [
@@ -893,13 +963,16 @@ function buildSuccessChecklist(args: {
   originalTotal?: number;
   subtotalMatches: boolean;
   totalMatches: boolean;
+  itemsIncludeCharges?: boolean;
   fmt: (n: number) => string;
   t: (key: string) => string;
 }): StepGateChecklistItem[] {
-  const { items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, fmt, t } = args;
+  const { items, subtotal, total, originalSubtotal, originalTotal, subtotalMatches, totalMatches, itemsIncludeCharges, fmt, t } = args;
   const list: StepGateChecklistItem[] = [];
   list.push({ ok: true, label: t("gate.review.itemsLabel").replace("{count}", String(items.length)), detail: fmt(subtotal) });
-  if (originalSubtotal !== undefined && originalSubtotal > 0) {
+  // Si los items ya incluyen tax, omitimos el check de subtotal — el subtotal
+  // pre-tax de la boleta no coincide con la suma de items y confunde al usuario.
+  if (!itemsIncludeCharges && originalSubtotal !== undefined && originalSubtotal > 0) {
     list.push({ ok: subtotalMatches, label: t("gate.review.subtotalOk"), detail: fmt(subtotal) });
   }
   if (originalTotal !== undefined && originalTotal > 0) {
