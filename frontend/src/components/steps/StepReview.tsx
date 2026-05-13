@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, ChevronDown, ChevronRight, Camera, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StepGateModal, type StepGateChecklistItem } from "@/components/ui/StepGateModal";
-import { formatCurrency, formatNumber, detectDecimals, type Item, type Charge } from "@/lib/billEngine";
+import { formatCurrency, formatNumber, parseFlexibleNumber, detectDecimals, type Item, type Charge } from "@/lib/billEngine";
 import { playCelebrationSound } from "@/lib/sounds";
 
 interface InlineInputProps {
@@ -37,8 +37,7 @@ function PriceInput({
 
   const commit = () => {
     setIsFocused(false);
-    const raw = localVal.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
-    const num = parseFloat(raw);
+    const num = parseFlexibleNumber(localVal);
     if (!isNaN(num)) {
       const clamped = Math.max(0, num);
       if (clamped !== value) onSave(clamped);
@@ -81,7 +80,7 @@ function InlineInput({ type, value, onSave, className = "", placeholder, decimal
   const handleBlur = () => {
     setIsFocused(false);
     const parsed = type === "number"
-      ? (parseFloat(localVal.replace(/[^\d.-]/g, "")) || 0)
+      ? (parseFlexibleNumber(localVal) || 0)
       : (localVal.trim() || "Item");
     if (parsed !== value) {
       onSave(parsed);
@@ -222,18 +221,13 @@ export function StepReview({
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // Cuando los items ya incluyen el tax/IVA, ocultamos del listado los cargos
-  // marcados como included_in_items (solo visualmente — los datos crudos quedan
-  // intactos en el state). Cargos NO incluidos (propina aparte) siguen visibles.
-  const visibleCharges = itemsIncludeCharges
-    ? charges.filter((c) => !c.included_in_items)
-    : charges;
-
-  // Calculate totals usando solo cargos visibles (los included_in_items ya están
-  // dentro de items.price, sumarlos generaría doble conteo).
+  // Los cargos `included_in_items` se MUESTRAN en la lista (transparencia para
+  // el usuario: "esta boleta tenía IVA 21% incluido"), pero NO suman al total
+  // (sus montos ya están dentro de items.price — sumarlos sería doble conteo).
   const subtotal = items.reduce((sum, item) => sum + (item.quantity || 1) * (item.price || 0), 0);
 
-  const chargesAmount = visibleCharges.reduce((sum, charge) => {
+  const chargesAmount = charges.reduce((sum, charge) => {
+    if (charge.included_in_items) return sum; // ya está dentro de items
     const amount = charge.valueType === "percent"
       ? (subtotal * charge.value) / 100
       : charge.value;
@@ -242,10 +236,30 @@ export function StepReview({
 
   const total = subtotal + chargesAmount;
 
-  // Match logic. Cuando hay tax incluido en items, originalSubtotal del backend
-  // es la base imponible pre-tax (no coincide con sum(items) que ya tiene tax).
-  // Por eso ignoramos subtotalMatches en ese caso y solo evaluamos totalMatches.
-  const subtotalMatches = originalSubtotal !== undefined && originalSubtotal > 0 && Math.abs(subtotal - originalSubtotal) < 1;
+  // Match logic. Replicamos R1 del backend en el frontend:
+  // - Si hay tax incluido en items, originalSubtotal del backend es pre-tax
+  //   (no coincide con sum(items) que ya tiene tax adentro).
+  // - Si hay descuentos globales, distinguimos dos casos:
+  //   (a) POST-subtotal (la mayoría): la boleta muestra Subtotal = items_sum
+  //       y el descuento se aplica después. items_sum ≈ originalSubtotal.
+  //   (b) PRE-subtotal (edge case): la boleta muestra Subtotal = items_sum −
+  //       descuento. items_sum − descuentos ≈ originalSubtotal.
+  //   Cuando es (b) mostramos una segunda fila "Subtotal con descuento" y la
+  //   comparamos con originalSubtotal en lugar del items_sum directo.
+  const discountsAmount = charges.reduce((sum, c) => {
+    if (!c.isDiscount) return sum;
+    const amt = c.valueType === "percent" ? (subtotal * c.value) / 100 : c.value;
+    return sum + amt;
+  }, 0);
+  const subtotalAfterDiscounts = subtotal - discountsAmount;
+  const subtotalRawMatches = originalSubtotal !== undefined && originalSubtotal > 0
+    && Math.abs(subtotal - originalSubtotal) < 1;
+  const subtotalAfterDiscMatches = originalSubtotal !== undefined && originalSubtotal > 0
+    && Math.abs(subtotalAfterDiscounts - originalSubtotal) < 1;
+  // Pre-subtotal: items_sum no cuadra pero items_sum−desc sí. Solo aplica
+  // si efectivamente hay descuentos visibles (no included_in_items).
+  const discountIsPreSubtotal = discountsAmount > 0 && !subtotalRawMatches && subtotalAfterDiscMatches;
+  const subtotalMatches = subtotalRawMatches || subtotalAfterDiscMatches;
   const totalMatches = originalTotal !== undefined && originalTotal > 0 && Math.abs(total - originalTotal) < 1;
   const hasVerificationData = itemsIncludeCharges
     ? (originalTotal !== undefined && originalTotal > 0)
@@ -601,6 +615,16 @@ export function StepReview({
                 <span>{fmt(subtotal)}</span>
               </div>
             )}
+            {/* Subtotal post-descuento — solo cuando la boleta aplica el
+                descuento ANTES del subtotal (edge case). Mostramos ambas
+                filas: la base (items_sum) y la post-descuento, que es la
+                que la boleta imprime. */}
+            {!itemsIncludeCharges && discountIsPreSubtotal && (
+              <div className="breakdown-row subtotal" onClick={() => { setEditingItemId(null); setExpandedCharge(null); }}>
+                <span>{t("totals.subtotalAfterDiscount")}</span>
+                <span>{fmt(subtotalAfterDiscounts)}</span>
+              </div>
+            )}
           </>
         )}
 
@@ -612,12 +636,31 @@ export function StepReview({
           <span className="text-xs text-foreground uppercase tracking-wide">{t("charges.sectionTitle")}</span>
         </div>
 
-        {/* Charges (filtramos los included_in_items cuando aplica) */}
-        {visibleCharges.map((charge) => {
+        {/* Charges. Los `included_in_items` se muestran como info (sin "+"
+            ni edición, ya están dentro de los precios de items). */}
+        {charges.map((charge) => {
           const amount = charge.valueType === "percent"
             ? (subtotal * charge.value) / 100
             : charge.value;
           const isExpanded = expandedCharge === charge.id;
+          const isIncluded = !!charge.included_in_items;
+
+          // Cargo "incluido": muestra el monto sin signo, en gris, no clickeable.
+          if (isIncluded) {
+            return (
+              <div key={charge.id} className="breakdown-row charge opacity-60 cursor-default">
+                <span className="flex items-center gap-2 min-w-0 flex-1">
+                  <span className="truncate">{charge.name}</span>
+                  <span className="text-xs opacity-70 shrink-0">
+                    ({charge.value}{charge.valueType === "percent" ? "%" : "$"} · {t("charges.includedInItems")})
+                  </span>
+                </span>
+                <span className="font-medium shrink-0 ml-2">
+                  {fmt(amount)}
+                </span>
+              </div>
+            );
+          }
 
           return (
             <div key={charge.id}>
@@ -657,7 +700,7 @@ export function StepReview({
                       type="text"
                       inputMode="decimal"
                       value={charge.value}
-                      onChange={(e) => updateCharge(charge.id, { value: parseFloat(e.target.value) || 0 })}
+                      onChange={(e) => updateCharge(charge.id, { value: parseFlexibleNumber(e.target.value) || 0 })}
                       className="w-16 shrink-0 text-right bg-background rounded-lg px-3 py-2 text-sm outline-none"
                     />
                   </div>
@@ -777,17 +820,16 @@ export function StepReview({
                   ) : (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="3"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                   )}
-                  <span>{t("totals.subtotal")}</span>
+                  <span>{discountIsPreSubtotal ? t("totals.subtotalAfterDiscount") : t("totals.subtotal")}</span>
                 </div>
-                <div className="row-val">{fmt(subtotal)}</div>
+                <div className="row-val">{fmt(discountIsPreSubtotal ? subtotalAfterDiscounts : subtotal)}</div>
                 <div className={`row-val editable ${subtotalMatches ? "" : "warn"}`}>
                   <input
                     type="text"
                     inputMode={decimals > 0 ? "decimal" : "numeric"}
                     value={formatNumber(originalSubtotal, decimals)}
                     onChange={(e) => {
-                      const raw = e.target.value.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
-                      const num = parseFloat(raw);
+                      const num = parseFlexibleNumber(e.target.value);
                       if (!isNaN(num)) onOriginalSubtotalChange?.(Math.max(0, num));
                     }}
                   />
@@ -812,8 +854,7 @@ export function StepReview({
                     inputMode={decimals > 0 ? "decimal" : "numeric"}
                     value={formatNumber(originalTotal, decimals)}
                     onChange={(e) => {
-                      const raw = e.target.value.replace(/[^\d.,-]/g, "").replace(/\./g, "").replace(",", ".");
-                      const num = parseFloat(raw);
+                      const num = parseFlexibleNumber(e.target.value);
                       if (!isNaN(num)) onOriginalTotalChange?.(Math.max(0, num));
                     }}
                   />

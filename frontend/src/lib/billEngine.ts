@@ -75,6 +75,42 @@ const AVATAR_COLORS = [
 ];
 
 /**
+ * Parse user-typed numeric input flexibly. Handles both decimal styles
+ * (12.50 USD-style and 12,50 ES/CL-style) and thousand separators.
+ *
+ * Heuristic: the LAST punctuation mark (',' or '.') that has 1 or 2 digits
+ * after it is the decimal separator. Anything else is a thousand separator.
+ * Examples:
+ *   "12.50"     -> 12.5    (dot decimal, 2 digits after)
+ *   "12,50"     -> 12.5    (comma decimal, 2 digits after)
+ *   "1.500"     -> 1500    (dot is thousand sep, 3 digits after)
+ *   "1,500"     -> 1500    (comma is thousand sep, 3 digits after)
+ *   "1.500,50"  -> 1500.5  (mixed: comma decimal)
+ *   "1,500.50"  -> 1500.5  (mixed: dot decimal)
+ */
+export const parseFlexibleNumber = (input: string): number => {
+  const cleaned = input.replace(/[^\d.,-]/g, "");
+  if (!cleaned) return NaN;
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+  let decimalSep: "," | "." | null = null;
+  if (lastComma > lastDot) {
+    if (cleaned.length - lastComma - 1 <= 2) decimalSep = ",";
+  } else if (lastDot > lastComma) {
+    if (cleaned.length - lastDot - 1 <= 2) decimalSep = ".";
+  }
+  let normalized = cleaned;
+  if (decimalSep) {
+    const otherSep = decimalSep === "." ? "," : ".";
+    normalized = normalized.split(otherSep).join("");
+    normalized = normalized.replace(decimalSep, ".");
+  } else {
+    normalized = normalized.replace(/[.,]/g, "");
+  }
+  return parseFloat(normalized);
+};
+
+/**
  * Format a number with thousand separators (no currency symbol)
  */
 export const formatNumber = (

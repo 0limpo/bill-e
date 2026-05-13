@@ -124,6 +124,15 @@ class Cargo(BaseModel):
             "Si solo muestra el total y un valor por persona, infiere personas=total/valor_por_persona."
         ),
     )
+    valor_impreso: Optional[float] = Field(
+        default=None,
+        description=(
+            "Cuando tipo='percent' y la boleta muestra TAMBIEN el monto resultante "
+            "explicito en la columna numerica (ej. linea 'Tax 18% .... $5.40'), "
+            "anota aqui ese monto (5.40). Bill-e lo usa como fuente de verdad si "
+            "el calculo del % no cuadra con el total impreso. null si no aparece."
+        ),
+    )
 
 
 class Descuento(BaseModel):
@@ -134,6 +143,14 @@ class Descuento(BaseModel):
         "fixed: monto total. percent: porcentaje (ej. 10 para 10%)."
     ))
     tipo: Literal["fixed", "percent"]
+    valor_impreso: Optional[float] = Field(
+        default=None,
+        description=(
+            "Igual que en Cargo: cuando tipo='percent' y la boleta muestra "
+            "el monto del descuento explicito en la columna numerica, anotalo aqui. "
+            "null si no aparece."
+        ),
+    )
 
 
 class Boleta(BaseModel):
@@ -199,6 +216,10 @@ REGLAS PARA CARGOS:
 - tipo 'percent': cargo en porcentaje ("Tax 8.875%"). Escala 0-100 (10 para 10%).
 - tipo 'per_person': cargo por persona (cubierto, cover charge). valor = monto
   POR PERSONA. Llena tambien numero_personas.
+- valor_impreso: cuando uses tipo='percent' y la boleta TAMBIEN muestra el
+  monto resultante en la columna numerica (ej. linea "Tax 18% .... $5.40"),
+  anota 5.40 en valor_impreso. Mantienes tipo='percent' y valor=18 igual,
+  pero das al sistema el monto real para fallback. null si no aparece.
 
 REGLAS PARA DESCUENTOS:
 - No agregues a `descuentos` los descuentos que aparecen en la descripcion
@@ -210,6 +231,9 @@ REGLAS PARA DESCUENTOS:
 - valor SIEMPRE positivo. Bill-e aplica el signo negativo al ser descuento.
 - "Cupon 10% off al subtotal" -> tipo=percent, valor=10.
 - "Cupon $5.000 off al subtotal" -> tipo=fixed, valor=5000.
+- valor_impreso: igual que en cargos — si la boleta muestra el monto del
+  descuento explicito junto al porcentaje (ej. "10% off ... -$2.50"), anota
+  2.50 en valor_impreso. null si no aparece.
 
 REGLAS PARA SUBTOTAL/TOTAL:
 - subtotal_impreso: el numero etiquetado "subtotal" (o equivalente). null si no aparece.
@@ -317,6 +341,7 @@ def boleta_to_bill_e(boleta_dict: Dict[str, Any]) -> Dict[str, Any]:
                 "valor": valor,
                 "es_descuento": False,
                 "_id": c.get("id"),
+                "_valor_impreso": c.get("valor_impreso"),
             })
 
     for d in boleta_dict.get("descuentos") or []:
@@ -326,6 +351,7 @@ def boleta_to_bill_e(boleta_dict: Dict[str, Any]) -> Dict[str, Any]:
             "valor": d.get("valor") or 0,
             "es_descuento": True,
             "_id": d.get("id"),
+            "_valor_impreso": d.get("valor_impreso"),
         })
 
     return {

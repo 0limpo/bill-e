@@ -260,12 +260,19 @@ export default function LandingPage() {
       const sessionData = await sessionResponse.json();
       const sessionId = sessionData.session_id;
 
-      // Step 2: Process with OCR
+      // Step 2: Process with OCR. La llamada tarda ~12s con v3+flash. Rotamos
+      // submensajes para dar sensación de progreso (los hitos no son reales del
+      // backend, son visuales). Limpiamos los timers al terminar el fetch.
       setStatus(t("home.analyzing"));
+      const ocrSubmsgT1 = setTimeout(() => setStatus(t("home.readingItems")), 4000);
+      const ocrSubmsgT2 = setTimeout(() => setStatus(t("home.verifyingTotals")), 9000);
       const ocrResponse = await fetch(`${API_URL}/api/session/${sessionId}/ocr`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: base64 }),
+      }).finally(() => {
+        clearTimeout(ocrSubmsgT1);
+        clearTimeout(ocrSubmsgT2);
       });
 
       if (!ocrResponse.ok) {

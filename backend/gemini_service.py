@@ -19,7 +19,7 @@ from prompt_v3 import (
     flatten_schema,
 )
 
-_RESPONSE_SCHEMA = flatten_schema(Boleta.model_json_schema())  # v3 + thousand-sep override
+_RESPONSE_SCHEMA = flatten_schema(Boleta.model_json_schema())  # v3 + thousand-sep override + valor_impreso fallback
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -435,6 +435,7 @@ class GeminiOCRService:
                             'isDiscount': es_descuento,
                             'distribution': distribution,
                             'included_in_items': included,
+                            '_valor_impreso': cargo.get('_valor_impreso'),
                         })
 
                     # === POST-PROCESAMIENTO: Convertir propinas fijas a porcentaje ===
@@ -464,49 +465,18 @@ class GeminiOCRService:
                     # Calcular suma de items
                     items_sum = sum(it['price'] * it['quantity'] for it in items)
 
-                    # Verificar si suma de items ≈ subtotal (tolerancia 2%)
+                    # Verificar si suma de items ≈ subtotal (tolerancia 2%).
+                    # En v3 el adapter ya hace la conversión `precio_tipo='total' → unitario`
+                    # por línea, así que NO aplicamos la heurística legacy de "dividir
+                    # por qty si no cuadra" — esa rompía boletas con descuentos globales
+                    # o tax incluido (donde el mismatch es por diseño, no por error de
+                    # precio_modo). La decisión final de needs_review se hace en el
+                    # bloque R1 más abajo.
                     tolerance = 0.02
                     diff_ratio = abs(items_sum - subtotal) / subtotal if subtotal > 0 else 0
 
                     needs_review = False
                     review_message = None
-
-                    if diff_ratio > tolerance and subtotal > 0:
-                        # Intentar corregir: quizás los precios son totales de línea
-                        # Para items con cantidad > 1, probar dividir
-                        corrected_items = []
-                        for it in items:
-                            if it['quantity'] > 1:
-                                original_price = it.get('price_as_shown') or it['price']
-                                # Probar si dividir el precio hace que cuadre mejor
-                                corrected_items.append({
-                                    'name': it['name'],
-                                    'price': it['price'] / it['quantity'],
-                                    'price_as_shown': original_price,  # Preservar precio original
-                                    'quantity': it['quantity']
-                                })
-                            else:
-                                corrected_items.append(it)
-
-                        corrected_sum = sum(it['price'] * it['quantity'] for it in corrected_items)
-                        corrected_diff = abs(corrected_sum - subtotal) / subtotal if subtotal > 0 else 0
-
-                        if corrected_diff < diff_ratio:
-                            # La corrección mejoró, usar items corregidos
-                            logger.info(f"🔧 Corrección aplicada: precios eran totales de línea")
-                            logger.info(f"   Antes: Σitems=${items_sum}, Subtotal=${subtotal}, Diff={diff_ratio*100:.1f}%")
-                            logger.info(f"   Después: Σitems=${corrected_sum}, Diff={corrected_diff*100:.1f}%")
-                            items = corrected_items
-                            items_sum = corrected_sum
-                            diff_ratio = corrected_diff
-                            # Actualizar price_mode ya que detectamos que eran totales de línea
-                            price_mode = 'total_linea'
-                            logger.info(f"   price_mode actualizado a 'total_linea'")
-
-                        # NOTA: el calculo final de needs_review se posterga al
-                        # bloque R1 (mas abajo) — un sub-mismatch solo cuenta como
-                        # error si NO esta explicado por items_include_charges
-                        # o un descuento listado.
 
                     # Usar moneda_tiene_decimales de Gemini si está disponible
                     # Esto es más confiable que detectar por los valores
@@ -624,6 +594,48 @@ class GeminiOCRService:
                     if total and total > 0:
                         passes_total = (abs(computed_total - total) / total) <= tolerance
 
+                    # Fallback edge case: cuando el total no cuadra Y hay cargos %
+                    # cuyo cálculo (% × subtotal) no coincide con el `_valor_impreso`
+                    # que reportó Gemini, usamos `_valor_impreso` como fuente de
+                    # verdad. Convertimos esos cargos a fixed con ese valor y
+                    # recalculamos. Esto suele pasar cuando el modelo lee bien
+                    # el porcentaje pero el subtotal interno no es el mismo que
+                    # la boleta usó para calcular (off-by-1 item, redondeos, etc).
+                    if passes_total is False:
+                        any_fixed = False
+                        for ch in charges:
+                            if ch.get('included_in_items'):
+                                continue
+                            if ch.get('valueType') != 'percent':
+                                continue
+                            vp = ch.get('_valor_impreso')
+                            if not isinstance(vp, (int, float)) or vp <= 0:
+                                continue
+                            calculado = items_sum * (ch.get('value') or 0) / 100
+                            if abs(calculado - vp) / vp > tolerance:
+                                logger.info(
+                                    f"🔧 Cargo '{ch['name']}' (%={ch['value']}) calculó ${calculado:.2f} "
+                                    f"pero la boleta imprime ${vp}. Cambio a fixed con valor impreso."
+                                )
+                                ch['valueType'] = 'fixed'
+                                ch['value'] = vp
+                                any_fixed = True
+                        if any_fixed:
+                            # Recomputar applied_charges y passes_total con los cargos corregidos
+                            applied_charges = 0.0
+                            if not items_include_charges:
+                                for ch in charges:
+                                    v = ch.get('value') or 0
+                                    is_disc = ch.get('isDiscount') or False
+                                    magnitude = abs(v) if is_disc else v
+                                    if ch.get('valueType') == 'percent':
+                                        amt = items_sum * magnitude / 100
+                                    else:
+                                        amt = magnitude
+                                    applied_charges += -amt if is_disc else amt
+                            computed_total = items_sum + applied_charges
+                            passes_total = (abs(computed_total - total) / total) <= tolerance
+
                     if passes_total is False:
                         needs_review = True
                         review_message = (
@@ -645,6 +657,10 @@ class GeminiOCRService:
                     if r1_applied:
                         reason = "tax incluido en items" if items_include_charges else "descuento listado"
                         logger.info(f"✅ R1 rescató boleta: sub mismatch explicado por {reason}")
+
+                    # Limpiar campos internos antes de exponer al frontend
+                    for ch in charges:
+                        ch.pop('_valor_impreso', None)
 
                     # Quality score basado en validación
                     quality_score = 100 if not needs_review else 70
