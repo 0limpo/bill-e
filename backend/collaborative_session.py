@@ -168,8 +168,14 @@ def add_participant(
     session_id: str,
     name: str,
     phone: str,
-    user_id: str = None
+    user_id: str = None,
+    device_id: str = None,
 ) -> Dict[str, Any]:
+    """Add an editor to the session, or return the existing record if the
+    phone matches one already registered. We also store the caller's
+    device_id on the participant — finalize_session needs it to charge
+    the editor's free-tier counter even if the editor closes the tab
+    before reaching their own p3."""
     session_data = get_session(redis_client, session_id)
 
     if not session_data:
@@ -183,9 +189,15 @@ def add_participant(
     if phone and phone not in ["N/A", "", "n/a"]:
         for p in session_data["participants"]:
             if p.get("phone") == phone:
+                changed = False
                 # Backfill user_id if joining with auth and previously was anonymous
                 if user_id and not p.get("user_id"):
                     p["user_id"] = user_id
+                    changed = True
+                if device_id and not p.get("device_id"):
+                    p["device_id"] = device_id
+                    changed = True
+                if changed:
                     ttl = redis_client.ttl(f"session:{session_id}")
                     if ttl > 0:
                         redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
@@ -204,6 +216,8 @@ def add_participant(
     }
     if user_id:
         new_participant["user_id"] = user_id
+    if device_id:
+        new_participant["device_id"] = device_id
 
     session_data["participants"].append(new_participant)
     session_data["last_updated"] = datetime.now().isoformat()
@@ -224,21 +238,31 @@ def attach_user_id_to_participant(
     redis_client,
     session_id: str,
     participant_id: str,
-    user_id: str
+    user_id: str,
+    device_id: str = None,
 ) -> bool:
-    """Backfill user_id on an existing participant when editor logs in mid-session."""
+    """Backfill user_id (and optionally device_id) on an existing
+    participant. Called both when an anonymous editor logs in mid-session
+    and when an editor uses "I'm an existing participant" — in both cases
+    we want the latest known identity on the participant so finalize can
+    charge it."""
     session_data = get_session(redis_client, session_id)
     if not session_data:
         return False
 
     for p in session_data["participants"]:
         if p.get("id") == participant_id:
-            if p.get("user_id") == user_id:
-                return True
-            p["user_id"] = user_id
-            ttl = redis_client.ttl(f"session:{session_id}")
-            if ttl > 0:
-                redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+            changed = False
+            if user_id and p.get("user_id") != user_id:
+                p["user_id"] = user_id
+                changed = True
+            if device_id and p.get("device_id") != device_id:
+                p["device_id"] = device_id
+                changed = True
+            if changed:
+                ttl = redis_client.ttl(f"session:{session_id}")
+                if ttl > 0:
+                    redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
             return True
     return False
 
@@ -308,11 +332,6 @@ def finalize_session(
     if session_data["status"] == SessionStatus.FINALIZED.value:
         return {"error": "La sesion ya fue finalizada", "code": 400}
 
-    # Note: free-tier limit is enforced at the p2->p3 transition via
-    # /api/session/{id}/enter-share (see free_tier.record_session_use).
-    # Finalizing the session just marks it complete; the counter logic
-    # lives at the share-step boundary so editors are counted too.
-
     totals = calculate_totals(session_data)
 
     session_data["status"] = SessionStatus.FINALIZED.value
@@ -324,6 +343,39 @@ def finalize_session(
     ttl = redis_client.ttl(f"session:{session_id}")
     if ttl > 0:
         redis_client.setex(f"session:{session_id}", ttl, json.dumps(session_data))
+
+    # Charge the free-tier counter for every participant who joined.
+    # This is the primary increment path — it guarantees the boleta
+    # counts for an editor who joined but closed the tab before their
+    # own p3 auto-advance (the host is finalizing right now, so we know
+    # the session reached p3). enter-share is still called on p3 entry
+    # for surfacing the current freeRemaining, but it's idempotent so
+    # this double-fires safely.
+    try:
+        import free_tier
+        for p in session_data.get("participants", []):
+            # The host's user_id and device_id live on the session, not
+            # on the participant record. Editors carry their own
+            # (set by add_participant / attach_user_id_to_participant).
+            if p.get("role") == ParticipantRole.OWNER.value:
+                p_user_id = session_data.get("user_id") or None
+                p_device_id = session_data.get("owner_device_id") or None
+            else:
+                p_user_id = p.get("user_id") or None
+                p_device_id = p.get("device_id") or None
+            if not p_user_id and not p_device_id:
+                # Truly anonymous participant we have no way to charge —
+                # rare (would mean an editor joined without a device_id),
+                # acceptable miss.
+                continue
+            free_tier.record_session_use(
+                redis_client,
+                session_id=session_id,
+                user_id=p_user_id,
+                device_id=p_device_id,
+            )
+    except Exception as e:
+        print(f"finalize_session: free-tier charge failed: {e}")
 
     return {
         "success": True,

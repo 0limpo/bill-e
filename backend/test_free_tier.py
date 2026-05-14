@@ -273,6 +273,107 @@ def s17():
     assert_eq(final["sessions_used"], 3, "check is read-only")
 
 
+# --- S18..S20: finalize_session charges every participant ---
+
+# FakeRedis from free_tier needs setex/ttl for collaborative_session use.
+class FakeRedisFull(FakeRedis):
+    def setex(self, key, ttl, value):
+        self.store[key] = value
+    def ttl(self, key):
+        return 3600 if key in self.store else -2
+
+
+@scenario("S18 · finalize charges host via session-level identity")
+def s18():
+    import json as _json
+    import collaborative_session as cs
+
+    r = FakeRedisFull()
+    session_data = {
+        "session_id": "sess-A",
+        "owner_token": "tok",
+        "owner_phone": "",
+        "owner_device_id": "host-device",
+        "user_id": None,
+        "status": cs.SessionStatus.ASSIGNING.value,
+        "items": [{"id": "i1", "name": "x", "price": 100, "quantity": 1}],
+        "charges": [],
+        "participants": [
+            {"id": "h1", "name": "Host", "phone": "", "role": "owner", "joined_at": "now"},
+        ],
+        "assignments": {"i1": [{"participant_id": "h1", "quantity": 1}]},
+        "total": 100, "subtotal": 100, "tip": 0,
+    }
+    r.setex("session:sess-A", 3600, _json.dumps(session_data))
+    res = cs.finalize_session(r, "sess-A", "tok")
+    assert_eq(res.get("success"), True, "finalize succeeded")
+    status = free_tier.get_status(r, device_id="host-device")
+    assert_eq(status["sessions_used"], 1, "host charged at finalize")
+
+
+@scenario("S19 · finalize charges editor via stored device_id (joined but no p3)")
+def s19():
+    import json as _json
+    import collaborative_session as cs
+
+    r = FakeRedisFull()
+    session_data = {
+        "session_id": "sess-B",
+        "owner_token": "tok",
+        "owner_phone": "",
+        "owner_device_id": "host-device",
+        "user_id": None,
+        "status": cs.SessionStatus.ASSIGNING.value,
+        "items": [{"id": "i1", "name": "x", "price": 100, "quantity": 1}],
+        "charges": [],
+        "participants": [
+            {"id": "h1", "name": "Host", "phone": "", "role": "owner", "joined_at": "now"},
+            # Editor joined, NEVER reached p3 (no enter-share call) — still
+            # should be charged at finalize because they were a participant.
+            {"id": "e1", "name": "Edi", "phone": "", "role": "editor",
+             "joined_at": "now", "device_id": "editor-device"},
+        ],
+        "assignments": {"i1": [{"participant_id": "h1", "quantity": 1}]},
+        "total": 100, "subtotal": 100, "tip": 0,
+    }
+    r.setex("session:sess-B", 3600, _json.dumps(session_data))
+    cs.finalize_session(r, "sess-B", "tok")
+    editor_status = free_tier.get_status(r, device_id="editor-device")
+    assert_eq(editor_status["sessions_used"], 1, "editor charged even without p3 visit")
+
+
+@scenario("S20 · finalize is idempotent with enter-share")
+def s20():
+    import json as _json
+    import collaborative_session as cs
+
+    r = FakeRedisFull()
+    session_data = {
+        "session_id": "sess-C",
+        "owner_token": "tok",
+        "owner_phone": "",
+        "owner_device_id": "host-device",
+        "user_id": None,
+        "status": cs.SessionStatus.ASSIGNING.value,
+        "items": [{"id": "i1", "name": "x", "price": 100, "quantity": 1}],
+        "charges": [],
+        "participants": [
+            {"id": "h1", "name": "Host", "phone": "", "role": "owner", "joined_at": "now"},
+            {"id": "e1", "name": "Edi", "phone": "", "role": "editor",
+             "joined_at": "now", "device_id": "editor-device"},
+        ],
+        "assignments": {"i1": [{"participant_id": "h1", "quantity": 1}]},
+        "total": 100, "subtotal": 100, "tip": 0,
+    }
+    r.setex("session:sess-C", 3600, _json.dumps(session_data))
+    # Simulate the editor's enter-share BEFORE finalize.
+    free_tier.record_session_use(r, "sess-C", device_id="editor-device")
+    # Then host finalizes — should NOT double-count.
+    cs.finalize_session(r, "sess-C", "tok")
+    editor_status = free_tier.get_status(r, device_id="editor-device")
+    assert_eq(editor_status["sessions_used"], 1, "single count despite two paths")
+
+
 # ---------------------------------------------------------------------------
 
 print(f"\n=== Result: {passes} passed, {failures} failed ===\n")

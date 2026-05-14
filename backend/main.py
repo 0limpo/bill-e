@@ -771,7 +771,10 @@ async def join_session(session_id: str, request: Request):
         if not can_join.get("allowed"):
             return JSONResponse(status_code=402, content=can_join)
 
-        result = add_participant(redis_client, session_id, name, phone, user_id=editor_user_id)
+        result = add_participant(
+            redis_client, session_id, name, phone,
+            user_id=editor_user_id, device_id=device_id,
+        )
 
         if "error" in result:
             raise HTTPException(status_code=result.get("code", 400), detail=result["error"])
@@ -822,12 +825,17 @@ async def select_existing_participant(session_id: str, request: Request):
         if not can_join.get("allowed"):
             return JSONResponse(status_code=402, content=can_join)
 
-        # Backfill user_id on the selected participant so editor history finds this bill later
-        if editor_user_id:
+        # Backfill user_id and device_id on the selected participant so
+        # finalize_session can charge them later even if they close the
+        # tab before reaching their own p3.
+        if editor_user_id or device_id:
             try:
-                attach_user_id_to_participant(redis_client, session_id, participant_id, editor_user_id)
+                attach_user_id_to_participant(
+                    redis_client, session_id, participant_id,
+                    editor_user_id, device_id=device_id,
+                )
             except Exception as e:
-                print(f"Could not attach user_id to participant: {e}")
+                print(f"Could not attach identity to participant: {e}")
 
         return {"status": "ok"}
     except HTTPException:
