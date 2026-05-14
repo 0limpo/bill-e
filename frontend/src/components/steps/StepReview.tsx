@@ -651,21 +651,17 @@ export function StepReview({
             : charge.value;
           const isExpanded = expandedCharge === charge.id;
           const isIncluded = !!charge.included_in_items;
-          const isSuggested = !!charge.is_suggested;
 
-          // Cargo "incluido" o "sugerido": muestra el monto sin signo,
-          // en gris, no clickeable. Ambos casos son informativos y no se
-          // suman al total.
-          if (isIncluded || isSuggested) {
-            const badge = isIncluded
-              ? t("charges.includedInItems")
-              : t("charges.suggested");
+          // Cargo "incluido en items" (ej. IVA UE): info pura, no editable
+          // (su monto ya esta dentro de items.price). El badge informa al
+          // usuario por que aparece pero no suma al total.
+          if (isIncluded) {
             return (
               <div key={charge.id} className="breakdown-row charge opacity-60 cursor-default">
                 <span className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="truncate">{charge.name}</span>
                   <span className="text-xs opacity-70 shrink-0">
-                    ({charge.value}{charge.valueType === "percent" ? "%" : "$"} · {badge})
+                    ({charge.value}{charge.valueType === "percent" ? "%" : "$"} · {t("charges.includedInItems")})
                   </span>
                 </span>
                 <span className="font-medium shrink-0 ml-2">
@@ -675,6 +671,7 @@ export function StepReview({
             );
           }
 
+          const isSuggested = !!charge.is_suggested;
           return (
             <div key={charge.id}>
               {/* Collapsed view - click to expand */}
@@ -693,7 +690,7 @@ export function StepReview({
                   </span>
                 </span>
                 <span className="font-semibold shrink-0 ml-2">
-                  {charge.isDiscount ? "-" : "+"}{fmt(amount)}
+                  {isSuggested ? "" : (charge.isDiscount ? "-" : "+")}{fmt(amount)}
                 </span>
               </button>
 
@@ -837,14 +834,10 @@ export function StepReview({
                 </div>
                 <div className="row-val">{fmt(discountIsPreSubtotal ? subtotalAfterDiscounts : subtotal)}</div>
                 <div className={`row-val editable ${subtotalMatches ? "" : "warn"}`}>
-                  <input
-                    type="text"
-                    inputMode={decimals > 0 ? "decimal" : "numeric"}
-                    value={formatNumber(originalSubtotal, decimals)}
-                    onChange={(e) => {
-                      const num = parseFlexibleNumber(e.target.value);
-                      if (!isNaN(num)) onOriginalSubtotalChange?.(Math.max(0, num));
-                    }}
+                  <PriceInput
+                    value={originalSubtotal}
+                    decimals={decimals}
+                    onSave={(v) => onOriginalSubtotalChange?.(v)}
                   />
                 </div>
               </>
@@ -862,14 +855,10 @@ export function StepReview({
                 </div>
                 <div className="row-val">{fmt(total)}</div>
                 <div className={`row-val editable ${totalMatches ? "" : "warn"}`}>
-                  <input
-                    type="text"
-                    inputMode={decimals > 0 ? "decimal" : "numeric"}
-                    value={formatNumber(originalTotal, decimals)}
-                    onChange={(e) => {
-                      const num = parseFlexibleNumber(e.target.value);
-                      if (!isNaN(num)) onOriginalTotalChange?.(Math.max(0, num));
-                    }}
+                  <PriceInput
+                    value={originalTotal}
+                    decimals={decimals}
+                    onSave={(v) => onOriginalTotalChange?.(v)}
                   />
                 </div>
               </>
