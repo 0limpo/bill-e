@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronDown, Share2, Copy, Check } from "lucide-react";
+import { ChevronLeft, ChevronDown, Share2, Copy, Check, Mail, MessageCircle, Send, MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
@@ -64,6 +64,15 @@ export function StepShare({
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [hasNativeShare, setHasNativeShare] = useState(false);
+
+  // Detect navigator.share availability once on mount. Doing this in a
+  // useEffect (not inline) avoids a hydration mismatch between SSR and
+  // the client, since `navigator` only exists on the client.
+  useEffect(() => {
+    setHasNativeShare(typeof navigator !== "undefined" && typeof navigator.share === "function");
+  }, []);
 
   // Optimistic-paid model: we don't mirror paid_at into local state. Instead
   // we read paid_at directly from props, except for participants whose
@@ -288,6 +297,46 @@ export function StepShare({
     const message = generateShareMessage();
     const url = `https://wa.me/?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
+    setShareSheetOpen(false);
+  };
+
+  // Share on Telegram
+  const shareOnTelegram = () => {
+    if (sessionId) trackShare(sessionId, "telegram");
+    const message = generateShareMessage();
+    // Telegram's share intent uses url+text; we put everything in text
+    // since the share message already contains the link.
+    const url = `https://t.me/share/url?url=${encodeURIComponent("")}&text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+    setShareSheetOpen(false);
+  };
+
+  // Share via email (mailto:)
+  const shareViaEmail = () => {
+    if (sessionId) trackShare(sessionId, "email");
+    const message = generateShareMessage();
+    const subject = encodeURIComponent(t("share.emailSubject"));
+    const body = encodeURIComponent(message);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    setShareSheetOpen(false);
+  };
+
+  // Native share sheet (mobile + supported desktop browsers)
+  const shareNative = async () => {
+    if (sessionId) trackShare(sessionId, "native");
+    const message = generateShareMessage();
+    try {
+      await navigator.share({ text: message });
+    } catch {
+      // User cancelled or share failed — swallow silently
+    }
+    setShareSheetOpen(false);
+  };
+
+  // Wrapper around copyToClipboard that also closes the sheet
+  const copyFromSheet = async () => {
+    await copyToClipboard();
+    setShareSheetOpen(false);
   };
 
   return (
@@ -464,30 +513,107 @@ export function StepShare({
           </Button>
         )}
         {isOwner && (
-          <>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-12 px-4"
-              onClick={copyToClipboard}
-            >
-              {copied ? (
-                <Check className="w-5 h-5 text-green-600" />
-              ) : (
-                <Copy className="w-5 h-5" />
-              )}
-            </Button>
-            <Button
-              size="lg"
-              className="flex-1 h-12 font-semibold"
-              onClick={shareOnWhatsApp}
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              {t("finalized.shareWhatsApp")}
-            </Button>
-          </>
+          <Button
+            size="lg"
+            className="flex-1 h-12 font-semibold"
+            onClick={() => setShareSheetOpen(true)}
+          >
+            <Share2 className="w-4 h-4 mr-2" />
+            {t("share.button")}
+          </Button>
         )}
       </div>
+
+      {/* Bottom sheet — share options. Rendered when isOwner triggers
+          the share button. Used on both mobile and desktop for a
+          consistent look. */}
+      {shareSheetOpen && (
+        <>
+          <div
+            className="share-sheet-backdrop fixed inset-0 bg-black/40 z-40"
+            onClick={() => setShareSheetOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("share.sheetTitle")}
+            className="share-sheet fixed inset-x-0 bottom-0 z-50 bg-card border-t border-border rounded-t-2xl shadow-xl max-w-md mx-auto"
+          >
+            <div className="px-4 pt-3 pb-6">
+              {/* drag handle */}
+              <div className="w-10 h-1 bg-muted-foreground/30 rounded-full mx-auto mb-3" />
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold">{t("share.sheetTitle")}</h3>
+                <button
+                  type="button"
+                  onClick={() => setShareSheetOpen(false)}
+                  className="p-1 rounded-md hover:bg-secondary text-muted-foreground"
+                  aria-label={t("steps.back")}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="space-y-1">
+                <ShareOption
+                  icon={<MessageCircle className="w-5 h-5 text-green-600" />}
+                  bg="bg-green-500/15"
+                  label="WhatsApp"
+                  onClick={shareOnWhatsApp}
+                />
+                <ShareOption
+                  icon={<Send className="w-5 h-5 text-sky-600" />}
+                  bg="bg-sky-500/15"
+                  label="Telegram"
+                  onClick={shareOnTelegram}
+                />
+                <ShareOption
+                  icon={<Mail className="w-5 h-5 text-muted-foreground" />}
+                  bg="bg-muted"
+                  label={t("share.email")}
+                  onClick={shareViaEmail}
+                />
+                <ShareOption
+                  icon={copied ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-muted-foreground" />}
+                  bg="bg-muted"
+                  label={copied ? t("share.copied") : t("share.copyLink")}
+                  onClick={copyFromSheet}
+                />
+                {hasNativeShare && (
+                  <ShareOption
+                    icon={<MoreHorizontal className="w-5 h-5 text-muted-foreground" />}
+                    bg="bg-muted"
+                    label={t("share.more")}
+                    onClick={shareNative}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+interface ShareOptionProps {
+  icon: React.ReactNode;
+  bg: string;
+  label: string;
+  onClick: () => void;
+}
+
+function ShareOption({ icon, bg, label, onClick }: ShareOptionProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-secondary transition-colors text-left"
+    >
+      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${bg}`}>
+        {icon}
+      </div>
+      <span className="font-medium">{label}</span>
+    </button>
   );
 }

@@ -160,7 +160,7 @@ export function trackStep2Complete(sessionId: string, personCount: number) {
 /**
  * Track when user shares the session
  */
-export function trackShare(sessionId: string, method: "whatsapp" | "copy" | "native") {
+export function trackShare(sessionId: string, method: "whatsapp" | "telegram" | "email" | "copy" | "native") {
   trackEvent("funnel_shared", {
     session_id: sessionId,
     method,
