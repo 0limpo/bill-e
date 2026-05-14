@@ -36,6 +36,9 @@ export interface Charge {
   // True cuando el cargo ya está dentro de los precios de items (ej. IVA UE).
   // El UI lo oculta del listado y excluye del cálculo de totales.
   included_in_items?: boolean;
+  // True cuando el cargo es una sugerencia (propina sugerida) no cobrada.
+  // Se muestra como info pero NO se suma a totales.
+  is_suggested?: boolean;
 }
 
 export interface Participant {

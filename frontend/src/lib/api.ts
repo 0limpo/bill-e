@@ -71,6 +71,9 @@ export interface ApiCharge {
   // True cuando el cargo ya está dentro de los precios de items (ej. IVA UE).
   // El frontend lo oculta del listado y excluye del cálculo de total.
   included_in_items?: boolean;
+  // True cuando el cargo es una sugerencia (propina sugerida) no cobrada.
+  // Se muestra como info pero NO se suma al total.
+  is_suggested?: boolean;
 }
 
 export interface PollResponse {

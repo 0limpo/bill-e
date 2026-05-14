@@ -139,6 +139,15 @@ class Cargo(BaseModel):
             "pero das al sistema el monto real para fallback. null si no aparece."
         ),
     )
+    es_sugerencia: bool = Field(
+        default=False,
+        description=(
+            "true cuando el cargo es una SUGERENCIA no cobrada en el total "
+            "(ej. 'Propina sugerida', 'Tip suggestion', 'Gratuity suggested'). "
+            "La boleta lo muestra como referencia pero NO esta sumado al total impreso. "
+            "false (default) cuando el cargo SI esta cobrado y debe sumarse al total."
+        ),
+    )
 
 
 class Descuento(BaseModel):
@@ -240,6 +249,14 @@ REGLAS PARA CARGOS:
   monto resultante en la columna numerica (ej. linea "Tax 18% .... $5.40"),
   anota 5.40 en valor_impreso. Mantienes tipo='percent' y valor=18 igual,
   pero das al sistema el monto real para fallback. null si no aparece.
+- es_sugerencia=true: cuando el cargo es una SUGERENCIA y NO esta cobrado en
+  el total impreso. Patrones tipicos:
+    * "Propina sugerida $3.860" (CLP)
+    * "Suggested tip 18%: $5.40"
+    * "Gratuity (suggested): $4.00"
+    * "Tip not included" + monto sugerido
+  Estos cargos los muestras al usuario como info pero NO se suman al total.
+  Default es_sugerencia=false para cargos cobrados.
 
 REGLAS PARA DESCUENTOS:
 - No agregues a `descuentos` los descuentos que aparecen en la descripcion
@@ -410,6 +427,7 @@ def boleta_to_bill_e(boleta_dict: Dict[str, Any]) -> Dict[str, Any]:
         else:
             valor = _p(c.get("valor"))
 
+        es_sugerencia = bool(c.get("es_sugerencia", False))
         if tipo == "per_person":
             n_pers = c.get("numero_personas") or 1
             cargos_internal.append({
@@ -417,6 +435,7 @@ def boleta_to_bill_e(boleta_dict: Dict[str, Any]) -> Dict[str, Any]:
                 "tipo": "fixed",
                 "valor": valor * n_pers,
                 "es_descuento": False,
+                "es_sugerencia": es_sugerencia,
                 "_per_person_valor": valor,
                 "_numero_personas": n_pers,
                 "_id": c.get("id"),
@@ -427,6 +446,7 @@ def boleta_to_bill_e(boleta_dict: Dict[str, Any]) -> Dict[str, Any]:
                 "tipo": tipo,
                 "valor": valor,
                 "es_descuento": False,
+                "es_sugerencia": es_sugerencia,
                 "_id": c.get("id"),
                 "_valor_impreso": _p_opt(c.get("valor_impreso")),
             })

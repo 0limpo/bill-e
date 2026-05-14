@@ -448,6 +448,7 @@ export default function SessionPage() {
     isDiscount: c.isDiscount,
     distribution: c.distribution,
     included_in_items: c.included_in_items,
+    is_suggested: c.is_suggested,
   }));
 
   const itemsIncludeCharges = session?.items_include_charges ?? false;
