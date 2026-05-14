@@ -67,6 +67,17 @@ export default function SessionPage() {
     return null;
   });
 
+  // Avatar picture for header. Null until we know there's no Google
+  // session — undefined would render an empty initials avatar even for
+  // logged-in users until the SSR/hydration race resolves.
+  const [userPicture, setUserPicture] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const user = getStoredUser();
+      return user?.picture_url || null;
+    }
+    return null;
+  });
+
   useEffect(() => {
     if (!urlOwnerToken) {
       const storedToken = getStoredOwnerToken(sessionId);
@@ -385,6 +396,7 @@ export default function SessionPage() {
       if (verified) {
         setStoredUser(verified);
         setUserEmail(verified.email);
+        setUserPicture(verified.picture_url || null);
       }
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete("token");
@@ -1247,85 +1259,114 @@ export default function SessionPage() {
       )}
 
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-md mx-auto px-4 py-3">
-          <div className="flex items-center">
-            {/* Home button */}
-            <Link
-              href="/"
-              className="flex items-center justify-center w-8 h-8 bg-primary rounded-full text-white font-bold text-sm shrink-0"
-            >
-              B
-            </Link>
-
-            {/* Separator */}
-            <div className="w-px h-8 bg-border mx-3" />
-
-            {/* Stepper container - takes remaining space, centers content */}
-            <div className="flex-1 flex justify-center">
-              <div className="flex items-center">
-              {[
-                { num: 1, label: t("steps.review") },
-                { num: 2, label: t("steps.assign") },
-                { num: 3, label: t("steps.share") },
-              ].map((s, idx) => (
-                <div key={s.num} className="flex items-center">
-                  {/* Step */}
-                  <button
-                    className="flex flex-col items-center gap-1 w-[60px]"
-                    onClick={() => !isViewOnly && s.num <= step && goToStep(s.num)}
-                    disabled={isViewOnly || s.num > step}
+      {(() => {
+        // Identity displayed in the right-side avatar. For the host we
+        // pull the live participant name (defaults to "Host" until they
+        // rename themselves in step 2), so the initials track edits.
+        const ownerParticipant = session?.participants?.find((p) => p.role === "owner");
+        const me = isOwner
+          ? ownerParticipant
+          : currentParticipant
+            ? session?.participants?.find((p) => p.id === currentParticipant.id)
+            : null;
+        const meName = me?.name || (isOwner ? t("session.host") : t("session.editor"));
+        const roleLabel = isOwner ? t("session.host") : t("session.editor");
+        const tierLabel = isPremium ? "pro" : "free";
+        return (
+          <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
+            <div className="max-w-md mx-auto px-4 py-3">
+              <div className="flex items-start">
+                {/* Left: Bill-e logo + free/pro tier */}
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <Link
+                    href="/"
+                    className="flex items-center justify-center w-8 h-8 bg-primary rounded-full text-white font-bold text-sm"
                   >
-                    {/* Circle */}
-                    <span
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                        s.num === step
-                          ? "bg-primary text-white shadow-[0_0_0_3px_rgba(59,130,246,0.2)]"
-                          : s.num < step
-                          ? "bg-primary/30 text-primary"
-                          : "bg-secondary text-muted-foreground/40"
-                      }`}
-                    >
-                      {s.num}
-                    </span>
-                    {/* Label */}
-                    <span
-                      className={`text-xs font-medium flex items-center justify-center gap-0.5 ${
-                        s.num === step
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {s.num < step && <span className="text-primary text-[10px]">✓</span>}
-                      {s.label}
-                    </span>
-                  </button>
-                  {/* Line between steps */}
-                  {idx < 2 && (
-                    <div
-                      className={`w-6 h-0.5 mx-1 mb-5 rounded-full ${
-                        s.num < step ? "bg-primary/50" : "bg-secondary"
-                      }`}
-                    />
-                  )}
+                    B
+                  </Link>
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${isPremium ? "text-primary" : "text-muted-foreground"}`}>
+                    {tierLabel}
+                  </span>
                 </div>
-              ))}
+
+                {/* Stepper container - takes remaining space, centers content */}
+                <div className="flex-1 flex justify-center">
+                  <div className="flex items-center">
+                  {[
+                    { num: 1, label: t("steps.review") },
+                    { num: 2, label: t("steps.assign") },
+                    { num: 3, label: t("steps.share") },
+                  ].map((s, idx) => (
+                    <div key={s.num} className="flex items-center">
+                      {/* Step */}
+                      <button
+                        className="flex flex-col items-center gap-1 w-[60px]"
+                        onClick={() => !isViewOnly && s.num <= step && goToStep(s.num)}
+                        disabled={isViewOnly || s.num > step}
+                      >
+                        {/* Circle */}
+                        <span
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                            s.num === step
+                              ? "bg-primary text-white shadow-[0_0_0_3px_rgba(59,130,246,0.2)]"
+                              : s.num < step
+                              ? "bg-primary/30 text-primary"
+                              : "bg-secondary text-muted-foreground/40"
+                          }`}
+                        >
+                          {s.num}
+                        </span>
+                        {/* Label */}
+                        <span
+                          className={`text-xs font-medium flex items-center justify-center gap-0.5 ${
+                            s.num === step
+                              ? "text-foreground"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {s.num < step && <span className="text-primary text-[10px]">✓</span>}
+                          {s.label}
+                        </span>
+                      </button>
+                      {/* Line between steps */}
+                      {idx < 2 && (
+                        <div
+                          className={`w-6 h-0.5 mx-1 mb-5 rounded-full ${
+                            s.num < step ? "bg-primary/50" : "bg-secondary"
+                          }`}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  </div>
+                </div>
+
+                {/* Right: avatar + role label */}
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  {userPicture ? (
+                    <img
+                      src={userPicture}
+                      alt=""
+                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold"
+                      style={{ backgroundColor: getAvatarColor(meName) }}
+                    >
+                      {getInitials(meName)}
+                    </div>
+                  )}
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {roleLabel}
+                  </span>
+                </div>
               </div>
             </div>
-
-            {/* Right column: Role. Free-tier remaining is now shown
-                in StepShare at p3 (see PR 4). */}
-            <div className="flex flex-col items-end gap-0.5">
-              <span className="text-xs text-primary/60">
-                {isOwner ? t("session.host") : currentParticipant?.name || t("session.editor")}
-              </span>
-              {isPremium && (
-                <span className="text-[10px] text-primary/60">Premium</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+          </header>
+        );
+      })()}
 
       {/* Main Content */}
       <main className="max-w-md mx-auto px-4 py-6">
