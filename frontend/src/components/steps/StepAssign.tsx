@@ -318,14 +318,17 @@ export function StepAssign({
 
   // Open the persistent gate modal when assignment reaches 100%.
   // Replaces the auto-disappearing celebration with a modal that has
-  // a clear summary and an Avanzar CTA.
+  // a clear summary and an Avanzar CTA. Skip entirely when nextDisabled
+  // is true (e.g., the editor isn't allowed to advance) — otherwise the
+  // gate's primary button would bypass the disabled-button guard.
   useEffect(() => {
+    if (nextDisabled) return;
     if (isAllAssigned && prevAllAssignedRef.current === false) {
       setGateOpen(true);
       playCelebrationSound();
     }
     prevAllAssignedRef.current = isAllAssigned;
-  }, [isAllAssigned]);
+  }, [isAllAssigned, nextDisabled]);
 
   // Bottom Continuar gate: if everything is assigned, route through the
   // modal so the user explicitly confirms; otherwise advance directly.
@@ -829,7 +832,7 @@ export function StepAssign({
           { ok: true, label: t("gate.assign.distributedLabel"), detail: t("gate.assign.distributedDetail") },
         ]}
         primaryLabel={nextLabel || t("gate.assign.primaryAdvance")}
-        onPrimary={() => { setGateOpen(false); onNext(); }}
+        onPrimary={() => { setGateOpen(false); if (!nextDisabled) onNext(); }}
         secondaryLabel={t("gate.assign.secondaryReview")}
         onSecondary={() => setGateOpen(false)}
       />
