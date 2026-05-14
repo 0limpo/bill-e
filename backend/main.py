@@ -270,7 +270,7 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
 
             # Actualizar sesión con resultado
             if redis_client and session_data:
-                session = json.loads(session_data.decode('utf-8'))
+                session = json.loads(session_data)
                 session['total'] = ocr_result.get('total', 0)
                 session['subtotal'] = ocr_result.get('subtotal', 0)
                 session['tip'] = ocr_result.get('tip', 0)
@@ -348,7 +348,7 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
 
             # Actualizar sesión con resultado
             if redis_client and session_data:
-                session = json.loads(session_data.decode('utf-8'))
+                session = json.loads(session_data)
                 session['total'] = ocr_result.get('total', 0)
                 session['subtotal'] = ocr_result.get('subtotal', 0)
                 session['tip'] = ocr_result.get('tip', 0)
