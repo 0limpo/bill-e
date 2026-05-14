@@ -353,11 +353,11 @@ export function StepReview({
     setLastDeleted(null);
   };
 
-  // Flag para detectar que el usuario acaba de agregar un item desde la UI
-  // (vs items que llegan por sync desde otros participantes). Cuando se setea,
-  // el efecto de mas abajo abre el editor del item recien agregado usando el
-  // id real que asigno el hook (temp- o item-N).
-  const justAddedItemRef = useRef(false);
+  // Tracking del item recien agregado por POSICION (no por id, porque el hook
+  // useSession reasigna ids: primero temp-<ts>, luego item-N del backend).
+  // El effect de abajo mantiene editingItemId sincronizado con el id ACTUAL
+  // del item en esa posicion hasta que el usuario haga otra accion.
+  const lastAddedPosRef = useRef<number | null>(null);
 
   const addItem = () => {
     const newId = String(Date.now());
@@ -367,21 +367,27 @@ export function StepReview({
       quantity: 1,
       price: 0,
     };
+    lastAddedPosRef.current = items.length; // posicion donde quedara el nuevo
     onItemsChange([...items, newItem]);
     setExpandedCharge(null);
-    justAddedItemRef.current = true;
   };
 
-  // Al agregar item, el hook reasigna el id (temp-X y luego item-N). El id
-  // local que generamos no existe en session.items. Por eso autoseleccionamos
-  // el ULTIMO item agregado despues del re-render.
+  // Mantener editingItemId apuntando al item de la posicion recien agregada,
+  // incluso si su id cambia (temp- → item-N) cuando el hook completa el round-trip.
   useEffect(() => {
-    if (justAddedItemRef.current && items.length > 0) {
-      const last = items[items.length - 1];
-      if (last?.id) setEditingItemId(last.id);
-      justAddedItemRef.current = false;
+    const pos = lastAddedPosRef.current;
+    if (pos === null) return;
+    const newItem = items[pos];
+    if (newItem?.id) {
+      setEditingItemId(newItem.id);
     }
   }, [items]);
+
+  // Cuando el usuario selecciona otro item o cierra el editor manualmente,
+  // dejamos de rastrear el "last added" — ya no queremos forzar la apertura.
+  const stopTrackingLastAdded = () => {
+    lastAddedPosRef.current = null;
+  };
 
   // Charge handlers
   const addCharge = () => {
@@ -549,6 +555,7 @@ export function StepReview({
                   <div
                     className="item-row"
                     onClick={() => {
+                      stopTrackingLastAdded();
                       setEditingItemId(isEditing ? null : itemId);
                       setExpandedCharge(null);
                     }}
@@ -607,14 +614,14 @@ export function StepReview({
                         <button
                           type="button"
                           className="item-editor-delete"
-                          onClick={() => { deleteItem(itemId); setEditingItemId(null); }}
+                          onClick={() => { stopTrackingLastAdded(); deleteItem(itemId); setEditingItemId(null); }}
                         >
                           {t("items.deleteItem")}
                         </button>
                         <button
                           type="button"
                           className="item-editor-done"
-                          onClick={() => setEditingItemId(null)}
+                          onClick={() => { stopTrackingLastAdded(); setEditingItemId(null); }}
                         >
                           {t("items.editorDone")}
                         </button>
