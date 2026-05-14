@@ -33,10 +33,6 @@ export interface SessionResponse {
   bill_name?: string;
   merchant_name?: string;
   is_snapshot?: boolean;  // True when loaded from PostgreSQL snapshot (read-only)
-  // Host session tracking (only for owners)
-  host_sessions_used?: number;
-  host_sessions_limit?: number;
-  host_is_premium?: boolean;
 }
 
 export interface ApiParticipant {
@@ -186,12 +182,6 @@ export interface JoinSessionResponse {
   participant?: ApiParticipant;
   is_existing?: boolean;
   is_owner?: boolean;
-  sessions_used?: number;
-  sessions_remaining?: number;
-  // Limit reached response
-  status?: "limit_reached";
-  free_limit?: number;
-  requires_payment?: boolean;
 }
 
 /**
@@ -211,11 +201,7 @@ export async function joinSession(
 }
 
 export interface SelectParticipantResponse {
-  status: "ok" | "limit_reached";
-  sessions_used?: number;
-  sessions_remaining?: number;
-  free_limit?: number;
-  requires_payment?: boolean;
+  status: "ok";
 }
 
 /**
@@ -429,11 +415,6 @@ export async function updateTotal(
 export interface FinalizeSessionResponse {
   success?: boolean;
   error?: string;
-  sessions_used?: number;
-  free_limit?: number;
-  requires_payment?: boolean;
-  host_sessions_used?: number;
-  host_sessions_remaining?: number;
 }
 
 export async function finalizeSession(
@@ -477,6 +458,51 @@ export async function updateHostStep(
     method: "POST",
     body: JSON.stringify({ owner_token: ownerToken, step }),
   });
+}
+
+// --- Free Tier ---
+
+export interface EnterShareResponse {
+  allowed: boolean;
+  sessions_used: number;
+  sessions_limit: number;
+  free_remaining: number;
+  is_premium: boolean;
+  reason?: "limit_reached" | "no_identity";
+  already_counted?: boolean;
+  recorded?: boolean;
+}
+
+/**
+ * Notify the backend that the caller reached step 3 of a session.
+ * Backend records the session against the user/device free-tier counter
+ * idempotently and returns the resulting status. A 402 response means
+ * the cap is reached for a non-premium identity (caller should show
+ * the paywall).
+ */
+export async function enterShare(
+  sessionId: string,
+  userId?: string,
+  googleEmail?: string
+): Promise<EnterShareResponse> {
+  const deviceId = getDeviceId();
+  const body: Record<string, string> = { device_id: deviceId };
+  if (userId) body.user_id = userId;
+  if (googleEmail) body.google_email = googleEmail;
+
+  const resp = await fetch(`${API_URL}/api/session/${sessionId}/enter-share`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  // 402 paywall response carries the same shape as 200 — both are valid.
+  if (resp.status === 402) {
+    return await resp.json();
+  }
+  if (!resp.ok) {
+    throw new Error(`enter-share failed: ${resp.status}`);
+  }
+  return await resp.json();
 }
 
 /**

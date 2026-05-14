@@ -14,7 +14,7 @@ import { formatCurrency, detectDecimals, getAvatarColor, getInitials, calculateP
 import { startPaymentFlow, formatPriceCLP, formatPriceUSD, PREMIUM_PRICE_USD } from "@/lib/payment";
 import { getCountryCode, getPaymentRail, type PaymentRail } from "@/lib/geo";
 import { getStoredToken, getStoredUser, setStoredUser, getAuthProviders, handleAuthCallback, verifyToken, refreshStoredUser, type AuthProvider } from "@/lib/auth";
-import { updateBillName } from "@/lib/api";
+import { updateBillName, enterShare } from "@/lib/api";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import {
   trackStep1Complete,
@@ -90,9 +90,11 @@ export default function SessionPage() {
   const [billName, setBillName] = useState<string>("");
   const billNameInitialized = useRef(false);
 
-  // Editor limit tracking (device_id based)
+  // Free-tier paywall state
   const [showPaywall, setShowPaywall] = useState(false);
   const [sessionsUsed, setSessionsUsed] = useState(0);
+  const [freeRemaining, setFreeRemaining] = useState<number | null>(null);
+  const [isPremium, setIsPremium] = useState<boolean>(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [premiumPrice] = useState(PREMIUM_PRICE_USD);
@@ -180,6 +182,36 @@ export default function SessionPage() {
       setStep(3);
     }
   }, [session?.status, session?.is_snapshot, step]);
+
+  // Free-tier hook: fire once on the first transition into step 3. Counts
+  // this session against the user/device tally (idempotent server-side).
+  // View-only/snapshot revisits are skipped — the counter is for the 1st
+  // time the participant reaches share, not for re-opening a saved bill.
+  const enterShareDoneRef = useRef(false);
+  useEffect(() => {
+    if (step !== 3) return;
+    if (enterShareDoneRef.current) return;
+    if (!session) return;
+    if (isViewOnly) return;
+    enterShareDoneRef.current = true;
+    (async () => {
+      try {
+        const userId = getStoredUser()?.id;
+        const result = await enterShare(sessionId, userId, userEmail || undefined);
+        setIsPremium(result.is_premium);
+        setFreeRemaining(result.free_remaining);
+        if (!result.allowed) {
+          trackPaywallShown(sessionId);
+          setSessionsUsed(result.sessions_used);
+          setShowPaywall(true);
+        }
+      } catch (e) {
+        // Non-fatal: a transient failure shouldn't trap the user at p3.
+        // PR 4 will surface a retry path if free_remaining stays null.
+        console.warn("enter-share failed:", e);
+      }
+    })();
+  }, [step, session, isViewOnly, sessionId, userEmail]);
 
   // Editor entry: once an editor has a participant, save the session as
   // "recent" (so the home page Continue button works for editors too) and
@@ -478,15 +510,11 @@ export default function SessionPage() {
 
     const result = await join(joinName.trim());
 
-    if (result.limitReached) {
-      trackPaywallShown(sessionId);
-      setSessionsUsed(result.sessionsUsed || 0);
-      storePendingJoin(joinName.trim()); // Store name for after payment
-      setShowPaywall(true);
-    } else if (!result.success) {
+    if (!result.success) {
       setJoinError(t("session.joinError"));
     } else {
-      // Successfully joined
+      // Successfully joined. Free-tier paywall is now triggered at p3
+      // entry (see enterShareDoneRef effect above), not here.
       trackGuestJoined(sessionId, result.isNew || false);
     }
 
@@ -569,11 +597,7 @@ export default function SessionPage() {
       setStep(3);
       window.scrollTo(0, 0);
       updateHostStep(3);
-    } else if (result.limitReached) {
-      // Host reached free session limit - show paywall
-      trackPaywallShown(sessionId);
-      setSessionsUsed(result.sessionsUsed || 0);
-      setShowPaywall(true);
+      // Paywall (if cap reached) fires from the enter-share effect above.
     }
   };
 
@@ -1283,17 +1307,13 @@ export default function SessionPage() {
               </div>
             </div>
 
-            {/* Right column: Role + Sessions */}
+            {/* Right column: Role. Free-tier remaining is now shown
+                in StepShare at p3 (see PR 4). */}
             <div className="flex flex-col items-end gap-0.5">
               <span className="text-xs text-primary/60">
                 {isOwner ? t("session.host") : currentParticipant?.name || t("session.editor")}
               </span>
-              {isOwner && session?.host_sessions_limit && !session?.host_is_premium && (
-                <span className="text-[10px] text-muted-foreground/60">
-                  {session.host_sessions_used}/{session.host_sessions_limit}
-                </span>
-              )}
-              {isOwner && session?.host_is_premium && (
+              {isPremium && (
                 <span className="text-[10px] text-primary/60">Premium</span>
               )}
             </div>

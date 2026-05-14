@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -49,15 +49,10 @@ try:
         finalize_session,
         calculate_totals,
         get_participant_summary,
-        check_host_session_limit,
-        set_editor_premium,
-        set_host_premium,
-        set_host_device_premium,
         set_premium_by_email,
         check_premium_by_email,
         get_premium_by_email,
         clear_premium_by_email as redis_clear_premium_by_email,
-        HOST_FREE_SESSIONS,
         SessionStatus
     )
     collaborative_available = True
@@ -575,27 +570,8 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
             response["tip"] = session_data["tip"]
             response["owner_phone"] = session_data.get("owner_phone")
 
-            # Include host session count info
-            # Priority: phone > device_id
-            from collaborative_session import check_host_device_limit
-            owner_phone = session_data.get("owner_phone")
-            owner_device_id = session_data.get("owner_device_id")
-
-            if owner_phone:
-                host_limit_info = check_host_session_limit(redis_client, owner_phone, session_id)
-                response["host_sessions_used"] = host_limit_info.get("sessions_used", 0)
-                response["host_sessions_limit"] = HOST_FREE_SESSIONS
-                response["host_is_premium"] = host_limit_info.get("is_premium", False)
-            elif owner_device_id:
-                host_limit_info = check_host_device_limit(redis_client, owner_device_id, session_id)
-                response["host_sessions_used"] = host_limit_info.get("sessions_used", 0)
-                response["host_sessions_limit"] = HOST_FREE_SESSIONS
-                response["host_is_premium"] = host_limit_info.get("is_premium", False)
-            else:
-                # No phone or device_id - show default (0/1) for free users
-                response["host_sessions_used"] = 0
-                response["host_sessions_limit"] = HOST_FREE_SESSIONS
-                response["host_is_premium"] = False
+            # Free-tier status is no longer surfaced via the session
+            # payload — clients fetch it from /enter-share on p3 entry.
 
             if session_data["status"] == SessionStatus.FINALIZED.value:
                 response["totals"] = session_data.get("totals", [])
@@ -757,35 +733,16 @@ async def get_session_snapshot(
 @app.post("/api/session/{session_id}/join")
 async def join_session(session_id: str, request: Request):
     try:
-        from collaborative_session import check_editor_device_limit, register_editor_session
-
         data = await request.json()
         name = data.get("name", "").strip()
         phone = data.get("phone", "").strip() or "N/A"  # Phone is now optional
-        device_id = data.get("device_id", "").strip()
-        google_email = data.get("google_email", "").strip() or None  # For premium check
-
-        # Debug logging
-        print(f"JOIN REQUEST: name={name}, device_id={device_id[:8] if device_id else 'none'}..., google_email={google_email}")
+        google_email = data.get("google_email", "").strip() or None
 
         if not name:
             raise HTTPException(status_code=400, detail="El nombre es requerido")
 
-        # Check device limit if device_id provided
-        if device_id:
-            limit_check = check_editor_device_limit(redis_client, device_id, session_id, google_email)
-            print(f"JOIN LIMIT CHECK: {limit_check}")
-
-            if not limit_check.get("allowed"):
-                # Limit reached - return paywall status
-                return {
-                    "status": "limit_reached",
-                    "sessions_used": limit_check.get("sessions_used", 0),
-                    "free_limit": limit_check.get("free_limit", 2),
-                    "requires_payment": True
-                }
-
-        # Resolve user_id from google_email so editor history can find this bill later
+        # Resolve user_id from google_email so editor history can find this bill later.
+        # Free-tier accounting happens at p3 entry, not here.
         editor_user_id = None
         if google_email and postgres_available:
             try:
@@ -800,12 +757,6 @@ async def join_session(session_id: str, request: Request):
         if "error" in result:
             raise HTTPException(status_code=result.get("code", 400), detail=result["error"])
 
-        # Register session for device tracking (if device_id provided and not returning)
-        if device_id and not result.get("is_existing"):
-            device_status = register_editor_session(redis_client, device_id, session_id)
-            result["sessions_used"] = device_status.get("sessions_used", 0)
-            result["sessions_remaining"] = device_status.get("remaining", 0)
-
         return result
     except HTTPException:
         raise
@@ -817,49 +768,24 @@ async def join_session(session_id: str, request: Request):
 async def select_existing_participant(session_id: str, request: Request):
     """
     Select an existing participant (for editors).
-    This checks the device limit before allowing selection.
+    Free-tier accounting happens at p3 entry, not at participant selection.
     """
     try:
-        from collaborative_session import check_editor_device_limit, register_editor_session
-
         data = await request.json()
         participant_id = data.get("participant_id", "").strip()
-        device_id = data.get("device_id", "").strip()
-        google_email = data.get("google_email", "").strip() or None  # For premium check
+        google_email = data.get("google_email", "").strip() or None
 
         if not participant_id:
             raise HTTPException(status_code=400, detail="participant_id es requerido")
 
-        # Check device limit if device_id provided
-        if device_id:
-            limit_check = check_editor_device_limit(redis_client, device_id, session_id, google_email)
-
-            if not limit_check.get("allowed"):
-                # Limit reached - return paywall status
-                return {
-                    "status": "limit_reached",
-                    "sessions_used": limit_check.get("sessions_used", 0),
-                    "free_limit": limit_check.get("free_limit", 2),
-                    "requires_payment": True
-                }
-
-            # Backfill user_id on the selected participant so editor history finds this bill later
-            if google_email and postgres_available:
-                try:
-                    user = postgres_db.get_user_by_email(google_email)
-                    if user and user.get("id"):
-                        attach_user_id_to_participant(redis_client, session_id, participant_id, str(user["id"]))
-                except Exception as e:
-                    print(f"Could not attach user_id to participant: {e}")
-
-            # Register session for device tracking (if not already in this session)
-            if not limit_check.get("is_returning"):
-                device_status = register_editor_session(redis_client, device_id, session_id)
-                return {
-                    "status": "ok",
-                    "sessions_used": device_status.get("sessions_used", 0),
-                    "sessions_remaining": device_status.get("remaining", 0)
-                }
+        # Backfill user_id on the selected participant so editor history finds this bill later
+        if google_email and postgres_available:
+            try:
+                user = postgres_db.get_user_by_email(google_email)
+                if user and user.get("id"):
+                    attach_user_id_to_participant(redis_client, session_id, participant_id, str(user["id"]))
+            except Exception as e:
+                print(f"Could not attach user_id to participant: {e}")
 
         return {"status": "ok"}
     except HTTPException:
@@ -999,6 +925,51 @@ async def update_host_step(session_id: str, request: Request):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/session/{session_id}/enter-share")
+async def enter_share_endpoint(session_id: str, request: Request):
+    """Mark that the caller (host or editor) has reached step 3 of this
+    session. Idempotently increments their free-tier counter the first
+    time. Returns the resulting status so the UI can show "N free bills
+    left" or trigger the paywall.
+
+    Identity resolution: user_id (or google_email→user_id) wins over
+    device_id. Returns 402 when a non-premium identity has hit the cap.
+    """
+    import free_tier
+
+    data = await request.json()
+    device_id = (data.get("device_id") or "").strip() or None
+    user_id = (data.get("user_id") or "").strip() or None
+    google_email = (data.get("google_email") or "").strip() or None
+
+    # Resolve user_id from google_email if not provided directly.
+    if not user_id and google_email and postgres_available:
+        try:
+            user = postgres_db.get_user_by_email(google_email)
+            if user and user.get("id"):
+                user_id = str(user["id"])
+        except Exception as e:
+            print(f"enter-share: could not resolve user_id from email: {e}")
+
+    # Sanity-check the session exists; refuse silently for unknown ids.
+    session_data = get_collab_session(redis_client, session_id)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Sesion no encontrada")
+
+    result = free_tier.record_session_use(
+        redis_client,
+        session_id=session_id,
+        user_id=user_id,
+        device_id=device_id,
+    )
+
+    if not result.get("allowed"):
+        # 402 Payment Required — frontend uses this to flip the paywall.
+        return JSONResponse(status_code=402, content=result)
+
+    return result
 
 
 @app.post("/api/session/{session_id}/reopen")
@@ -3145,132 +3116,6 @@ async def get_recent_sessions_endpoint(secret: str = None, limit: int = 50, stat
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/cron/reconcile-premium")
-async def cron_reconcile_premium(secret: str = None):
-    """
-    Reconcile premium status from PostgreSQL to Redis.
-    Restores premium access for users whose Redis data expired.
-    Should be called periodically (e.g., every hour).
-    """
-    if secret != os.getenv("ADMIN_SECRET", "bill-e-admin-2024"):
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    if not redis_client:
-        return {"error": "Redis not available", "reconciled": 0}
-
-    if not postgres_available:
-        return {"error": "PostgreSQL not available", "reconciled": 0}
-
-    try:
-        reconciled = 0
-        already_active = 0
-        errors = 0
-        details = []
-
-        # Get all active premium users from PostgreSQL
-        premium_users = postgres_db.get_active_premium_users()
-
-        for user in premium_users:
-            try:
-                source = user.get("source")
-                device_id = user.get("device_id")
-                phone = user.get("phone")
-                user_type = user.get("user_type")
-                premium_expires = user.get("premium_expires")
-
-                if not premium_expires:
-                    continue
-
-                # Check if premium is already active in Redis
-                needs_restore = False
-                restore_type = None
-
-                # For payments, restore based on user_type
-                if source == "payment":
-                    if user_type == "host":
-                        if phone:
-                            host_key = f"host:{phone}:data"
-                            host_data = redis_client.get(host_key)
-                            if not host_data:
-                                needs_restore = True
-                                restore_type = "host_phone"
-                            else:
-                                data = json.loads(host_data)
-                                if not data.get("is_premium"):
-                                    needs_restore = True
-                                    restore_type = "host_phone"
-                        elif device_id:
-                            device_key = f"host_device:{device_id}:data"
-                            device_data = redis_client.get(device_key)
-                            if not device_data:
-                                needs_restore = True
-                                restore_type = "host_device"
-                            else:
-                                data = json.loads(device_data)
-                                if not data.get("is_premium"):
-                                    needs_restore = True
-                                    restore_type = "host_device"
-
-                    elif user_type == "editor" and device_id:
-                        editor_key = f"editor:{device_id}:data"
-                        editor_data = redis_client.get(editor_key)
-                        if not editor_data:
-                            needs_restore = True
-                            restore_type = "editor"
-                        else:
-                            data = json.loads(editor_data)
-                            if not data.get("is_premium"):
-                                needs_restore = True
-                                restore_type = "editor"
-
-                # Restore premium to Redis if needed
-                if needs_restore and restore_type:
-                    if restore_type == "host_phone" and phone:
-                        result = set_host_premium(redis_client, phone)
-                        reconciled += 1
-                        details.append({
-                            "type": "host_phone",
-                            "phone": phone[:4] + "****",
-                            "expires": premium_expires
-                        })
-
-                    elif restore_type == "host_device" and device_id:
-                        result = set_host_device_premium(redis_client, device_id)
-                        reconciled += 1
-                        details.append({
-                            "type": "host_device",
-                            "device_id": device_id[:8] + "...",
-                            "expires": premium_expires
-                        })
-
-                    elif restore_type == "editor" and device_id:
-                        result = set_editor_premium(redis_client, device_id, phone)
-                        reconciled += 1
-                        details.append({
-                            "type": "editor",
-                            "device_id": device_id[:8] + "...",
-                            "expires": premium_expires
-                        })
-                else:
-                    already_active += 1
-
-            except Exception as e:
-                print(f"Error reconciling premium: {e}")
-                errors += 1
-
-        return {
-            "success": True,
-            "reconciled": reconciled,
-            "already_active": already_active,
-            "errors": errors,
-            "total_premium_in_db": len(premium_users),
-            "details": details[:20]  # First 20 for debugging
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.post("/api/cron/sync-users")
 async def cron_sync_users(secret: str = None):
     """
@@ -3717,6 +3562,19 @@ async def oauth_callback(
             premium_status = check_premium_by_email(redis_client, email)
             is_premium = premium_status.get("is_premium", False)
 
+            # Merge anonymous device's free-tier counter into this user.
+            # Best-effort: a failure here shouldn't block the login.
+            if device_id:
+                try:
+                    import free_tier
+                    free_tier.merge_device_into_user(
+                        redis_client,
+                        user_id=str(user["id"]),
+                        device_id=device_id,
+                    )
+                except Exception as e:
+                    print(f"OAuth callback: free-tier merge failed: {e}")
+
             # Create session token
             session_token = oauth_auth.create_session_token(
                 user_id=user["id"],
@@ -3979,11 +3837,8 @@ async def restore_premium_to_device(request: Request):
                 "error": result.get("error", "Could not restore premium")
             }
 
-        # Also activate in Redis for immediate effect
-        if redis_client and collaborative_available:
-            from datetime import datetime
-            expires = datetime.fromisoformat(result["premium_expires"])
-            set_host_device_premium(redis_client, device_id)
+        # Postgres holds the source of truth; check_premium_by_email warms
+        # the Redis cache lazily on the next paywall query.
 
         return {
             "success": True,

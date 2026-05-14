@@ -232,26 +232,13 @@ export function useSession({
 
   // Join session - returns result with status info
   const join = useCallback(
-    async (name: string, phone?: string, emailOverride?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number; isNew?: boolean }> => {
+    async (name: string, phone?: string, emailOverride?: string): Promise<{ success: boolean; isNew?: boolean }> => {
       markInteraction();
       try {
-        // Get editor's google email for premium check
-        // Use emailOverride if provided (e.g., from post-payment flow), otherwise get from stored user
         const storedUser = getStoredUser();
         const googleEmail = emailOverride || storedUser?.email || undefined;
-        console.log("Join: using googleEmail:", googleEmail);
         const result = await joinSession(sessionId, name, phone, googleEmail);
 
-        // Check if limit reached
-        if (result.status === "limit_reached") {
-          return {
-            success: false,
-            limitReached: true,
-            sessionsUsed: result.sessions_used || 0
-          };
-        }
-
-        // Success
         if (result.participant) {
           setCurrentParticipant({ id: result.participant.id, name: result.participant.name });
           localStorage.setItem(
@@ -271,28 +258,14 @@ export function useSession({
     [sessionId, markInteraction, refresh]
   );
 
-  // Select existing participant (checks device limit first)
+  // Select existing participant. Free-tier accounting happens at p3 entry.
   const selectParticipant = useCallback(
-    async (participantId: string, name: string, emailOverride?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
+    async (participantId: string, name: string, emailOverride?: string): Promise<{ success: boolean }> => {
       try {
-        // Get editor's google email for premium check
-        // Use emailOverride if provided (e.g., from post-payment flow), otherwise get from stored user
         const storedUser = getStoredUser();
         const googleEmail = emailOverride || storedUser?.email || undefined;
-        console.log("SelectParticipant: using googleEmail:", googleEmail);
-        // Check device limit via API
-        const result = await selectExistingParticipant(sessionId, participantId, googleEmail);
+        await selectExistingParticipant(sessionId, participantId, googleEmail);
 
-        // Check if limit reached
-        if (result.status === "limit_reached") {
-          return {
-            success: false,
-            limitReached: true,
-            sessionsUsed: result.sessions_used || 0
-          };
-        }
-
-        // Success - save participant locally
         setCurrentParticipant({ id: participantId, name });
         localStorage.setItem(
           `bill-e-participant-${sessionId}`,
@@ -778,31 +751,16 @@ export function useSession({
     [sessionId, ownerToken, session, markInteraction]
   );
 
-  // Finalize session
-  const finalize = useCallback(async (): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
+  // Finalize session. Free-tier limit is enforced at p3 entry, not here.
+  const finalize = useCallback(async (): Promise<{ success: boolean }> => {
     if (!ownerToken) return { success: false };
     markInteraction();
     try {
-      const result = await finalizeSession(sessionId, ownerToken, ownerEmail || undefined);
-
-      // Check if limit was reached
-      if (result.error === "limit_reached" || result.requires_payment) {
-        return {
-          success: false,
-          limitReached: true,
-          sessionsUsed: result.sessions_used || 0
-        };
-      }
-
+      await finalizeSession(sessionId, ownerToken, ownerEmail || undefined);
       setSession((prev) => (prev ? { ...prev, status: "finalized" } : prev));
       return { success: true };
-    } catch (err: unknown) {
+    } catch (err) {
       console.error("Finalize error:", err);
-      // Check if error is limit_reached (402 Payment Required)
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      if (errorMessage.includes("limit_reached") || errorMessage.includes("402")) {
-        return { success: false, limitReached: true };
-      }
       return { success: false };
     }
   }, [sessionId, ownerToken, ownerEmail, markInteraction]);
