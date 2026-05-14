@@ -444,7 +444,7 @@ export function StepReview({
                 {t("items.empty.rescan")}
               </Button>
             )}
-            <button className="add-row-btn" onClick={addItem}>
+            <button className="breakdown-add-btn" onClick={addItem}>
               <Plus className="w-4 h-4" />
               {t("items.empty.addManual")}
             </button>
@@ -608,8 +608,8 @@ export function StepReview({
               );
             })}
 
-            {/* Add Item Button — outline 44px (Rec 4-style) */}
-            <button className="add-row-btn" onClick={addItem}>
+            {/* Add Item Button — Fintual style consistente con add-charge */}
+            <button className="breakdown-add-btn" onClick={addItem}>
               <Plus className="w-4 h-4" />
               {t("items.addManualItem")}
             </button>
@@ -698,7 +698,7 @@ export function StepReview({
               {isExpanded && (
                 <div className="bg-card rounded-xl p-3 mb-2">
                   {/* Name + Value */}
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-1">
                     <input
                       type="text"
                       value={charge.name}
@@ -711,9 +711,17 @@ export function StepReview({
                       inputMode="decimal"
                       value={charge.value}
                       onChange={(e) => updateCharge(charge.id, { value: parseFlexibleNumber(e.target.value) || 0 })}
-                      className="w-16 shrink-0 text-right bg-background rounded-lg px-3 py-2 text-sm outline-none"
+                      className="w-20 shrink-0 text-right bg-background rounded-lg px-3 py-2 text-sm outline-none"
                     />
                   </div>
+                  {/* Helper: aclara como se interpreta el value segun distribution */}
+                  {charge.valueType === "fixed" && (
+                    <p className="text-[10.5px] text-muted-foreground italic mb-3 leading-tight">
+                      {charge.distribution === "per_person"
+                        ? t("charges.valueHelperPerPerson")
+                        : t("charges.valueHelperTotal")}
+                    </p>
+                  )}
 
                   {/* Type: % or $ */}
                   <div className="flex gap-2 mb-3">
@@ -791,16 +799,24 @@ export function StepReview({
                     </div>
                   )}
 
-                  {/* Delete */}
-                  <button
-                    onClick={() => {
-                      deleteCharge(charge.id);
-                      setExpandedCharge(null);
-                    }}
-                    className="w-full py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                  >
-                    {t("items.deleteItem")}
-                  </button>
+                  {/* Delete + Done — misma estructura que item-editor para
+                      consistencia visual entre items y cargos. */}
+                  <div className="item-editor-actions">
+                    <button
+                      type="button"
+                      className="item-editor-delete"
+                      onClick={() => { deleteCharge(charge.id); setExpandedCharge(null); }}
+                    >
+                      {t("items.deleteItem")}
+                    </button>
+                    <button
+                      type="button"
+                      className="item-editor-done"
+                      onClick={() => setExpandedCharge(null)}
+                    >
+                      {t("items.editorDone")}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
