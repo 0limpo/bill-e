@@ -353,6 +353,12 @@ export function StepReview({
     setLastDeleted(null);
   };
 
+  // Flag para detectar que el usuario acaba de agregar un item desde la UI
+  // (vs items que llegan por sync desde otros participantes). Cuando se setea,
+  // el efecto de mas abajo abre el editor del item recien agregado usando el
+  // id real que asigno el hook (temp- o item-N).
+  const justAddedItemRef = useRef(false);
+
   const addItem = () => {
     const newId = String(Date.now());
     const newItem: Item = {
@@ -362,9 +368,20 @@ export function StepReview({
       price: 0,
     };
     onItemsChange([...items, newItem]);
-    setEditingItemId(newId);
     setExpandedCharge(null);
+    justAddedItemRef.current = true;
   };
+
+  // Al agregar item, el hook reasigna el id (temp-X y luego item-N). El id
+  // local que generamos no existe en session.items. Por eso autoseleccionamos
+  // el ULTIMO item agregado despues del re-render.
+  useEffect(() => {
+    if (justAddedItemRef.current && items.length > 0) {
+      const last = items[items.length - 1];
+      if (last?.id) setEditingItemId(last.id);
+      justAddedItemRef.current = false;
+    }
+  }, [items]);
 
   // Charge handlers
   const addCharge = () => {
@@ -714,10 +731,15 @@ export function StepReview({
                       className="w-20 shrink-0 text-right bg-background rounded-lg px-3 py-2 text-sm outline-none"
                     />
                   </div>
-                  {/* Helper: aclara como se interpreta el value segun distribution */}
+                  {/* Helper: aclara como se interpreta el value segun distribution.
+                      OJO con los nombres del enum:
+                      - 'fixed_per_person' (label "Fijo por persona"): cada persona
+                        paga este monto → value es POR PERSONA.
+                      - 'per_person' (label "Dividir igual") y 'proportional':
+                        el monto se reparte entre todos → value es el TOTAL. */}
                   {charge.valueType === "fixed" && (
                     <p className="text-[10.5px] text-muted-foreground italic mb-3 leading-tight">
-                      {charge.distribution === "per_person"
+                      {charge.distribution === "fixed_per_person"
                         ? t("charges.valueHelperPerPerson")
                         : t("charges.valueHelperTotal")}
                     </p>
