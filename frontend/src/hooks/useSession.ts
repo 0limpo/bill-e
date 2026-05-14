@@ -166,8 +166,10 @@ export function useSession({
 
   useEffect(() => {
     if (!session || !sessionId) return;
-    // Don't poll for snapshots (read-only, data from PostgreSQL)
-    if (session.is_snapshot) return;
+    // Don't poll for snapshots (read-only, data from PostgreSQL). Also stop
+    // for finalized sessions loaded via /collaborative: Redis has no
+    // paid_at, so polling would clobber the host's optimistic toggle-paid.
+    if (session.is_snapshot || session.status === "finalized") return;
 
     const poll = async () => {
       if (!pollingActive.current) return;

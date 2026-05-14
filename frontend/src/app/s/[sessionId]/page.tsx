@@ -1573,7 +1573,7 @@ export default function SessionPage() {
             premiumPrice={premiumPrice}
             ownerParticipantId={session?.participants?.find((p) => p.role === "owner")?.id}
             decimals={decimals}
-            isSnapshot={session?.is_snapshot ?? false}
+            isSnapshot={(session?.is_snapshot ?? false) || session?.status === "finalized"}
             freeRemaining={freeRemaining}
             isPremium={isPremium}
           />
