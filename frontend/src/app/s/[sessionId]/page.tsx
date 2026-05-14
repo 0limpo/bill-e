@@ -105,7 +105,15 @@ export default function SessionPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [sessionsUsed, setSessionsUsed] = useState(0);
   const [freeRemaining, setFreeRemaining] = useState<number | null>(null);
-  const [isPremium, setIsPremium] = useState<boolean>(false);
+  // Initialize from getStoredUser so the header tier badge ("free"/"pro")
+  // reflects the user's status from step 1, not only after enter-share
+  // fires at step 3.
+  const [isPremium, setIsPremium] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return getStoredUser()?.is_premium === true;
+    }
+    return false;
+  });
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [premiumPrice] = useState(PREMIUM_PRICE_USD);
@@ -265,10 +273,13 @@ export default function SessionPage() {
     (async () => {
       const fresh = await refreshStoredUser();
       if (cancelled || !fresh) return;
-      // userEmail derives from getStoredUser() which we just updated, but
-      // the React state in this page tracks it independently — nothing to
-      // do here, the next render picks up the new localStorage value via
-      // getStoredUser() calls inside other effects.
+      // Sync the page's premium/picture state with the refreshed user
+      // so the header badge flips to "pro" immediately post-payment
+      // (the polled enter-share would also do this at p3, but the
+      // user-visible header is on every step).
+      setIsPremium(fresh.is_premium === true);
+      setUserPicture(fresh.picture_url || null);
+      setUserEmail(fresh.email || null);
     })();
     return () => {
       cancelled = true;
@@ -397,6 +408,7 @@ export default function SessionPage() {
         setStoredUser(verified);
         setUserEmail(verified.email);
         setUserPicture(verified.picture_url || null);
+        setIsPremium(verified.is_premium === true);
       }
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete("token");
