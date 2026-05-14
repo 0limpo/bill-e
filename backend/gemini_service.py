@@ -439,6 +439,7 @@ class GeminiOCRService:
                             'isDiscount': es_descuento,
                             'distribution': distribution,
                             'included_in_items': included,
+                            'is_suggested': bool(cargo.get('es_sugerencia', False)),
                             '_valor_impreso': cargo.get('_valor_impreso'),
                         })
 
@@ -514,6 +515,10 @@ class GeminiOCRService:
                     applied_charges = 0.0
                     if not items_include_charges:
                         for ch in charges:
+                            # Cargos sugeridos (propina sugerida, tip suggestion)
+                            # NO se suman al total — son referenciales.
+                            if ch.get('is_suggested'):
+                                continue
                             v = ch.get('value') or 0
                             is_disc = ch.get('isDiscount') or False
                             magnitude = abs(v) if is_disc else v
@@ -559,6 +564,8 @@ class GeminiOCRService:
                             applied_charges = 0.0
                             if not items_include_charges:
                                 for ch in charges:
+                                    if ch.get('is_suggested'):
+                                        continue
                                     v = ch.get('value') or 0
                                     is_disc = ch.get('isDiscount') or False
                                     magnitude = abs(v) if is_disc else v

@@ -228,6 +228,7 @@ export function StepReview({
 
   const chargesAmount = charges.reduce((sum, charge) => {
     if (charge.included_in_items) return sum; // ya está dentro de items
+    if (charge.is_suggested) return sum; // sugerencia, no cobrado
     const amount = charge.valueType === "percent"
       ? (subtotal * charge.value) / 100
       : charge.value;
@@ -264,9 +265,15 @@ export function StepReview({
   const hasVerificationData = itemsIncludeCharges
     ? (originalTotal !== undefined && originalTotal > 0)
     : (originalSubtotal !== undefined && originalSubtotal > 0) || (originalTotal !== undefined && originalTotal > 0);
+  // Match: solo exigir los valores que la boleta efectivamente imprimió.
+  // - Si la boleta no tiene subtotal, no lo exigimos en el match.
+  // - Si la boleta no tiene total, idem.
+  // - Si tiene ambos, ambos deben matchear.
+  const subRequired = originalSubtotal !== undefined && originalSubtotal > 0;
+  const totRequired = originalTotal !== undefined && originalTotal > 0;
   const isMatch = itemsIncludeCharges
     ? totalMatches
-    : subtotalMatches && (originalTotal === undefined || originalTotal === 0 || totalMatches);
+    : (!subRequired || subtotalMatches) && (!totRequired || totalMatches);
 
   // Auto-open the gate modal once after the OCR result lands.
   // success when totals match, error when they do not. Skips when there
@@ -644,15 +651,21 @@ export function StepReview({
             : charge.value;
           const isExpanded = expandedCharge === charge.id;
           const isIncluded = !!charge.included_in_items;
+          const isSuggested = !!charge.is_suggested;
 
-          // Cargo "incluido": muestra el monto sin signo, en gris, no clickeable.
-          if (isIncluded) {
+          // Cargo "incluido" o "sugerido": muestra el monto sin signo,
+          // en gris, no clickeable. Ambos casos son informativos y no se
+          // suman al total.
+          if (isIncluded || isSuggested) {
+            const badge = isIncluded
+              ? t("charges.includedInItems")
+              : t("charges.suggested");
             return (
               <div key={charge.id} className="breakdown-row charge opacity-60 cursor-default">
                 <span className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="truncate">{charge.name}</span>
                   <span className="text-xs opacity-70 shrink-0">
-                    ({charge.value}{charge.valueType === "percent" ? "%" : "$"} · {t("charges.includedInItems")})
+                    ({charge.value}{charge.valueType === "percent" ? "%" : "$"} · {badge})
                   </span>
                 </span>
                 <span className="font-medium shrink-0 ml-2">
