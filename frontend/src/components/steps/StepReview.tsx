@@ -744,17 +744,13 @@ export function StepReview({
                       className="w-20 shrink-0 text-right bg-background rounded-lg px-3 py-2 text-sm outline-none"
                     />
                   </div>
-                  {/* Helper: aclara como se interpreta el value segun distribution.
-                      OJO con los nombres del enum:
-                      - 'fixed_per_person' (label "Fijo por persona"): cada persona
-                        paga este monto → value es POR PERSONA.
-                      - 'per_person' (label "Dividir igual") y 'proportional':
-                        el monto se reparte entre todos → value es el TOTAL. */}
+                  {/* Helper: el value es siempre el TOTAL del cargo. La unica
+                      opcion que tomaba "por persona" (fixed_per_person) se
+                      elimino. proportional y per_person ambas toman el total
+                      y lo distribuyen entre los participantes. */}
                   {charge.valueType === "fixed" && (
                     <p className="text-[10.5px] text-muted-foreground italic mb-3 leading-tight">
-                      {charge.distribution === "fixed_per_person"
-                        ? t("charges.valueHelperPerPerson")
-                        : t("charges.valueHelperTotal")}
+                      {t("charges.valueHelperTotal")}
                     </p>
                   )}
 
@@ -798,7 +794,12 @@ export function StepReview({
                     </button>
                   </div>
 
-                  {/* Distribution - only show for fixed amounts */}
+                  {/* Distribution - only show for fixed amounts.
+                      Solo dos opciones: 'proportional' y 'per_person' (dividir
+                      igual). La tercera 'fixed_per_person' se elimino porque
+                      era matematicamente redundante con per_person (mismo
+                      outcome) pero su UX implicaba un "× N personas" que no
+                      era visible y confundia al usuario. */}
                   {charge.valueType === "fixed" && (
                     <div className="space-y-2 mb-3">
                       <p className="text-xs text-muted-foreground">{t("charges.howToSplit")}</p>
@@ -815,20 +816,11 @@ export function StepReview({
                         <button
                           onClick={() => updateCharge(charge.id, { distribution: "per_person" })}
                           className={`w-full py-2 px-3 rounded-lg text-left transition-colors ${
-                            charge.distribution === "per_person" ? "bg-primary/20" : "bg-background"
+                            (charge.distribution === "per_person" || charge.distribution === "fixed_per_person") ? "bg-primary/20" : "bg-background"
                           }`}
                         >
-                          <span className={`text-sm font-medium ${charge.distribution === "per_person" ? "text-primary" : ""}`}>{t("charges.perPerson")}</span>
+                          <span className={`text-sm font-medium ${(charge.distribution === "per_person" || charge.distribution === "fixed_per_person") ? "text-primary" : ""}`}>{t("charges.perPerson")}</span>
                           <span className="block text-xs text-muted-foreground">{t("charges.perPersonDesc")}</span>
-                        </button>
-                        <button
-                          onClick={() => updateCharge(charge.id, { distribution: "fixed_per_person" })}
-                          className={`w-full py-2 px-3 rounded-lg text-left transition-colors ${
-                            charge.distribution === "fixed_per_person" ? "bg-primary/20" : "bg-background"
-                          }`}
-                        >
-                          <span className={`text-sm font-medium ${charge.distribution === "fixed_per_person" ? "text-primary" : ""}`}>{t("charges.splitEqual")}</span>
-                          <span className="block text-xs text-muted-foreground">{t("charges.splitEqualDesc")}</span>
                         </button>
                       </div>
                     </div>
