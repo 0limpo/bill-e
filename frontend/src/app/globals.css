@@ -547,12 +547,18 @@
 .item-editor-delete {
   flex: 1;
   height: 38px;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--border);
+  background: var(--background);
   color: var(--destructive);
   font-size: 13px;
+  font-weight: 500;
   border-radius: 6px;
   cursor: pointer;
+}
+.item-editor-delete:hover {
+  background: var(--destructive);
+  color: var(--primary-foreground);
+  border-color: var(--destructive);
 }
 .item-editor-done {
   flex: 1;
