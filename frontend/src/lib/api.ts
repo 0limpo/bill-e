@@ -182,10 +182,19 @@ export interface JoinSessionResponse {
   participant?: ApiParticipant;
   is_existing?: boolean;
   is_owner?: boolean;
+  // 402 paywall payload when the editor is at the free-tier cap.
+  allowed?: boolean;
+  reason?: "limit_reached";
+  sessions_used?: number;
+  sessions_limit?: number;
+  free_remaining?: number;
+  is_premium?: boolean;
 }
 
 /**
- * Join a session as a participant
+ * Join a session as a participant. Returns 402 paywall payload when the
+ * editor has reached their free-tier cap (in the same shape — caller
+ * checks `allowed === false`).
  */
 export async function joinSession(
   sessionId: string,
@@ -194,18 +203,34 @@ export async function joinSession(
   googleEmail?: string
 ): Promise<JoinSessionResponse> {
   const deviceId = getDeviceId();
-  return apiRequest(`/api/session/${sessionId}/join`, {
+  const resp = await fetch(`${API_URL}/api/session/${sessionId}/join`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, phone, device_id: deviceId, google_email: googleEmail }),
   });
+  if (resp.status === 402) {
+    return await resp.json();
+  }
+  if (!resp.ok) {
+    throw new Error(`join failed: ${resp.status}`);
+  }
+  return await resp.json();
 }
 
 export interface SelectParticipantResponse {
-  status: "ok";
+  status?: "ok";
+  // 402 paywall payload.
+  allowed?: boolean;
+  reason?: "limit_reached";
+  sessions_used?: number;
+  sessions_limit?: number;
+  free_remaining?: number;
+  is_premium?: boolean;
 }
 
 /**
- * Select an existing participant (checks device limit)
+ * Select an existing participant (editor flow). Returns 402 paywall
+ * payload when the editor is at the free-tier cap.
  */
 export async function selectExistingParticipant(
   sessionId: string,
@@ -213,10 +238,18 @@ export async function selectExistingParticipant(
   googleEmail?: string
 ): Promise<SelectParticipantResponse> {
   const deviceId = getDeviceId();
-  return apiRequest<SelectParticipantResponse>(`/api/session/${sessionId}/select-participant`, {
+  const resp = await fetch(`${API_URL}/api/session/${sessionId}/select-participant`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ participant_id: participantId, device_id: deviceId, google_email: googleEmail }),
   });
+  if (resp.status === 402) {
+    return await resp.json();
+  }
+  if (!resp.ok) {
+    throw new Error(`select-participant failed: ${resp.status}`);
+  }
+  return await resp.json();
 }
 
 /**

@@ -195,6 +195,55 @@ def record_session_use(
     }
 
 
+def check_can_join(
+    redis_client,
+    session_id: str,
+    user_id: Optional[str] = None,
+    device_id: Optional[str] = None,
+) -> Dict:
+    """Decide whether this identity is allowed to JOIN a session.
+
+    Unlike `record_session_use`, this is read-only — it does not append
+    the session to the counter. The actual increment still happens at
+    the p2->p3 transition via `record_session_use`. The point of this
+    check is to give the editor a paywall *before* they invest time
+    editing assignments only to be blocked at the share step.
+
+    Allows when:
+    - identity is premium, OR
+    - this session_id is already in the identity's list (idempotent —
+      returning to a session they already counted), OR
+    - sessions_used < FREE_SESSIONS_LIMIT.
+
+    Otherwise blocks with reason="limit_reached".
+    """
+    if not session_id:
+        raise ValueError("session_id is required")
+
+    is_premium = _is_premium_user(redis_client, user_id)
+    _, session_ids = _resolve_counter(redis_client, user_id, device_id)
+    used = len(session_ids)
+    remaining = max(0, FREE_SESSIONS_LIMIT - used)
+
+    base = {
+        "sessions_used": used,
+        "sessions_limit": FREE_SESSIONS_LIMIT,
+        "free_remaining": remaining,
+        "is_premium": is_premium,
+    }
+
+    if is_premium:
+        return {"allowed": True, **base}
+
+    if session_id in session_ids:
+        return {"allowed": True, "already_counted": True, **base}
+
+    if used >= FREE_SESSIONS_LIMIT:
+        return {"allowed": False, "reason": "limit_reached", **base}
+
+    return {"allowed": True, **base}
+
+
 def merge_device_into_user(
     redis_client,
     user_id: str,

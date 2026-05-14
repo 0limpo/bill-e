@@ -215,6 +215,64 @@ def s12():
     assert_eq(free_tier.FREE_SESSIONS_LIMIT, 5, "limit 5")
 
 
+# --- S13 check_can_join ---
+@scenario("S13 · check_can_join: under cap allows new session")
+def s13():
+    r = FakeRedis()
+    for i in range(3):
+        free_tier.record_session_use(r, f"s{i}", user_id="u1")
+    out = free_tier.check_can_join(r, "s-new", user_id="u1")
+    assert_eq(out["allowed"], True, "allowed")
+    assert_eq(out["sessions_used"], 3, "no increment (read-only)")
+
+
+@scenario("S14 · check_can_join: at cap blocks new session")
+def s14():
+    r = FakeRedis()
+    for i in range(5):
+        free_tier.record_session_use(r, f"s{i}", user_id="u1")
+    out = free_tier.check_can_join(r, "s-new", user_id="u1")
+    assert_eq(out["allowed"], False, "blocked")
+    assert_eq(out.get("reason"), "limit_reached", "reason")
+
+
+@scenario("S15 · check_can_join: at cap allows returning session")
+def s15():
+    r = FakeRedis()
+    for i in range(5):
+        free_tier.record_session_use(r, f"s{i}", user_id="u1")
+    # Re-join one of those same sessions.
+    out = free_tier.check_can_join(r, "s2", user_id="u1")
+    assert_eq(out["allowed"], True, "returning session allowed")
+    assert_eq(out.get("already_counted"), True, "already_counted flag")
+
+
+@scenario("S16 · check_can_join: premium bypasses cap")
+def s16():
+    r = FakeRedis()
+    free_tier._is_premium_user = lambda redis_client, user_id: True  # type: ignore
+    try:
+        for i in range(5):
+            free_tier.record_session_use(r, f"s{i}", user_id="premium")
+        out = free_tier.check_can_join(r, "s-new", user_id="premium")
+        assert_eq(out["allowed"], True, "premium allowed")
+        assert_eq(out["is_premium"], True, "is_premium")
+    finally:
+        free_tier._is_premium_user = lambda redis_client, user_id: False  # type: ignore
+
+
+@scenario("S17 · check_can_join does NOT increment counter")
+def s17():
+    r = FakeRedis()
+    for i in range(3):
+        free_tier.record_session_use(r, f"s{i}", user_id="u1")
+    # Call check_can_join 5 times for a new session id — still 3 used.
+    for _ in range(5):
+        free_tier.check_can_join(r, "s-new", user_id="u1")
+    final = free_tier.get_status(r, user_id="u1")
+    assert_eq(final["sessions_used"], 3, "check is read-only")
+
+
 # ---------------------------------------------------------------------------
 
 print(f"\n=== Result: {passes} passed, {failures} failed ===\n")

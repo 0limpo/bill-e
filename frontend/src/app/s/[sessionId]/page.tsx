@@ -510,11 +510,17 @@ export default function SessionPage() {
 
     const result = await join(joinName.trim());
 
-    if (!result.success) {
+    if (result.limitReached) {
+      // Editor hit the free-tier cap. Show paywall before they invest
+      // any time editing — store the pending name so we can resume the
+      // join automatically once they pay.
+      trackPaywallShown(sessionId);
+      setSessionsUsed(result.sessionsUsed || 0);
+      storePendingJoin(joinName.trim());
+      setShowPaywall(true);
+    } else if (!result.success) {
       setJoinError(t("session.joinError"));
     } else {
-      // Successfully joined. Free-tier paywall is now triggered at p3
-      // entry (see enterShareDoneRef effect above), not here.
       trackGuestJoined(sessionId, result.isNew || false);
     }
 

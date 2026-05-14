@@ -732,17 +732,26 @@ async def get_session_snapshot(
 
 @app.post("/api/session/{session_id}/join")
 async def join_session(session_id: str, request: Request):
+    """Add a new editor participant to a collaborative session.
+
+    Free-tier preflight: if this identity (user_id|device_id) is already
+    at the cap and this is a *new* session for them, return 402 so the
+    editor sees the paywall before they invest time on assignments. The
+    counter only increments at p3 entry — this is just a gate.
+    """
     try:
+        import free_tier
+
         data = await request.json()
         name = data.get("name", "").strip()
-        phone = data.get("phone", "").strip() or "N/A"  # Phone is now optional
-        google_email = data.get("google_email", "").strip() or None
+        phone = data.get("phone", "").strip() or "N/A"
+        device_id = (data.get("device_id") or "").strip() or None
+        google_email = (data.get("google_email") or "").strip() or None
 
         if not name:
             raise HTTPException(status_code=400, detail="El nombre es requerido")
 
         # Resolve user_id from google_email so editor history can find this bill later.
-        # Free-tier accounting happens at p3 entry, not here.
         editor_user_id = None
         if google_email and postgres_available:
             try:
@@ -751,6 +760,16 @@ async def join_session(session_id: str, request: Request):
                     editor_user_id = str(user["id"])
             except Exception as e:
                 print(f"Could not resolve user_id from email: {e}")
+
+        # Preflight paywall check (editor flow).
+        can_join = free_tier.check_can_join(
+            redis_client,
+            session_id=session_id,
+            user_id=editor_user_id,
+            device_id=device_id,
+        )
+        if not can_join.get("allowed"):
+            return JSONResponse(status_code=402, content=can_join)
 
         result = add_participant(redis_client, session_id, name, phone, user_id=editor_user_id)
 
@@ -766,24 +785,47 @@ async def join_session(session_id: str, request: Request):
 
 @app.post("/api/session/{session_id}/select-participant")
 async def select_existing_participant(session_id: str, request: Request):
-    """
-    Select an existing participant (for editors).
-    Free-tier accounting happens at p3 entry, not at participant selection.
+    """Select an existing participant (editor flow).
+
+    Same free-tier preflight as /join — block at selection so the editor
+    sees the paywall before doing any assignment work.
     """
     try:
+        import free_tier
+
         data = await request.json()
         participant_id = data.get("participant_id", "").strip()
-        google_email = data.get("google_email", "").strip() or None
+        device_id = (data.get("device_id") or "").strip() or None
+        google_email = (data.get("google_email") or "").strip() or None
 
         if not participant_id:
             raise HTTPException(status_code=400, detail="participant_id es requerido")
 
-        # Backfill user_id on the selected participant so editor history finds this bill later
+        # Resolve user_id from google_email for both the paywall check
+        # and the user_id backfill below.
+        editor_user_id = None
         if google_email and postgres_available:
             try:
                 user = postgres_db.get_user_by_email(google_email)
                 if user and user.get("id"):
-                    attach_user_id_to_participant(redis_client, session_id, participant_id, str(user["id"]))
+                    editor_user_id = str(user["id"])
+            except Exception as e:
+                print(f"Could not resolve user_id from email: {e}")
+
+        # Preflight paywall check.
+        can_join = free_tier.check_can_join(
+            redis_client,
+            session_id=session_id,
+            user_id=editor_user_id,
+            device_id=device_id,
+        )
+        if not can_join.get("allowed"):
+            return JSONResponse(status_code=402, content=can_join)
+
+        # Backfill user_id on the selected participant so editor history finds this bill later
+        if editor_user_id:
+            try:
+                attach_user_id_to_participant(redis_client, session_id, participant_id, editor_user_id)
             except Exception as e:
                 print(f"Could not attach user_id to participant: {e}")
 

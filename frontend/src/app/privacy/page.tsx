@@ -48,7 +48,6 @@ export default function PrivacyPage() {
             <li>{t("privacy.s2Item1")}</li>
             <li>{t("privacy.s2Item2")}</li>
             <li>{t("privacy.s2Item3")}</li>
-            <li>{t("privacy.s2Item4")}</li>
           </ul>
         </section>
 
@@ -69,7 +68,6 @@ export default function PrivacyPage() {
             <li><strong>{t("privacy.s4Item2Label")}</strong> {t("privacy.s4Item2Body")}</li>
             <li><strong>{t("privacy.s4Item3Label")}</strong> {t("privacy.s4Item3Body")}</li>
             <li><strong>{t("privacy.s4Item4Label")}</strong> {t("privacy.s4Item4Body")}</li>
-            <li><strong>{t("privacy.s4Item5Label")}</strong> {t("privacy.s4Item5Body")}</li>
           </ul>
         </section>
 

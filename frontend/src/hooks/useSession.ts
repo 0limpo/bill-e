@@ -232,12 +232,19 @@ export function useSession({
 
   // Join session - returns result with status info
   const join = useCallback(
-    async (name: string, phone?: string, emailOverride?: string): Promise<{ success: boolean; isNew?: boolean }> => {
+    async (name: string, phone?: string, emailOverride?: string): Promise<{ success: boolean; isNew?: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
       markInteraction();
       try {
         const storedUser = getStoredUser();
         const googleEmail = emailOverride || storedUser?.email || undefined;
         const result = await joinSession(sessionId, name, phone, googleEmail);
+
+        // Backend returns `allowed: false` (402) when this editor hit
+        // the free-tier cap. Surface as limitReached so page.tsx flips
+        // the paywall.
+        if (result.allowed === false) {
+          return { success: false, limitReached: true, sessionsUsed: result.sessions_used };
+        }
 
         if (result.participant) {
           setCurrentParticipant({ id: result.participant.id, name: result.participant.name });
@@ -258,13 +265,18 @@ export function useSession({
     [sessionId, markInteraction, refresh]
   );
 
-  // Select existing participant. Free-tier accounting happens at p3 entry.
+  // Select existing participant. Same paywall gate as join: backend
+  // returns 402 when the editor is over cap, surfaced as limitReached.
   const selectParticipant = useCallback(
-    async (participantId: string, name: string, emailOverride?: string): Promise<{ success: boolean }> => {
+    async (participantId: string, name: string, emailOverride?: string): Promise<{ success: boolean; limitReached?: boolean; sessionsUsed?: number }> => {
       try {
         const storedUser = getStoredUser();
         const googleEmail = emailOverride || storedUser?.email || undefined;
-        await selectExistingParticipant(sessionId, participantId, googleEmail);
+        const result = await selectExistingParticipant(sessionId, participantId, googleEmail);
+
+        if (result.allowed === false) {
+          return { success: false, limitReached: true, sessionsUsed: result.sessions_used };
+        }
 
         setCurrentParticipant({ id: participantId, name });
         localStorage.setItem(
