@@ -517,7 +517,7 @@ export function StepReview({
               </div>
             )}
 
-            {items.map((item) => {
+            {items.map((item, idx) => {
               const itemId = item.id || item.name;
               const qty = item.quantity || 1;
               const unitPrice = item.price || 0;
@@ -534,7 +534,13 @@ export function StepReview({
                   : priceMode === "total_linea"
                   ? lineTotal
                   : unitPrice;
-              const isEditing = editingItemId === itemId;
+              // Editor abierto si: (a) el id matchea directo, O (b) este
+              // es el item recien agregado por posicion. (b) sostiene la
+              // apertura durante el brief moment en que el hook reasigna
+              // temp-<ts> -> item-N (evita pestañeo).
+              const isEditing =
+                editingItemId === itemId ||
+                lastAddedPosRef.current === idx;
 
               const handlePriceSave = (val: string | number) => {
                 const newValue = Math.max(0, Number(val));
