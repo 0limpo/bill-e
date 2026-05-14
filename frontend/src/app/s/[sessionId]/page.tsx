@@ -1275,12 +1275,16 @@ export default function SessionPage() {
         // Identity displayed in the right-side avatar. For the host we
         // pull the live participant name (defaults to "Host" until they
         // rename themselves in step 2), so the initials track edits.
-        const ownerParticipant = session?.participants?.find((p) => p.role === "owner");
-        const me = isOwner
-          ? ownerParticipant
+        // We also resolve the participant INDEX so the avatar color
+        // matches the same person's color in the step-2/step-3 list
+        // (getAvatarColor is keyed by index, not name hash).
+        const ownerIdx = session?.participants?.findIndex((p) => p.role === "owner") ?? -1;
+        const meIdx = isOwner
+          ? ownerIdx
           : currentParticipant
-            ? session?.participants?.find((p) => p.id === currentParticipant.id)
-            : null;
+            ? session?.participants?.findIndex((p) => p.id === currentParticipant.id) ?? -1
+            : -1;
+        const me = meIdx >= 0 ? session?.participants?.[meIdx] : null;
         const meName = me?.name || (isOwner ? t("session.host") : t("session.editor"));
         const roleLabel = isOwner ? t("session.host") : t("session.editor");
         const tierLabel = isPremium ? "pro" : "free";
@@ -1365,7 +1369,7 @@ export default function SessionPage() {
                   ) : (
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold"
-                      style={{ backgroundColor: getAvatarColor(meName) }}
+                      style={{ backgroundColor: getAvatarColor(meName, meIdx >= 0 ? meIdx : undefined) }}
                     >
                       {getInitials(meName)}
                     </div>
