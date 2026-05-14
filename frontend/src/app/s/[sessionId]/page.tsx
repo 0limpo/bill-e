@@ -1492,8 +1492,8 @@ export default function SessionPage() {
             onRemoveParticipant={removeParticipantById}
             currentParticipantId={currentParticipant?.id}
             onUpdateParticipantName={updateParticipantName}
-            nextDisabled={!isOwner && session?.status !== "finalized"}
-            nextLabel={!isOwner && session?.status !== "finalized" ? t("editor.waitingForHost") : undefined}
+            nextDisabled={!isOwner}
+            nextLabel={!isOwner ? t("editor.waitingForHost") : undefined}
             sessionId={sessionId}
             decimals={decimals}
             />
