@@ -39,6 +39,9 @@ interface StepShareProps {
   // (toggle_participant_paid acts on SessionSnapshot, not the live Redis
   // session). Pass true once the session has been written to Postgres.
   isSnapshot?: boolean;
+  // Free-tier status from enter-share. `null` while the call is in flight.
+  freeRemaining?: number | null;
+  isPremium?: boolean;
 }
 
 export function StepShare({
@@ -56,6 +59,8 @@ export function StepShare({
   ownerParticipantId,
   decimals: decimalsProp,
   isSnapshot = false,
+  freeRemaining = null,
+  isPremium = false,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
@@ -427,6 +432,22 @@ export function StepShare({
         <span className="font-semibold">{t("totals.tableTotal")}</span>
         <span className="text-xl font-bold text-foreground">{fmt(totalAmount)}</span>
       </div>
+
+      {/* Free-tier status — hidden when premium, when status hasn't loaded
+          yet, or when the participant is just viewing a saved snapshot
+          (counter was already settled the first time they reached p3). */}
+      {!isPremium && !isSnapshot && freeRemaining !== null && (
+        <div className="mt-3 text-center text-xs text-muted-foreground">
+          {freeRemaining === 0
+            ? t("freeTier.lastUsed")
+            : t("freeTier.remaining").replace("{count}", String(freeRemaining))}
+        </div>
+      )}
+      {isPremium && (
+        <div className="mt-3 text-center text-xs text-primary/70 font-medium">
+          Premium
+        </div>
+      )}
 
       {/* Action Buttons */}
       <div className="flex gap-3 mt-8">

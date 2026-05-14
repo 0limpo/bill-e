@@ -1511,6 +1511,8 @@ export default function SessionPage() {
             ownerParticipantId={session?.participants?.find((p) => p.role === "owner")?.id}
             decimals={decimals}
             isSnapshot={session?.is_snapshot ?? false}
+            freeRemaining={freeRemaining}
+            isPremium={isPremium}
           />
         )}
       </main>

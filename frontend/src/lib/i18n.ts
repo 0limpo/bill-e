@@ -206,6 +206,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.eachPays": "c/u paga",
     "paywall.you": "tú",
 
+    // Free tier remaining indicator (StepShare)
+    "freeTier.remaining": "{count}/5 boletas gratis",
+    "freeTier.lastUsed": "Esta fue tu última boleta gratis",
+
     // Share - Bill-e cost
     "share.billECost": "Bill-e",
     "share.billERecovered": "recuperado",
@@ -677,6 +681,10 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.eachPays": "each pays",
     "paywall.you": "you",
 
+    // Free tier remaining indicator (StepShare)
+    "freeTier.remaining": "{count}/5 free bills",
+    "freeTier.lastUsed": "That was your last free bill",
+
     // Share - Bill-e cost
     "share.billECost": "Bill-e",
     "share.billERecovered": "recovered",
@@ -1077,6 +1085,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.youRecover": "Você recupera",
     "paywall.eachPays": "cada um paga",
     "paywall.you": "você",
+
+    "freeTier.remaining": "{count}/5 contas grátis",
+    "freeTier.lastUsed": "Essa foi sua última conta grátis",
     "share.billECost": "Bill-e",
     "share.billERecovered": "recuperado",
     "share.billEHostNote": "Você pagou {paid} ao Bill-e · os outros te transferem {recovered} (a parte deles)",
@@ -1457,6 +1468,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.youRecover": "您收回",
     "paywall.eachPays": "每人支付",
     "paywall.you": "你",
+
+    "freeTier.remaining": "{count}/5 免费账单",
+    "freeTier.lastUsed": "这是你最后一份免费账单",
     "share.billECost": "Bill-e",
     "share.billERecovered": "已收回",
     "share.billEHostNote": "您向Bill-e支付了{paid} · 其他人将向您转账{recovered}（他们的份额）",
@@ -1836,6 +1850,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.youRecover": "Vous récupérez",
     "paywall.eachPays": "chacun paie",
     "paywall.you": "vous",
+
+    "freeTier.remaining": "{count}/5 additions gratuites",
+    "freeTier.lastUsed": "C'était votre dernière addition gratuite",
     "share.billECost": "Bill-e",
     "share.billERecovered": "récupéré",
     "share.billEHostNote": "Tu as payé {paid} à Bill-e · les autres te transfèrent {recovered} (leur part)",
@@ -2215,6 +2232,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.youRecover": "Du erhältst zurück",
     "paywall.eachPays": "jeder zahlt",
     "paywall.you": "du",
+
+    "freeTier.remaining": "{count}/5 kostenlose Rechnungen",
+    "freeTier.lastUsed": "Das war deine letzte kostenlose Rechnung",
     "share.billECost": "Bill-e",
     "share.billERecovered": "zurückerhalten",
     "share.billEHostNote": "Du hast {paid} an Bill-e gezahlt · die anderen überweisen dir {recovered} (ihren Anteil)",
@@ -2594,6 +2614,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.youRecover": "回収額",
     "paywall.eachPays": "各自支払い",
     "paywall.you": "あなた",
+
+    "freeTier.remaining": "{count}/5 無料請求書",
+    "freeTier.lastUsed": "これが最後の無料請求書です",
     "share.billECost": "Bill-e",
     "share.billERecovered": "回収済み",
     "share.billEHostNote": "Bill-eに{paid}を支払いました · 他の人があなたに{recovered}を送金します（各自の分担）",
@@ -2973,6 +2996,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.youRecover": "Вы получаете",
     "paywall.eachPays": "каждый платит",
     "paywall.you": "вы",
+
+    "freeTier.remaining": "{count}/5 бесплатных чеков",
+    "freeTier.lastUsed": "Это был ваш последний бесплатный чек",
     "share.billECost": "Bill-e",
     "share.billERecovered": "возвращено",
     "share.billEHostNote": "Вы заплатили {paid} за Bill-e · остальные переведут вам {recovered} (свою часть)",
@@ -3352,6 +3378,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.youRecover": "आप वसूलते हैं",
     "paywall.eachPays": "हर एक देता है",
     "paywall.you": "आप",
+
+    "freeTier.remaining": "{count}/5 मुफ्त बिल",
+    "freeTier.lastUsed": "वह आपका आखिरी मुफ्त बिल था",
     "share.billECost": "Bill-e",
     "share.billERecovered": "वसूला गया",
     "share.billEHostNote": "आपने Bill-e को {paid} का भुगतान किया · बाकी लोग आपको {recovered} (उनका हिस्सा) ट्रांसफर करते हैं",
@@ -3731,6 +3760,9 @@ export const translations: Record<Language, Record<string, string>> = {
     "paywall.youRecover": "Kamu mendapat",
     "paywall.eachPays": "masing-masing bayar",
     "paywall.you": "kamu",
+
+    "freeTier.remaining": "{count}/5 tagihan gratis",
+    "freeTier.lastUsed": "Itu tagihan gratis terakhirmu",
     "share.billECost": "Bill-e",
     "share.billERecovered": "dikembalikan",
     "share.billEHostNote": "Kamu membayar {paid} untuk Bill-e · yang lain mentransfer {recovered} (bagian mereka) ke kamu",
