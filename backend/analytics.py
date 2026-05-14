@@ -54,7 +54,7 @@ class AnalyticsEvent:
     timestamp: str
     session_id: Optional[str] = None
     user_id: Optional[str] = None
-    source: Optional[str] = None  # 'web', 'whatsapp'
+    source: Optional[str] = None  # 'web'
     metadata: Optional[Dict[str, Any]] = None
     duration_ms: Optional[float] = None
     success: bool = True
@@ -129,7 +129,7 @@ class Analytics:
             event_type=EventType.OCR_COMPLETED.value if success else EventType.OCR_FAILED.value,
             timestamp=datetime.utcnow().isoformat(),
             session_id=session_id,
-            source='whatsapp' if session_id else 'web',
+            source='web',
             metadata={
                 'item_count': item_count,
                 'confidence': confidence,
@@ -244,7 +244,7 @@ class Analytics:
 
     def track_cost(
         self,
-        service: str,  # 'google_vision', 'whatsapp', 'redis'
+        service: str,  # 'google_vision', 'redis'
         operation: str,
         cost_usd: float,
         units: int = 1
@@ -283,55 +283,6 @@ class Analytics:
             except Exception as e:
                 self.logger.error(f"Failed to track cost: {e}")
 
-    def track_whatsapp_message(
-        self,
-        phone_number: str,
-        direction: str,  # 'inbound' or 'outbound'
-        message_type: str,  # 'text', 'image', etc.
-        success: bool = True,
-        error: Optional[str] = None
-    ):
-        """Track WhatsApp messages"""
-        event = AnalyticsEvent(
-            event_type=EventType.MESSAGE_SENT.value if direction == 'outbound' else EventType.WEBHOOK_RECEIVED.value,
-            timestamp=datetime.utcnow().isoformat(),
-            user_id=phone_number,
-            source='whatsapp',
-            metadata={
-                'direction': direction,
-                'message_type': message_type
-            },
-            success=success,
-            error_message=error
-        )
-
-        self.track_event(event)
-
-        # Track WhatsApp usage
-        if self.redis:
-            try:
-                today = datetime.now().strftime('%Y%m%d')
-
-                # Message count by direction
-                self.redis.incr(f"whatsapp:{direction}:{today}")
-
-                # Message count by type
-                self.redis.hincrby(f"whatsapp:types:{today}", message_type, 1)
-
-                # Unique users (phone numbers)
-                self.redis.sadd(f"whatsapp:unique_users:{today}", phone_number)
-
-                # Set expiration
-                for key in [
-                    f"whatsapp:{direction}:{today}",
-                    f"whatsapp:types:{today}",
-                    f"whatsapp:unique_users:{today}"
-                ]:
-                    self.redis.expire(key, 86400 * 7)
-
-            except Exception as e:
-                self.logger.error(f"Failed to track WhatsApp message: {e}")
-
     def get_metrics(self, date: Optional[str] = None) -> Dict[str, Any]:
         """Get aggregated metrics for a specific date"""
         if not self.redis:
@@ -360,17 +311,6 @@ class Analytics:
             metrics['api'] = {
                 'total_errors': api_errors,
                 'status_codes': status_codes
-            }
-
-            # WhatsApp metrics
-            whatsapp_inbound = int(self.redis.get(f"whatsapp:inbound:{date}") or 0)
-            whatsapp_outbound = int(self.redis.get(f"whatsapp:outbound:{date}") or 0)
-            unique_users = self.redis.scard(f"whatsapp:unique_users:{date}")
-            metrics['whatsapp'] = {
-                'inbound': whatsapp_inbound,
-                'outbound': whatsapp_outbound,
-                'unique_users': unique_users,
-                'message_types': self.redis.hgetall(f"whatsapp:types:{date}")
             }
 
             # Cost metrics

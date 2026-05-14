@@ -267,60 +267,6 @@ async def get_ocr_stats(days: int = 7):
         raise HTTPException(status_code=500, detail=f"Failed to get OCR stats: {str(e)}")
 
 
-@router.get("/whatsapp/stats")
-async def get_whatsapp_stats(days: int = 7):
-    """
-    Get WhatsApp usage statistics
-
-    Query params:
-    - days: Number of days to aggregate (default: 7)
-    """
-    try:
-        if not analytics.redis:
-            return {"error": "Redis not available"}
-
-        stats = {
-            "period_days": days,
-            "total_inbound": 0,
-            "total_outbound": 0,
-            "unique_users": set(),
-            "message_types": {},
-            "daily_breakdown": []
-        }
-
-        for i in range(days):
-            date = (datetime.now() - timedelta(days=i)).strftime('%Y%m%d')
-
-            inbound = int(analytics.redis.get(f"whatsapp:inbound:{date}") or 0)
-            outbound = int(analytics.redis.get(f"whatsapp:outbound:{date}") or 0)
-            users = analytics.redis.smembers(f"whatsapp:unique_users:{date}")
-            types = analytics.redis.hgetall(f"whatsapp:types:{date}")
-
-            stats["total_inbound"] += inbound
-            stats["total_outbound"] += outbound
-            stats["unique_users"].update(users)
-
-            # Aggregate message types
-            for msg_type, count in types.items():
-                stats["message_types"][msg_type] = stats["message_types"].get(msg_type, 0) + int(count)
-
-            stats["daily_breakdown"].append({
-                "date": date,
-                "inbound": inbound,
-                "outbound": outbound,
-                "unique_users": len(users)
-            })
-
-        # Convert set to count
-        stats["unique_users_count"] = len(stats["unique_users"])
-        del stats["unique_users"]  # Remove set (not JSON serializable)
-
-        return stats
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get WhatsApp stats: {str(e)}")
-
-
 def _calculate_trends(today: Dict[str, Any], yesterday: Dict[str, Any]) -> Dict[str, Any]:
     """Calculate trend percentages (today vs yesterday)"""
     trends = {}
@@ -335,11 +281,6 @@ def _calculate_trends(today: Dict[str, Any], yesterday: Dict[str, Any]) -> Dict[
         success_today = today.get('ocr', {}).get('success_rate', 0)
         success_yesterday = yesterday.get('ocr', {}).get('success_rate', 0)
         trends['ocr_success_rate'] = success_today - success_yesterday  # Absolute change
-
-        # WhatsApp trend
-        wa_today = today.get('whatsapp', {}).get('inbound', 0)
-        wa_yesterday = yesterday.get('whatsapp', {}).get('inbound', 0)
-        trends['whatsapp_messages'] = _calc_percent_change(wa_today, wa_yesterday)
 
         # Cost trend
         cost_today = today.get('costs', {}).get('total', 0)
@@ -364,8 +305,6 @@ def _generate_summary(metrics: Dict[str, Any], realtime: Dict[str, Any], anomali
     return {
         "ocr_requests_today": metrics.get('ocr', {}).get('total', 0),
         "ocr_success_rate": metrics.get('ocr', {}).get('success_rate', 0),
-        "whatsapp_messages_today": metrics.get('whatsapp', {}).get('inbound', 0) + metrics.get('whatsapp', {}).get('outbound', 0),
-        "unique_users_today": metrics.get('whatsapp', {}).get('unique_users', 0),
         "total_cost_today_usd": metrics.get('costs', {}).get('total', 0),
         "errors_last_hour": realtime.get('errors_last_hour', 0),
         "active_anomalies": len(anomalies),
