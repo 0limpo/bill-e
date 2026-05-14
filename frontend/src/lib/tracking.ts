@@ -1,9 +1,15 @@
 /**
  * Funnel Analytics Tracking for Bill-e
- * Tracks user journey through the app
+ * Tracks user journey through the app — dual-writes to backend (Redis) and PostHog
  */
 
+import posthog from "posthog-js";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://bill-e-backend-lfwp.onrender.com";
+const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+const POSTHOG_HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com";
+
+let posthogInitialized = false;
 
 // Get or create a persistent user ID for tracking across sessions
 function getTrackingId(): string {
@@ -45,15 +51,80 @@ function getDeviceInfo() {
   };
 }
 
+// ============================================================================
+// PostHog lifecycle
+// ============================================================================
+
+export function initPostHog(): void {
+  if (posthogInitialized) return;
+  if (typeof window === "undefined") return;
+  if (!POSTHOG_KEY) return;
+  posthog.init(POSTHOG_KEY, {
+    api_host: POSTHOG_HOST,
+    capture_pageview: false,
+    capture_pageleave: true,
+    autocapture: true,
+    session_recording: {
+      maskAllInputs: true,
+      maskTextSelector: "[data-private]",
+    },
+    person_profiles: "identified_only",
+    loaded: (ph) => {
+      try {
+        const stored = localStorage.getItem("bill-e-auth-user");
+        if (!stored) return;
+        const user = JSON.parse(stored);
+        if (user?.id) {
+          ph.identify(String(user.id), {
+            email: user.email,
+            name: user.name,
+            provider: user.provider,
+            is_premium: !!user.is_premium,
+          });
+        }
+      } catch {
+        // ignore
+      }
+    },
+  });
+  posthogInitialized = true;
+}
+
+export function identifyUserPostHog(user: {
+  id: string;
+  email?: string;
+  name?: string;
+  provider?: string;
+  is_premium?: boolean;
+}): void {
+  if (!POSTHOG_KEY || typeof window === "undefined") return;
+  posthog.identify(String(user.id), {
+    email: user.email,
+    name: user.name,
+    provider: user.provider,
+    is_premium: !!user.is_premium,
+  });
+}
+
+export function resetPostHogUser(): void {
+  if (!POSTHOG_KEY || typeof window === "undefined") return;
+  posthog.reset();
+}
+
+export function capturePageview(url: string): void {
+  if (!POSTHOG_KEY || typeof window === "undefined") return;
+  posthog.capture("$pageview", { $current_url: url });
+}
+
+// ============================================================================
+// Track event (dual-write to backend + PostHog)
+// ============================================================================
+
 interface TrackingParams {
   session_id?: string;
   [key: string]: string | number | boolean | undefined;
 }
 
-/**
- * Track a funnel event
- * Events are sent to the backend and stored in Redis for analytics
- */
 export async function trackEvent(
   eventName: string,
   params: TrackingParams = {}
@@ -73,15 +144,23 @@ export async function trackEvent(
       timestamp: new Date().toISOString(),
     };
 
-    // Send async - don't block UI
+    // Send to backend (Redis) — fire and forget
     fetch(`${API_URL}/api/analytics/event`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(eventData),
     }).catch((err) => {
-      // Silently fail - analytics shouldn't break the app
       console.debug("Analytics error:", err);
     });
+
+    // Dual-write to PostHog
+    if (POSTHOG_KEY && typeof window !== "undefined") {
+      posthog.capture(eventName, {
+        tracking_id: trackingId,
+        ...deviceInfo,
+        ...params,
+      });
+    }
   } catch {
     // Silently fail
   }

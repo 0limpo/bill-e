@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
+import { PostHogProvider } from "@/components/PostHogProvider";
 import { detectLanguageFromHeader, translations } from "@/lib/i18n";
 import "./globals.css";
 
@@ -56,7 +57,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ServiceWorkerRegistration />
-        {children}
+        <PostHogProvider>{children}</PostHogProvider>
       </body>
     </html>
   );

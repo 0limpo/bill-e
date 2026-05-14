@@ -238,12 +238,30 @@ export function getStoredUser(): AuthUser | null {
 export function setStoredUser(user: AuthUser): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
+  // Identify user in PostHog so future events attach to this person
+  import("./tracking").then(({ identifyUserPostHog }) => {
+    identifyUserPostHog({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      provider: user.provider,
+      is_premium: user.is_premium,
+    });
+  }).catch(() => {
+    // Silent — analytics shouldn't break auth
+  });
 }
 
 export function clearAuth(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(AUTH_TOKEN_KEY);
   localStorage.removeItem(AUTH_USER_KEY);
+  // Reset PostHog identity on logout so subsequent events are anonymous
+  import("./tracking").then(({ resetPostHogUser }) => {
+    resetPostHogUser();
+  }).catch(() => {
+    // Silent
+  });
 }
 
 /**
