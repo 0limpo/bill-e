@@ -156,11 +156,21 @@ export async function loadSession(
   sessionId: string,
   ownerToken?: string
 ): Promise<SessionResponse> {
-  let url = `/api/session/${sessionId}/collaborative`;
+  const params = new URLSearchParams();
   if (ownerToken) {
-    const deviceId = getDeviceId();
-    url += `?owner=${ownerToken}&device_id=${deviceId}`;
+    params.set("owner", ownerToken);
+    params.set("device_id", getDeviceId());
   }
+  // Always pass the JWT when logged in so the backend can flag is_owner=true
+  // for cross-device views (you open your own bill from a device that doesn't
+  // hold the session-specific owner_token). Read lazily to avoid an import
+  // cycle with auth.ts.
+  if (typeof window !== "undefined") {
+    const authToken = localStorage.getItem("bill-e-auth-token");
+    if (authToken) params.set("token", authToken);
+  }
+  const query = params.toString();
+  const url = `/api/session/${sessionId}/collaborative${query ? `?${query}` : ""}`;
   return apiRequest<SessionResponse>(url);
 }
 

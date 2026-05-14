@@ -517,7 +517,12 @@ async def create_collaborative_session_endpoint(request: Request):
 
 
 @app.get("/api/session/{session_id}/collaborative")
-async def get_collaborative_session(session_id: str, owner: str = None, device_id: str = None):
+async def get_collaborative_session(
+    session_id: str,
+    owner: str = None,
+    device_id: str = None,
+    token: str = None,
+):
     try:
         session_data = get_collab_session(redis_client, session_id)
 
@@ -538,6 +543,34 @@ async def get_collaborative_session(session_id: str, owner: str = None, device_i
             else:
                 # Legacy: no device_id, just verify token
                 is_owner = verify_owner(session_data, owner)
+
+        # JWT-based ownership: lets a logged-in user open their own bill from
+        # a device that doesn't hold the original session owner_token (cross-
+        # device /my bills view inside Redis TTL window). Mirrors the 3-way
+        # check in get_session_snapshot_by_id so both paths agree.
+        if not is_owner and token and auth_available:
+            try:
+                payload = oauth_auth.verify_session_token(token)
+            except Exception:
+                payload = None
+            if payload:
+                uid = payload.get("sub") or payload.get("user_id")
+                owner_device_id = session_data.get("owner_device_id")
+                if uid and session_data.get("user_id") == uid:
+                    is_owner = True
+                elif uid and owner_device_id and postgres_available:
+                    try:
+                        with postgres_db.get_db() as db:
+                            if db is not None:
+                                user_row = (
+                                    db.query(postgres_db.User)
+                                    .filter(postgres_db.User.id == uuid.UUID(uid))
+                                    .first()
+                                )
+                                if user_row and user_row.device_ids and owner_device_id in user_row.device_ids:
+                                    is_owner = True
+                    except Exception:
+                        pass
 
         response = {
             "session_id": session_id,
