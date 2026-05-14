@@ -149,9 +149,16 @@ def deduplicate_items(items: List[Dict[str, Any]], similarity_threshold: float =
             prices = [g['price'] for g in group]
             most_common_price = max(set(prices), key=prices.count)
 
+            # Preservar price_as_shown del primer item del grupo. Como los
+            # items consolidados tienen el mismo precio unitario por criterio
+            # de agrupacion, el valor que se imprimio en cada linea de la
+            # boleta es el mismo. Usar el primero es seguro.
+            price_as_shown = group[0].get('price_as_shown')
+
             consolidated = {
                 'name': cleanest_name,
                 'price': most_common_price,
+                'price_as_shown': price_as_shown,
                 'quantity': total_quantity,
                 'original_indices': indices,
             }
@@ -354,14 +361,11 @@ class GeminiOCRService:
                     lines = response_text.split('\n')
                     response_text = '\n'.join(lines[1:-1])
 
-                # Pre-parse signal: contar numeros con 3 decimales (\d+\.\d{3}).
-                # En consumer prices reales con decimales (USD/EUR), los precios
-                # terminan en 2 digitos (1.99, 4.50). 3 digitos despues del punto
-                # es practicamente siempre separador de miles mal usado por el
-                # modelo (ej. CLP "3.760" leido como float 3.76, perdiendo el 0).
-                # Capturamos esto ANTES de json.loads porque el float lo destruye.
-                _three_decimal_count = len(re.findall(r'\d+\.\d{3}\b', response_text))
-                _two_decimal_count = len(re.findall(r'\d+\.\d{2}\b(?!\d)', response_text))
+                # NOTA: el override de thousand-sep via regex sobre response_text
+                # se elimino porque ahora prompt_v3 devuelve los valores como
+                # STRINGS. El adapter `boleta_to_bill_e` los inspecciona y
+                # detecta el formato (separador + digitos) sobre la muestra
+                # completa, sin perder precision. Ver backend/price_parser.py.
 
                 boleta_dict = json.loads(response_text)
 
@@ -478,90 +482,20 @@ class GeminiOCRService:
                     needs_review = False
                     review_message = None
 
-                    # Usar moneda_tiene_decimales de Gemini si está disponible
-                    # Esto es más confiable que detectar por los valores
-                    currency_has_decimals = data.get('moneda_tiene_decimales', None)
+                    # currency_has_decimals + number_format vienen del parser
+                    # deterministico (price_parser.py). NO hay defaults hardcoded
+                    # — derivamos del separador real que aparece en la boleta y
+                    # cuantos digitos lo siguen.
+                    from price_parser import get_number_format
+                    currency_has_decimals = data.get('moneda_tiene_decimales', False)
+                    decimal_places = 2 if currency_has_decimals else 0
 
-                    # Override del flag del modelo cuando la evidencia raw del
-                    # JSON contradice. 3 decimales en consumer prices es casi
-                    # siempre thousand-sep mal usado (LATAM "3.760" leido como
-                    # float 3.76). Si hay >=3 numeros con 3 decimales y dominan
-                    # sobre los de 2 decimales, forzamos currency=false.
-                    if _three_decimal_count >= 3 and _three_decimal_count >= _two_decimal_count:
-                        if currency_has_decimals is True:
-                            logger.warning(
-                                f"⚠️  Modelo declaró moneda_tiene_decimales=true pero hay "
-                                f"{_three_decimal_count} numeros con 3 decimales (vs "
-                                f"{_two_decimal_count} con 2). Override a false."
-                            )
-                            currency_has_decimals = False
-
-                    # Post-procesamiento: detectar si los precios parecen usar punto como separador de miles
-                    # Esto ocurre cuando Gemini devuelve 2.500 (que JSON parsea como 2.5) en lugar de 2500
-                    all_prices = [it['price'] for it in items] + [total]
-
-                    # Heurística: si la mayoría de precios son < 100 pero total > 1000, probablemente
-                    # Gemini usó punto como separador de miles
-                    prices_seem_low = sum(1 for p in all_prices if 0 < p < 100) > len(all_prices) * 0.5
-                    total_seems_high_pattern = total > 1000 or (subtotal and subtotal > 1000)
-
-                    # Otra heurística: si los precios tienen decimales pero parecen ser X.XXX (3 dígitos)
-                    # Por ejemplo, 2.5 podría ser 2500, 13.99 podría ser 13990
-                    def looks_like_thousand_sep(price):
-                        """Detecta si el precio parece usar punto como separador de miles."""
-                        if price <= 0:
-                            return False
-                        decimal_part = price % 1
-                        if decimal_part == 0:
-                            return False
-                        # Si multiplicar por 1000 da un número razonable para comida (500-100000)
-                        adjusted = price * 1000
-                        return 500 <= adjusted <= 200000
-
-                    prices_look_like_thousand_sep = sum(
-                        1 for p in all_prices if looks_like_thousand_sep(p)
-                    ) > len(all_prices) * 0.3
-
-                    # Si detectamos patrón de separador de miles, corregir
-                    if prices_look_like_thousand_sep and currency_has_decimals is not True:
-                        logger.info(f"🔧 Detectado patrón de separador de miles, convirtiendo precios...")
-                        logger.info(f"   Antes: items={[it['price'] for it in items]}, total={total}")
-
-                        # Multiplicar precios por 1000
-                        for it in items:
-                            it['price'] = round(it['price'] * 1000)
-                            if 'price_as_shown' in it:
-                                it['price_as_shown'] = round(it['price_as_shown'] * 1000)
-                        total = round(total * 1000)
-                        if subtotal:
-                            subtotal = round(subtotal * 1000)
-
-                        # También convertir cargos fijos (no porcentajes)
-                        for charge in charges:
-                            if charge['valueType'] == 'fixed' and charge['value'] > 0:
-                                old_val = charge['value']
-                                charge['value'] = round(charge['value'] * 1000)
-                                logger.info(f"   Cargo '{charge['name']}': {old_val} → {charge['value']}")
-
-                        # Recalcular items_sum
-                        items_sum = sum(it['price'] * it['quantity'] for it in items)
-
-                        logger.info(f"   Después: items={[it['price'] for it in items]}, total={total}")
-                        currency_has_decimals = False
-
-                    # Calcular decimal_places
-                    if currency_has_decimals is not None:
-                        # Usar lo que dijo Gemini
-                        decimal_places = 2 if currency_has_decimals else 0
-                    else:
-                        # Fallback: detectar por los valores
-                        has_decimals = any(
-                            (it['price'] % 1) != 0 for it in items
-                        ) or (total % 1) != 0
-                        decimal_places = 2 if has_decimals else 0
-
-                    # Formato numérico por defecto (chileno)
-                    number_format = {'thousands': '.', 'decimal': ','}
+                    fmt_sep = data.get('_format_separator')
+                    fmt_digits = data.get('_format_digits', 0)
+                    number_format = get_number_format(fmt_sep, fmt_digits)
+                    # Si no hay evidencia (digits=0 o sep desconocido),
+                    # dejamos number_format=None y que el frontend use su
+                    # default de locale.
 
                     # === R1 — needs_review con lógica conservadora ===
                     # passes_subtotal: items_sum ≈ subtotal_impreso (None si subtotal=0)

@@ -87,7 +87,11 @@ def flatten_schema(schema: Dict[str, Any]) -> Dict[str, Any]:
 class ItemLinea(BaseModel):
     id: str = Field(description="Identificador correlativo: i1, i2, i3, ...")
     nombre: str = Field(description="Texto tal cual se indica en la boleta")
-    total_linea: float = Field(description="Valor tal cual se indica en la columna de valores")
+    total_linea: str = Field(description=(
+        "Valor de la columna numerica como STRING, TAL CUAL aparece impreso. "
+        "Conserva separadores y trailing zeros. "
+        "Ej: '4.600' (no '4.6'), '4.99', '1.234.567', '38600'."
+    ))
     cantidad: int = Field(description=(
         "Numero de items de cada linea. Algunas boletas agrupan los items y "
         "tendran cantidad=1 o >1. Otras boletas no agrupan y tendran todas "
@@ -110,27 +114,29 @@ class ItemLinea(BaseModel):
 class Cargo(BaseModel):
     id: str = Field(description="Identificador: c1, c2, c3, ...")
     nombre: str = Field(description="Texto tal cual se indica en la boleta")
-    valor: float = Field(description=(
-        "fixed: monto total del cargo. "
-        "percent: porcentaje (ej. 10 para 10%). "
-        "per_person: monto POR PERSONA."
+    valor: str = Field(description=(
+        "Como STRING, TAL CUAL aparece impreso. Conserva separadores. "
+        "fixed: monto total del cargo (ej. '5.40', '1.500'). "
+        "percent: porcentaje sin simbolo % (ej. '10' para 10%, '8.875' para 8.875%). "
+        "per_person: monto POR PERSONA (ej. '2.500')."
     ))
     tipo: Literal["fixed", "percent", "per_person"]
     numero_personas: Optional[int] = Field(
         default=None,
         description=(
             "Solo si tipo='per_person'. Cantidad de personas a las que se cobra. "
-            "Si la boleta muestra 'cubierto: 3 pers x $2500', usa numero_personas=3 y valor=2500. "
+            "Si la boleta muestra 'cubierto: 3 pers x $2500', usa numero_personas=3 y valor='2500'. "
             "Si solo muestra el total y un valor por persona, infiere personas=total/valor_por_persona."
         ),
     )
-    valor_impreso: Optional[float] = Field(
+    valor_impreso: Optional[str] = Field(
         default=None,
         description=(
+            "Como STRING, TAL CUAL aparece impreso. "
             "Cuando tipo='percent' y la boleta muestra TAMBIEN el monto resultante "
             "explicito en la columna numerica (ej. linea 'Tax 18% .... $5.40'), "
-            "anota aqui ese monto (5.40). Bill-e lo usa como fuente de verdad si "
-            "el calculo del % no cuadra con el total impreso. null si no aparece."
+            "anota aqui ese monto ('5.40'). Mantienes tipo='percent' y valor='18' igual, "
+            "pero das al sistema el monto real para fallback. null si no aparece."
         ),
     )
 
@@ -138,16 +144,18 @@ class Cargo(BaseModel):
 class Descuento(BaseModel):
     id: str = Field(description="Identificador: d1, d2, d3, ...")
     nombre: str = Field(description="Texto tal cual se indica en la boleta")
-    valor: float = Field(description=(
-        "Valor positivo (siempre). El signo lo aplica Bill-e al ser descuento. "
-        "fixed: monto total. percent: porcentaje (ej. 10 para 10%)."
+    valor: str = Field(description=(
+        "Como STRING, TAL CUAL aparece impreso. Valor positivo (siempre). "
+        "El signo lo aplica Bill-e al ser descuento. "
+        "fixed: monto total ('5.000'). percent: porcentaje ('10' para 10%)."
     ))
     tipo: Literal["fixed", "percent"]
-    valor_impreso: Optional[float] = Field(
+    valor_impreso: Optional[str] = Field(
         default=None,
         description=(
+            "Como STRING, TAL CUAL aparece impreso. "
             "Igual que en Cargo: cuando tipo='percent' y la boleta muestra "
-            "el monto del descuento explicito en la columna numerica, anotalo aqui. "
+            "el monto del descuento explicito en la columna numerica, anotalo aqui ('2.500'). "
             "null si no aparece."
         ),
     )
@@ -155,20 +163,22 @@ class Descuento(BaseModel):
 
 class Boleta(BaseModel):
     nombre_comercio: str = Field(description="Nombre del comercio (primeras lineas). Vacio si no se detecta.")
-    moneda_tiene_decimales: bool = Field(description=(
-        "true para USD, EUR (centavos X.YY); false para CLP, MXN "
-        "(enteros o X.YYY con punto como separador de miles)."
-    ))
     items: List[ItemLinea] = Field(description="Tabla 1 de items, en el orden que aparecen en la boleta")
-    subtotal_impreso: Optional[float] = Field(
+    subtotal_impreso: Optional[str] = Field(
         default=None,
-        description="Subtotal tal cual se imprime en la boleta. null si no aparece.",
+        description=(
+            "Como STRING, TAL CUAL aparece impreso. Subtotal etiquetado en la boleta. "
+            "null si no aparece. NUNCA calcules un valor."
+        ),
     )
     cargos: List[Cargo] = Field(description="Cargos (propina, tax, recargos, cubierto). Lista vacia si no hay.")
     descuentos: List[Descuento] = Field(description="Descuentos (promociones, cupones, descuentos por persona). Lista vacia si no hay.")
-    total_impreso: Optional[float] = Field(
+    total_impreso: Optional[str] = Field(
         default=None,
-        description="Total tal cual se imprime en la boleta. null si no aparece.",
+        description=(
+            "Como STRING, TAL CUAL aparece impreso. Total etiquetado en la boleta. "
+            "null si no aparece. NUNCA calcules un valor."
+        ),
     )
 
 
@@ -183,16 +193,26 @@ DIGITALIZAR significa:
 - Reproducir cada linea de la boleta como aparece (texto + valor numerico).
 - No reordenar, no reagrupar mas alla de lo que la boleta misma agrupa.
 - Si la boleta lista "2 Coca Cola $5.000" como una sola linea agrupada, tu
-  tambien lo listas asi (cantidad=2, precio_tipo='total', total_linea=5000).
+  tambien lo listas asi (cantidad=2, precio_tipo='total', total_linea='5.000').
 - Si lista cada Coca por separado, tu tambien (2 lineas, cantidad=1 c/u).
+
+REGLA CRITICA — VALORES NUMERICOS COMO STRINGS:
+- TODOS los campos de valor (total_linea, valor, valor_impreso, subtotal_impreso,
+  total_impreso) son STRINGS, NO numeros.
+- Copia el valor TAL CUAL aparece impreso, sin reformatear:
+  * Conserva separadores: '4.600' (no '4.6' ni '4600').
+  * Conserva trailing zeros: '4.50' (no '4.5'), '4.600' (no '4.6').
+  * Conserva signos negativos si aparecen: '-2.500'.
+- NO interpretes formato (USD vs CLP vs EUR). Solo transcribe lo que ves.
+- Si la boleta usa coma como decimal ('4,99'), usa coma. Si usa punto, usa punto.
 
 ESTRUCTURA:
 - TABLA 1 (items): cada linea con su id (i1, i2, ...), nombre tal cual la boleta,
-  total_linea (valor en columna derecha), cantidad, precio_tipo, incluye.
+  total_linea (valor en columna derecha COMO STRING), cantidad, precio_tipo, incluye.
 - TABLA 2 (cargos + descuentos): cargos en `cargos` con id c1, c2, ...,
   descuentos en `descuentos` con id d1, d2, ...
-- subtotal_impreso y total_impreso: TAL CUAL aparece impreso. Si no aparece,
-  deja null. NUNCA calcules un valor para llenar el campo.
+- subtotal_impreso y total_impreso: STRINGS TAL CUAL aparecen impresos. Si no
+  aparece, deja null. NUNCA calcules un valor para llenar el campo.
 
 REGLAS POR LINEA DE ITEM:
 - nombre: copia el texto tal cual aparece, sin reformatear.
@@ -236,12 +256,8 @@ REGLAS PARA DESCUENTOS:
   2.50 en valor_impreso. null si no aparece.
 
 REGLAS PARA SUBTOTAL/TOTAL:
-- subtotal_impreso: el numero etiquetado "subtotal" (o equivalente). null si no aparece.
-- total_impreso: el numero etiquetado "total" (o equivalente). null si no aparece.
-
-FORMATO NUMERICO:
-- NUNCA uses separador de miles (ni punto ni coma).
-- Sin decimales: enteros (2500). Con decimales: punto, max 2 digitos (8.50).
+- subtotal_impreso: el numero etiquetado "subtotal" (o equivalente), STRING TAL CUAL. null si no aparece.
+- total_impreso: el numero etiquetado "total" (o equivalente), STRING TAL CUAL. null si no aparece.
 
 ============================================================
 VERIFICACION ANTES DE DEVOLVER (importante)
@@ -281,22 +297,88 @@ Devuelve SOLO el JSON, sin explicaciones."""
 
 def boleta_to_bill_e(boleta_dict: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Convierte la salida v3 (Boleta) al JSON intermedio que entiende el
-    post-procesamiento de gemini_service.py.
+    Convierte la salida v3 (Boleta con strings) al JSON intermedio que entiende
+    el post-procesamiento de gemini_service.py.
 
-    Reglas de adaptacion:
-    - Items: convertimos todo a precio unitario (precio = total_linea / cantidad
-      cuando precio_tipo='total').
-    - Si TODOS los items tienen un cargo en `incluye`, marcamos
-      precios_items_incluyen_cargos=true a nivel global.
-    - Cargos `per_person` se convierten a `fixed` con valor = valor x numero_personas.
-    - Descuentos se mergean con cargos como `es_descuento=true`.
+    Pasos:
+    1) Recolecta TODOS los strings de valor (items, cargos fixed, descuentos
+       fixed, subtotal, total) como muestra para detect_format.
+    2) Detecta formato dominante (separador + digitos_post).
+    3) Parsea cada string a float usando ese formato.
+    4) Convierte estructura v3 -> formato Bill-e interno.
+
+    NOTA: cargos/descuentos con tipo='percent' NO se incluyen en la muestra
+    de deteccion (su valor es un porcentaje, no un monto en la moneda).
     """
+    from price_parser import detect_format, parse_price, has_decimals
+
+    # --- Paso 1: recolectar muestra ---
+    samples = []
+    for it in boleta_dict.get("items") or []:
+        v = it.get("total_linea")
+        if v is not None and str(v).strip():
+            samples.append(str(v))
+    for c in boleta_dict.get("cargos") or []:
+        # Solo montos absolutos (fixed, per_person), no percent
+        if c.get("tipo") in ("fixed", "per_person"):
+            v = c.get("valor")
+            if v is not None and str(v).strip():
+                samples.append(str(v))
+        # valor_impreso si existe (monto resultante del %)
+        vi = c.get("valor_impreso")
+        if vi is not None and str(vi).strip():
+            samples.append(str(vi))
+    for d in boleta_dict.get("descuentos") or []:
+        if d.get("tipo") == "fixed":
+            v = d.get("valor")
+            if v is not None and str(v).strip():
+                samples.append(str(v))
+        vi = d.get("valor_impreso")
+        if vi is not None and str(vi).strip():
+            samples.append(str(vi))
+    sub = boleta_dict.get("subtotal_impreso")
+    if sub is not None and str(sub).strip():
+        samples.append(str(sub))
+    tot = boleta_dict.get("total_impreso")
+    if tot is not None and str(tot).strip():
+        samples.append(str(tot))
+
+    # --- Paso 2: detectar formato ---
+    fmt_sep, fmt_digits = detect_format(samples)
+    moneda_decimales = has_decimals(fmt_sep, fmt_digits)
+
+    def _p(s):
+        """Parse helper: devuelve 0 si None/invalido (para campos que no aceptan None)."""
+        if s is None:
+            return 0
+        val = parse_price(s, fmt_sep, fmt_digits)
+        return val if val is not None else 0
+
+    def _p_opt(s):
+        """Parse helper que mantiene None si el input es None."""
+        if s is None:
+            return None
+        return parse_price(s, fmt_sep, fmt_digits)
+
+    def _p_percent(s):
+        """
+        Parse helper para campos 'percent'. Los porcentajes vienen como '10' o
+        '8.875' (un numero, no en formato de moneda). NO usamos el formato
+        global de la boleta — siempre interpretamos punto como decimal aqui.
+        """
+        if s is None:
+            return 0
+        try:
+            return float(str(s).replace(",", "."))
+        except (ValueError, TypeError):
+            return 0
+
+    # --- Paso 3: items ---
     items_internal = []
     for it in boleta_dict.get("items") or []:
         precio_tipo = it.get("precio_tipo", "unitario")
         cantidad = it.get("cantidad") or 1
-        total_linea = it.get("total_linea") or 0
+        total_linea = _p(it.get("total_linea"))
         if precio_tipo == "total" and cantidad and cantidad > 0:
             precio_unitario = total_linea / cantidad
         else:
@@ -319,10 +401,15 @@ def boleta_to_bill_e(boleta_dict: Dict[str, Any]) -> Dict[str, Any]:
     else:
         precios_items_incluyen_cargos = False
 
+    # --- Paso 4: cargos + descuentos ---
     cargos_internal = []
     for c in boleta_dict.get("cargos") or []:
         tipo = c.get("tipo", "fixed")
-        valor = c.get("valor") or 0
+        if tipo == "percent":
+            valor = _p_percent(c.get("valor"))
+        else:
+            valor = _p(c.get("valor"))
+
         if tipo == "per_person":
             n_pers = c.get("numero_personas") or 1
             cargos_internal.append({
@@ -341,26 +428,35 @@ def boleta_to_bill_e(boleta_dict: Dict[str, Any]) -> Dict[str, Any]:
                 "valor": valor,
                 "es_descuento": False,
                 "_id": c.get("id"),
-                "_valor_impreso": c.get("valor_impreso"),
+                "_valor_impreso": _p_opt(c.get("valor_impreso")),
             })
 
     for d in boleta_dict.get("descuentos") or []:
+        tipo = d.get("tipo", "fixed")
+        if tipo == "percent":
+            valor = _p_percent(d.get("valor"))
+        else:
+            valor = _p(d.get("valor"))
         cargos_internal.append({
             "nombre": d.get("nombre") or "",
-            "tipo": d.get("tipo", "fixed"),
-            "valor": d.get("valor") or 0,
+            "tipo": tipo,
+            "valor": valor,
             "es_descuento": True,
             "_id": d.get("id"),
-            "_valor_impreso": d.get("valor_impreso"),
+            "_valor_impreso": _p_opt(d.get("valor_impreso")),
         })
 
     return {
         "nombre_comercio": boleta_dict.get("nombre_comercio") or "",
-        "moneda_tiene_decimales": boleta_dict.get("moneda_tiene_decimales", False),
+        "moneda_tiene_decimales": moneda_decimales,
         "precio_modo": "unitario",
         "precios_items_incluyen_cargos": precios_items_incluyen_cargos,
         "items": items_internal,
         "cargos": cargos_internal,
-        "subtotal": boleta_dict.get("subtotal_impreso") or 0,
-        "total": boleta_dict.get("total_impreso") or 0,
+        "subtotal": _p(boleta_dict.get("subtotal_impreso")),
+        "total": _p(boleta_dict.get("total_impreso")),
+        # Metadata del formato detectado (util para debugging y para que el
+        # frontend ajuste decimal_places consistentemente)
+        "_format_separator": fmt_sep,
+        "_format_digits": fmt_digits,
     }
