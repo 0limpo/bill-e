@@ -4,6 +4,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
+import time
 import uuid
 from datetime import datetime, timedelta
 import os
@@ -30,11 +31,13 @@ except ImportError as e:
 try:
     from analytics_routes import router as analytics_router
     from analytics_middleware import AnalyticsMiddleware
+    from analytics import analytics as analytics_tracker
     from alerting import init_alerting
     analytics_available = True
 except ImportError as e:
     print(f"Warning: Analytics not available: {e}")
     analytics_available = False
+    analytics_tracker = None
 
 # Importar Collaborative Sessions
 try:
@@ -262,11 +265,18 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
         image_bytes = base64.b64decode(image_b64)
 
         # Procesar con OCR (Vision + Gemini paralelo)
+        _ocr_start = time.time()
+        _ocr_succeeded = False
+        _ocr_error_msg: Optional[str] = None
+        ocr_result: Dict[str, Any] = {}
         try:
             ocr_result = process_image(image_bytes)
 
             if not ocr_result.get('success'):
-                raise HTTPException(status_code=400, detail=ocr_result.get('error', 'Error en OCR'))
+                _ocr_error_msg = ocr_result.get('error', 'Error en OCR')
+                raise HTTPException(status_code=400, detail=_ocr_error_msg)
+
+            _ocr_succeeded = True
 
             # Actualizar sesión con resultado
             if redis_client and session_data:
@@ -313,8 +323,22 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
         except HTTPException:
             raise
         except Exception as ocr_error:
-            print(f"OCR Error: {str(ocr_error)}")
-            raise HTTPException(status_code=400, detail=f"Error en OCR: {str(ocr_error)}")
+            _ocr_error_msg = str(ocr_error)
+            print(f"OCR Error: {_ocr_error_msg}")
+            raise HTTPException(status_code=400, detail=f"Error en OCR: {_ocr_error_msg}")
+        finally:
+            if analytics_available and analytics_tracker:
+                try:
+                    analytics_tracker.track_ocr_usage(
+                        session_id=session_id,
+                        success=_ocr_succeeded,
+                        processing_time_ms=(time.time() - _ocr_start) * 1000,
+                        item_count=len(ocr_result.get('items', [])) if _ocr_succeeded else 0,
+                        image_size_bytes=len(image_bytes),
+                        error=_ocr_error_msg,
+                    )
+                except Exception as track_err:
+                    print(f"Failed to track OCR usage: {track_err}")
 
     except HTTPException:
         raise
@@ -340,11 +364,18 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
         image_bytes = await file.read()
 
         # Procesar con OCR (Vision + Gemini paralelo)
+        _ocr_start = time.time()
+        _ocr_succeeded = False
+        _ocr_error_msg: Optional[str] = None
+        ocr_result: Dict[str, Any] = {}
         try:
             ocr_result = process_image(image_bytes)
 
             if not ocr_result.get('success'):
-                raise HTTPException(status_code=400, detail=ocr_result.get('error', 'Error en OCR'))
+                _ocr_error_msg = ocr_result.get('error', 'Error en OCR')
+                raise HTTPException(status_code=400, detail=_ocr_error_msg)
+
+            _ocr_succeeded = True
 
             # Actualizar sesión con resultado
             if redis_client and session_data:
@@ -391,8 +422,22 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
         except HTTPException:
             raise
         except Exception as ocr_error:
-            print(f"OCR Error: {str(ocr_error)}")
-            raise HTTPException(status_code=400, detail=f"Error en OCR: {str(ocr_error)}")
+            _ocr_error_msg = str(ocr_error)
+            print(f"OCR Error: {_ocr_error_msg}")
+            raise HTTPException(status_code=400, detail=f"Error en OCR: {_ocr_error_msg}")
+        finally:
+            if analytics_available and analytics_tracker:
+                try:
+                    analytics_tracker.track_ocr_usage(
+                        session_id=session_id,
+                        success=_ocr_succeeded,
+                        processing_time_ms=(time.time() - _ocr_start) * 1000,
+                        item_count=len(ocr_result.get('items', [])) if _ocr_succeeded else 0,
+                        image_size_bytes=len(image_bytes),
+                        error=_ocr_error_msg,
+                    )
+                except Exception as track_err:
+                    print(f"Failed to track OCR usage: {track_err}")
 
     except HTTPException:
         raise
