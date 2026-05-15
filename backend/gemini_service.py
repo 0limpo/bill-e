@@ -26,6 +26,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+class OCROutputTruncatedError(Exception):
+    """Gemini truncó la respuesta JSON (boleta excede max_output_tokens)."""
+    pass
+
+
 # ============================================================
 # DEDUPLICATION FUNCTIONS
 # ============================================================
@@ -346,6 +351,10 @@ class GeminiOCRService:
                     "temperature": 0,
                     "response_mime_type": "application/json",
                     "response_schema": _RESPONSE_SCHEMA,
+                    # Default es 8192. Boletas de supermercado con 30+ items
+                    # truncan el JSON y rompen el parser. gemini-2.5-flash
+                    # soporta hasta 65536 output tokens.
+                    "max_output_tokens": 32768,
                 },
             )
 
@@ -653,6 +662,16 @@ class GeminiOCRService:
 
         except json.JSONDecodeError as e:
             logger.error(f"❌ Error parseando JSON de Gemini: {str(e)}")
+            # Detectar truncamiento por max_output_tokens.
+            # Sintomas tipicos: 'Unterminated string', 'Expecting' a mitad de
+            # respuesta. Lo propagamos para que el endpoint devuelva un mensaje
+            # accionable al usuario en vez del generico 'No se pudo procesar'.
+            err_str = str(e).lower()
+            if 'unterminated' in err_str or 'expecting' in err_str:
+                raise OCROutputTruncatedError(
+                    "La boleta es muy larga y la respuesta del OCR se trunco. "
+                    "Probá con una foto de la mitad superior o partila en dos."
+                ) from e
             return None
         except Exception as e:
             logger.error(f"❌ Error en Gemini OCR estructurado: {str(e)}")

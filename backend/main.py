@@ -27,6 +27,15 @@ except ImportError as e:
     process_image = None
     ocr_available = False
 
+# Importar Turnstile (proteccion anti-bot, opcional segun TURNSTILE_SECRET)
+try:
+    import turnstile_service
+    turnstile_available = True
+except ImportError as e:
+    print(f"Warning: Turnstile not available: {e}")
+    turnstile_service = None
+    turnstile_available = False
+
 # Importar Analytics
 try:
     from analytics_routes import router as analytics_router
@@ -127,7 +136,57 @@ except ImportError as e:
 
 load_dotenv()
 
+# Limite de tamaño para uploads de boleta (proteccion contra DoS economico
+# vs Gemini). 10MB cubre fotos de celular tipicas (~3-6MB) con margen.
+MAX_OCR_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+# Rate limiting (slowapi). Cada call OCR cuesta dinero a Gemini, por lo que
+# limitamos por IP. Limites generosos para usuarios reales (split de cuenta
+# tipico = 1-2 OCRs por sesion) pero cortan scripts abusivos.
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
+
+    def _client_ip_for_rate_limit(request: Request) -> str:
+        """Extrae IP real detras del proxy de Render/Cloudflare."""
+        fwd = request.headers.get("x-forwarded-for") or request.headers.get("cf-connecting-ip")
+        if fwd:
+            return fwd.split(",")[0].strip()
+        return get_remote_address(request)
+
+    limiter = Limiter(key_func=_client_ip_for_rate_limit)
+    rate_limit_available = True
+except ImportError as e:
+    print(f"Warning: slowapi not available, rate limiting disabled: {e}")
+    limiter = None
+    rate_limit_available = False
+
 app = FastAPI(title="Bill-e API", version="1.0.0")
+
+if rate_limit_available and limiter:
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    # Limites generosos para humanos, asfixiantes para scripts.
+    ocr_rate_limit = limiter.limit("20/minute;100/hour")
+else:
+    def ocr_rate_limit(func):
+        return func
+
+
+async def _enforce_turnstile(request: Request, body_token: Optional[str] = None) -> None:
+    """Valida Turnstile si esta configurado. Tira 403 si falla.
+
+    No-op cuando TURNSTILE_SECRET no esta seteado (dev/staging).
+    """
+    if not (turnstile_available and turnstile_service and turnstile_service.is_configured()):
+        return
+    token = request.headers.get("cf-turnstile-token") or body_token
+    client_ip = (
+        _client_ip_for_rate_limit(request) if rate_limit_available else None
+    )
+    if not await turnstile_service.verify_token(token, client_ip):
+        raise HTTPException(status_code=403, detail="Verificacion anti-bot fallida")
 
 # Add Analytics Middleware FIRST (before CORS)
 if analytics_available:
@@ -146,6 +205,7 @@ app.add_middleware(
 # Modelos para OCR
 class OCRRequest(BaseModel):
     image: str  # Base64 encoded image
+    turnstile_token: Optional[str] = None  # Cloudflare Turnstile token (opcional, header preferido)
 
 class Person(BaseModel):
     id: str
@@ -246,7 +306,8 @@ async def create_session():
         raise HTTPException(status_code=500, detail=f"Error creando sesión: {str(e)}")
 
 @app.post("/api/session/{session_id}/ocr")
-async def process_receipt_ocr(session_id: str, request: OCRRequest):
+@ocr_rate_limit
+async def process_receipt_ocr(session_id: str, request: Request, ocr_req: OCRRequest):
     """Procesar imagen de boleta con Gemini OCR"""
     try:
         # Verificar que la sesión existe
@@ -255,14 +316,23 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
             if not session_data:
                 raise HTTPException(status_code=404, detail="Sesión no encontrada")
 
+        await _enforce_turnstile(request, ocr_req.turnstile_token)
+
         # Decodificar imagen base64
         import base64
-        if ',' in request.image:
-            image_b64 = request.image.split(',')[1]
+        if ',' in ocr_req.image:
+            image_b64 = ocr_req.image.split(',')[1]
         else:
-            image_b64 = request.image
+            image_b64 = ocr_req.image
 
         image_bytes = base64.b64decode(image_b64)
+
+        if len(image_bytes) > MAX_OCR_IMAGE_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"La imagen excede el limite de {MAX_OCR_IMAGE_BYTES // (1024*1024)}MB. "
+                       f"Comprimila o reducila antes de subirla."
+            )
 
         # Procesar con OCR (Vision + Gemini paralelo)
         _ocr_start = time.time()
@@ -347,9 +417,12 @@ async def process_receipt_ocr(session_id: str, request: OCRRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/session/{session_id}/upload")
-async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
+@ocr_rate_limit
+async def upload_receipt_image(session_id: str, request: Request, file: UploadFile = File(...)):
     """Upload y procesa imagen con Gemini OCR."""
     try:
+        await _enforce_turnstile(request)
+
         # Verificar que la sesión existe
         if redis_client:
             session_data = redis_client.get(f"session:{session_id}")
@@ -362,6 +435,13 @@ async def upload_receipt_image(session_id: str, file: UploadFile = File(...)):
 
         # Leer imagen
         image_bytes = await file.read()
+
+        if len(image_bytes) > MAX_OCR_IMAGE_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=f"La imagen excede el limite de {MAX_OCR_IMAGE_BYTES // (1024*1024)}MB. "
+                       f"Comprimila o reducila antes de subirla."
+            )
 
         # Procesar con OCR (Vision + Gemini paralelo)
         _ocr_start = time.time()
