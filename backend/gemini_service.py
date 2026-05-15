@@ -344,6 +344,16 @@ class GeminiOCRService:
             import io
             image = PIL.Image.open(io.BytesIO(image_bytes))
 
+            # Compresion antes de enviar a Gemini: reduce costo (menos tokens
+            # de imagen), latencia, y baja la chance de truncamiento del JSON.
+            # Boletas escaneadas a >2048px no aportan info legible adicional —
+            # los precios y nombres ya son legibles a esa resolucion.
+            MAX_DIMENSION = 2048
+            original_size = image.size
+            if max(original_size) > MAX_DIMENSION:
+                image.thumbnail((MAX_DIMENSION, MAX_DIMENSION), PIL.Image.LANCZOS)
+                logger.info(f"📐 Imagen resized: {original_size} → {image.size}")
+
             logger.info("🤖 Enviando imagen a Gemini (flash + v3 schema)...")
             response = self.extraction_model.generate_content(
                 [PROMPT_V3, image],

@@ -136,9 +136,12 @@ except ImportError as e:
 
 load_dotenv()
 
-# Limite de tamaño para uploads de boleta (proteccion contra DoS economico
-# vs Gemini). 10MB cubre fotos de celular tipicas (~3-6MB) con margen.
-MAX_OCR_IMAGE_BYTES = 10 * 1024 * 1024  # 10 MB
+# Limite hard de tamaño de upload (proteccion contra DoS de memoria —
+# PIL decodea la imagen entera antes de comprimir). El backend resizea
+# a 2048px en gemini_service, asi que el costo Gemini esta acotado
+# independiente de los bytes de entrada. 20MB cubre HDR phone photos
+# y deja un colchon para casos raros sin abrir DoS de memoria.
+MAX_OCR_IMAGE_BYTES = 20 * 1024 * 1024  # 20 MB
 
 # Rate limiting (slowapi). Cada call OCR cuesta dinero a Gemini, por lo que
 # limitamos por IP. Limites generosos para usuarios reales (split de cuenta
@@ -167,8 +170,9 @@ app = FastAPI(title="Bill-e API", version="1.0.0")
 if rate_limit_available and limiter:
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-    # Limites generosos para humanos, asfixiantes para scripts.
-    ocr_rate_limit = limiter.limit("20/minute;100/hour")
+    # 3/min cubre uso real (split de cuenta tipico = 1-2 OCRs).
+    # 15/hora limita un atacante single-IP a ~$0.18/dia max.
+    ocr_rate_limit = limiter.limit("3/minute;15/hour")
 else:
     def ocr_rate_limit(func):
         return func
