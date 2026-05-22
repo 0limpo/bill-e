@@ -431,7 +431,7 @@ async def process_receipt_ocr(session_id: str, request: Request, ocr_req: OCRReq
                     not _ocr_succeeded
                     or bool(ocr_result.get("needs_review"))
                 )
-                if should_capture:
+                if should_capture and capture_utils_available and postgres_available:
                     postgres_db.persist_failed_capture(
                         image_bytes=image_bytes,
                         image_mime=detect_image_mime(image_bytes),
@@ -559,7 +559,7 @@ async def upload_receipt_image(session_id: str, request: Request, file: UploadFi
                     not _ocr_succeeded
                     or bool(ocr_result.get("needs_review"))
                 )
-                if should_capture:
+                if should_capture and capture_utils_available and postgres_available:
                     postgres_db.persist_failed_capture(
                         image_bytes=image_bytes,
                         image_mime=detect_image_mime(image_bytes),
