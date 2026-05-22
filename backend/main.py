@@ -126,6 +126,18 @@ except ImportError as e:
     print(f"Warning: PostgreSQL not available: {e}")
     postgres_available = False
 
+# Importar utilidades de imagen e IP (para captura de boletas fallidas)
+try:
+    from image_utils import detect_image_mime
+    from ip_utils import extract_client_ip, hash_ip
+    capture_utils_available = True
+except ImportError as e:
+    print(f"Warning: capture utils not available: {e}")
+    detect_image_mime = None
+    extract_client_ip = None
+    hash_ip = None
+    capture_utils_available = False
+
 # Importar OAuth Authentication
 try:
     import auth as oauth_auth
@@ -413,6 +425,25 @@ async def process_receipt_ocr(session_id: str, request: Request, ocr_req: OCRReq
                     )
                 except Exception as track_err:
                     print(f"Failed to track OCR usage: {track_err}")
+            # Captura de boletas fallidas o needs_review para mejorar OCR
+            try:
+                should_capture = (
+                    not _ocr_succeeded
+                    or bool(ocr_result.get("needs_review"))
+                )
+                if should_capture:
+                    postgres_db.persist_failed_capture(
+                        image_bytes=image_bytes,
+                        image_mime=detect_image_mime(image_bytes),
+                        reason="hard_fail" if not _ocr_succeeded else "needs_review",
+                        error_msg=_ocr_error_msg,
+                        gemini_raw=ocr_result if _ocr_succeeded else None,
+                        session_id=session_id,
+                        endpoint="ocr",
+                        ip_hash=hash_ip(extract_client_ip(request)),
+                    )
+            except Exception as cap_err:
+                print(f"persist_failed_capture (ocr) failed: {cap_err}")
 
     except HTTPException:
         raise
@@ -522,6 +553,25 @@ async def upload_receipt_image(session_id: str, request: Request, file: UploadFi
                     )
                 except Exception as track_err:
                     print(f"Failed to track OCR usage: {track_err}")
+            # Captura de boletas fallidas o needs_review para mejorar OCR
+            try:
+                should_capture = (
+                    not _ocr_succeeded
+                    or bool(ocr_result.get("needs_review"))
+                )
+                if should_capture:
+                    postgres_db.persist_failed_capture(
+                        image_bytes=image_bytes,
+                        image_mime=detect_image_mime(image_bytes),
+                        reason="hard_fail" if not _ocr_succeeded else "needs_review",
+                        error_msg=_ocr_error_msg,
+                        gemini_raw=ocr_result if _ocr_succeeded else None,
+                        session_id=session_id,
+                        endpoint="upload",
+                        ip_hash=hash_ip(extract_client_ip(request)),
+                    )
+            except Exception as cap_err:
+                print(f"persist_failed_capture (upload) failed: {cap_err}")
 
     except HTTPException:
         raise
