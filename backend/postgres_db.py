@@ -11,7 +11,7 @@ from contextlib import contextmanager
 
 from sqlalchemy import (
     create_engine, Column, String, Integer, Boolean, DateTime,
-    Text, JSON, Enum as SQLEnum, Index, cast
+    Text, JSON, LargeBinary, Enum as SQLEnum, Index, cast
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -423,6 +423,31 @@ class UserEvent(Base):
         Index('ix_user_events_name_time', 'event_name', 'event_timestamp'),
         Index('ix_user_events_month', 'event_timestamp'),  # For monthly queries
     )
+
+
+class FailedOcrCapture(Base):
+    """
+    Imagen + metadata de boletas que fallaron OCR o quedaron en needs_review.
+    Capturadas para alimentar ocr-benchmark/ y mejorar el prompt.
+    Retención: 30 días (auto-prune lazy on-insert).
+    """
+    __tablename__ = "failed_ocr_captures"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    image_bytes = Column(LargeBinary, nullable=False)
+    image_mime = Column(String(50), nullable=False)
+    image_size_bytes = Column(Integer, nullable=False)
+
+    reason = Column(String(20), nullable=False)  # 'hard_fail' | 'needs_review'
+    error_msg = Column(Text)
+    gemini_raw = Column(JSON)  # JSON (no JSONB) para consistencia con otros modelos y compat con SQLite en tests
+
+    session_id = Column(String(64), nullable=False, index=True)
+    endpoint = Column(String(20), nullable=False)  # 'ocr' | 'upload'
+
+    ip_hash = Column(String(64))
 
 
 # Helper functions for Payments
