@@ -57,6 +57,7 @@ export default function PrivacyPage() {
             <li>{t("privacy.s3Item1")}</li>
             <li>{t("privacy.s3Item2")}</li>
             <li>{t("privacy.s3Item3")}</li>
+            <li>{t("privacy.s3Item4")}</li>
           </ul>
         </section>
 
