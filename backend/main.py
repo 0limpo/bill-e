@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File
+from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
 from pydantic import BaseModel
@@ -217,6 +217,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ================ ADMIN AUTHENTICATION ================
+
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+
+
+def verify_admin_token(x_admin_token: Optional[str] = Header(None)) -> None:
+    """FastAPI dependency: valida el header X-Admin-Token contra ADMIN_TOKEN env."""
+    if not ADMIN_TOKEN:
+        # Si la env var no está seteada en el server, rechazar todo
+        raise HTTPException(status_code=503, detail="Admin endpoints not configured")
+    if not x_admin_token or x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing admin token")
+
 
 # Modelos para OCR
 class OCRRequest(BaseModel):
