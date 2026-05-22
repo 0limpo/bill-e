@@ -2271,14 +2271,11 @@ def get_failed_capture(capture_id: str) -> Optional[Dict[str, Any]]:
     with get_db() as db:
         if db is None:
             return None
-        try:
-            row = (
-                db.query(FailedOcrCapture)
-                .filter(FailedOcrCapture.id == capture_id)
-                .first()
-            )
-        except Exception:
-            return None
+        row = (
+            db.query(FailedOcrCapture)
+            .filter(FailedOcrCapture.id == capture_id)
+            .first()
+        )
         if row is None:
             return None
         return {
@@ -2295,9 +2292,6 @@ def delete_failed_capture(capture_id: str) -> int:
     with get_db() as db:
         if db is None:
             return 0
-        try:
-            return db.query(FailedOcrCapture).filter(
-                FailedOcrCapture.id == capture_id
-            ).delete(synchronize_session=False)
-        except Exception:
-            return 0
+        return db.query(FailedOcrCapture).filter(
+            FailedOcrCapture.id == capture_id
+        ).delete(synchronize_session=False)
