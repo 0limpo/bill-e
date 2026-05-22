@@ -153,8 +153,12 @@ export async function trackEvent(
       console.debug("Analytics error:", err);
     });
 
-    // Dual-write to PostHog
+    // Dual-write to PostHog. Ensure init first: trackAppOpen() fires in
+    // page.tsx's mount effect, which runs before PostHogProvider's init effect
+    // (React runs child effects before parent effects). Without this, an early
+    // capture() would be silently dropped pre-init. initPostHog() is idempotent.
     if (POSTHOG_KEY && typeof window !== "undefined") {
+      initPostHog();
       posthog.capture(eventName, {
         tracking_id: trackingId,
         ...deviceInfo,
