@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File, Header
+from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse, Response
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -4299,6 +4299,43 @@ async def debug_auth_status(token: str = None, device_id: str = None):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Debug query failed: {e}")
+
+
+# ============================================================================
+# Admin endpoints for failed-OCR captures
+# ============================================================================
+
+@app.get("/api/admin/failed-captures")
+async def admin_list_failed_captures(
+    limit: int = 500,
+    _: None = Depends(verify_admin_token),
+):
+    """Lista capturas con metadata (sin bytes)."""
+    limit = max(1, min(limit, 1000))
+    captures = postgres_db.list_failed_captures(limit=limit)
+    return {"captures": captures, "total": len(captures)}
+
+
+@app.get("/api/admin/failed-captures/{capture_id}/image")
+async def admin_get_failed_capture_image(
+    capture_id: str,
+    _: None = Depends(verify_admin_token),
+):
+    """Retorna los bytes binarios de la imagen capturada."""
+    cap = postgres_db.get_failed_capture(capture_id)
+    if cap is None:
+        raise HTTPException(status_code=404, detail="Capture not found")
+    return Response(content=cap["image_bytes"], media_type=cap["image_mime"])
+
+
+@app.delete("/api/admin/failed-captures/{capture_id}", status_code=204)
+async def admin_delete_failed_capture(
+    capture_id: str,
+    _: None = Depends(verify_admin_token),
+):
+    """Borra una captura. Idempotente: 204 incluso si no existe."""
+    postgres_db.delete_failed_capture(capture_id)
+    return Response(status_code=204)
 
 
 if __name__ == "__main__":
