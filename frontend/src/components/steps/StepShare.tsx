@@ -17,7 +17,7 @@ import {
 } from "@/lib/billEngine";
 import { trackShare, trackTipWidgetShown } from "@/lib/tracking";
 import { toggleParticipantPaid, getDeviceId } from "@/lib/api";
-import { getStoredToken, isSupporter } from "@/lib/auth";
+import { getStoredToken, isSupporter, getStoredUser } from "@/lib/auth";
 import { TipWidget } from "@/components/TipWidget";
 import { type Language } from "@/lib/i18n";
 
@@ -153,7 +153,7 @@ export function StepShare({
     trackTipWidgetShown({
       session_id: sessionId,
       participant_count: participants.length,
-      is_supporter: isSupporter(null),
+      is_supporter: isSupporter(getStoredUser()),
     });
     // Only fire once per session_id mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
