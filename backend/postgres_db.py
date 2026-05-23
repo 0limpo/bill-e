@@ -2336,6 +2336,35 @@ def delete_failed_capture(capture_id: str) -> int:
 # Premium → Supporter migration
 # ============================================================================
 
+def record_tip(
+    db,
+    *,
+    session_id: str,
+    host_email: str,
+    amount_total_usd: float,
+    amount_charged_usd: float,
+    is_split: bool,
+    participant_count: int,
+    polar_order_id: str,
+) -> bool:
+    """Insert a Tip row. Returns False if polar_order_id already exists (idempotent)."""
+    existing = db.query(Tip).filter_by(polar_order_id=polar_order_id).first()
+    if existing is not None:
+        return False
+    tip = Tip(
+        session_id=session_id,
+        host_email=host_email,
+        amount_total_usd=f"{amount_total_usd:.2f}",
+        amount_charged_usd=f"{amount_charged_usd:.2f}",
+        is_split=is_split,
+        participant_count=participant_count,
+        polar_order_id=polar_order_id,
+    )
+    db.add(tip)
+    db.commit()
+    return True
+
+
 def migrate_premium_to_supporter(db_session=None, *, now=None) -> Dict[str, Any]:
     """One-shot migration: set supporter_until for every is_premium=True user.
 

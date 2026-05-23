@@ -2536,13 +2536,44 @@ async def polar_webhook(request: Request):
     if event_type == "order.paid":
         metadata = data.get("metadata") or {}
         customer = data.get("customer") or {}
+        polar_order_id = str(data.get("id") or "")
         email = (
             metadata.get("user_email")
+            or metadata.get("host_email")
             or customer.get("email")
             or data.get("customer_email")
         )
+
+        # NEW: tip branch (does not grant premium).
+        if metadata.get("kind") == "tip":
+            if not email or not polar_order_id:
+                print(f"Polar tip received without email or order id: {metadata}")
+                return {"received": True}
+            if postgres_available:
+                try:
+                    with postgres_db.get_db() as db:
+                        if db is not None:
+                            recorded = postgres_db.record_tip(
+                                db,
+                                session_id=str(metadata.get("session_id") or ""),
+                                host_email=email,
+                                amount_total_usd=float(metadata.get("tip_amount_total") or 0),
+                                amount_charged_usd=float(metadata.get("tip_amount_charged") or 0),
+                                is_split=str(metadata.get("is_split")).lower() == "true",
+                                participant_count=int(metadata.get("participant_count") or 1),
+                                polar_order_id=polar_order_id,
+                            )
+                            print(f"Polar tip recorded={recorded} order={polar_order_id} email={email}")
+                except Exception as e:
+                    print(f"Polar tip persist failed: {e}")
+            # TODO(b5): PostHog analytics — no standalone capture_event in backend yet.
+            # analytics.py uses AnalyticsTracker.track_event (Redis-backed), not PostHog directly.
+            # Frontend tracking via tip_paid_webhook will cover this until backend PostHog is wired.
+            return {"received": True}
+
+        # EXISTING premium-granting logic continues below.
         user_type = metadata.get("user_type") or "host"
-        payment_id = data.get("id")
+        payment_id = polar_order_id
 
         if not email:
             print(f"Polar order.paid received without resolvable email: metadata={metadata}")
