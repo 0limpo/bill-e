@@ -1,6 +1,6 @@
-from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File
+from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse, Response
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -126,6 +126,18 @@ except ImportError as e:
     print(f"Warning: PostgreSQL not available: {e}")
     postgres_available = False
 
+# Importar utilidades de imagen e IP (para captura de boletas fallidas)
+try:
+    from image_utils import detect_image_mime
+    from ip_utils import extract_client_ip, hash_ip
+    capture_utils_available = True
+except ImportError as e:
+    print(f"Warning: capture utils not available: {e}")
+    detect_image_mime = None
+    extract_client_ip = None
+    hash_ip = None
+    capture_utils_available = False
+
 # Importar OAuth Authentication
 try:
     import auth as oauth_auth
@@ -205,6 +217,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ================ ADMIN AUTHENTICATION ================
+
+ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+
+
+def verify_admin_token(x_admin_token: Optional[str] = Header(None)) -> None:
+    """FastAPI dependency: valida el header X-Admin-Token contra ADMIN_TOKEN env."""
+    if not ADMIN_TOKEN:
+        # Si la env var no está seteada en el server, rechazar todo
+        raise HTTPException(status_code=503, detail="Admin endpoints not configured")
+    if not x_admin_token or x_admin_token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Invalid or missing admin token")
+
 
 # Modelos para OCR
 class OCRRequest(BaseModel):
@@ -413,6 +439,25 @@ async def process_receipt_ocr(session_id: str, request: Request, ocr_req: OCRReq
                     )
                 except Exception as track_err:
                     print(f"Failed to track OCR usage: {track_err}")
+            # Captura de boletas fallidas o needs_review para mejorar OCR
+            try:
+                should_capture = (
+                    not _ocr_succeeded
+                    or bool(ocr_result.get("needs_review"))
+                )
+                if should_capture and capture_utils_available and postgres_available:
+                    postgres_db.persist_failed_capture(
+                        image_bytes=image_bytes,
+                        image_mime=detect_image_mime(image_bytes),
+                        reason="hard_fail" if not _ocr_succeeded else "needs_review",
+                        error_msg=_ocr_error_msg,
+                        gemini_raw=ocr_result if _ocr_succeeded else None,
+                        session_id=session_id,
+                        endpoint="ocr",
+                        ip_hash=hash_ip(extract_client_ip(request)),
+                    )
+            except Exception as cap_err:
+                print(f"persist_failed_capture (ocr) failed: {cap_err}")
 
     except HTTPException:
         raise
@@ -522,6 +567,25 @@ async def upload_receipt_image(session_id: str, request: Request, file: UploadFi
                     )
                 except Exception as track_err:
                     print(f"Failed to track OCR usage: {track_err}")
+            # Captura de boletas fallidas o needs_review para mejorar OCR
+            try:
+                should_capture = (
+                    not _ocr_succeeded
+                    or bool(ocr_result.get("needs_review"))
+                )
+                if should_capture and capture_utils_available and postgres_available:
+                    postgres_db.persist_failed_capture(
+                        image_bytes=image_bytes,
+                        image_mime=detect_image_mime(image_bytes),
+                        reason="hard_fail" if not _ocr_succeeded else "needs_review",
+                        error_msg=_ocr_error_msg,
+                        gemini_raw=ocr_result if _ocr_succeeded else None,
+                        session_id=session_id,
+                        endpoint="upload",
+                        ip_hash=hash_ip(extract_client_ip(request)),
+                    )
+            except Exception as cap_err:
+                print(f"persist_failed_capture (upload) failed: {cap_err}")
 
     except HTTPException:
         raise
@@ -4235,6 +4299,57 @@ async def debug_auth_status(token: str = None, device_id: str = None):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Debug query failed: {e}")
+
+
+# ============================================================================
+# Admin endpoints for failed-OCR captures
+# ============================================================================
+
+@app.get("/api/admin/failed-captures")
+async def admin_list_failed_captures(
+    limit: int = 500,
+    _: None = Depends(verify_admin_token),
+):
+    """Lista capturas con metadata (sin bytes)."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Database not available")
+    limit = max(1, min(limit, 1000))
+    captures = postgres_db.list_failed_captures(limit=limit)
+    return {"captures": captures, "total": len(captures)}
+
+
+@app.get("/api/admin/failed-captures/{capture_id}/image")
+async def admin_get_failed_capture_image(
+    capture_id: str,
+    _: None = Depends(verify_admin_token),
+):
+    """Retorna los bytes binarios de la imagen capturada."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Database not available")
+    try:
+        uuid.UUID(capture_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Capture not found")
+    cap = postgres_db.get_failed_capture(capture_id)
+    if cap is None:
+        raise HTTPException(status_code=404, detail="Capture not found")
+    return Response(content=cap["image_bytes"], media_type=cap["image_mime"])
+
+
+@app.delete("/api/admin/failed-captures/{capture_id}", status_code=204)
+async def admin_delete_failed_capture(
+    capture_id: str,
+    _: None = Depends(verify_admin_token),
+):
+    """Borra una captura. Idempotente: 204 incluso si no existe."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Database not available")
+    try:
+        uuid.UUID(capture_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Capture not found")
+    postgres_db.delete_failed_capture(capture_id)
+    return Response(status_code=204)
 
 
 if __name__ == "__main__":

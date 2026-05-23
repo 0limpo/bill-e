@@ -5,13 +5,13 @@ Handles persistent storage for payments and user analytics.
 
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from contextlib import contextmanager
 
 from sqlalchemy import (
     create_engine, Column, String, Integer, Boolean, DateTime,
-    Text, JSON, Enum as SQLEnum, Index, cast
+    Text, JSON, LargeBinary, Enum as SQLEnum, Index, cast
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -423,6 +423,31 @@ class UserEvent(Base):
         Index('ix_user_events_name_time', 'event_name', 'event_timestamp'),
         Index('ix_user_events_month', 'event_timestamp'),  # For monthly queries
     )
+
+
+class FailedOcrCapture(Base):
+    """
+    Imagen + metadata de boletas que fallaron OCR o quedaron en needs_review.
+    Capturadas para alimentar ocr-benchmark/ y mejorar el prompt.
+    Retención: 30 días (auto-prune lazy on-insert).
+    """
+    __tablename__ = "failed_ocr_captures"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    image_bytes = Column(LargeBinary, nullable=False)
+    image_mime = Column(String(50), nullable=False)
+    image_size_bytes = Column(Integer, nullable=False)
+
+    reason = Column(String(20), nullable=False)  # 'hard_fail' | 'needs_review'
+    error_msg = Column(Text)
+    gemini_raw = Column(JSON)  # JSON (no JSONB) para consistencia con otros modelos y compat con SQLite en tests
+
+    session_id = Column(String(64), nullable=False, index=True)
+    endpoint = Column(String(20), nullable=False)  # 'ocr' | 'upload'
+
+    ip_hash = Column(String(64))
 
 
 # Helper functions for Payments
@@ -2150,3 +2175,123 @@ def get_monthly_analytics(year: int, month: int) -> Optional[Dict]:
             "unique_sessions": len(unique_sessions),
             "event_counts": event_counts,
         }
+
+
+# ============================================================================
+# Failed OCR captures
+# ============================================================================
+
+def persist_failed_capture(
+    image_bytes: bytes,
+    image_mime: str,
+    reason: str,                       # 'hard_fail' | 'needs_review'
+    error_msg: Optional[str],
+    gemini_raw: Optional[Dict[str, Any]],
+    session_id: str,
+    endpoint: str,                     # 'ocr' | 'upload'
+    ip_hash: Optional[str],
+) -> None:
+    """
+    Fire-and-forget. Inserta una captura fallida y aprovecha para borrar
+    capturas con > 30 días. Nunca propaga excepciones.
+    """
+    try:
+        if SessionLocal is None:
+            return
+        with get_db() as db:
+            if db is None:
+                return
+            row = FailedOcrCapture(
+                image_bytes=image_bytes,
+                image_mime=image_mime,
+                image_size_bytes=len(image_bytes),
+                reason=reason,
+                error_msg=error_msg,
+                gemini_raw=gemini_raw,
+                session_id=session_id,
+                endpoint=endpoint,
+                ip_hash=ip_hash,
+            )
+            db.add(row)
+            # Auto-prune dentro de la misma transacción
+            cutoff = datetime.utcnow() - timedelta(days=30)
+            db.query(FailedOcrCapture).filter(
+                FailedOcrCapture.created_at < cutoff
+            ).delete(synchronize_session=False)
+    except Exception as e:
+        print(f"persist_failed_capture failed (swallowed): {e}")
+
+
+def prune_old_captures(retention_days: int = 30) -> int:
+    """Borra capturas más viejas que `retention_days`. Retorna cuántas borró."""
+    if SessionLocal is None:
+        return 0
+    cutoff = datetime.utcnow() - timedelta(days=retention_days)
+    with get_db() as db:
+        if db is None:
+            return 0
+        return db.query(FailedOcrCapture).filter(
+            FailedOcrCapture.created_at < cutoff
+        ).delete(synchronize_session=False)
+
+
+def list_failed_captures(limit: int = 500) -> List[Dict[str, Any]]:
+    """Devuelve metadata (sin bytes) de las capturas más recientes."""
+    if SessionLocal is None:
+        return []
+    with get_db() as db:
+        if db is None:
+            return []
+        rows = (
+            db.query(FailedOcrCapture)
+            .order_by(FailedOcrCapture.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "id": str(r.id),
+                "created_at": r.created_at.isoformat(),
+                "reason": r.reason,
+                "error_msg": r.error_msg,
+                "session_id": r.session_id,
+                "endpoint": r.endpoint,
+                "image_mime": r.image_mime,
+                "image_size_bytes": r.image_size_bytes,
+                "gemini_raw": r.gemini_raw,
+            }
+            for r in rows
+        ]
+
+
+def get_failed_capture(capture_id: str) -> Optional[Dict[str, Any]]:
+    """Devuelve la fila completa (con bytes). None si no existe."""
+    if SessionLocal is None:
+        return None
+    with get_db() as db:
+        if db is None:
+            return None
+        row = (
+            db.query(FailedOcrCapture)
+            .filter(FailedOcrCapture.id == capture_id)
+            .first()
+        )
+        if row is None:
+            return None
+        return {
+            "id": str(row.id),
+            "image_bytes": bytes(row.image_bytes),
+            "image_mime": row.image_mime,
+        }
+
+
+def delete_failed_capture(capture_id: str) -> int:
+    """Borra una captura. Idempotente: 0 si no existe, 1 si se borró."""
+    if SessionLocal is None:
+        return 0
+    with get_db() as db:
+        if db is None:
+            return 0
+        return db.query(FailedOcrCapture).filter(
+            FailedOcrCapture.id == capture_id
+        ).delete(synchronize_session=False)
