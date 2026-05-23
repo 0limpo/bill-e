@@ -54,7 +54,8 @@ export function TipWidget({
     return totalAmount;
   }, [totalAmount, isSplit, participantCount, canSplit]);
 
-  const isValid = totalAmount >= MIN_CUSTOM;
+  const hasEmail = Boolean(hostEmail && hostEmail.trim().length > 0);
+  const isValid = totalAmount >= MIN_CUSTOM && hasEmail;
 
   async function handleSubmit() {
     if (!isValid || submitting) return;
@@ -187,6 +188,10 @@ export function TipWidget({
       >
         {t("tip_cta").replace("{amount}", chargedAmount.toFixed(2))}
       </button>
+
+      {!hasEmail && (
+        <p className="text-xs text-gray-500 mt-1">{t("tip_requires_signin")}</p>
+      )}
 
       {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
 
