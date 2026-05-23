@@ -508,7 +508,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_requires_signin": "Inicia sesión con Google para apoyar",
     "tip_line_label": "Bill-e",
     "tip_manual_edit_label": "Ajustar monto pagado a Polar:",
-    "tip_manual_edit_hint": "Polar agrega impuestos. Edita aqui si el monto real difiere.",
+    "tip_manual_edit_hint": "Polar agrega impuestos. Edita aquí si el monto real difiere.",
     "tip_manual_edit_save": "Guardar",
     "tip_manual_edit_saved": "✓ Guardado",
   },
