@@ -1569,13 +1569,14 @@ export default function SessionPage() {
             t={t}
             isOwner={isOwner}
             sessionId={sessionId}
-            billCostShared={billCostShared}
-            premiumPrice={premiumPrice}
             ownerParticipantId={session?.participants?.find((p) => p.role === "owner")?.id}
             decimals={decimals}
             isSnapshot={(session?.is_snapshot ?? false) || session?.status === "finalized"}
             freeRemaining={freeRemaining}
             isPremium={isPremium}
+            lang={lang}
+            hostEmail={userEmail ?? ""}
+            alreadyTipped={searchParams.get("tip_success") === "true"}
           />
         )}
       </main>

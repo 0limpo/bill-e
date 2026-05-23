@@ -15,10 +15,11 @@ import {
   type Assignment,
   type Session,
 } from "@/lib/billEngine";
-import { trackShare } from "@/lib/tracking";
+import { trackShare, trackTipWidgetShown } from "@/lib/tracking";
 import { toggleParticipantPaid, getDeviceId } from "@/lib/api";
-import { getStoredToken } from "@/lib/auth";
-import { PREMIUM_PRICE_USD } from "@/lib/payment";
+import { getStoredToken, isSupporter } from "@/lib/auth";
+import { TipWidget } from "@/components/TipWidget";
+import { type Language } from "@/lib/i18n";
 
 interface StepShareProps {
   items: Item[];
@@ -30,8 +31,6 @@ interface StepShareProps {
   t: (key: string) => string;
   isOwner?: boolean;
   sessionId?: string;
-  billCostShared?: boolean;
-  premiumPrice?: number;
   ownerParticipantId?: string;
   // Optional override — see StepAssign for why this is needed.
   decimals?: number;
@@ -42,6 +41,10 @@ interface StepShareProps {
   // Free-tier status from enter-share. `null` while the call is in flight.
   freeRemaining?: number | null;
   isPremium?: boolean;
+  // TipWidget props
+  lang?: Language;
+  hostEmail?: string;
+  alreadyTipped?: boolean;
 }
 
 export function StepShare({
@@ -54,13 +57,14 @@ export function StepShare({
   t,
   isOwner = false,
   sessionId,
-  billCostShared = false,
-  premiumPrice = PREMIUM_PRICE_USD,
   ownerParticipantId,
   decimals: decimalsProp,
   isSnapshot = false,
   freeRemaining = null,
   isPremium = false,
+  lang = "es",
+  hostEmail = "",
+  alreadyTipped = false,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
@@ -143,20 +147,17 @@ export function StepShare({
     }
   };
 
-  // Bill-e cost sharing calculations (USD, 2 decimals)
-  const participantCount = participants.length;
-  const round2 = (n: number) => Math.round(n * 100) / 100;
-  const billCostPerPerson = billCostShared && participantCount >= 2
-    ? round2(premiumPrice / participantCount)
-    : 0;
-  // Host recovery = what the other N-1 participants transfer to the host
-  const hostRecovery = billCostShared && participantCount >= 2
-    ? round2(billCostPerPerson * (participantCount - 1))
-    : 0;
-  // Host's actual share — absorbs any rounding residual so Σ === totalAmount exactly
-  const billCostForHost = billCostShared && participantCount >= 2
-    ? round2(premiumPrice - hostRecovery)
-    : 0;
+  // Fire tip widget impression once per session mount
+  useEffect(() => {
+    if (!sessionId) return;
+    trackTipWidgetShown({
+      session_id: sessionId,
+      participant_count: participants.length,
+      is_supporter: isSupporter(null),
+    });
+    // Only fire once per session_id mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
 
   // Prefer explicit decimals from parent (which knows session.decimal_places),
   // fall back to item-level detection.
@@ -171,14 +172,11 @@ export function StepShare({
     assignments,
   };
 
-  // Calculate totals (including Bill-e cost if shared)
-  const baseTotalAmount = participants.reduce((sum, p) => {
+  // Calculate grand total
+  const totalAmount = participants.reduce((sum, p) => {
     const { total } = calculateParticipantTotal(p.id, session);
     return sum + total;
   }, 0);
-
-  // Add Bill-e premium cost to table total if shared
-  const totalAmount = baseTotalAmount + (billCostShared ? premiumPrice : 0);
 
   // Get items for a participant (with correct grupal division)
   const getParticipantItems = (participantId: string) => {
@@ -250,12 +248,7 @@ export function StepShare({
 
     participants.forEach((p) => {
       const { total } = calculateParticipantTotal(p.id, session);
-      const isHost = p.id === ownerParticipantId;
-      const billECost = billCostShared
-        ? (isHost ? billCostForHost : billCostPerPerson)
-        : 0;
-      const finalTotal = total + billECost;
-      message += `• ${p.name}: ${fmt(finalTotal)}\n`;
+      message += `• ${p.name}: ${fmt(total)}\n`;
     });
 
     message += `\n💰 *${t("totals.total")}: ${fmt(totalAmount)}*`;
@@ -348,14 +341,6 @@ export function StepShare({
           const isExpanded = expandedParticipants[p.id];
           const participantItems = getParticipantItems(p.id);
 
-          // Host absorbs the rounding residual; everyone else pays billCostPerPerson.
-          // Σ finalTotals === totalAmount exactly for any participantCount.
-          const isHostParticipant = p.id === ownerParticipantId;
-          const billECostForParticipant = billCostShared
-            ? (isHostParticipant ? billCostForHost : billCostPerPerson)
-            : 0;
-          const finalTotal = total + billECostForParticipant;
-
           const isPaid = isParticipantPaid(p);
 
           return (
@@ -379,7 +364,7 @@ export function StepShare({
                   <span className="font-medium truncate">{p.name}</span>
                 </button>
                 <span className="font-semibold tabular-nums text-foreground">
-                  {fmt(finalTotal)}
+                  {fmt(total)}
                 </span>
                 {isOwner && isSnapshot ? (
                   <button
@@ -443,31 +428,11 @@ export function StepShare({
                         </div>
                       ))}
 
-                    {/* Bill-e cost line — same for everyone */}
-                    {billCostShared && billECostForParticipant > 0 && (
-                      <div className="flex items-center justify-between py-1 text-sm text-orange-500">
-                        <span>{t("share.billECost")}</span>
-                        <span className="tabular-nums">+{fmt(billECostForParticipant)}</span>
-                      </div>
-                    )}
-
                     {/* Total */}
                     <div className="flex items-center justify-between py-1 text-sm font-semibold border-t border-border/30 mt-1 pt-2">
                       <span>{t("items.total")}</span>
-                      <span className="tabular-nums text-foreground">{fmt(finalTotal)}</span>
+                      <span className="tabular-nums text-foreground">{fmt(total)}</span>
                     </div>
-
-                    {/* Host-only informative note */}
-                    {billCostShared && isHostParticipant && (
-                      <div className="mt-2.5 px-3 py-2 bg-primary/10 border border-primary/25 rounded-lg text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
-                        <span className="text-primary font-semibold flex-shrink-0" aria-hidden="true">i</span>
-                        <span>
-                          {t("share.billEHostNote")
-                            .replace("{paid}", fmt(premiumPrice))
-                            .replace("{recovered}", fmt(hostRecovery))}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -481,6 +446,17 @@ export function StepShare({
         <span className="font-semibold">{t("totals.tableTotal")}</span>
         <span className="text-xl font-bold text-foreground">{fmt(totalAmount)}</span>
       </div>
+
+      {/* Tip Widget */}
+      {sessionId && (
+        <TipWidget
+          sessionId={sessionId}
+          participantCount={participants.length}
+          hostEmail={hostEmail}
+          lang={lang}
+          alreadyTipped={alreadyTipped}
+        />
+      )}
 
       {/* Free-tier status — hidden when premium, when status hasn't loaded
           yet, or when the participant is just viewing a saved snapshot
