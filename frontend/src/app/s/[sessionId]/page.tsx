@@ -13,7 +13,7 @@ import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
 import { formatCurrency, detectDecimals, getAvatarColor, getInitials, calculateParticipantTotal, type Item, type Charge, type Participant, type Assignment, type Session } from "@/lib/billEngine";
 import { startPaymentFlow, formatPriceCLP, formatPriceUSD, PREMIUM_PRICE_USD } from "@/lib/payment";
 import { getCountryCode, getPaymentRail, type PaymentRail } from "@/lib/geo";
-import { getStoredToken, getStoredUser, setStoredUser, getAuthProviders, handleAuthCallback, verifyToken, refreshStoredUser, type AuthProvider } from "@/lib/auth";
+import { getStoredToken, getStoredUser, setStoredUser, getAuthProviders, handleAuthCallback, verifyToken, refreshStoredUser, isSupporter, type AuthProvider } from "@/lib/auth";
 import { updateBillName, enterShare } from "@/lib/api";
 import { SignInButtons } from "@/components/auth/SignInButtons";
 import {
@@ -1304,12 +1304,12 @@ export default function SessionPage() {
         const me = meIdx >= 0 ? session?.participants?.[meIdx] : null;
         const meName = me?.name || (isOwner ? t("session.host") : t("session.editor"));
         const roleLabel = isOwner ? t("session.host") : t("session.editor");
-        const tierLabel = isPremium ? "pro" : "free";
+        const supporter = isSupporter(getStoredUser());
         return (
           <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
             <div className="max-w-md mx-auto px-4 py-3">
               <div className="flex items-start">
-                {/* Left: Bill-e logo + free/pro tier */}
+                {/* Left: Bill-e logo + Supporter badge (only for migrated users) */}
                 <div className="flex flex-col items-center gap-1 shrink-0">
                   <Link
                     href="/"
@@ -1317,9 +1317,11 @@ export default function SessionPage() {
                   >
                     B
                   </Link>
-                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${isPremium ? "text-primary" : "text-muted-foreground"}`}>
-                    {tierLabel}
-                  </span>
+                  {supporter && (
+                    <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                      {t("badge_supporter")}
+                    </span>
+                  )}
                 </div>
 
                 {/* Stepper container - takes remaining space, centers content */}
