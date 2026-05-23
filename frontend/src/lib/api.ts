@@ -829,6 +829,35 @@ export async function createPolarCheckout(params: {
   });
 }
 
+// Tip checkout
+export interface CreateTipCheckoutRequest {
+  session_id: string;
+  amount_usd: number;
+  is_split: boolean;
+  participant_count: number;
+  google_email: string;
+  device_id?: string;
+}
+
+export interface CreateTipCheckoutResponse {
+  checkout_id: string;
+  checkout_url: string;
+  amount_charged_usd: number;
+}
+
+/**
+ * Create a Polar PWYW checkout for a voluntary tip.
+ * Returns the hosted checkout URL.
+ */
+export async function createTipCheckout(
+  req: CreateTipCheckoutRequest
+): Promise<CreateTipCheckoutResponse> {
+  return apiRequest<CreateTipCheckoutResponse>("/api/polar/tip-checkout", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
 // ============================================================================
 // Premium Check (by Google email)
 // ============================================================================
@@ -924,5 +953,45 @@ export async function updateBillName(
   return apiRequest(`/api/session/${sessionId}/bill-name`, {
     method: "POST",
     body: JSON.stringify({ owner_token: ownerToken, bill_name: billName }),
+  });
+}
+
+// ============================================================================
+// Session Tip
+// ============================================================================
+
+export interface SessionTip {
+  id: string;
+  session_id: string;
+  host_email: string;
+  amount_total_usd: number | null;
+  amount_charged_usd: number | null;
+  total_paid_usd: number | null;
+  is_split: boolean;
+  participant_count: number;
+  polar_order_id: string;
+  created_at: string;
+}
+
+export async function getSessionTip(sessionId: string): Promise<SessionTip | null> {
+  const res = await apiRequest<{ tip: SessionTip | null }>(
+    `/api/session/${sessionId}/tip`,
+    { method: "GET" }
+  );
+  return res.tip;
+}
+
+export interface UpdateTipPaidRequest {
+  total_paid_usd: number;
+  owner_token: string;
+}
+
+export async function updateTipTotalPaid(
+  sessionId: string,
+  req: UpdateTipPaidRequest
+): Promise<{ ok: boolean; total_paid_usd: number }> {
+  return apiRequest(`/api/session/${sessionId}/tip`, {
+    method: "PATCH",
+    body: JSON.stringify(req),
   });
 }

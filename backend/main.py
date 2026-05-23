@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 import json
 import time
@@ -1248,6 +1248,56 @@ async def enter_share_endpoint(session_id: str, request: Request):
     return result
 
 
+class UpdateTipRequest(BaseModel):
+    total_paid_usd: float = Field(ge=3.49)
+    owner_token: str
+
+
+@app.get("/api/session/{session_id}/tip")
+async def get_session_tip(session_id: str):
+    """Return the tip (if any) for this session. Used by frontend to render
+    the 'Bill-e $X' line in editors' bills when split is on."""
+    if not postgres_available:
+        return {"tip": None}
+    try:
+        with postgres_db.get_db() as db:
+            if db is None:
+                return {"tip": None}
+            tip = postgres_db.get_tip_for_session(db, session_id)
+            return {"tip": tip}
+    except Exception as e:
+        print(f"GET tip failed: {e}")
+        return {"tip": None}
+
+
+@app.patch("/api/session/{session_id}/tip")
+async def patch_session_tip(session_id: str, req: UpdateTipRequest):
+    """Manual override for the actual paid amount. Host-only (owner_token required)."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Postgres not available")
+
+    # Verify owner via session Redis state
+    session_data = get_collab_session(redis_client, session_id)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Sesion no encontrada")
+    if not verify_owner(session_data, req.owner_token):
+        raise HTTPException(status_code=403, detail="Token de owner invalido")
+
+    try:
+        with postgres_db.get_db() as db:
+            if db is None:
+                raise HTTPException(status_code=503, detail="DB session unavailable")
+            ok = postgres_db.update_tip_total_paid(db, session_id, req.total_paid_usd)
+            if not ok:
+                raise HTTPException(status_code=404, detail="No tip exists for this session")
+            return {"ok": True, "total_paid_usd": req.total_paid_usd}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"PATCH tip failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/session/{session_id}/reopen")
 async def reopen_session_endpoint(session_id: str, request: Request):
     """Reopen a finalized session (owner only)."""
@@ -2394,6 +2444,15 @@ class PolarCheckoutRequest(BaseModel):
     owner_token: Optional[str] = None
 
 
+class TipCheckoutRequest(BaseModel):
+    session_id: str
+    amount_usd: float = Field(ge=3.49, description="Total tip in USD. Min $3.49 (matches Polar product min + Bill-e's historic Premium price as floor).")
+    is_split: bool = False
+    participant_count: int = Field(ge=1, default=1)
+    google_email: str
+    device_id: Optional[str] = None
+
+
 @app.post("/api/polar/checkout")
 async def create_polar_checkout(req: PolarCheckoutRequest):
     """Create a Polar hosted checkout session and return its URL."""
@@ -2448,6 +2507,61 @@ async def create_polar_checkout(req: PolarCheckoutRequest):
     }
 
 
+def _compute_charged_amount(amount_total: float, is_split: bool, participant_count: int) -> float:
+    """How much the host pays via Polar. Editors' share is informational only."""
+    if is_split and participant_count > 1:
+        return round(amount_total / participant_count, 2)
+    return round(amount_total, 2)
+
+
+@app.post("/api/polar/tip-checkout")
+async def create_polar_tip_checkout(req: TipCheckoutRequest):
+    """Create a Polar PWYW checkout for a tip. Returns hosted URL."""
+    if not polar_available or not polar_service.is_configured():
+        raise HTTPException(status_code=503, detail="Polar not configured")
+
+    tip_product_id = os.getenv("POLAR_TIP_PRODUCT_ID")
+    if not tip_product_id:
+        raise HTTPException(status_code=503, detail="POLAR_TIP_PRODUCT_ID not configured")
+
+    frontend_url = os.getenv("FRONTEND_URL", "https://billeocr.com")
+    success_url = (
+        f"{frontend_url}/s/{req.session_id}"
+        f"?tip_success=true&amount={req.amount_usd}"
+    )
+
+    charged = _compute_charged_amount(req.amount_usd, req.is_split, req.participant_count)
+
+    metadata = {
+        "kind": "tip",
+        "session_id": req.session_id,
+        "host_email": req.google_email,
+        "tip_amount_total": req.amount_usd,
+        "tip_amount_charged": charged,
+        "is_split": req.is_split,
+        "participant_count": req.participant_count,
+    }
+
+    checkout = await polar_service.create_checkout(
+        product_id=tip_product_id,
+        customer_email=req.google_email,
+        success_url=success_url,
+        metadata=metadata,
+        amount=charged,
+    )
+
+    if not checkout or "_error" in checkout:
+        err = (checkout or {}).get("_error", "unknown")
+        status = (checkout or {}).get("_status", 0)
+        raise HTTPException(status_code=502, detail=f"Polar {status}: {err}")
+
+    return {
+        "checkout_id": checkout.get("id"),
+        "checkout_url": checkout.get("url"),
+        "amount_charged_usd": charged,
+    }
+
+
 @app.post("/api/polar/webhook")
 async def polar_webhook(request: Request):
     """Receive Polar webhook events. Grants premium on order.paid."""
@@ -2472,13 +2586,49 @@ async def polar_webhook(request: Request):
     if event_type == "order.paid":
         metadata = data.get("metadata") or {}
         customer = data.get("customer") or {}
+        polar_order_id = str(data.get("id") or "")
         email = (
             metadata.get("user_email")
+            or metadata.get("host_email")
             or customer.get("email")
             or data.get("customer_email")
         )
+
+        # NEW: tip branch (does not grant premium).
+        if metadata.get("kind") == "tip":
+            if not email or not polar_order_id:
+                print(f"Polar tip received without email or order id: {metadata}")
+                return {"received": True}
+            # Polar's actual paid amount, with tax. Field is total_amount in cents.
+            # Fall back to data.amount if total_amount missing (older Polar API versions).
+            total_paid_cents = data.get("total_amount") or data.get("amount") or 0
+            total_paid_usd = float(total_paid_cents) / 100.0 if total_paid_cents else None
+            if postgres_available:
+                try:
+                    with postgres_db.get_db() as db:
+                        if db is not None:
+                            recorded = postgres_db.record_tip(
+                                db,
+                                session_id=str(metadata.get("session_id") or ""),
+                                host_email=email,
+                                amount_total_usd=float(metadata.get("tip_amount_total") or 0),
+                                amount_charged_usd=float(metadata.get("tip_amount_charged") or 0),
+                                is_split=str(metadata.get("is_split")).lower() == "true",
+                                participant_count=int(metadata.get("participant_count") or 1),
+                                polar_order_id=polar_order_id,
+                                total_paid_usd=total_paid_usd,
+                            )
+                            print(f"Polar tip recorded={recorded} order={polar_order_id} email={email} total_paid_usd={total_paid_usd}")
+                except Exception as e:
+                    print(f"Polar tip persist failed: {e}")
+            # TODO(b5): PostHog analytics — no standalone capture_event in backend yet.
+            # analytics.py uses AnalyticsTracker.track_event (Redis-backed), not PostHog directly.
+            # Frontend tracking via tip_paid_webhook will cover this until backend PostHog is wired.
+            return {"received": True}
+
+        # EXISTING premium-granting logic continues below.
         user_type = metadata.get("user_type") or "host"
-        payment_id = data.get("id")
+        payment_id = polar_order_id
 
         if not email:
             print(f"Polar order.paid received without resolvable email: metadata={metadata}")

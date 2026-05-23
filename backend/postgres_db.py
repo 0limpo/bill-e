@@ -11,7 +11,7 @@ from contextlib import contextmanager
 
 from sqlalchemy import (
     create_engine, Column, String, Integer, Boolean, DateTime,
-    Text, JSON, LargeBinary, Enum as SQLEnum, Index, cast
+    Text, JSON, LargeBinary, Enum as SQLEnum, Index, cast, Numeric, text
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -29,18 +29,22 @@ SessionLocal = None
 db_available = False
 
 
+_MIGRATIONS = [
+    "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS bill_name VARCHAR(255)",
+    "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS merchant_name VARCHAR(255)",
+    "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS user_id UUID",
+    "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS totals JSON",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS supporter_until TIMESTAMP",
+    "ALTER TABLE tips ADD COLUMN IF NOT EXISTS total_paid_usd NUMERIC(10, 2)",
+]
+
+
 def _run_migrations(eng):
     """Add new columns to existing tables if they don't exist."""
     from sqlalchemy import text
-    migrations = [
-        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS bill_name VARCHAR(255)",
-        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS merchant_name VARCHAR(255)",
-        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS user_id UUID",
-        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS totals JSON",
-    ]
     try:
         with eng.connect() as conn:
-            for sql in migrations:
+            for sql in _MIGRATIONS:
                 conn.execute(text(sql))
             conn.commit()
         # Create index if not exists
@@ -77,6 +81,13 @@ def init_db():
 
         # Run migrations for new columns on existing tables
         _run_migrations(engine)
+
+        # One-shot Premium → Supporter migration. Idempotent.
+        try:
+            stats = migrate_premium_to_supporter(now=datetime.utcnow())
+            print(f"Supporter migration: {stats}")
+        except Exception as e:
+            print(f"Supporter migration warning (may be OK): {e}")
 
         db_available = True
         print("PostgreSQL database initialized successfully")
@@ -265,6 +276,10 @@ class User(Base):
     premium_expires = Column(DateTime)
     premium_payment_id = Column(UUID(as_uuid=True))  # FK to payments
 
+    # Supporter badge (90 days after Premium → Tip migration cutover).
+    # Independent of `is_premium`/`premium_expires`, which remain dormant.
+    supporter_until = Column(DateTime, nullable=True)
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -274,6 +289,29 @@ class User(Base):
     __table_args__ = (
         Index('ix_users_provider_email', 'provider', 'email', unique=True),
         Index('ix_users_provider_id', 'provider', 'provider_id', unique=True),
+    )
+
+
+class Tip(Base):
+    """One paid tip via Polar. Idempotent by polar_order_id."""
+    __tablename__ = "tips"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(String(100), nullable=False)
+    host_email = Column(String(255), nullable=False)
+    amount_total_usd = Column(Numeric(10, 2), nullable=False)
+    amount_charged_usd = Column(Numeric(10, 2), nullable=False)
+    is_split = Column(Boolean, nullable=False, default=False)
+    participant_count = Column(Integer, nullable=False, default=1)
+    polar_order_id = Column(String(128), nullable=False, unique=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # Actual amount paid by host with tax (from Polar webhook). Null until webhook arrives.
+    total_paid_usd = Column(Numeric(10, 2), nullable=True)
+
+    __table_args__ = (
+        Index('ix_tips_session_id', 'session_id'),
+        Index('ix_tips_host_email', 'host_email'),
+        Index('ix_tips_polar_order_id', 'polar_order_id', unique=True),
     )
 
 
@@ -962,6 +1000,7 @@ def find_or_create_user(
                 "device_ids": user.device_ids or [],
                 "is_premium": user.is_premium,
                 "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None,
+                "supporter_until": user.supporter_until.isoformat() if user.supporter_until else None,
                 "is_new": False
             }
 
@@ -986,6 +1025,7 @@ def find_or_create_user(
             "device_ids": user.device_ids or [],
             "is_premium": False,
             "premium_expires": None,
+            "supporter_until": None,
             "is_new": True
         }
 
@@ -1012,7 +1052,8 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
             "picture_url": user.picture_url,
             "device_ids": user.device_ids or [],
             "is_premium": user.is_premium,
-            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None
+            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None,
+            "supporter_until": user.supporter_until.isoformat() if user.supporter_until else None
         }
 
 
@@ -1038,7 +1079,8 @@ def get_user_by_email(email: str) -> Optional[Dict]:
             "picture_url": user.picture_url,
             "device_ids": user.device_ids or [],
             "is_premium": user.is_premium,
-            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None
+            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None,
+            "supporter_until": user.supporter_until.isoformat() if user.supporter_until else None
         }
 
 
@@ -2295,3 +2337,116 @@ def delete_failed_capture(capture_id: str) -> int:
         return db.query(FailedOcrCapture).filter(
             FailedOcrCapture.id == capture_id
         ).delete(synchronize_session=False)
+
+
+# ============================================================================
+# Premium → Supporter migration
+# ============================================================================
+
+def record_tip(
+    db,
+    *,
+    session_id: str,
+    host_email: str,
+    amount_total_usd: float,
+    amount_charged_usd: float,
+    is_split: bool,
+    participant_count: int,
+    polar_order_id: str,
+    total_paid_usd: float | None = None,  # Actual amount with tax from Polar webhook
+) -> bool:
+    """Insert a Tip row. Returns False if polar_order_id already exists (idempotent)."""
+    existing = db.query(Tip).filter_by(polar_order_id=polar_order_id).first()
+    if existing is not None:
+        return False
+    tip = Tip(
+        session_id=session_id,
+        host_email=host_email,
+        amount_total_usd=f"{amount_total_usd:.2f}",
+        amount_charged_usd=f"{amount_charged_usd:.2f}",
+        is_split=is_split,
+        participant_count=participant_count,
+        polar_order_id=polar_order_id,
+        total_paid_usd=f"{total_paid_usd:.2f}" if total_paid_usd is not None else None,
+    )
+    db.add(tip)
+    db.commit()
+    return True
+
+
+def get_tip_for_session(db, session_id: str) -> Optional[Dict[str, Any]]:
+    """Return the most recent tip for this session, or None."""
+    tip = (
+        db.query(Tip)
+        .filter_by(session_id=session_id)
+        .order_by(Tip.created_at.desc())
+        .first()
+    )
+    if tip is None:
+        return None
+    return {
+        "id": str(tip.id),
+        "session_id": tip.session_id,
+        "host_email": tip.host_email,
+        "amount_total_usd": float(tip.amount_total_usd) if tip.amount_total_usd is not None else None,
+        "amount_charged_usd": float(tip.amount_charged_usd) if tip.amount_charged_usd is not None else None,
+        "total_paid_usd": float(tip.total_paid_usd) if tip.total_paid_usd is not None else None,
+        "is_split": tip.is_split,
+        "participant_count": tip.participant_count,
+        "polar_order_id": tip.polar_order_id,
+        "created_at": tip.created_at.isoformat(),
+    }
+
+
+def update_tip_total_paid(db, session_id: str, total_paid_usd: float) -> bool:
+    """Manually override the actual paid amount for the most recent tip in a session.
+    Used as a fallback when the webhook didn't arrive or the host wants to round.
+    Returns True if a row was updated, False otherwise."""
+    tip = (
+        db.query(Tip)
+        .filter_by(session_id=session_id)
+        .order_by(Tip.created_at.desc())
+        .first()
+    )
+    if tip is None:
+        return False
+    tip.total_paid_usd = f"{total_paid_usd:.2f}"
+    db.commit()
+    return True
+
+
+def migrate_premium_to_supporter(db_session=None, *, now=None) -> Dict[str, Any]:
+    """One-shot migration: set supporter_until for every is_premium=True user.
+
+    Idempotent: re-running on already-migrated users with a still-current badge
+    is skipped (WHERE clause guards supporter_until IS NULL OR supporter_until < now).
+
+    Formula: supporter_until = GREATEST(now, premium_expires) + 90 days
+    """
+    if now is None:
+        now = datetime.utcnow()
+
+    sql = text(
+        """
+        UPDATE users
+        SET supporter_until = COALESCE(
+            GREATEST(:now, premium_expires),
+            :now
+        ) + INTERVAL '90 days'
+        WHERE is_premium = TRUE
+          AND (supporter_until IS NULL OR supporter_until < :now)
+        """
+    )
+
+    if db_session is not None:
+        result = db_session.execute(sql, {"now": now})
+        db_session.commit()
+        return {"rows_updated": getattr(result, "rowcount", 0)}
+
+    # Fall back to global engine if no session passed (init_db usage).
+    if engine is None:
+        return {"rows_updated": 0, "skipped": "engine_unavailable"}
+    with engine.connect() as conn:
+        result = conn.execute(sql, {"now": now})
+        conn.commit()
+        return {"rows_updated": getattr(result, "rowcount", 0)}

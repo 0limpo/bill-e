@@ -26,7 +26,11 @@ Identity matching:
 import json
 from typing import Dict, List, Optional, Set, Tuple
 
-FREE_SESSIONS_LIMIT = 5
+# Anti-abuse defense only; reachable only by automated scripts/abuse,
+# not by humans. The "5 boletas free + Premium $3.49" model was retired
+# 2026-05-23 in favor of voluntary tips. See spec
+# docs/superpowers/specs/2026-05-23-tips-only-model-design.md
+FREE_SESSIONS_LIMIT = 500
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24h — collaborative session lifetime in Redis
 
 

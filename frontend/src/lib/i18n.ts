@@ -10,6 +10,8 @@ export const translations: Record<Language, Record<string, string>> = {
     // App
     "app.title": "Bill-e",
     "app.subtitle": "Divide cuentas fácilmente",
+    "landing_pricing_title": "Gratis",
+    "landing_pricing_subtitle": "Con tips voluntarios si te sirve",
 
     // Homepage
     "home.camera": "Cámara",
@@ -458,6 +460,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "privacy.s6Body": "Puedes solicitar la eliminación de tu cuenta y datos asociados contactándonos. Las sesiones temporales se eliminan automáticamente.",
     "privacy.s7Title": "7. Contacto",
     "privacy.s7Body": "Para consultas sobre privacidad, contáctanos en",
+    "privacy.s8Title": "8. Cambio de modelo de negocio (2026-05-23)",
+    "privacy.s8Body": "El 2026-05-23 Bill-e cambió de un modelo Premium pagado ($3.49) a un modelo gratis sostenido por tips voluntarios. Los usuarios que pagaron Premium conservan un badge \"Supporter ✨\" por 90 días como agradecimiento. No hay reembolsos automáticos. Si tienes una consulta sobre un pago previo, escríbenos.",
 
     // Terms of service
     "terms.title": "Términos de Servicio",
@@ -485,11 +489,32 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Finalizando...",
     "session.loadingJoining": "Uniéndose...",
     "session.loadingSession": "Cargando sesión...",
+
+    // Tip widget
+    "tip_widget_title": "Apoya a Bill-e",
+    "tip_widget_subtitle": "Tu tip mantiene al desarrollador despierto ☕",
+    "tip_preset_custom": "Otro",
+    "tip_custom_min_error": "Mínimo $3.49 USD",
+    "tip_split_toggle": "Dividir Bill-e entre todos ({count} personas)",
+    "tip_split_per_person": "${amount} c/u — aparece como \"Bill-e\" en su parte",
+    "tip_cta": "Dar tip ${amount}",
+    "tip_thanks_title": "✓ Gracias por tu apoyo",
+    "tip_thanks_again": "Dar otro tip",
+    "tip_meet_developer": "Conoce al desarrollador →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Inicia sesión con Google para apoyar",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Ajustar monto pagado a Polar:",
+    "tip_manual_edit_hint": "Polar agrega impuestos. Edita aquí si el monto real difiere.",
+    "tip_manual_edit_save": "Guardar",
+    "tip_manual_edit_saved": "✓ Guardado",
   },
   en: {
     // App
     "app.title": "Bill-e",
     "app.subtitle": "Split bills easily",
+    "landing_pricing_title": "Free",
+    "landing_pricing_subtitle": "With voluntary tips if it helps you",
 
     // Homepage
     "home.camera": "Camera",
@@ -938,6 +963,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "privacy.s6Body": "You can request the deletion of your account and associated data by contacting us. Temporary sessions are deleted automatically.",
     "privacy.s7Title": "7. Contact",
     "privacy.s7Body": "For privacy inquiries, contact us at",
+    "privacy.s8Title": "8. Business model change (2026-05-23)",
+    "privacy.s8Body": "On 2026-05-23 Bill-e migrated from a paid Premium model ($3.49) to a free model funded by voluntary tips. Users who had paid Premium retain a \"Supporter ✨\" badge for 90 days as a thank-you. No refunds are issued automatically. If you have questions about a past payment, contact us.",
 
     // Terms of service
     "terms.title": "Terms of Service",
@@ -965,10 +992,31 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Finalizing...",
     "session.loadingJoining": "Joining...",
     "session.loadingSession": "Loading session...",
+
+    // Tip widget
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   pt: {
     "app.title": "Bill-e",
     "app.subtitle": "Divida contas facilmente",
+    "landing_pricing_title": "Grátis",
+    "landing_pricing_subtitle": "Com gorjetas voluntárias se te ajudar",
 
     // Homepage
     "home.camera": "Câmera",
@@ -1353,10 +1401,31 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Finalizando...",
     "session.loadingJoining": "Entrando...",
     "session.loadingSession": "Carregando sessão...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   zh: {
     "app.title": "Bill-e",
     "app.subtitle": "轻松分账",
+    "landing_pricing_title": "免费",
+    "landing_pricing_subtitle": "如果对你有帮助，可以自愿打赏",
 
     // Homepage
     "home.camera": "相机",
@@ -1740,10 +1809,31 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "正在完成...",
     "session.loadingJoining": "正在加入...",
     "session.loadingSession": "正在加载会话...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   fr: {
     "app.title": "Bill-e",
     "app.subtitle": "Partagez l'addition facilement",
+    "landing_pricing_title": "Gratuit",
+    "landing_pricing_subtitle": "Avec des pourboires volontaires si ça vous aide",
 
     // Homepage
     "home.camera": "Caméra",
@@ -2127,10 +2217,31 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Finalisation...",
     "session.loadingJoining": "Connexion...",
     "session.loadingSession": "Chargement de la session...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   de: {
     "app.title": "Bill-e",
     "app.subtitle": "Rechnungen einfach teilen",
+    "landing_pricing_title": "Kostenlos",
+    "landing_pricing_subtitle": "Mit freiwilligen Tips, wenn es dir hilft",
 
     // Homepage
     "home.camera": "Kamera",
@@ -2514,10 +2625,31 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Wird abgeschlossen...",
     "session.loadingJoining": "Beitreten...",
     "session.loadingSession": "Sitzung wird geladen...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   ja: {
     "app.title": "Bill-e",
     "app.subtitle": "簡単に割り勘",
+    "landing_pricing_title": "無料",
+    "landing_pricing_subtitle": "役に立てば任意チップで応援できます",
 
     // Homepage
     "home.camera": "カメラ",
@@ -2901,10 +3033,31 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "確定中...",
     "session.loadingJoining": "参加中...",
     "session.loadingSession": "セッションを読み込み中...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   ru: {
     "app.title": "Bill-e",
     "app.subtitle": "Легко делите счет",
+    "landing_pricing_title": "Бесплатно",
+    "landing_pricing_subtitle": "С добровольными чаевыми, если полезно",
 
     // Homepage
     "home.camera": "Камера",
@@ -3288,10 +3441,31 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Завершение...",
     "session.loadingJoining": "Присоединение...",
     "session.loadingSession": "Загрузка сессии...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   hi: {
     "app.title": "Bill-e",
     "app.subtitle": "बिल आसानी से बांटें",
+    "landing_pricing_title": "मुफ्त",
+    "landing_pricing_subtitle": "अगर मददगार लगे तो स्वैच्छिक टिप दे सकते हैं",
 
     // Homepage
     "home.camera": "कैमरा",
@@ -3675,10 +3849,31 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "अंतिम रूप दे रहे हैं...",
     "session.loadingJoining": "जुड़ रहे हैं...",
     "session.loadingSession": "सत्र लोड हो रहा है...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   id: {
     "app.title": "Bill-e",
     "app.subtitle": "Bagi tagihan dengan mudah",
+    "landing_pricing_title": "Gratis",
+    "landing_pricing_subtitle": "Dengan tip sukarela jika membantu kamu",
 
     // Homepage
     "home.camera": "Kamera",
@@ -4062,11 +4257,32 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Menyelesaikan...",
     "session.loadingJoining": "Bergabung...",
     "session.loadingSession": "Memuat sesi...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   ar: {
     // App
     "app.title": "Bill-e",
     "app.subtitle": "قسّم الفواتير بسهولة",
+    "landing_pricing_title": "مجاني",
+    "landing_pricing_subtitle": "مع إكراميات اختيارية إذا أفادك التطبيق",
 
     // Common
     "common.back": "رجوع",
@@ -4153,11 +4369,32 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "جاري الإنهاء...",
     "session.loadingJoining": "جاري الانضمام...",
     "session.loadingSession": "جاري تحميل الجلسة...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   bn: {
     // App
     "app.title": "Bill-e",
     "app.subtitle": "সহজে বিল ভাগ করো",
+    "landing_pricing_title": "বিনামূল্যে",
+    "landing_pricing_subtitle": "কাজে লাগলে স্বেচ্ছায় টিপ দিতে পারেন",
 
     // Common
     "common.back": "ফিরে যান",
@@ -4244,6 +4481,25 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "চূড়ান্ত করা হচ্ছে...",
     "session.loadingJoining": "যোগ দিচ্ছে...",
     "session.loadingSession": "সেশন লোড হচ্ছে...",
+
+    // Tip widget (EN fallback — pending translation)
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $3.49 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
+    "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
 };
 
