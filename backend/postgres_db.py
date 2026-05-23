@@ -35,6 +35,7 @@ _MIGRATIONS = [
     "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS user_id UUID",
     "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS totals JSON",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS supporter_until TIMESTAMP",
+    "ALTER TABLE tips ADD COLUMN IF NOT EXISTS total_paid_usd NUMERIC(10, 2)",
 ]
 
 
@@ -304,6 +305,8 @@ class Tip(Base):
     participant_count = Column(Integer, nullable=False, default=1)
     polar_order_id = Column(String(128), nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    # Actual amount paid by host with tax (from Polar webhook). Null until webhook arrives.
+    total_paid_usd = Column(Numeric(10, 2), nullable=True)
 
     __table_args__ = (
         Index('ix_tips_session_id', 'session_id'),
@@ -2350,6 +2353,7 @@ def record_tip(
     is_split: bool,
     participant_count: int,
     polar_order_id: str,
+    total_paid_usd: float | None = None,  # Actual amount with tax from Polar webhook
 ) -> bool:
     """Insert a Tip row. Returns False if polar_order_id already exists (idempotent)."""
     existing = db.query(Tip).filter_by(polar_order_id=polar_order_id).first()
@@ -2363,8 +2367,50 @@ def record_tip(
         is_split=is_split,
         participant_count=participant_count,
         polar_order_id=polar_order_id,
+        total_paid_usd=f"{total_paid_usd:.2f}" if total_paid_usd is not None else None,
     )
     db.add(tip)
+    db.commit()
+    return True
+
+
+def get_tip_for_session(db, session_id: str) -> Optional[Dict[str, Any]]:
+    """Return the most recent tip for this session, or None."""
+    tip = (
+        db.query(Tip)
+        .filter_by(session_id=session_id)
+        .order_by(Tip.created_at.desc())
+        .first()
+    )
+    if tip is None:
+        return None
+    return {
+        "id": str(tip.id),
+        "session_id": tip.session_id,
+        "host_email": tip.host_email,
+        "amount_total_usd": float(tip.amount_total_usd) if tip.amount_total_usd is not None else None,
+        "amount_charged_usd": float(tip.amount_charged_usd) if tip.amount_charged_usd is not None else None,
+        "total_paid_usd": float(tip.total_paid_usd) if tip.total_paid_usd is not None else None,
+        "is_split": tip.is_split,
+        "participant_count": tip.participant_count,
+        "polar_order_id": tip.polar_order_id,
+        "created_at": tip.created_at.isoformat(),
+    }
+
+
+def update_tip_total_paid(db, session_id: str, total_paid_usd: float) -> bool:
+    """Manually override the actual paid amount for the most recent tip in a session.
+    Used as a fallback when the webhook didn't arrive or the host wants to round.
+    Returns True if a row was updated, False otherwise."""
+    tip = (
+        db.query(Tip)
+        .filter_by(session_id=session_id)
+        .order_by(Tip.created_at.desc())
+        .first()
+    )
+    if tip is None:
+        return False
+    tip.total_paid_usd = f"{total_paid_usd:.2f}"
     db.commit()
     return True
 

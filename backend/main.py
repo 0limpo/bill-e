@@ -1248,6 +1248,48 @@ async def enter_share_endpoint(session_id: str, request: Request):
     return result
 
 
+class UpdateTipRequest(BaseModel):
+    total_paid_usd: float = Field(ge=1.0)
+
+
+@app.get("/api/session/{session_id}/tip")
+async def get_session_tip(session_id: str):
+    """Return the tip (if any) for this session. Used by frontend to render
+    the 'Bill-e $X' line in editors' bills when split is on."""
+    if not postgres_available:
+        return {"tip": None}
+    try:
+        with postgres_db.get_db() as db:
+            if db is None:
+                return {"tip": None}
+            tip = postgres_db.get_tip_for_session(db, session_id)
+            return {"tip": tip}
+    except Exception as e:
+        print(f"GET tip failed: {e}")
+        return {"tip": None}
+
+
+@app.patch("/api/session/{session_id}/tip")
+async def patch_session_tip(session_id: str, req: UpdateTipRequest):
+    """Manual override for the actual paid amount. Used when the webhook
+    didn't arrive or the host wants to round. Updates the most recent tip."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Postgres not available")
+    try:
+        with postgres_db.get_db() as db:
+            if db is None:
+                raise HTTPException(status_code=503, detail="DB session unavailable")
+            ok = postgres_db.update_tip_total_paid(db, session_id, req.total_paid_usd)
+            if not ok:
+                raise HTTPException(status_code=404, detail="No tip exists for this session")
+            return {"ok": True, "total_paid_usd": req.total_paid_usd}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"PATCH tip failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/api/session/{session_id}/reopen")
 async def reopen_session_endpoint(session_id: str, request: Request):
     """Reopen a finalized session (owner only)."""
@@ -2549,6 +2591,10 @@ async def polar_webhook(request: Request):
             if not email or not polar_order_id:
                 print(f"Polar tip received without email or order id: {metadata}")
                 return {"received": True}
+            # Polar's actual paid amount, with tax. Field is total_amount in cents.
+            # Fall back to data.amount if total_amount missing (older Polar API versions).
+            total_paid_cents = data.get("total_amount") or data.get("amount") or 0
+            total_paid_usd = float(total_paid_cents) / 100.0 if total_paid_cents else None
             if postgres_available:
                 try:
                     with postgres_db.get_db() as db:
@@ -2562,8 +2608,9 @@ async def polar_webhook(request: Request):
                                 is_split=str(metadata.get("is_split")).lower() == "true",
                                 participant_count=int(metadata.get("participant_count") or 1),
                                 polar_order_id=polar_order_id,
+                                total_paid_usd=total_paid_usd,
                             )
-                            print(f"Polar tip recorded={recorded} order={polar_order_id} email={email}")
+                            print(f"Polar tip recorded={recorded} order={polar_order_id} email={email} total_paid_usd={total_paid_usd}")
                 except Exception as e:
                     print(f"Polar tip persist failed: {e}")
             # TODO(b5): PostHog analytics — no standalone capture_event in backend yet.

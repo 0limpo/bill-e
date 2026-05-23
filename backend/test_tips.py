@@ -112,3 +112,79 @@ def test_record_tip_skips_duplicate_polar_order_id():
     )
     assert ok is False
     assert not hasattr(sess, "added")
+
+
+def test_tip_model_has_total_paid_usd_column():
+    from postgres_db import Tip
+    cols = {c.name for c in Tip.__table__.columns}
+    assert "total_paid_usd" in cols
+
+
+def test_record_tip_accepts_and_stores_total_paid_usd(monkeypatch):
+    from postgres_db import record_tip
+    inserts = []
+
+    class FakeSess:
+        def add(self, obj): inserts.append(obj)
+        def commit(self): pass
+        def query(self, model):
+            class Q:
+                def filter_by(self, **kw):
+                    class R:
+                        def first(_self): return None
+                    return R()
+            return Q()
+
+    sess = FakeSess()
+    ok = record_tip(
+        sess,
+        session_id="s1",
+        host_email="g@x.com",
+        amount_total_usd=7.0,
+        amount_charged_usd=1.75,
+        is_split=True,
+        participant_count=4,
+        polar_order_id="po_with_tax",
+        total_paid_usd=7.85,
+    )
+    assert ok is True
+    assert len(inserts) == 1
+    assert inserts[0].total_paid_usd == "7.85"
+
+
+def test_record_tip_total_paid_usd_is_optional():
+    """Backwards compatible: total_paid_usd defaults to None."""
+    from postgres_db import record_tip
+    inserts = []
+
+    class FakeSess:
+        def add(self, obj): inserts.append(obj)
+        def commit(self): pass
+        def query(self, model):
+            class Q:
+                def filter_by(self, **kw):
+                    class R:
+                        def first(_self): return None
+                    return R()
+            return Q()
+
+    sess = FakeSess()
+    ok = record_tip(
+        sess,
+        session_id="s1",
+        host_email="g@x.com",
+        amount_total_usd=7.0,
+        amount_charged_usd=1.75,
+        is_split=False,
+        participant_count=1,
+        polar_order_id="po_no_tax_yet",
+    )
+    assert ok is True
+    assert inserts[0].total_paid_usd is None
+
+
+def test_update_tip_request_validates_min():
+    from main import UpdateTipRequest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        UpdateTipRequest(total_paid_usd=0.5)
