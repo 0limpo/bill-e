@@ -4311,6 +4311,8 @@ async def admin_list_failed_captures(
     _: None = Depends(verify_admin_token),
 ):
     """Lista capturas con metadata (sin bytes)."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Database not available")
     limit = max(1, min(limit, 1000))
     captures = postgres_db.list_failed_captures(limit=limit)
     return {"captures": captures, "total": len(captures)}
@@ -4322,6 +4324,12 @@ async def admin_get_failed_capture_image(
     _: None = Depends(verify_admin_token),
 ):
     """Retorna los bytes binarios de la imagen capturada."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Database not available")
+    try:
+        uuid.UUID(capture_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Capture not found")
     cap = postgres_db.get_failed_capture(capture_id)
     if cap is None:
         raise HTTPException(status_code=404, detail="Capture not found")
@@ -4334,6 +4342,12 @@ async def admin_delete_failed_capture(
     _: None = Depends(verify_admin_token),
 ):
     """Borra una captura. Idempotente: 204 incluso si no existe."""
+    if not postgres_available:
+        raise HTTPException(status_code=503, detail="Database not available")
+    try:
+        uuid.UUID(capture_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Capture not found")
     postgres_db.delete_failed_capture(capture_id)
     return Response(status_code=204)
 
