@@ -13,7 +13,7 @@ import {
 
 const PRESETS = [3, 7, 15] as const;
 const DEFAULT_PRESET = 7;
-const MIN_CUSTOM = 1;
+const MIN_CUSTOM = 2.49;
 
 interface Props {
   sessionId: string;

@@ -1249,7 +1249,7 @@ async def enter_share_endpoint(session_id: str, request: Request):
 
 
 class UpdateTipRequest(BaseModel):
-    total_paid_usd: float = Field(ge=1.0)
+    total_paid_usd: float = Field(ge=2.49)
     owner_token: str
 
 
@@ -2446,7 +2446,7 @@ class PolarCheckoutRequest(BaseModel):
 
 class TipCheckoutRequest(BaseModel):
     session_id: str
-    amount_usd: float = Field(ge=1.0, description="Total tip in USD. Min $1 (Polar fee floor).")
+    amount_usd: float = Field(ge=2.49, description="Total tip in USD. Min $2.49 (Polar fee floor — below this, net is negligible).")
     is_split: bool = False
     participant_count: int = Field(ge=1, default=1)
     google_email: str
