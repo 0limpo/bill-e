@@ -36,3 +36,18 @@ def test_create_checkout_passes_amount_in_body(monkeypatch):
     asyncio.run(polar_service.create_checkout(product_id="prod_tip", amount=7.0))
 
     assert captured["json"].get("amount") == 700, "amount must be in cents (USD * 100)"
+
+
+def test_tip_checkout_request_model_validates_min_amount():
+    from main import TipCheckoutRequest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        TipCheckoutRequest(session_id="abc", amount_usd=0.5, participant_count=1, google_email="g@x.com")
+
+
+def test_tip_checkout_splits_amount_when_is_split(monkeypatch):
+    """When is_split=True, host is charged amount_usd / participant_count."""
+    from main import _compute_charged_amount  # helper introduced for testability
+    assert _compute_charged_amount(7.0, True, 4) == 1.75
+    assert _compute_charged_amount(7.0, False, 4) == 7.0
+    assert _compute_charged_amount(7.0, True, 1) == 7.0  # split with 1 participant = full

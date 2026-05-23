@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Query, HTTPException, UploadFile, File, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse, JSONResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 import json
 import time
@@ -2394,6 +2394,15 @@ class PolarCheckoutRequest(BaseModel):
     owner_token: Optional[str] = None
 
 
+class TipCheckoutRequest(BaseModel):
+    session_id: str
+    amount_usd: float = Field(ge=1.0, description="Total tip in USD. Min $1 (Polar fee floor).")
+    is_split: bool = False
+    participant_count: int = Field(ge=1, default=1)
+    google_email: str
+    device_id: Optional[str] = None
+
+
 @app.post("/api/polar/checkout")
 async def create_polar_checkout(req: PolarCheckoutRequest):
     """Create a Polar hosted checkout session and return its URL."""
@@ -2445,6 +2454,61 @@ async def create_polar_checkout(req: PolarCheckoutRequest):
     return {
         "checkout_id": checkout.get("id"),
         "checkout_url": checkout.get("url"),
+    }
+
+
+def _compute_charged_amount(amount_total: float, is_split: bool, participant_count: int) -> float:
+    """How much the host pays via Polar. Editors' share is informational only."""
+    if is_split and participant_count > 1:
+        return round(amount_total / participant_count, 2)
+    return round(amount_total, 2)
+
+
+@app.post("/api/polar/tip-checkout")
+async def create_polar_tip_checkout(req: TipCheckoutRequest):
+    """Create a Polar PWYW checkout for a tip. Returns hosted URL."""
+    if not polar_available or not polar_service.is_configured():
+        raise HTTPException(status_code=503, detail="Polar not configured")
+
+    tip_product_id = os.getenv("POLAR_TIP_PRODUCT_ID")
+    if not tip_product_id:
+        raise HTTPException(status_code=503, detail="POLAR_TIP_PRODUCT_ID not configured")
+
+    frontend_url = os.getenv("FRONTEND_URL", "https://billeocr.com")
+    success_url = (
+        f"{frontend_url}/s/{req.session_id}"
+        f"?tip_success=true&amount={req.amount_usd}"
+    )
+
+    charged = _compute_charged_amount(req.amount_usd, req.is_split, req.participant_count)
+
+    metadata = {
+        "kind": "tip",
+        "session_id": req.session_id,
+        "host_email": req.google_email,
+        "tip_amount_total": req.amount_usd,
+        "tip_amount_charged": charged,
+        "is_split": req.is_split,
+        "participant_count": req.participant_count,
+    }
+
+    checkout = await polar_service.create_checkout(
+        product_id=tip_product_id,
+        customer_email=req.google_email,
+        success_url=success_url,
+        metadata=metadata,
+        amount=charged,
+    )
+
+    if not checkout or "_error" in checkout:
+        err = (checkout or {}).get("_error", "unknown")
+        status = (checkout or {}).get("_status", 0)
+        raise HTTPException(status_code=502, detail=f"Polar {status}: {err}")
+
+    return {
+        "checkout_id": checkout.get("id"),
+        "checkout_url": checkout.get("url"),
+        "amount_charged_usd": charged,
     }
 
 
