@@ -20,6 +20,17 @@ export interface AuthUser {
   device_ids?: string[];
   is_premium: boolean;
   premium_expires?: string;
+  supporter_until?: string;  // ISO timestamp; if > now(), show "Supporter ✨" badge
+}
+
+/**
+ * True iff the user has an active supporter badge.
+ * Premium users migrated on 2026-05-23 receive `supporter_until = now + 90d`.
+ */
+export function isSupporter(user: AuthUser | null | undefined): boolean {
+  if (!user?.supporter_until) return false;
+  const until = new Date(user.supporter_until).getTime();
+  return Number.isFinite(until) && until > Date.now();
 }
 
 export interface ProvidersResponse {
