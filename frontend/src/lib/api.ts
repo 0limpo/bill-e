@@ -829,6 +829,35 @@ export async function createPolarCheckout(params: {
   });
 }
 
+// Tip checkout
+export interface CreateTipCheckoutRequest {
+  session_id: string;
+  amount_usd: number;
+  is_split: boolean;
+  participant_count: number;
+  google_email: string;
+  device_id?: string;
+}
+
+export interface CreateTipCheckoutResponse {
+  checkout_id: string;
+  checkout_url: string;
+  amount_charged_usd: number;
+}
+
+/**
+ * Create a Polar PWYW checkout for a voluntary tip.
+ * Returns the hosted checkout URL.
+ */
+export async function createTipCheckout(
+  req: CreateTipCheckoutRequest
+): Promise<CreateTipCheckoutResponse> {
+  return apiRequest<CreateTipCheckoutResponse>("/api/polar/tip-checkout", {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+}
+
 // ============================================================================
 // Premium Check (by Google email)
 // ============================================================================
