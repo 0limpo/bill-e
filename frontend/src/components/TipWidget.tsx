@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { createTipCheckout } from "@/lib/api";
+import { createTipCheckout, updateTipTotalPaid } from "@/lib/api";
 import { getTranslator, type Language } from "@/lib/i18n";
 import { MeetTheDeveloper } from "./MeetTheDeveloper";
 import {
@@ -21,6 +21,7 @@ interface Props {
   hostEmail: string;
   lang: Language;
   alreadyTipped?: boolean;
+  ownerToken?: string;  // Only present for the host; enables manual tip amount override
 }
 
 export function TipWidget({
@@ -29,6 +30,7 @@ export function TipWidget({
   hostEmail,
   lang,
   alreadyTipped = false,
+  ownerToken,
 }: Props) {
   const t = getTranslator(lang);
   const [selected, setSelected] = useState<number | "custom">(DEFAULT_PRESET);
@@ -38,7 +40,30 @@ export function TipWidget({
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(alreadyTipped);
 
+  // Manual edit state — only used when ownerToken is present
+  const [manualAmount, setManualAmount] = useState<string>("");
+  const [savingManual, setSavingManual] = useState(false);
+  const [manualSaved, setManualSaved] = useState(false);
+
   useEffect(() => { setCollapsed(alreadyTipped); }, [alreadyTipped]);
+
+  async function handleManualSave() {
+    if (!ownerToken) return;
+    const amount = parseFloat(manualAmount);
+    if (!Number.isFinite(amount) || amount < 1) return;
+    setSavingManual(true);
+    setManualSaved(false);
+    try {
+      await updateTipTotalPaid(sessionId, {
+        total_paid_usd: amount,
+        owner_token: ownerToken,
+      });
+      setManualSaved(true);
+    } catch {
+      // Silent for now; could expand to error state
+    }
+    setSavingManual(false);
+  }
 
   const totalAmount = useMemo(() => {
     if (selected === "custom") {
@@ -92,6 +117,30 @@ export function TipWidget({
         >
           {t("tip_thanks_again")}
         </button>
+        {ownerToken && (
+          <div className="mt-3 text-xs text-gray-600 text-left">
+            <label className="block mb-1">{t("tip_manual_edit_label")}</label>
+            <p className="text-[10px] text-gray-500 mb-1">{t("tip_manual_edit_hint")}</p>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                min={1}
+                step="0.01"
+                value={manualAmount}
+                onChange={(e) => setManualAmount(e.target.value)}
+                className="flex-1 px-2 py-1 rounded border border-gray-300 text-sm"
+              />
+              <button
+                type="button"
+                onClick={handleManualSave}
+                disabled={!Number.isFinite(parseFloat(manualAmount)) || parseFloat(manualAmount) < 1 || savingManual}
+                className="px-3 py-1 rounded bg-emerald-600 text-white text-sm disabled:opacity-50"
+              >
+                {manualSaved ? t("tip_manual_edit_saved") : t("tip_manual_edit_save")}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

@@ -506,6 +506,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Conoce al desarrollador →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Inicia sesión con Google para apoyar",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Ajustar monto pagado a Polar:",
+    "tip_manual_edit_hint": "Polar agrega impuestos. Edita aqui si el monto real difiere.",
+    "tip_manual_edit_save": "Guardar",
+    "tip_manual_edit_saved": "✓ Guardado",
   },
   en: {
     // App
@@ -1007,6 +1012,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   pt: {
     "app.title": "Bill-e",
@@ -1414,6 +1424,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   zh: {
     "app.title": "Bill-e",
@@ -1820,6 +1835,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   fr: {
     "app.title": "Bill-e",
@@ -2226,6 +2246,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   de: {
     "app.title": "Bill-e",
@@ -2632,6 +2657,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   ja: {
     "app.title": "Bill-e",
@@ -3038,6 +3068,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   ru: {
     "app.title": "Bill-e",
@@ -3444,6 +3479,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   hi: {
     "app.title": "Bill-e",
@@ -3850,6 +3890,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   id: {
     "app.title": "Bill-e",
@@ -4256,6 +4301,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   ar: {
     // App
@@ -4366,6 +4416,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
   bn: {
     // App
@@ -4476,6 +4531,11 @@ export const translations: Record<Language, Record<string, string>> = {
     "tip_meet_developer": "Meet the developer →",
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
+    "tip_line_label": "Bill-e",
+    "tip_manual_edit_label": "Adjust amount paid to Polar:",
+    "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
+    "tip_manual_edit_save": "Save",
+    "tip_manual_edit_saved": "✓ Saved",
   },
 };
 

@@ -1596,6 +1596,7 @@ export default function SessionPage() {
             lang={lang}
             hostEmail={userEmail ?? ""}
             alreadyTipped={searchParams.get("tip_success") === "true"}
+            ownerToken={ownerToken}
           />
         )}
       </main>

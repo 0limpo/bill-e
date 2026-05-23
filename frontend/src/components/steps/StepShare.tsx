@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronDown, Share2, Copy, Check, Mail, MessageCircle, Send, MoreHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import {
   type Session,
 } from "@/lib/billEngine";
 import { trackShare, trackTipWidgetShown } from "@/lib/tracking";
-import { toggleParticipantPaid, getDeviceId } from "@/lib/api";
+import { toggleParticipantPaid, getDeviceId, getSessionTip, type SessionTip } from "@/lib/api";
 import { getStoredToken, isSupporter, getStoredUser } from "@/lib/auth";
 import { TipWidget } from "@/components/TipWidget";
 import { type Language } from "@/lib/i18n";
@@ -45,6 +45,8 @@ interface StepShareProps {
   lang?: Language;
   hostEmail?: string;
   alreadyTipped?: boolean;
+  // Owner token — only present for the host; enables manual tip edit
+  ownerToken?: string | null;
 }
 
 export function StepShare({
@@ -65,6 +67,7 @@ export function StepShare({
   lang = "es",
   hostEmail = "",
   alreadyTipped = false,
+  ownerToken,
 }: StepShareProps) {
   const [expandedParticipants, setExpandedParticipants] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState(false);
@@ -158,6 +161,43 @@ export function StepShare({
     // Only fire once per session_id mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
+
+  // Fetch tip data for the Bill-e line in each participant's expanded view
+  const [tip, setTip] = useState<SessionTip | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 5; // ~10 seconds at 2s intervals
+
+    const fetchTip = async () => {
+      try {
+        const t = await getSessionTip(sessionId);
+        if (!cancelled) {
+          setTip(t);
+          // If tip exists but total_paid_usd is null (webhook not arrived), keep polling
+          if (t && t.total_paid_usd == null && attempts < maxAttempts) {
+            attempts++;
+            setTimeout(fetchTip, 2000);
+          }
+        }
+      } catch {
+        // Silent — endpoint may 503 if backend not configured
+      }
+    };
+
+    fetchTip();
+    return () => { cancelled = true; };
+  }, [sessionId]);
+
+  // Per-person tip share (USD), only when tip.is_split = true
+  const tipPerPersonUsd = useMemo<number | null>(() => {
+    if (!tip || !tip.is_split) return null;
+    const totalForSplit = tip.total_paid_usd ?? tip.amount_total_usd;
+    if (totalForSplit == null || totalForSplit <= 0 || tip.participant_count <= 0) return null;
+    return Math.round((totalForSplit / tip.participant_count) * 100) / 100;
+  }, [tip]);
 
   // Prefer explicit decimals from parent (which knows session.decimal_places),
   // fall back to item-level detection.
@@ -433,6 +473,14 @@ export function StepShare({
                       <span>{t("items.total")}</span>
                       <span className="tabular-nums text-foreground">{fmt(total)}</span>
                     </div>
+
+                    {/* Bill-e tip line — shown in USD, separate from local currency total */}
+                    {tipPerPersonUsd !== null && (
+                      <div className="flex justify-between text-sm text-emerald-700 mt-1">
+                        <span>{t("tip_line_label")}</span>
+                        <span>+${tipPerPersonUsd.toFixed(2)} USD</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -455,6 +503,7 @@ export function StepShare({
           hostEmail={hostEmail}
           lang={lang}
           alreadyTipped={alreadyTipped}
+          ownerToken={ownerToken ?? undefined}
         />
       )}
 
