@@ -67,3 +67,12 @@ def test_migrate_premium_to_supporter_uses_premium_expires_when_future(monkeypat
     assert "is_premium" in captured["sql"].lower()
     assert "interval '90 days'" in captured["sql"].lower() or "interval" in captured["sql"].lower()
     assert result.get("rows_updated") == 1
+
+
+def test_user_serializers_include_supporter_until():
+    """find_or_create_user / get_user_by_id / get_user_by_email all must emit supporter_until."""
+    import inspect
+    from postgres_db import find_or_create_user, get_user_by_id, get_user_by_email
+    for fn in (find_or_create_user, get_user_by_id, get_user_by_email):
+        src = inspect.getsource(fn)
+        assert "supporter_until" in src, f"{fn.__name__} must include supporter_until in its serialized output"

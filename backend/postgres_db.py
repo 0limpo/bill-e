@@ -997,6 +997,7 @@ def find_or_create_user(
                 "device_ids": user.device_ids or [],
                 "is_premium": user.is_premium,
                 "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None,
+                "supporter_until": user.supporter_until.isoformat() if user.supporter_until else None,
                 "is_new": False
             }
 
@@ -1021,6 +1022,7 @@ def find_or_create_user(
             "device_ids": user.device_ids or [],
             "is_premium": False,
             "premium_expires": None,
+            "supporter_until": None,
             "is_new": True
         }
 
@@ -1047,7 +1049,8 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
             "picture_url": user.picture_url,
             "device_ids": user.device_ids or [],
             "is_premium": user.is_premium,
-            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None
+            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None,
+            "supporter_until": user.supporter_until.isoformat() if user.supporter_until else None
         }
 
 
@@ -1073,7 +1076,8 @@ def get_user_by_email(email: str) -> Optional[Dict]:
             "picture_url": user.picture_url,
             "device_ids": user.device_ids or [],
             "is_premium": user.is_premium,
-            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None
+            "premium_expires": user.premium_expires.isoformat() if user.premium_expires else None,
+            "supporter_until": user.supporter_until.isoformat() if user.supporter_until else None
         }
 
 
