@@ -11,7 +11,7 @@ from contextlib import contextmanager
 
 from sqlalchemy import (
     create_engine, Column, String, Integer, Boolean, DateTime,
-    Text, JSON, LargeBinary, Enum as SQLEnum, Index, cast, Numeric
+    Text, JSON, LargeBinary, Enum as SQLEnum, Index, cast, Numeric, text
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -80,6 +80,13 @@ def init_db():
 
         # Run migrations for new columns on existing tables
         _run_migrations(engine)
+
+        # One-shot Premium → Supporter migration. Idempotent.
+        try:
+            stats = migrate_premium_to_supporter(now=datetime.utcnow())
+            print(f"Supporter migration: {stats}")
+        except Exception as e:
+            print(f"Supporter migration warning (may be OK): {e}")
 
         db_available = True
         print("PostgreSQL database initialized successfully")
@@ -2323,3 +2330,44 @@ def delete_failed_capture(capture_id: str) -> int:
         return db.query(FailedOcrCapture).filter(
             FailedOcrCapture.id == capture_id
         ).delete(synchronize_session=False)
+
+
+# ============================================================================
+# Premium → Supporter migration
+# ============================================================================
+
+def migrate_premium_to_supporter(db_session=None, *, now=None) -> Dict[str, Any]:
+    """One-shot migration: set supporter_until for every is_premium=True user.
+
+    Idempotent: re-running on already-migrated users with a still-current badge
+    is skipped (WHERE clause guards supporter_until IS NULL OR supporter_until < now).
+
+    Formula: supporter_until = GREATEST(now, premium_expires) + 90 days
+    """
+    if now is None:
+        now = datetime.utcnow()
+
+    sql = text(
+        """
+        UPDATE users
+        SET supporter_until = COALESCE(
+            GREATEST(:now, premium_expires),
+            :now
+        ) + INTERVAL '90 days'
+        WHERE is_premium = TRUE
+          AND (supporter_until IS NULL OR supporter_until < :now)
+        """
+    )
+
+    if db_session is not None:
+        result = db_session.execute(sql, {"now": now})
+        db_session.commit()
+        return {"rows_updated": getattr(result, "rowcount", 0)}
+
+    # Fall back to global engine if no session passed (init_db usage).
+    if engine is None:
+        return {"rows_updated": 0, "skipped": "engine_unavailable"}
+    with engine.connect() as conn:
+        result = conn.execute(sql, {"now": now})
+        conn.commit()
+        return {"rows_updated": getattr(result, "rowcount", 0)}
