@@ -86,6 +86,11 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-semibold mb-2">{t("privacy.s7Title")}</h2>
           <p>{t("privacy.s7Body")} <strong>hi@billeocr.com</strong></p>
         </section>
+
+        <section>
+          <h2 className="text-lg font-semibold mb-2">{t("privacy.s8Title")}</h2>
+          <p>{t("privacy.s8Body")}</p>
+        </section>
       </div>
 
       <footer className="mt-12 mb-8 text-center text-xs text-muted-foreground">

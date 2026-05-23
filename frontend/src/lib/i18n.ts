@@ -460,6 +460,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "privacy.s6Body": "Puedes solicitar la eliminación de tu cuenta y datos asociados contactándonos. Las sesiones temporales se eliminan automáticamente.",
     "privacy.s7Title": "7. Contacto",
     "privacy.s7Body": "Para consultas sobre privacidad, contáctanos en",
+    "privacy.s8Title": "8. Cambio de modelo de negocio (2026-05-23)",
+    "privacy.s8Body": "El 2026-05-23 Bill-e cambió de un modelo Premium pagado ($3.49) a un modelo gratis sostenido por tips voluntarios. Los usuarios que pagaron Premium conservan un badge \"Supporter ✨\" por 90 días como agradecimiento. No hay reembolsos automáticos. Si tienes una consulta sobre un pago previo, escríbenos.",
 
     // Terms of service
     "terms.title": "Términos de Servicio",
@@ -958,6 +960,8 @@ export const translations: Record<Language, Record<string, string>> = {
     "privacy.s6Body": "You can request the deletion of your account and associated data by contacting us. Temporary sessions are deleted automatically.",
     "privacy.s7Title": "7. Contact",
     "privacy.s7Body": "For privacy inquiries, contact us at",
+    "privacy.s8Title": "8. Business model change (2026-05-23)",
+    "privacy.s8Body": "On 2026-05-23 Bill-e migrated from a paid Premium model ($3.49) to a free model funded by voluntary tips. Users who had paid Premium retain a \"Supporter ✨\" badge for 90 days as a thank-you. No refunds are issued automatically. If you have questions about a past payment, contact us.",
 
     // Terms of service
     "terms.title": "Terms of Service",
