@@ -39,8 +39,13 @@ async def create_checkout(
     customer_email: Optional[str] = None,
     success_url: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    amount: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Create a hosted checkout session in Polar.
+
+    `amount` (USD) is used for pay-what-you-want products. When provided,
+    it is sent in cents as `amount` per the Polar API. Omit for fixed-price
+    products.
 
     On success returns the API response (contains `id` and `url`).
     On failure returns {"_error": ..., "_status": ..., "_base": ...}.
@@ -54,6 +59,8 @@ async def create_checkout(
         body["customer_email"] = customer_email
     if success_url:
         body["success_url"] = success_url
+    if amount is not None:
+        body["amount"] = int(round(amount * 100))  # Polar expects cents
     if metadata:
         # Polar requires metadata values to be strings
         body["metadata"] = {k: str(v) for k, v in metadata.items() if v is not None}
