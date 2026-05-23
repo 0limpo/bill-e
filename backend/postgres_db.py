@@ -37,6 +37,7 @@ def _run_migrations(eng):
         "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS merchant_name VARCHAR(255)",
         "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS user_id UUID",
         "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS totals JSON",
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS supporter_until TIMESTAMP",
     ]
     try:
         with eng.connect() as conn:
@@ -265,6 +266,10 @@ class User(Base):
     premium_expires = Column(DateTime)
     premium_payment_id = Column(UUID(as_uuid=True))  # FK to payments
 
+    # Supporter badge (90 days after Premium → Tip migration cutover).
+    # Independent of `is_premium`/`premium_expires`, which remain dormant.
+    supporter_until = Column(DateTime, nullable=True)
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -275,6 +280,21 @@ class User(Base):
         Index('ix_users_provider_email', 'provider', 'email', unique=True),
         Index('ix_users_provider_id', 'provider', 'provider_id', unique=True),
     )
+
+
+class Tip(Base):
+    """One paid tip via Polar. Idempotent by polar_order_id."""
+    __tablename__ = "tips"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    session_id = Column(String(64), nullable=False, index=True)
+    host_email = Column(String(255), nullable=False, index=True)
+    amount_total_usd = Column(String(16), nullable=False)
+    amount_charged_usd = Column(String(16), nullable=False)
+    is_split = Column(Boolean, nullable=False, default=False)
+    participant_count = Column(Integer, nullable=False, default=1)
+    polar_order_id = Column(String(128), nullable=False, unique=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class SessionSnapshot(Base):
