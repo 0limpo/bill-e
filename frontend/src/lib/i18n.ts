@@ -493,9 +493,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget
     "tip_widget_title": "Apoya a Bill-e",
     "tip_widget_subtitle": "Tu tip mantiene al desarrollador despierto ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Otro",
     "tip_custom_min_error": "Mínimo $2.49 USD",
     "tip_split_toggle": "Dividir Bill-e entre todos ({count} personas)",
@@ -999,9 +996,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -1411,9 +1405,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -1822,9 +1813,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -2233,9 +2221,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -2644,9 +2629,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -3055,9 +3037,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -3466,9 +3445,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -3877,9 +3853,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -4288,9 +4261,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -4403,9 +4373,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -4518,9 +4485,6 @@ export const translations: Record<Language, Record<string, string>> = {
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
     "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
-    "tip_preset_3": "$3",
-    "tip_preset_7": "$7",
-    "tip_preset_15": "$15",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $2.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",

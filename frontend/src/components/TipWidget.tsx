@@ -11,8 +11,8 @@ import {
   trackTipCheckoutStarted,
 } from "@/lib/tracking";
 
-const PRESETS = [3, 7, 15] as const;
-const DEFAULT_PRESET = 7;
+const PRESETS = [5, 10, 20] as const;
+const DEFAULT_PRESET = 10;
 const MIN_CUSTOM = 2.49;
 
 interface Props {
