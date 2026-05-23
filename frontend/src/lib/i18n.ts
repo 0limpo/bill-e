@@ -485,6 +485,22 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Finalizando...",
     "session.loadingJoining": "Uniéndose...",
     "session.loadingSession": "Cargando sesión...",
+
+    // Tip widget
+    "tip_widget_title": "Apoya a Bill-e",
+    "tip_widget_subtitle": "Tu tip mantiene al desarrollador despierto ☕",
+    "tip_preset_3": "$3",
+    "tip_preset_7": "$7",
+    "tip_preset_15": "$15",
+    "tip_preset_custom": "Otro",
+    "tip_custom_min_error": "Mínimo $1 USD",
+    "tip_split_toggle": "Dividir Bill-e entre todos ({count} personas)",
+    "tip_split_per_person": "${amount} c/u — aparece como \"Bill-e\" en su parte",
+    "tip_cta": "Dar tip ${amount}",
+    "tip_thanks_title": "✓ Gracias por tu apoyo",
+    "tip_thanks_again": "Dar otro tip",
+    "tip_meet_developer": "Conoce al desarrollador →",
+    "badge_supporter": "Supporter ✨",
   },
   en: {
     // App
@@ -965,6 +981,22 @@ export const translations: Record<Language, Record<string, string>> = {
     "session.loadingFinalizing": "Finalizing...",
     "session.loadingJoining": "Joining...",
     "session.loadingSession": "Loading session...",
+
+    // Tip widget
+    "tip_widget_title": "Support Bill-e",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_preset_3": "$3",
+    "tip_preset_7": "$7",
+    "tip_preset_15": "$15",
+    "tip_preset_custom": "Other",
+    "tip_custom_min_error": "Minimum $1 USD",
+    "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
+    "tip_split_per_person": "${amount} each — shows as \"Bill-e\" in their share",
+    "tip_cta": "Tip ${amount}",
+    "tip_thanks_title": "✓ Thanks for your support",
+    "tip_thanks_again": "Tip again",
+    "tip_meet_developer": "Meet the developer →",
+    "badge_supporter": "Supporter ✨",
   },
   pt: {
     "app.title": "Bill-e",
