@@ -317,3 +317,43 @@ export function trackSessionDetails(
     has_charges: details.hasCharges,
   });
 }
+
+// ============================================================================
+// Tip Events
+// ============================================================================
+
+export function trackTipPresetClicked(p: { amount: number; was_default: boolean }) {
+  trackEvent("tip_preset_clicked", p);
+}
+
+export function trackTipCustomEntered(p: { amount: number }) {
+  trackEvent("tip_custom_entered", p);
+}
+
+export function trackTipSplitToggled(p: { is_on: boolean; participants: number }) {
+  trackEvent("tip_split_toggled", p);
+}
+
+export function trackTipCheckoutStarted(p: {
+  amount_total: number;
+  amount_charged_host: number;
+  is_split: boolean;
+}) {
+  trackEvent("tip_checkout_started", p);
+}
+
+export function trackTipWidgetShown(p: {
+  session_id: string;
+  participant_count: number;
+  is_supporter: boolean;
+}) {
+  trackEvent("tip_widget_shown", p);
+}
+
+export function trackTipCheckoutReturned(p: { success: boolean; amount: number }) {
+  trackEvent("tip_checkout_returned", p);
+}
+
+export function trackTipSkipped(p: { session_id: string }) {
+  trackEvent("tip_skipped", p);
+}
