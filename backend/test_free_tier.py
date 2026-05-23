@@ -70,25 +70,25 @@ print("\n=== Free tier counter tests ===\n")
 
 
 # --- S1 ---
-@scenario("S1 · empty state: 0 used, 5 remaining")
+@scenario("S1 · empty state: 0 used, limit remaining")
 def s1():
     r = FakeRedis()
     s = free_tier.get_status(r, user_id="u1")
     assert_eq(s["sessions_used"], 0, "used")
-    assert_eq(s["free_remaining"], 5, "remaining")
-    assert_eq(s["sessions_limit"], 5, "limit")
+    assert_eq(s["free_remaining"], free_tier.FREE_SESSIONS_LIMIT, "remaining")
+    assert_eq(s["sessions_limit"], free_tier.FREE_SESSIONS_LIMIT, "limit")
     assert_eq(s["is_premium"], False, "premium")
     assert_eq(s["identity"], "user", "identity")
 
 
 # --- S2 ---
-@scenario("S2 · record once: 1 used, 4 remaining")
+@scenario("S2 · record once: 1 used, limit-1 remaining")
 def s2():
     r = FakeRedis()
     out = free_tier.record_session_use(r, "sess-a", user_id="u1")
     assert_eq(out["allowed"], True, "allowed")
     assert_eq(out["sessions_used"], 1, "used")
-    assert_eq(out["free_remaining"], 4, "remaining")
+    assert_eq(out["free_remaining"], free_tier.FREE_SESSIONS_LIMIT - 1, "remaining")
     assert_eq(out.get("recorded"), True, "recorded flag")
 
 
@@ -104,19 +104,24 @@ def s3():
 
 
 # --- S4 ---
-@scenario("S4 · hit limit: 6th session blocked")
+@scenario("S4 · hit limit: session beyond cap blocked (monkeypatched limit=3)")
 def s4():
-    r = FakeRedis()
-    for i in range(5):
-        out = free_tier.record_session_use(r, f"s{i}", user_id="u1")
-        assert_eq(out["allowed"], True, f"session {i} allowed")
-    out6 = free_tier.record_session_use(r, "s5", user_id="u1")
-    assert_eq(out6["allowed"], False, "6th blocked")
-    assert_eq(out6["free_remaining"], 0, "remaining = 0")
-    assert_eq(out6.get("reason"), "limit_reached", "reason")
-    # The 6th session must NOT be in the list (don't count blocked attempts).
-    final = free_tier.get_status(r, user_id="u1")
-    assert_eq(final["sessions_used"], 5, "list size still 5")
+    original_limit = free_tier.FREE_SESSIONS_LIMIT
+    free_tier.FREE_SESSIONS_LIMIT = 3
+    try:
+        r = FakeRedis()
+        for i in range(3):
+            out = free_tier.record_session_use(r, f"s{i}", user_id="u1")
+            assert_eq(out["allowed"], True, f"session {i} allowed")
+        out_extra = free_tier.record_session_use(r, "s3", user_id="u1")
+        assert_eq(out_extra["allowed"], False, "4th blocked")
+        assert_eq(out_extra["free_remaining"], 0, "remaining = 0")
+        assert_eq(out_extra.get("reason"), "limit_reached", "reason")
+        # The blocked session must NOT be in the list.
+        final = free_tier.get_status(r, user_id="u1")
+        assert_eq(final["sessions_used"], 3, "list size still 3")
+    finally:
+        free_tier.FREE_SESSIONS_LIMIT = original_limit
 
 
 # --- S5 ---
@@ -208,11 +213,11 @@ def s11():
 
 
 # --- S12 ---
-@scenario("S12 · session TTL constant")
+@scenario("S12 · session TTL constant and cap is anti-abuse (500)")
 def s12():
     # Sanity: 24h in seconds.
     assert_eq(free_tier.SESSION_TTL_SECONDS, 86400, "24h TTL")
-    assert_eq(free_tier.FREE_SESSIONS_LIMIT, 5, "limit 5")
+    assert_eq(free_tier.FREE_SESSIONS_LIMIT, 500, "anti-abuse cap 500")
 
 
 # --- S13 check_can_join ---
@@ -226,25 +231,35 @@ def s13():
     assert_eq(out["sessions_used"], 3, "no increment (read-only)")
 
 
-@scenario("S14 · check_can_join: at cap blocks new session")
+@scenario("S14 · check_can_join: at cap blocks new session (monkeypatched limit=3)")
 def s14():
-    r = FakeRedis()
-    for i in range(5):
-        free_tier.record_session_use(r, f"s{i}", user_id="u1")
-    out = free_tier.check_can_join(r, "s-new", user_id="u1")
-    assert_eq(out["allowed"], False, "blocked")
-    assert_eq(out.get("reason"), "limit_reached", "reason")
+    original_limit = free_tier.FREE_SESSIONS_LIMIT
+    free_tier.FREE_SESSIONS_LIMIT = 3
+    try:
+        r = FakeRedis()
+        for i in range(3):
+            free_tier.record_session_use(r, f"s{i}", user_id="u1")
+        out = free_tier.check_can_join(r, "s-new", user_id="u1")
+        assert_eq(out["allowed"], False, "blocked")
+        assert_eq(out.get("reason"), "limit_reached", "reason")
+    finally:
+        free_tier.FREE_SESSIONS_LIMIT = original_limit
 
 
-@scenario("S15 · check_can_join: at cap allows returning session")
+@scenario("S15 · check_can_join: at cap allows returning session (monkeypatched limit=3)")
 def s15():
-    r = FakeRedis()
-    for i in range(5):
-        free_tier.record_session_use(r, f"s{i}", user_id="u1")
-    # Re-join one of those same sessions.
-    out = free_tier.check_can_join(r, "s2", user_id="u1")
-    assert_eq(out["allowed"], True, "returning session allowed")
-    assert_eq(out.get("already_counted"), True, "already_counted flag")
+    original_limit = free_tier.FREE_SESSIONS_LIMIT
+    free_tier.FREE_SESSIONS_LIMIT = 3
+    try:
+        r = FakeRedis()
+        for i in range(3):
+            free_tier.record_session_use(r, f"s{i}", user_id="u1")
+        # Re-join one of those same sessions.
+        out = free_tier.check_can_join(r, "s2", user_id="u1")
+        assert_eq(out["allowed"], True, "returning session allowed")
+        assert_eq(out.get("already_counted"), True, "already_counted flag")
+    finally:
+        free_tier.FREE_SESSIONS_LIMIT = original_limit
 
 
 @scenario("S16 · check_can_join: premium bypasses cap")
