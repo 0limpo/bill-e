@@ -1250,6 +1250,7 @@ async def enter_share_endpoint(session_id: str, request: Request):
 
 class UpdateTipRequest(BaseModel):
     total_paid_usd: float = Field(ge=1.0)
+    owner_token: str
 
 
 @app.get("/api/session/{session_id}/tip")
@@ -1271,10 +1272,17 @@ async def get_session_tip(session_id: str):
 
 @app.patch("/api/session/{session_id}/tip")
 async def patch_session_tip(session_id: str, req: UpdateTipRequest):
-    """Manual override for the actual paid amount. Used when the webhook
-    didn't arrive or the host wants to round. Updates the most recent tip."""
+    """Manual override for the actual paid amount. Host-only (owner_token required)."""
     if not postgres_available:
         raise HTTPException(status_code=503, detail="Postgres not available")
+
+    # Verify owner via session Redis state
+    session_data = get_collab_session(redis_client, session_id)
+    if not session_data:
+        raise HTTPException(status_code=404, detail="Sesion no encontrada")
+    if not verify_owner(session_data, req.owner_token):
+        raise HTTPException(status_code=403, detail="Token de owner invalido")
+
     try:
         with postgres_db.get_db() as db:
             if db is None:

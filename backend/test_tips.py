@@ -187,4 +187,11 @@ def test_update_tip_request_validates_min():
     from main import UpdateTipRequest
     from pydantic import ValidationError
     with pytest.raises(ValidationError):
-        UpdateTipRequest(total_paid_usd=0.5)
+        UpdateTipRequest(total_paid_usd=0.5, owner_token="dummy")
+
+
+def test_update_tip_request_requires_owner_token():
+    from main import UpdateTipRequest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        UpdateTipRequest(total_paid_usd=5.0)  # missing owner_token
