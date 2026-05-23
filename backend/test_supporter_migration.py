@@ -1,6 +1,6 @@
 """Tests for the schema additions: users.supporter_until + tips table."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytest
 
 
@@ -29,9 +29,6 @@ def test_polar_order_id_is_unique_on_tip():
 
 
 def test_migrations_list_includes_supporter_until():
-    """The inline migrations list must add supporter_until via ALTER TABLE."""
-    import inspect
-    from postgres_db import _run_migrations
-    src = inspect.getsource(_run_migrations)
-    assert "supporter_until" in src
-    assert "ADD COLUMN IF NOT EXISTS" in src
+    """The migrations list must add supporter_until via ALTER TABLE."""
+    from postgres_db import _MIGRATIONS
+    assert any("supporter_until" in m and "ADD COLUMN IF NOT EXISTS" in m for m in _MIGRATIONS)

@@ -11,7 +11,7 @@ from contextlib import contextmanager
 
 from sqlalchemy import (
     create_engine, Column, String, Integer, Boolean, DateTime,
-    Text, JSON, LargeBinary, Enum as SQLEnum, Index, cast
+    Text, JSON, LargeBinary, Enum as SQLEnum, Index, cast, Numeric
 )
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -29,19 +29,21 @@ SessionLocal = None
 db_available = False
 
 
+_MIGRATIONS = [
+    "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS bill_name VARCHAR(255)",
+    "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS merchant_name VARCHAR(255)",
+    "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS user_id UUID",
+    "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS totals JSON",
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS supporter_until TIMESTAMP",
+]
+
+
 def _run_migrations(eng):
     """Add new columns to existing tables if they don't exist."""
     from sqlalchemy import text
-    migrations = [
-        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS bill_name VARCHAR(255)",
-        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS merchant_name VARCHAR(255)",
-        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS user_id UUID",
-        "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS totals JSON",
-        "ALTER TABLE users ADD COLUMN IF NOT EXISTS supporter_until TIMESTAMP",
-    ]
     try:
         with eng.connect() as conn:
-            for sql in migrations:
+            for sql in _MIGRATIONS:
                 conn.execute(text(sql))
             conn.commit()
         # Create index if not exists
@@ -287,14 +289,20 @@ class Tip(Base):
     __tablename__ = "tips"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    session_id = Column(String(64), nullable=False, index=True)
-    host_email = Column(String(255), nullable=False, index=True)
-    amount_total_usd = Column(String(16), nullable=False)
-    amount_charged_usd = Column(String(16), nullable=False)
+    session_id = Column(String(100), nullable=False)
+    host_email = Column(String(255), nullable=False)
+    amount_total_usd = Column(Numeric(10, 2), nullable=False)
+    amount_charged_usd = Column(Numeric(10, 2), nullable=False)
     is_split = Column(Boolean, nullable=False, default=False)
     participant_count = Column(Integer, nullable=False, default=1)
-    polar_order_id = Column(String(128), nullable=False, unique=True, index=True)
+    polar_order_id = Column(String(128), nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        Index('ix_tips_session_id', 'session_id'),
+        Index('ix_tips_host_email', 'host_email'),
+        Index('ix_tips_polar_order_id', 'polar_order_id', unique=True),
+    )
 
 
 class SessionSnapshot(Base):
