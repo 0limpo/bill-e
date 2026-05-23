@@ -10,6 +10,8 @@ export const translations: Record<Language, Record<string, string>> = {
     // App
     "app.title": "Bill-e",
     "app.subtitle": "Divide cuentas fácilmente",
+    "landing_pricing_title": "Gratis",
+    "landing_pricing_subtitle": "Con tips voluntarios si te sirve",
 
     // Homepage
     "home.camera": "Cámara",
@@ -506,6 +508,8 @@ export const translations: Record<Language, Record<string, string>> = {
     // App
     "app.title": "Bill-e",
     "app.subtitle": "Split bills easily",
+    "landing_pricing_title": "Free",
+    "landing_pricing_subtitle": "With voluntary tips if it helps you",
 
     // Homepage
     "home.camera": "Camera",
@@ -1001,6 +1005,8 @@ export const translations: Record<Language, Record<string, string>> = {
   pt: {
     "app.title": "Bill-e",
     "app.subtitle": "Divida contas facilmente",
+    "landing_pricing_title": "Grátis",
+    "landing_pricing_subtitle": "Com gorjetas voluntárias se te ajudar",
 
     // Homepage
     "home.camera": "Câmera",
@@ -1389,6 +1395,8 @@ export const translations: Record<Language, Record<string, string>> = {
   zh: {
     "app.title": "Bill-e",
     "app.subtitle": "轻松分账",
+    "landing_pricing_title": "免费",
+    "landing_pricing_subtitle": "如果对你有帮助，可以自愿打赏",
 
     // Homepage
     "home.camera": "相机",
@@ -1776,6 +1784,8 @@ export const translations: Record<Language, Record<string, string>> = {
   fr: {
     "app.title": "Bill-e",
     "app.subtitle": "Partagez l'addition facilement",
+    "landing_pricing_title": "Gratuit",
+    "landing_pricing_subtitle": "Avec des pourboires volontaires si ça vous aide",
 
     // Homepage
     "home.camera": "Caméra",
@@ -2163,6 +2173,8 @@ export const translations: Record<Language, Record<string, string>> = {
   de: {
     "app.title": "Bill-e",
     "app.subtitle": "Rechnungen einfach teilen",
+    "landing_pricing_title": "Kostenlos",
+    "landing_pricing_subtitle": "Mit freiwilligen Tips, wenn es dir hilft",
 
     // Homepage
     "home.camera": "Kamera",
@@ -2550,6 +2562,8 @@ export const translations: Record<Language, Record<string, string>> = {
   ja: {
     "app.title": "Bill-e",
     "app.subtitle": "簡単に割り勘",
+    "landing_pricing_title": "無料",
+    "landing_pricing_subtitle": "役に立てば任意チップで応援できます",
 
     // Homepage
     "home.camera": "カメラ",
@@ -2937,6 +2951,8 @@ export const translations: Record<Language, Record<string, string>> = {
   ru: {
     "app.title": "Bill-e",
     "app.subtitle": "Легко делите счет",
+    "landing_pricing_title": "Бесплатно",
+    "landing_pricing_subtitle": "С добровольными чаевыми, если полезно",
 
     // Homepage
     "home.camera": "Камера",
@@ -3324,6 +3340,8 @@ export const translations: Record<Language, Record<string, string>> = {
   hi: {
     "app.title": "Bill-e",
     "app.subtitle": "बिल आसानी से बांटें",
+    "landing_pricing_title": "मुफ्त",
+    "landing_pricing_subtitle": "अगर मददगार लगे तो स्वैच्छिक टिप दे सकते हैं",
 
     // Homepage
     "home.camera": "कैमरा",
@@ -3711,6 +3729,8 @@ export const translations: Record<Language, Record<string, string>> = {
   id: {
     "app.title": "Bill-e",
     "app.subtitle": "Bagi tagihan dengan mudah",
+    "landing_pricing_title": "Gratis",
+    "landing_pricing_subtitle": "Dengan tip sukarela jika membantu kamu",
 
     // Homepage
     "home.camera": "Kamera",
@@ -4099,6 +4119,8 @@ export const translations: Record<Language, Record<string, string>> = {
     // App
     "app.title": "Bill-e",
     "app.subtitle": "قسّم الفواتير بسهولة",
+    "landing_pricing_title": "مجاني",
+    "landing_pricing_subtitle": "مع إكراميات اختيارية إذا أفادك التطبيق",
 
     // Common
     "common.back": "رجوع",
@@ -4190,6 +4212,8 @@ export const translations: Record<Language, Record<string, string>> = {
     // App
     "app.title": "Bill-e",
     "app.subtitle": "সহজে বিল ভাগ করো",
+    "landing_pricing_title": "বিনামূল্যে",
+    "landing_pricing_subtitle": "কাজে লাগলে স্বেচ্ছায় টিপ দিতে পারেন",
 
     // Common
     "common.back": "ফিরে যান",
