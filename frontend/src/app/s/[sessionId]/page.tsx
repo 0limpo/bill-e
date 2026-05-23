@@ -24,6 +24,7 @@ import {
   trackGuestJoined,
   trackShare,
   trackSessionDetails,
+  trackTipCheckoutReturned,
 } from "@/lib/tracking";
 
 // Check localStorage for owner token
@@ -285,6 +286,22 @@ export default function SessionPage() {
       cancelled = true;
     };
   }, [paymentSuccess]);
+
+  // Track tip checkout return and scrub ?tip_success from URL (fires once per mount)
+  useEffect(() => {
+    const tipSuccess = searchParams.get("tip_success");
+    if (tipSuccess === "true") {
+      const amount = parseFloat(searchParams.get("amount") || "0");
+      trackTipCheckoutReturned({ success: true, amount });
+      // Scrub tip_success from URL (consistent with ?payment=success scrub behaviour)
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete("tip_success");
+      newUrl.searchParams.delete("amount");
+      router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+    }
+    // Only fire once per mount; subsequent URL changes are ignored
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle post-payment redirect
   useEffect(() => {
