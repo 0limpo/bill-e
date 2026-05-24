@@ -837,6 +837,9 @@ export interface CreateTipCheckoutRequest {
   participant_count: number;
   google_email: string;
   device_id?: string;
+  /** Pre-tip manual override of the per-editor amount in the bill's local
+   *  currency. Carried via Polar metadata and persisted on webhook. */
+  manual_per_editor_local?: number;
 }
 
 export interface CreateTipCheckoutResponse {

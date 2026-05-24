@@ -202,8 +202,14 @@ export function StepShare({
 
   // Pre-payment preview: host has toggled "split" in TipWidget but hasn't paid yet.
   // Lets each participant see what they will owe BEFORE the host commits.
+  // `manualLocalPerEditor` is the host's pre-tip override of the per-editor
+  // local-currency amount (overrides FX auto-conversion in the preview).
   // Real tip (above) always wins when both exist.
-  const [tipPreview, setTipPreview] = useState<{ amountTotal: number; isSplit: boolean } | null>(null);
+  const [tipPreview, setTipPreview] = useState<{
+    amountTotal: number;
+    isSplit: boolean;
+    manualLocalPerEditor: number | null;
+  } | null>(null);
 
   const tipPreviewPerPersonUsd = useMemo<number | null>(() => {
     if (tipPerPersonUsd !== null) return null;  // real tip takes precedence
@@ -230,14 +236,17 @@ export function StepShare({
   const tipUsd = tipPerPersonUsd ?? tipPreviewPerPersonUsd;
   const tipIsPreview = tipPerPersonUsd === null && tipPreviewPerPersonUsd !== null;
   // Per-person tip in the bill's local currency. Priority:
-  //   1. Host's manual override (exact value, no conversion)
-  //   2. FX-auto-converted from USD (best effort, may be null)
+  //   1. Persisted manual override on the tip row (post-payment)
+  //   2. Host's pre-tip manual override from preview callback (pre-payment)
+  //   3. FX-auto-converted from USD (best effort, may be null)
   const tipLocal: number | null = (() => {
     if (tip?.manual_per_editor_local != null) return tip.manual_per_editor_local;
+    if (tipPreview?.manualLocalPerEditor != null) return tipPreview.manualLocalPerEditor;
     if (tipUsd != null && fx != null) return tipUsd * fx.rate;
     return null;
   })();
-  const tipLocalIsManual = tip?.manual_per_editor_local != null;
+  const tipLocalIsManual =
+    tip?.manual_per_editor_local != null || tipPreview?.manualLocalPerEditor != null;
 
   // Prefer explicit decimals from parent (which knows session.decimal_places),
   // fall back to item-level detection.

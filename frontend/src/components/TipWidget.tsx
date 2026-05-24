@@ -24,7 +24,16 @@ interface Props {
   lang: Language;
   alreadyTipped?: boolean;
   ownerToken?: string;
-  onPreviewChange?: (preview: { amountTotal: number; isSplit: boolean } | null) => void;
+  /** Fires whenever the host's tip selection changes, so the parent can preview
+   *  the per-participant Bill-e line. `manualLocalPerEditor` is the host's
+   *  explicit override of the per-editor local-currency amount (overrides FX). */
+  onPreviewChange?: (
+    preview: {
+      amountTotal: number;
+      isSplit: boolean;
+      manualLocalPerEditor: number | null;
+    } | null,
+  ) => void;
 }
 
 /** Tiny inline switch so we don't drag in a UI library just for this. */
@@ -76,6 +85,16 @@ export function TipWidget({
   const [manualLocal, setManualLocal] = useState<string>("");
   const [savingLocal, setSavingLocal] = useState(false);
   const [localSaved, setLocalSaved] = useState(false);
+
+  // Pre-tip manual override: typed in the expanded widget before paying.
+  // Lives in local state and is propagated up via onPreviewChange. When the
+  // host pays, this value is sent in the Polar checkout metadata so editors
+  // see it after the webhook persists.
+  const [preTipManualLocal, setPreTipManualLocal] = useState<string>("");
+  const preTipManualLocalNumeric: number | null = (() => {
+    const n = parseFloat(preTipManualLocal);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
 
   useEffect(() => {
     setCollapsed(alreadyTipped);
@@ -143,8 +162,12 @@ export function TipWidget({
       onPreviewChange(null);
       return;
     }
-    onPreviewChange({ amountTotal: totalAmount, isSplit: true });
-  }, [collapsed, expanded, isSplit, canSplit, totalAmount, onPreviewChange]);
+    onPreviewChange({
+      amountTotal: totalAmount,
+      isSplit: true,
+      manualLocalPerEditor: preTipManualLocalNumeric,
+    });
+  }, [collapsed, expanded, isSplit, canSplit, totalAmount, preTipManualLocalNumeric, onPreviewChange]);
 
   async function handleSubmit() {
     if (!isValid || submitting) return;
@@ -162,6 +185,9 @@ export function TipWidget({
         is_split: isSplit && canSplit,
         participant_count: participantCount,
         google_email: hostEmail,
+        ...(preTipManualLocalNumeric != null && isSplit && canSplit
+          ? { manual_per_editor_local: preTipManualLocalNumeric }
+          : {}),
       });
       window.location.href = res.checkout_url;
     } catch (e: unknown) {
@@ -408,6 +434,33 @@ export function TipWidget({
                   )}
                 </span>
               </label>
+            )}
+
+            {/* Pre-tip manual override of per-editor local amount. Visible
+                only when split is on. Sent via Polar metadata at checkout
+                so editors see this value (instead of FX-converted USD)
+                after the webhook persists it to the tip row. */}
+            {canSplit && isSplit && (
+              <div className="mt-2 rounded-md border border-border/60 bg-secondary/40 px-3 py-2.5">
+                <p className="text-[11px] leading-snug text-muted-foreground mb-1.5">
+                  {t("tip_pretip_local_hint")}
+                </p>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={0}
+                    step="0.01"
+                    value={preTipManualLocal}
+                    onChange={(e) => setPreTipManualLocal(e.target.value)}
+                    placeholder={t("tip_pretip_local_placeholder")}
+                    className="w-full h-9 pl-7 pr-3 rounded-md border border-input bg-input text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/40 tabular-nums"
+                  />
+                </div>
+              </div>
             )}
 
             {/* CTA */}

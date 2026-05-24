@@ -2360,6 +2360,7 @@ def record_tip(
     participant_count: int,
     polar_order_id: str,
     total_paid_usd: float | None = None,  # Actual amount with tax from Polar webhook
+    manual_per_editor_local: float | None = None,  # Pre-tip manual override carried via metadata
 ) -> bool:
     """Insert a Tip row. Returns False if polar_order_id already exists (idempotent)."""
     existing = db.query(Tip).filter_by(polar_order_id=polar_order_id).first()
@@ -2374,6 +2375,7 @@ def record_tip(
         participant_count=participant_count,
         polar_order_id=polar_order_id,
         total_paid_usd=f"{total_paid_usd:.2f}" if total_paid_usd is not None else None,
+        manual_per_editor_local=f"{manual_per_editor_local:.2f}" if manual_per_editor_local is not None else None,
     )
     db.add(tip)
     db.commit()

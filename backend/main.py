@@ -2468,6 +2468,10 @@ class TipCheckoutRequest(BaseModel):
     participant_count: int = Field(ge=1, default=1)
     google_email: str
     device_id: Optional[str] = None
+    # Pre-tip manual override of the per-editor amount in the bill's local
+    # currency. Persisted via Polar metadata -> webhook -> tips row, so
+    # editors see this exact value instead of an FX-converted approximation.
+    manual_per_editor_local: Optional[float] = Field(default=None, ge=0)
 
 
 @app.post("/api/polar/checkout")
@@ -2568,6 +2572,8 @@ async def create_polar_tip_checkout(req: TipCheckoutRequest):
         "is_split": req.is_split,
         "participant_count": req.participant_count,
     }
+    if req.manual_per_editor_local is not None:
+        metadata["manual_per_editor_local"] = req.manual_per_editor_local
 
     checkout = await polar_service.create_checkout(
         product_id=tip_product_id,
@@ -2630,6 +2636,10 @@ async def polar_webhook(request: Request):
             # Fall back to data.amount if total_amount missing (older Polar API versions).
             total_paid_cents = data.get("total_amount") or data.get("amount") or 0
             total_paid_usd = float(total_paid_cents) / 100.0 if total_paid_cents else None
+            # Pre-tip manual override carried via Polar metadata (set by the host
+            # in the TipWidget when their bill isn't in USD).
+            manual_local_raw = metadata.get("manual_per_editor_local")
+            manual_local = float(manual_local_raw) if manual_local_raw not in (None, "") else None
             if postgres_available:
                 try:
                     with postgres_db.get_db() as db:
@@ -2644,8 +2654,9 @@ async def polar_webhook(request: Request):
                                 participant_count=int(metadata.get("participant_count") or 1),
                                 polar_order_id=polar_order_id,
                                 total_paid_usd=total_paid_usd,
+                                manual_per_editor_local=manual_local,
                             )
-                            print(f"Polar tip recorded={recorded} order={polar_order_id} email={email} total_paid_usd={total_paid_usd}")
+                            print(f"Polar tip recorded={recorded} order={polar_order_id} email={email} total_paid_usd={total_paid_usd} manual_local={manual_local}")
                 except Exception as e:
                     print(f"Polar tip persist failed: {e}")
             # TODO(b5): PostHog analytics — no standalone capture_event in backend yet.
