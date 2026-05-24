@@ -216,11 +216,11 @@ export function TipWidget({
         aria-expanded={expanded}
       >
         <span className="flex items-center gap-2.5 min-w-0">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base leading-none">
-            ☕
-          </span>
           <span className="font-medium text-foreground truncate">
             {t("tip_widget_title")}
+          </span>
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base leading-none">
+            ☕
           </span>
         </span>
         <Switch checked={expanded} />
