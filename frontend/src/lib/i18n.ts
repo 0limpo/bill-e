@@ -492,7 +492,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget
     "tip_widget_title": "Apoya a Bill-e",
-    "tip_widget_subtitle": "Tu tip mantiene al desarrollador despierto ☕",
+    "tip_widget_subtitle": "Tu tip mantiene al desarrollador despierto ☕ y los servidores andando",
     "tip_preset_custom": "Otro",
     "tip_custom_min_error": "Mínimo $3.49 USD",
     "tip_split_toggle": "Dividir Bill-e entre todos ({count} personas)",
@@ -504,6 +504,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Inicia sesión con Google para apoyar",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (estimado)",
     "tip_manual_edit_label": "Ajustar monto pagado a Polar:",
     "tip_manual_edit_hint": "Polar agrega impuestos. Edita aquí si el monto real difiere.",
     "tip_manual_edit_save": "Guardar",
@@ -995,7 +996,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -1007,6 +1008,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -1404,7 +1406,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -1416,6 +1418,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -1812,7 +1815,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -1824,6 +1827,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -2220,7 +2224,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -2232,6 +2236,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -2628,7 +2633,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -2640,6 +2645,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -3036,7 +3042,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -3048,6 +3054,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -3444,7 +3451,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -3456,6 +3463,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -3852,7 +3860,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -3864,6 +3872,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -4260,7 +4269,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -4272,6 +4281,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -4372,7 +4382,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -4384,6 +4394,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",
@@ -4484,7 +4495,7 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Tip widget (EN fallback — pending translation)
     "tip_widget_title": "Support Bill-e",
-    "tip_widget_subtitle": "Your tip keeps the developer awake ☕",
+    "tip_widget_subtitle": "Your tip keeps the developer awake ☕ and the servers running",
     "tip_preset_custom": "Other",
     "tip_custom_min_error": "Minimum $3.49 USD",
     "tip_split_toggle": "Split Bill-e among everyone ({count} people)",
@@ -4496,6 +4507,7 @@ export const translations: Record<Language, Record<string, string>> = {
     "badge_supporter": "Supporter ✨",
     "tip_requires_signin": "Sign in with Google to support",
     "tip_line_label": "Bill-e",
+    "tip_line_label_preview": "Bill-e (preview)",
     "tip_manual_edit_label": "Adjust amount paid to Polar:",
     "tip_manual_edit_hint": "Polar adds taxes. Edit here if the actual amount differs.",
     "tip_manual_edit_save": "Save",

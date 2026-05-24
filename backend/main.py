@@ -2508,9 +2508,17 @@ async def create_polar_checkout(req: PolarCheckoutRequest):
 
 
 def _compute_charged_amount(amount_total: float, is_split: bool, participant_count: int) -> float:
-    """How much the host pays via Polar. Editors' share is informational only."""
-    if is_split and participant_count > 1:
-        return round(amount_total / participant_count, 2)
+    """How much the host pays via Polar.
+
+    Bill-e always receives the FULL tip amount; the split toggle is purely
+    a display intent for editor bills (they see a "Bill-e $X" line of what
+    they owe the host to chip in). The host pays Polar the full amount and
+    gets reimbursed by friends offline. This keeps Bill-e's revenue
+    constant regardless of the host's split choice.
+
+    Kept as a helper for clarity and forward compatibility (e.g., if we
+    ever support per-editor Polar splits, the logic would land here).
+    """
     return round(amount_total, 2)
 
 
@@ -2532,6 +2540,8 @@ async def create_polar_tip_checkout(req: TipCheckoutRequest):
 
     charged = _compute_charged_amount(req.amount_usd, req.is_split, req.participant_count)
 
+    # `tip_amount_charged` is preserved in metadata for telemetry continuity
+    # but is now always equal to `tip_amount_total` (host pays full amount).
     metadata = {
         "kind": "tip",
         "session_id": req.session_id,
