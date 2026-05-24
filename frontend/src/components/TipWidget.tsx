@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createTipCheckout, updateTipTotalPaid } from "@/lib/api";
 import { getTranslator, type Language } from "@/lib/i18n";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { MeetTheDeveloper } from "./MeetTheDeveloper";
 import {
   trackTipPresetClicked,
@@ -21,11 +23,28 @@ interface Props {
   hostEmail: string;
   lang: Language;
   alreadyTipped?: boolean;
-  ownerToken?: string;  // Only present for the host; enables manual tip amount override
-  /** Fires whenever the host's tip selection changes, so the parent can preview
-   *  the per-participant Bill-e line in editors' totals before payment.
-   *  Null means "no active preview" (collapsed / not split / invalid amount). */
+  ownerToken?: string;
   onPreviewChange?: (preview: { amountTotal: number; isSplit: boolean } | null) => void;
+}
+
+/** Tiny inline switch so we don't drag in a UI library just for this. */
+function Switch({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors",
+        checked ? "bg-primary" : "bg-muted",
+      )}
+    >
+      <span
+        className={cn(
+          "inline-block h-3.5 w-3.5 transform rounded-full bg-background shadow-sm transition-transform duration-200",
+          checked ? "translate-x-[18px]" : "translate-x-[3px]",
+        )}
+      />
+    </span>
+  );
 }
 
 export function TipWidget({
@@ -38,6 +57,10 @@ export function TipWidget({
   onPreviewChange,
 }: Props) {
   const t = getTranslator(lang);
+
+  // expanded === default-hidden options revealed by the user-controlled switch
+  // collapsed === post-payment "thanks" state (renders something different)
+  const [expanded, setExpanded] = useState(false);
   const [selected, setSelected] = useState<number | "custom">(DEFAULT_PRESET);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [isSplit, setIsSplit] = useState(false);
@@ -45,12 +68,13 @@ export function TipWidget({
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(alreadyTipped);
 
-  // Manual edit state — only used when ownerToken is present
   const [manualAmount, setManualAmount] = useState<string>("");
   const [savingManual, setSavingManual] = useState(false);
   const [manualSaved, setManualSaved] = useState(false);
 
-  useEffect(() => { setCollapsed(alreadyTipped); }, [alreadyTipped]);
+  useEffect(() => {
+    setCollapsed(alreadyTipped);
+  }, [alreadyTipped]);
 
   async function handleManualSave() {
     if (!ownerToken) return;
@@ -65,7 +89,7 @@ export function TipWidget({
       });
       setManualSaved(true);
     } catch {
-      // Silent for now; could expand to error state
+      /* swallow — could surface an error state later if it matters */
     }
     setSavingManual(false);
   }
@@ -79,11 +103,8 @@ export function TipWidget({
   }, [selected, customAmount]);
 
   const canSplit = participantCount >= 2;
-  // Host always pays the full tip to Polar (Bill-e gets the full amount).
-  // The split toggle is about WHO contributes to that cost socially:
-  // when split is on, each editor sees a "Bill-e $X" line in their bill
-  // representing what they're chipping in to reimburse the host.
-  // Bill-e never touches the editor→host transfer.
+  // Host pays full amount to Polar. perPersonAmount is purely for the inline
+  // split-toggle subtitle so the host sees what each editor will chip in.
   const perPersonAmount = useMemo(() => {
     if (!isSplit || !canSplit) return totalAmount;
     return Math.round((totalAmount / participantCount) * 100) / 100;
@@ -92,16 +113,15 @@ export function TipWidget({
   const hasEmail = Boolean(hostEmail && hostEmail.trim().length > 0);
   const isValid = totalAmount >= MIN_CUSTOM && hasEmail;
 
-  // Emit preview to parent. Null when collapsed (post-tip), not split, or
-  // amount invalid — in those cases the parent should not show a preview line.
+  // Preview to parent: only when expanded + split active + valid amount.
   useEffect(() => {
     if (!onPreviewChange) return;
-    if (collapsed || !isSplit || !canSplit || totalAmount < MIN_CUSTOM) {
+    if (collapsed || !expanded || !isSplit || !canSplit || totalAmount < MIN_CUSTOM) {
       onPreviewChange(null);
       return;
     }
     onPreviewChange({ amountTotal: totalAmount, isSplit: true });
-  }, [collapsed, isSplit, canSplit, totalAmount, onPreviewChange]);
+  }, [collapsed, expanded, isSplit, canSplit, totalAmount, onPreviewChange]);
 
   async function handleSubmit() {
     if (!isValid || submitting) return;
@@ -110,7 +130,7 @@ export function TipWidget({
     try {
       trackTipCheckoutStarted({
         amount_total: totalAmount,
-        amount_charged_host: totalAmount,  // host now always pays full amount
+        amount_charged_host: totalAmount,
         is_split: isSplit && canSplit,
       });
       const res = await createTipCheckout({
@@ -121,44 +141,64 @@ export function TipWidget({
         google_email: hostEmail,
       });
       window.location.href = res.checkout_url;
-    } catch (e: any) {
-      setError(e?.message || "Error");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Error");
       setSubmitting(false);
     }
   }
 
+  // Post-payment thanks state — overrides everything else.
   if (collapsed) {
     return (
-      <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center">
-        <p className="text-emerald-700 font-medium">{t("tip_thanks_title")}</p>
-        <button
-          type="button"
-          onClick={() => setCollapsed(false)}
-          className="mt-2 text-sm text-emerald-600 underline-offset-2 hover:underline"
-        >
-          {t("tip_thanks_again")}
-        </button>
+      <div className="mt-4 rounded-xl border border-border bg-primary/5 px-4 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 text-foreground">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-sm">
+              ✓
+            </span>
+            <span className="text-sm font-medium">{t("tip_thanks_title")}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCollapsed(false)}
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            {t("tip_thanks_again")}
+          </button>
+        </div>
+
         {ownerToken && (
-          <div className="mt-3 text-xs text-gray-600 text-left">
-            <label className="block mb-1">{t("tip_manual_edit_label")}</label>
-            <p className="text-[10px] text-gray-500 mb-1">{t("tip_manual_edit_hint")}</p>
+          <div className="mt-4 border-t border-border/60 pt-3">
+            <label className="block text-xs font-medium text-foreground mb-1">
+              {t("tip_manual_edit_label")}
+            </label>
+            <p className="text-[11px] leading-snug text-muted-foreground mb-2">
+              {t("tip_manual_edit_hint")}
+            </p>
             <div className="flex gap-2">
               <input
                 type="number"
+                inputMode="decimal"
                 min={1}
                 step="0.01"
                 value={manualAmount}
                 onChange={(e) => setManualAmount(e.target.value)}
-                className="flex-1 px-2 py-1 rounded border border-gray-300 text-sm"
+                placeholder="0.00"
+                className="flex-1 h-8 px-2.5 rounded-md border border-input bg-input text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
               />
-              <button
+              <Button
                 type="button"
                 onClick={handleManualSave}
-                disabled={!Number.isFinite(parseFloat(manualAmount)) || parseFloat(manualAmount) < 1 || savingManual}
-                className="px-3 py-1 rounded bg-emerald-600 text-white text-sm disabled:opacity-50"
+                size="sm"
+                variant="secondary"
+                disabled={
+                  !Number.isFinite(parseFloat(manualAmount)) ||
+                  parseFloat(manualAmount) < 1 ||
+                  savingManual
+                }
               >
                 {manualSaved ? t("tip_manual_edit_saved") : t("tip_manual_edit_save")}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -167,105 +207,170 @@ export function TipWidget({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-emerald-200 bg-white p-4">
-      <h3 className="font-semibold text-gray-900">💚 {t("tip_widget_title")}</h3>
-      <p className="text-sm text-gray-600 mt-1">{t("tip_widget_subtitle")}</p>
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {PRESETS.map((amount) => (
-          <button
-            key={amount}
-            type="button"
-            onClick={() => {
-              setSelected(amount);
-              trackTipPresetClicked({ amount, was_default: amount === DEFAULT_PRESET });
-            }}
-            className={
-              "px-4 py-2 rounded-lg border " +
-              (selected === amount
-                ? "bg-emerald-600 text-white border-emerald-600"
-                : "bg-white text-gray-700 border-gray-300 hover:border-emerald-400")
-            }
-          >
-            ${amount}
-          </button>
-        ))}
-        <button
-          type="button"
-          onClick={() => setSelected("custom")}
-          className={
-            "px-4 py-2 rounded-lg border " +
-            (selected === "custom"
-              ? "bg-emerald-600 text-white border-emerald-600"
-              : "bg-white text-gray-700 border-gray-300 hover:border-emerald-400")
-          }
-        >
-          {t("tip_preset_custom")}
-        </button>
-      </div>
-
-      {selected === "custom" && (
-        <div className="mt-3">
-          <input
-            type="number"
-            inputMode="decimal"
-            min={MIN_CUSTOM}
-            step="0.5"
-            value={customAmount}
-            onChange={(e) => {
-              setCustomAmount(e.target.value);
-              const n = parseFloat(e.target.value);
-              if (Number.isFinite(n) && n >= MIN_CUSTOM) {
-                trackTipCustomEntered({ amount: n });
-              }
-            }}
-            placeholder={`$${MIN_CUSTOM}.00`}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300"
-          />
-          {customAmount && totalAmount < MIN_CUSTOM && (
-            <p className="text-xs text-red-600 mt-1">{t("tip_custom_min_error")}</p>
-          )}
-        </div>
-      )}
-
-      {canSplit && (
-        <label className="mt-3 flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isSplit}
-            onChange={(e) => {
-              setIsSplit(e.target.checked);
-              trackTipSplitToggled({ is_on: e.target.checked, participants: participantCount });
-            }}
-            className="mt-1"
-          />
-          <span>
-            {t("tip_split_toggle").replace("{count}", String(participantCount))}
-            {isSplit && (
-              <span className="block text-xs text-gray-500 mt-0.5">
-                {t("tip_split_per_person").replace("{amount}", perPersonAmount.toFixed(2))}
-              </span>
-            )}
-          </span>
-        </label>
-      )}
-
+    <div className="mt-4 rounded-xl border border-border bg-card overflow-hidden">
+      {/* Header — the whole row is the trigger; switch reflects state. */}
       <button
         type="button"
-        onClick={handleSubmit}
-        disabled={!isValid || submitting}
-        className="mt-4 w-full px-4 py-3 rounded-lg bg-emerald-600 text-white font-semibold disabled:opacity-50"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-secondary/40"
+        aria-expanded={expanded}
       >
-        {t("tip_cta").replace("{amount}", totalAmount.toFixed(2))}
+        <span className="flex items-center gap-2.5 min-w-0">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base leading-none">
+            ☕
+          </span>
+          <span className="font-medium text-foreground truncate">
+            {t("tip_widget_title")}
+          </span>
+        </span>
+        <Switch checked={expanded} />
       </button>
 
-      {!hasEmail && (
-        <p className="text-xs text-gray-500 mt-1">{t("tip_requires_signin")}</p>
-      )}
+      {/* Expandable area — CSS grid trick gives smooth height auto. */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-300 ease-out",
+          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+        )}
+      >
+        <div className="overflow-hidden">
+          <div
+            className={cn(
+              "border-t border-border/50 px-4 pb-4 pt-3 transition-opacity duration-200",
+              expanded ? "opacity-100 delay-100" : "opacity-0",
+            )}
+          >
+            <p className="text-xs leading-relaxed text-muted-foreground mb-4">
+              {t("tip_widget_subtitle")}
+            </p>
 
-      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+            {/* Presets — 4 column grid */}
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {PRESETS.map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => {
+                    setSelected(amount);
+                    trackTipPresetClicked({
+                      amount,
+                      was_default: amount === DEFAULT_PRESET,
+                    });
+                  }}
+                  className={cn(
+                    "h-10 rounded-md text-sm font-medium transition-all",
+                    "border tabular-nums",
+                    selected === amount
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-secondary text-foreground border-border hover:bg-secondary/70",
+                  )}
+                >
+                  ${amount}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSelected("custom")}
+                className={cn(
+                  "h-10 rounded-md text-sm font-medium transition-all border",
+                  selected === "custom"
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-secondary text-foreground border-border hover:bg-secondary/70",
+                )}
+              >
+                {t("tip_preset_custom")}
+              </button>
+            </div>
 
-      <MeetTheDeveloper lang={lang} />
+            {/* Custom amount input */}
+            {selected === "custom" && (
+              <div className="mb-3">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={MIN_CUSTOM}
+                    step="0.5"
+                    value={customAmount}
+                    onChange={(e) => {
+                      setCustomAmount(e.target.value);
+                      const n = parseFloat(e.target.value);
+                      if (Number.isFinite(n) && n >= MIN_CUSTOM) {
+                        trackTipCustomEntered({ amount: n });
+                      }
+                    }}
+                    placeholder={MIN_CUSTOM.toFixed(2)}
+                    autoFocus
+                    className="w-full h-10 pl-7 pr-3 rounded-md border border-input bg-input text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40 tabular-nums"
+                  />
+                </div>
+                {customAmount && totalAmount < MIN_CUSTOM && (
+                  <p className="text-xs text-destructive mt-1.5">
+                    {t("tip_custom_min_error")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Split toggle */}
+            {canSplit && (
+              <label className="flex items-start gap-2.5 py-2 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={isSplit}
+                  onChange={(e) => {
+                    setIsSplit(e.target.checked);
+                    trackTipSplitToggled({
+                      is_on: e.target.checked,
+                      participants: participantCount,
+                    });
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-input bg-input text-primary focus:ring-ring/40 focus:ring-2"
+                />
+                <span className="text-sm text-foreground leading-snug">
+                  {t("tip_split_toggle").replace(
+                    "{count}",
+                    String(participantCount),
+                  )}
+                  {isSplit && (
+                    <span className="block text-xs text-muted-foreground mt-0.5 tabular-nums">
+                      {t("tip_split_per_person").replace(
+                        "{amount}",
+                        perPersonAmount.toFixed(2),
+                      )}
+                    </span>
+                  )}
+                </span>
+              </label>
+            )}
+
+            {/* CTA */}
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!isValid || submitting}
+              size="lg"
+              className="w-full mt-3"
+            >
+              {t("tip_cta").replace("{amount}", totalAmount.toFixed(2))}
+            </Button>
+
+            {!hasEmail && (
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                {t("tip_requires_signin")}
+              </p>
+            )}
+            {error && (
+              <p className="text-xs text-destructive mt-2 text-center">{error}</p>
+            )}
+
+            <MeetTheDeveloper lang={lang} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

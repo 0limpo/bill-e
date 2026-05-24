@@ -20,6 +20,7 @@ import { toggleParticipantPaid, getDeviceId, getSessionTip, type SessionTip } fr
 import { getStoredToken, isSupporter, getStoredUser } from "@/lib/auth";
 import { TipWidget } from "@/components/TipWidget";
 import { type Language } from "@/lib/i18n";
+import { getLocalFx } from "@/lib/fx";
 
 interface StepShareProps {
   items: Item[];
@@ -210,6 +211,26 @@ export function StepShare({
     if (participants.length === 0) return null;
     return Math.round((tipPreview.amountTotal / participants.length) * 100) / 100;
   }, [tipPerPersonUsd, tipPreview, participants.length]);
+
+  // FX: convert USD tip to local currency (inferred from IP geo) so the
+  // Bill-e line and the participant Total are in the same units as the
+  // rest of the bill. Fetched once on mount; falls back to USD-only display.
+  const [fx, setFx] = useState<{ currency: string; rate: number } | null>(null);
+  useEffect(() => {
+    const showsAnyTip = tipPerPersonUsd !== null || tipPreviewPerPersonUsd !== null;
+    if (!showsAnyTip || fx !== null) return;
+    let cancelled = false;
+    getLocalFx().then((result) => {
+      if (!cancelled && result) setFx(result);
+    });
+    return () => { cancelled = true; };
+  }, [tipPerPersonUsd, tipPreviewPerPersonUsd, fx]);
+
+  // Effective per-person tip in USD: real wins, preview otherwise.
+  const tipUsd = tipPerPersonUsd ?? tipPreviewPerPersonUsd;
+  const tipIsPreview = tipPerPersonUsd === null && tipPreviewPerPersonUsd !== null;
+  // Per-person tip converted to local currency (if FX available).
+  const tipLocal = tipUsd != null && fx != null ? tipUsd * fx.rate : null;
 
   // Prefer explicit decimals from parent (which knows session.decimal_places),
   // fall back to item-level detection.
@@ -480,25 +501,45 @@ export function StepShare({
                         </div>
                       ))}
 
-                    {/* Total */}
-                    <div className="flex items-center justify-between py-1 text-sm font-semibold border-t border-border/30 mt-1 pt-2">
-                      <span>{t("items.total")}</span>
-                      <span className="tabular-nums text-foreground">{fmt(total)}</span>
-                    </div>
-
-                    {/* Bill-e tip line — shown in USD, separate from local currency total.
-                        Real tip (post-payment) wins; preview only renders when host has
-                        toggled split in TipWidget but hasn't paid yet. */}
-                    {tipPerPersonUsd !== null && (
-                      <div className="flex justify-between text-sm text-emerald-700 mt-1">
-                        <span>{t("tip_line_label")}</span>
-                        <span>+${tipPerPersonUsd.toFixed(2)} USD</span>
+                    {/* Bill-e tip line — placed inline above the Total so the
+                        Total reflects the full amount the participant will owe.
+                        Real tip wins over preview. FX-converted to local currency
+                        when available; falls back below the Total in USD-only mode. */}
+                    {tipUsd !== null && tipLocal !== null && (
+                      <div
+                        className={
+                          "flex items-center justify-between py-1 text-sm " +
+                          (tipIsPreview ? "text-muted-foreground italic" : "text-foreground")
+                        }
+                      >
+                        <span>{tipIsPreview ? t("tip_line_label_preview") : t("tip_line_label")}</span>
+                        <span className="tabular-nums">
+                          +{fmt(tipLocal)}
+                          <span className="ml-1.5 text-xs text-muted-foreground">
+                            (≈${tipUsd.toFixed(2)} USD)
+                          </span>
+                        </span>
                       </div>
                     )}
-                    {tipPerPersonUsd === null && tipPreviewPerPersonUsd !== null && (
-                      <div className="flex justify-between text-sm text-muted-foreground mt-1 italic">
-                        <span>{t("tip_line_label_preview")}</span>
-                        <span>+${tipPreviewPerPersonUsd.toFixed(2)} USD</span>
+
+                    {/* Total — includes tipLocal when FX available */}
+                    <div className="flex items-center justify-between py-1 text-sm font-semibold border-t border-border/30 mt-1 pt-2">
+                      <span>{t("items.total")}</span>
+                      <span className="tabular-nums text-foreground">
+                        {fmt(total + (tipLocal ?? 0))}
+                      </span>
+                    </div>
+
+                    {/* USD fallback line — only when FX failed; Total stays in local-only */}
+                    {tipUsd !== null && tipLocal === null && (
+                      <div
+                        className={
+                          "flex justify-between text-sm mt-1 " +
+                          (tipIsPreview ? "text-muted-foreground italic" : "text-foreground")
+                        }
+                      >
+                        <span>{tipIsPreview ? t("tip_line_label_preview") : t("tip_line_label")}</span>
+                        <span className="tabular-nums">+${tipUsd.toFixed(2)} USD</span>
                       </div>
                     )}
                   </div>
