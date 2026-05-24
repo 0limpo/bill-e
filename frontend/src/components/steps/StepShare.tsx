@@ -229,8 +229,15 @@ export function StepShare({
   // Effective per-person tip in USD: real wins, preview otherwise.
   const tipUsd = tipPerPersonUsd ?? tipPreviewPerPersonUsd;
   const tipIsPreview = tipPerPersonUsd === null && tipPreviewPerPersonUsd !== null;
-  // Per-person tip converted to local currency (if FX available).
-  const tipLocal = tipUsd != null && fx != null ? tipUsd * fx.rate : null;
+  // Per-person tip in the bill's local currency. Priority:
+  //   1. Host's manual override (exact value, no conversion)
+  //   2. FX-auto-converted from USD (best effort, may be null)
+  const tipLocal: number | null = (() => {
+    if (tip?.manual_per_editor_local != null) return tip.manual_per_editor_local;
+    if (tipUsd != null && fx != null) return tipUsd * fx.rate;
+    return null;
+  })();
+  const tipLocalIsManual = tip?.manual_per_editor_local != null;
 
   // Prefer explicit decimals from parent (which knows session.decimal_places),
   // fall back to item-level detection.
@@ -503,9 +510,9 @@ export function StepShare({
 
                     {/* Bill-e tip line — placed inline above the Total so the
                         Total reflects the full amount the participant will owe.
-                        Real tip wins over preview. FX-converted to local currency
-                        when available; falls back below the Total in USD-only mode. */}
-                    {tipUsd !== null && tipLocal !== null && (
+                        Value priority: host's manual override > FX-converted USD.
+                        Falls back to a USD-only line below the Total if FX failed. */}
+                    {tipLocal !== null && (
                       <div
                         className={
                           "flex items-center justify-between py-1 text-sm " +
@@ -515,9 +522,11 @@ export function StepShare({
                         <span>{tipIsPreview ? t("tip_line_label_preview") : t("tip_line_label")}</span>
                         <span className="tabular-nums">
                           +{fmt(tipLocal)}
-                          <span className="ml-1.5 text-xs text-muted-foreground">
-                            (≈${tipUsd.toFixed(2)} USD)
-                          </span>
+                          {tipUsd !== null && !tipLocalIsManual && (
+                            <span className="ml-1.5 text-xs text-muted-foreground">
+                              (≈${tipUsd.toFixed(2)} USD)
+                            </span>
+                          )}
                         </span>
                       </div>
                     )}

@@ -198,3 +198,26 @@ def test_update_tip_request_requires_owner_token():
     from pydantic import ValidationError
     with pytest.raises(ValidationError):
         UpdateTipRequest(total_paid_usd=5.0)  # missing owner_token
+
+
+def test_update_tip_request_accepts_only_manual_per_editor_local():
+    """New field allows host to override the per-editor local amount without
+    touching total_paid_usd. Either field alone is a valid request."""
+    from main import UpdateTipRequest
+    req = UpdateTipRequest(owner_token="t", manual_per_editor_local=2500)
+    assert req.manual_per_editor_local == 2500
+    assert req.total_paid_usd is None
+
+
+def test_update_tip_request_allows_both_fields():
+    from main import UpdateTipRequest
+    req = UpdateTipRequest(owner_token="t", total_paid_usd=5.0, manual_per_editor_local=2500)
+    assert req.total_paid_usd == 5.0
+    assert req.manual_per_editor_local == 2500
+
+
+def test_update_tip_request_rejects_negative_manual_per_editor_local():
+    from main import UpdateTipRequest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        UpdateTipRequest(owner_token="t", manual_per_editor_local=-1)

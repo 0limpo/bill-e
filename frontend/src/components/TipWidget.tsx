@@ -72,6 +72,11 @@ export function TipWidget({
   const [savingManual, setSavingManual] = useState(false);
   const [manualSaved, setManualSaved] = useState(false);
 
+  // Manual per-editor local-currency override (independent of the USD field above).
+  const [manualLocal, setManualLocal] = useState<string>("");
+  const [savingLocal, setSavingLocal] = useState(false);
+  const [localSaved, setLocalSaved] = useState(false);
+
   useEffect(() => {
     setCollapsed(alreadyTipped);
   }, [alreadyTipped]);
@@ -92,6 +97,24 @@ export function TipWidget({
       /* swallow — could surface an error state later if it matters */
     }
     setSavingManual(false);
+  }
+
+  async function handleLocalSave() {
+    if (!ownerToken) return;
+    const amount = parseFloat(manualLocal);
+    if (!Number.isFinite(amount) || amount < 0) return;
+    setSavingLocal(true);
+    setLocalSaved(false);
+    try {
+      await updateTipTotalPaid(sessionId, {
+        manual_per_editor_local: amount,
+        owner_token: ownerToken,
+      });
+      setLocalSaved(true);
+    } catch {
+      /* swallow */
+    }
+    setSavingLocal(false);
   }
 
   const totalAmount = useMemo(() => {
@@ -168,37 +191,77 @@ export function TipWidget({
         </div>
 
         {ownerToken && (
-          <div className="mt-4 border-t border-border/60 pt-3">
-            <label className="block text-xs font-medium text-foreground mb-1">
-              {t("tip_manual_edit_label")}
-            </label>
-            <p className="text-[11px] leading-snug text-muted-foreground mb-2">
-              {t("tip_manual_edit_hint")}
-            </p>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                inputMode="decimal"
-                min={1}
-                step="0.01"
-                value={manualAmount}
-                onChange={(e) => setManualAmount(e.target.value)}
-                placeholder="0.00"
-                className="flex-1 h-8 px-2.5 rounded-md border border-input bg-input text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
-              />
-              <Button
-                type="button"
-                onClick={handleManualSave}
-                size="sm"
-                variant="secondary"
-                disabled={
-                  !Number.isFinite(parseFloat(manualAmount)) ||
-                  parseFloat(manualAmount) < 1 ||
-                  savingManual
-                }
-              >
-                {manualSaved ? t("tip_manual_edit_saved") : t("tip_manual_edit_save")}
-              </Button>
+          <div className="mt-4 space-y-4 border-t border-border/60 pt-3">
+            {/* Manual override: actual USD paid to Polar */}
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">
+                {t("tip_manual_edit_label")}
+              </label>
+              <p className="text-[11px] leading-snug text-muted-foreground mb-2">
+                {t("tip_manual_edit_hint")}
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={1}
+                  step="0.01"
+                  value={manualAmount}
+                  onChange={(e) => setManualAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="flex-1 h-8 px-2.5 rounded-md border border-input bg-input text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+                <Button
+                  type="button"
+                  onClick={handleManualSave}
+                  size="sm"
+                  variant="secondary"
+                  disabled={
+                    !Number.isFinite(parseFloat(manualAmount)) ||
+                    parseFloat(manualAmount) < 1 ||
+                    savingManual
+                  }
+                >
+                  {manualSaved ? t("tip_manual_edit_saved") : t("tip_manual_edit_save")}
+                </Button>
+              </div>
+            </div>
+
+            {/* Manual override: per-editor amount in the bill's local currency.
+                Useful when FX conversion is wrong/missing or the host wants
+                clean round numbers. When set, editors see this exact value. */}
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">
+                {t("tip_manual_local_label")}
+              </label>
+              <p className="text-[11px] leading-snug text-muted-foreground mb-2">
+                {t("tip_manual_local_hint")}
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  step="0.01"
+                  value={manualLocal}
+                  onChange={(e) => setManualLocal(e.target.value)}
+                  placeholder="0"
+                  className="flex-1 h-8 px-2.5 rounded-md border border-input bg-input text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/40"
+                />
+                <Button
+                  type="button"
+                  onClick={handleLocalSave}
+                  size="sm"
+                  variant="secondary"
+                  disabled={
+                    !Number.isFinite(parseFloat(manualLocal)) ||
+                    parseFloat(manualLocal) < 0 ||
+                    savingLocal
+                  }
+                >
+                  {localSaved ? t("tip_manual_edit_saved") : t("tip_manual_edit_save")}
+                </Button>
+              </div>
             </div>
           </div>
         )}

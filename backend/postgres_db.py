@@ -36,6 +36,7 @@ _MIGRATIONS = [
     "ALTER TABLE session_snapshots ADD COLUMN IF NOT EXISTS totals JSON",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS supporter_until TIMESTAMP",
     "ALTER TABLE tips ADD COLUMN IF NOT EXISTS total_paid_usd NUMERIC(10, 2)",
+    "ALTER TABLE tips ADD COLUMN IF NOT EXISTS manual_per_editor_local NUMERIC(12, 2)",
 ]
 
 
@@ -307,6 +308,11 @@ class Tip(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     # Actual amount paid by host with tax (from Polar webhook). Null until webhook arrives.
     total_paid_usd = Column(Numeric(10, 2), nullable=True)
+    # Manual per-editor amount in the bill's local currency. Set by the host
+    # when FX auto-conversion is wrong, when they want a clean round number,
+    # or when their bill is in a currency we couldn't auto-detect. When set,
+    # editors see this exact value (and the participant Total includes it).
+    manual_per_editor_local = Column(Numeric(12, 2), nullable=True)
 
     __table_args__ = (
         Index('ix_tips_session_id', 'session_id'),
@@ -2391,6 +2397,7 @@ def get_tip_for_session(db, session_id: str) -> Optional[Dict[str, Any]]:
         "amount_total_usd": float(tip.amount_total_usd) if tip.amount_total_usd is not None else None,
         "amount_charged_usd": float(tip.amount_charged_usd) if tip.amount_charged_usd is not None else None,
         "total_paid_usd": float(tip.total_paid_usd) if tip.total_paid_usd is not None else None,
+        "manual_per_editor_local": float(tip.manual_per_editor_local) if tip.manual_per_editor_local is not None else None,
         "is_split": tip.is_split,
         "participant_count": tip.participant_count,
         "polar_order_id": tip.polar_order_id,
@@ -2398,10 +2405,17 @@ def get_tip_for_session(db, session_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
-def update_tip_total_paid(db, session_id: str, total_paid_usd: float) -> bool:
-    """Manually override the actual paid amount for the most recent tip in a session.
-    Used as a fallback when the webhook didn't arrive or the host wants to round.
-    Returns True if a row was updated, False otherwise."""
+def update_tip_fields(
+    db,
+    session_id: str,
+    *,
+    total_paid_usd: Optional[float] = None,
+    manual_per_editor_local: Optional[float] = None,
+) -> bool:
+    """Update one or more editable fields on the most recent tip for a session.
+    Returns True if a row was updated, False if no tip exists or no fields were provided."""
+    if total_paid_usd is None and manual_per_editor_local is None:
+        return False
     tip = (
         db.query(Tip)
         .filter_by(session_id=session_id)
@@ -2410,9 +2424,17 @@ def update_tip_total_paid(db, session_id: str, total_paid_usd: float) -> bool:
     )
     if tip is None:
         return False
-    tip.total_paid_usd = f"{total_paid_usd:.2f}"
+    if total_paid_usd is not None:
+        tip.total_paid_usd = f"{total_paid_usd:.2f}"
+    if manual_per_editor_local is not None:
+        tip.manual_per_editor_local = f"{manual_per_editor_local:.2f}"
     db.commit()
     return True
+
+
+def update_tip_total_paid(db, session_id: str, total_paid_usd: float) -> bool:
+    """Backwards-compatible shim. New code should use `update_tip_fields`."""
+    return update_tip_fields(db, session_id, total_paid_usd=total_paid_usd)
 
 
 def migrate_premium_to_supporter(db_session=None, *, now=None) -> Dict[str, Any]:

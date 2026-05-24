@@ -967,6 +967,10 @@ export interface SessionTip {
   amount_total_usd: number | null;
   amount_charged_usd: number | null;
   total_paid_usd: number | null;
+  /** Host's manual override of the per-editor amount in the bill's local currency.
+   *  When set, editors see this exact value in their breakdown; otherwise the
+   *  frontend falls back to FX-converting `total_paid_usd`. */
+  manual_per_editor_local: number | null;
   is_split: boolean;
   participant_count: number;
   polar_order_id: string;
@@ -982,14 +986,20 @@ export async function getSessionTip(sessionId: string): Promise<SessionTip | nul
 }
 
 export interface UpdateTipPaidRequest {
-  total_paid_usd: number;
   owner_token: string;
+  /** At least one of these must be set. */
+  total_paid_usd?: number;
+  manual_per_editor_local?: number;
 }
 
 export async function updateTipTotalPaid(
   sessionId: string,
   req: UpdateTipPaidRequest
-): Promise<{ ok: boolean; total_paid_usd: number }> {
+): Promise<{
+  ok: boolean;
+  total_paid_usd: number | null;
+  manual_per_editor_local: number | null;
+}> {
   return apiRequest(`/api/session/${sessionId}/tip`, {
     method: "PATCH",
     body: JSON.stringify(req),
