@@ -569,22 +569,6 @@ export function StepShare({
         />
       )}
 
-      {/* Free-tier status — hidden when premium, when status hasn't loaded
-          yet, or when the participant is just viewing a saved snapshot
-          (counter was already settled the first time they reached p3). */}
-      {!isPremium && !isSnapshot && freeRemaining !== null && (
-        <div className="mt-3 text-center text-xs text-muted-foreground">
-          {freeRemaining === 0
-            ? t("freeTier.lastUsed")
-            : t("freeTier.remaining").replace("{count}", String(freeRemaining))}
-        </div>
-      )}
-      {isPremium && (
-        <div className="mt-3 text-center text-xs text-primary/70 font-medium">
-          Premium
-        </div>
-      )}
-
       {/* Action Buttons */}
       <div className="flex gap-3 mt-8">
         {onBack && (
