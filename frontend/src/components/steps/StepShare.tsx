@@ -337,10 +337,13 @@ export function StepShare({
 
     participants.forEach((p) => {
       const { total } = calculateParticipantTotal(p.id, session);
-      message += `• ${p.name}: ${fmt(total)}\n`;
+      // Each participant's share includes their slice of the Bill-e tip
+      // when the host has elected to split it.
+      message += `• ${p.name}: ${fmt(total + (tipLocal ?? 0))}\n`;
     });
 
-    message += `\n💰 *${t("totals.total")}: ${fmt(totalAmount)}*`;
+    const grandTotal = totalAmount + (tipLocal != null ? tipLocal * participants.length : 0);
+    message += `\n💰 *${t("totals.total")}: ${fmt(grandTotal)}*`;
 
     if (sessionId) {
       message += `\n\n🔗 ${t("share.viewDetails")}:\n${frontendUrl}/s/${sessionId}?view=results`;
@@ -453,7 +456,7 @@ export function StepShare({
                   <span className="font-medium truncate">{p.name}</span>
                 </button>
                 <span className="font-semibold tabular-nums text-foreground">
-                  {fmt(total)}
+                  {fmt(total + (tipLocal ?? 0))}
                 </span>
                 {isOwner && isSnapshot ? (
                   <button
