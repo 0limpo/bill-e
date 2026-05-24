@@ -571,10 +571,12 @@ export function StepShare({
         })}
       </div>
 
-      {/* Grand Total */}
+      {/* Grand Total — includes the Bill-e tip (per-editor × N) when split is on. */}
       <div className="flex items-center justify-between p-4 mt-4 bg-primary/15 rounded-xl">
         <span className="font-semibold">{t("totals.tableTotal")}</span>
-        <span className="text-xl font-bold text-foreground">{fmt(totalAmount)}</span>
+        <span className="text-xl font-bold text-foreground">
+          {fmt(totalAmount + (tipLocal != null ? tipLocal * participants.length : 0))}
+        </span>
       </div>
 
       {/* Tip Widget */}
