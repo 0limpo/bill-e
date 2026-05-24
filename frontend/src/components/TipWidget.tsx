@@ -86,15 +86,20 @@ export function TipWidget({
   const [savingLocal, setSavingLocal] = useState(false);
   const [localSaved, setLocalSaved] = useState(false);
 
-  // Pre-tip manual override: typed in the expanded widget before paying.
-  // Lives in local state and is propagated up via onPreviewChange. When the
-  // host pays, this value is sent in the Polar checkout metadata so editors
-  // see it after the webhook persists.
-  const [preTipManualLocal, setPreTipManualLocal] = useState<string>("");
-  const preTipManualLocalNumeric: number | null = (() => {
-    const n = parseFloat(preTipManualLocal);
+  // Pre-tip manual override: host types the TOTAL tip amount in their bill's
+  // local currency; we divide by participant count to compute the per-editor
+  // amount. Lives in local state and is propagated via onPreviewChange. When
+  // the host pays, the per-editor amount goes via Polar metadata so editors
+  // see the same number after the webhook persists.
+  const [preTipManualLocalTotal, setPreTipManualLocalTotal] = useState<string>("");
+  const preTipManualLocalTotalNumeric: number | null = (() => {
+    const n = parseFloat(preTipManualLocalTotal);
     return Number.isFinite(n) && n > 0 ? n : null;
   })();
+  const preTipManualLocalPerEditor: number | null =
+    preTipManualLocalTotalNumeric != null && participantCount > 0
+      ? Math.round((preTipManualLocalTotalNumeric / participantCount) * 100) / 100
+      : null;
 
   useEffect(() => {
     setCollapsed(alreadyTipped);
@@ -120,13 +125,18 @@ export function TipWidget({
 
   async function handleLocalSave() {
     if (!ownerToken) return;
-    const amount = parseFloat(manualLocal);
-    if (!Number.isFinite(amount) || amount < 0) return;
+    const totalLocal = parseFloat(manualLocal);
+    if (!Number.isFinite(totalLocal) || totalLocal < 0) return;
+    // Host types the TOTAL tip in local currency; backend stores per-editor.
+    const perEditor =
+      participantCount > 0
+        ? Math.round((totalLocal / participantCount) * 100) / 100
+        : totalLocal;
     setSavingLocal(true);
     setLocalSaved(false);
     try {
       await updateTipTotalPaid(sessionId, {
-        manual_per_editor_local: amount,
+        manual_per_editor_local: perEditor,
         owner_token: ownerToken,
       });
       setLocalSaved(true);
@@ -165,9 +175,9 @@ export function TipWidget({
     onPreviewChange({
       amountTotal: totalAmount,
       isSplit: true,
-      manualLocalPerEditor: preTipManualLocalNumeric,
+      manualLocalPerEditor: preTipManualLocalPerEditor,
     });
-  }, [collapsed, expanded, isSplit, canSplit, totalAmount, preTipManualLocalNumeric, onPreviewChange]);
+  }, [collapsed, expanded, isSplit, canSplit, totalAmount, preTipManualLocalPerEditor, onPreviewChange]);
 
   async function handleSubmit() {
     if (!isValid || submitting) return;
@@ -185,8 +195,8 @@ export function TipWidget({
         is_split: isSplit && canSplit,
         participant_count: participantCount,
         google_email: hostEmail,
-        ...(preTipManualLocalNumeric != null && isSplit && canSplit
-          ? { manual_per_editor_local: preTipManualLocalNumeric }
+        ...(preTipManualLocalPerEditor != null && isSplit && canSplit
+          ? { manual_per_editor_local: preTipManualLocalPerEditor }
           : {}),
       });
       window.location.href = res.checkout_url;
@@ -454,12 +464,20 @@ export function TipWidget({
                     inputMode="decimal"
                     min={0}
                     step="0.01"
-                    value={preTipManualLocal}
-                    onChange={(e) => setPreTipManualLocal(e.target.value)}
+                    value={preTipManualLocalTotal}
+                    onChange={(e) => setPreTipManualLocalTotal(e.target.value)}
                     placeholder={t("tip_pretip_local_placeholder")}
                     className="w-full h-9 pl-7 pr-3 rounded-md border border-input bg-input text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring/40 tabular-nums"
                   />
                 </div>
+                {preTipManualLocalPerEditor != null && (
+                  <p className="text-[11px] text-muted-foreground mt-1.5 tabular-nums">
+                    {t("tip_pretip_local_per_editor").replace(
+                      "{amount}",
+                      preTipManualLocalPerEditor.toFixed(2),
+                    )}
+                  </p>
+                )}
               </div>
             )}
 
