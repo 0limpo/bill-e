@@ -1249,8 +1249,10 @@ async def enter_share_endpoint(session_id: str, request: Request):
 
 
 class UpdateTipRequest(BaseModel):
-    total_paid_usd: float = Field(ge=3.49)
     owner_token: str
+    # Both fields are optional but at least one must be provided. Validated below.
+    total_paid_usd: Optional[float] = Field(default=None, ge=3.49)
+    manual_per_editor_local: Optional[float] = Field(default=None, ge=0)
 
 
 @app.get("/api/session/{session_id}/tip")
@@ -1272,9 +1274,15 @@ async def get_session_tip(session_id: str):
 
 @app.patch("/api/session/{session_id}/tip")
 async def patch_session_tip(session_id: str, req: UpdateTipRequest):
-    """Manual override for the actual paid amount. Host-only (owner_token required)."""
+    """Manual override for tip fields. Host-only (owner_token required).
+    At least one of `total_paid_usd` or `manual_per_editor_local` must be sent."""
     if not postgres_available:
         raise HTTPException(status_code=503, detail="Postgres not available")
+    if req.total_paid_usd is None and req.manual_per_editor_local is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Debe enviar total_paid_usd o manual_per_editor_local",
+        )
 
     # Verify owner via session Redis state
     session_data = get_collab_session(redis_client, session_id)
@@ -1287,10 +1295,19 @@ async def patch_session_tip(session_id: str, req: UpdateTipRequest):
         with postgres_db.get_db() as db:
             if db is None:
                 raise HTTPException(status_code=503, detail="DB session unavailable")
-            ok = postgres_db.update_tip_total_paid(db, session_id, req.total_paid_usd)
+            ok = postgres_db.update_tip_fields(
+                db,
+                session_id,
+                total_paid_usd=req.total_paid_usd,
+                manual_per_editor_local=req.manual_per_editor_local,
+            )
             if not ok:
                 raise HTTPException(status_code=404, detail="No tip exists for this session")
-            return {"ok": True, "total_paid_usd": req.total_paid_usd}
+            return {
+                "ok": True,
+                "total_paid_usd": req.total_paid_usd,
+                "manual_per_editor_local": req.manual_per_editor_local,
+            }
     except HTTPException:
         raise
     except Exception as e:
