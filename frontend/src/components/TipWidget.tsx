@@ -22,6 +22,10 @@ interface Props {
   lang: Language;
   alreadyTipped?: boolean;
   ownerToken?: string;  // Only present for the host; enables manual tip amount override
+  /** Fires whenever the host's tip selection changes, so the parent can preview
+   *  the per-participant Bill-e line in editors' totals before payment.
+   *  Null means "no active preview" (collapsed / not split / invalid amount). */
+  onPreviewChange?: (preview: { amountTotal: number; isSplit: boolean } | null) => void;
 }
 
 export function TipWidget({
@@ -31,6 +35,7 @@ export function TipWidget({
   lang,
   alreadyTipped = false,
   ownerToken,
+  onPreviewChange,
 }: Props) {
   const t = getTranslator(lang);
   const [selected, setSelected] = useState<number | "custom">(DEFAULT_PRESET);
@@ -74,13 +79,29 @@ export function TipWidget({
   }, [selected, customAmount]);
 
   const canSplit = participantCount >= 2;
-  const chargedAmount = useMemo(() => {
-    if (isSplit && canSplit) return Math.round((totalAmount / participantCount) * 100) / 100;
-    return totalAmount;
+  // Host always pays the full tip to Polar (Bill-e gets the full amount).
+  // The split toggle is about WHO contributes to that cost socially:
+  // when split is on, each editor sees a "Bill-e $X" line in their bill
+  // representing what they're chipping in to reimburse the host.
+  // Bill-e never touches the editor→host transfer.
+  const perPersonAmount = useMemo(() => {
+    if (!isSplit || !canSplit) return totalAmount;
+    return Math.round((totalAmount / participantCount) * 100) / 100;
   }, [totalAmount, isSplit, participantCount, canSplit]);
 
   const hasEmail = Boolean(hostEmail && hostEmail.trim().length > 0);
   const isValid = totalAmount >= MIN_CUSTOM && hasEmail;
+
+  // Emit preview to parent. Null when collapsed (post-tip), not split, or
+  // amount invalid — in those cases the parent should not show a preview line.
+  useEffect(() => {
+    if (!onPreviewChange) return;
+    if (collapsed || !isSplit || !canSplit || totalAmount < MIN_CUSTOM) {
+      onPreviewChange(null);
+      return;
+    }
+    onPreviewChange({ amountTotal: totalAmount, isSplit: true });
+  }, [collapsed, isSplit, canSplit, totalAmount, onPreviewChange]);
 
   async function handleSubmit() {
     if (!isValid || submitting) return;
@@ -89,7 +110,7 @@ export function TipWidget({
     try {
       trackTipCheckoutStarted({
         amount_total: totalAmount,
-        amount_charged_host: chargedAmount,
+        amount_charged_host: totalAmount,  // host now always pays full amount
         is_split: isSplit && canSplit,
       });
       const res = await createTipCheckout({
@@ -222,7 +243,7 @@ export function TipWidget({
             {t("tip_split_toggle").replace("{count}", String(participantCount))}
             {isSplit && (
               <span className="block text-xs text-gray-500 mt-0.5">
-                {t("tip_split_per_person").replace("{amount}", chargedAmount.toFixed(2))}
+                {t("tip_split_per_person").replace("{amount}", perPersonAmount.toFixed(2))}
               </span>
             )}
           </span>
@@ -235,7 +256,7 @@ export function TipWidget({
         disabled={!isValid || submitting}
         className="mt-4 w-full px-4 py-3 rounded-lg bg-emerald-600 text-white font-semibold disabled:opacity-50"
       >
-        {t("tip_cta").replace("{amount}", chargedAmount.toFixed(2))}
+        {t("tip_cta").replace("{amount}", totalAmount.toFixed(2))}
       </button>
 
       {!hasEmail && (

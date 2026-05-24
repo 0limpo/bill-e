@@ -199,6 +199,18 @@ export function StepShare({
     return Math.round((totalForSplit / tip.participant_count) * 100) / 100;
   }, [tip]);
 
+  // Pre-payment preview: host has toggled "split" in TipWidget but hasn't paid yet.
+  // Lets each participant see what they will owe BEFORE the host commits.
+  // Real tip (above) always wins when both exist.
+  const [tipPreview, setTipPreview] = useState<{ amountTotal: number; isSplit: boolean } | null>(null);
+
+  const tipPreviewPerPersonUsd = useMemo<number | null>(() => {
+    if (tipPerPersonUsd !== null) return null;  // real tip takes precedence
+    if (!tipPreview || !tipPreview.isSplit) return null;
+    if (participants.length === 0) return null;
+    return Math.round((tipPreview.amountTotal / participants.length) * 100) / 100;
+  }, [tipPerPersonUsd, tipPreview, participants.length]);
+
   // Prefer explicit decimals from parent (which knows session.decimal_places),
   // fall back to item-level detection.
   const decimals = decimalsProp ?? detectDecimals(items);
@@ -474,11 +486,19 @@ export function StepShare({
                       <span className="tabular-nums text-foreground">{fmt(total)}</span>
                     </div>
 
-                    {/* Bill-e tip line — shown in USD, separate from local currency total */}
+                    {/* Bill-e tip line — shown in USD, separate from local currency total.
+                        Real tip (post-payment) wins; preview only renders when host has
+                        toggled split in TipWidget but hasn't paid yet. */}
                     {tipPerPersonUsd !== null && (
                       <div className="flex justify-between text-sm text-emerald-700 mt-1">
                         <span>{t("tip_line_label")}</span>
                         <span>+${tipPerPersonUsd.toFixed(2)} USD</span>
+                      </div>
+                    )}
+                    {tipPerPersonUsd === null && tipPreviewPerPersonUsd !== null && (
+                      <div className="flex justify-between text-sm text-muted-foreground mt-1 italic">
+                        <span>{t("tip_line_label_preview")}</span>
+                        <span>+${tipPreviewPerPersonUsd.toFixed(2)} USD</span>
                       </div>
                     )}
                   </div>
@@ -504,6 +524,7 @@ export function StepShare({
           lang={lang}
           alreadyTipped={alreadyTipped}
           ownerToken={ownerToken ?? undefined}
+          onPreviewChange={setTipPreview}
         />
       )}
 
