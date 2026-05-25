@@ -506,11 +506,6 @@ export default function SessionPage() {
     mode: item.mode,
   }));
 
-  // Use the max of backend decimal_places and what the items actually need.
-  // ?? alone fails when backend returns 0 (default) but items have decimals,
-  // which made the host see CLP-style integers while editors saw the decimals.
-  const decimals = Math.max(session?.decimal_places ?? 0, detectDecimals(items));
-
   const priceMode = session?.price_mode || "unitario";
 
   const charges: Charge[] = (session?.charges || []).map((c) => ({
@@ -534,6 +529,15 @@ export default function SessionPage() {
   }));
 
   const assignments: Record<string, Assignment[]> = session?.assignments || {};
+
+  // Use the max of backend decimal_places and what the view actually needs.
+  // detectDecimals ahora también revisa charges y los totales calculados por
+  // participante: cubre el caso de ítems enteros donde splits o cargos
+  // porcentuales producen decimales en lo que se muestra al usuario.
+  const decimals = Math.max(
+    session?.decimal_places ?? 0,
+    detectDecimals(items, charges, { items, charges, participants, assignments })
+  );
 
   // --- Handlers ---
 

@@ -145,18 +145,48 @@ export const formatCurrency = (
 };
 
 /**
- * Detect if any item in the list has decimal prices
- * Returns 2 if decimals found, 0 otherwise
+ * Detect whether the view should render 2 decimals.
+ *
+ * Mira ítems, charges (valor + amount calculado), y opcionalmente los
+ * totales por participante calculados a partir de session. Devuelve 2 si
+ * cualquier valor que se vaya a mostrar tiene parte fraccional > medio
+ * centavo (tolerancia para residuo de punto flotante).
+ *
+ * Cubre el caso donde los ítems vienen enteros pero splits o cargos
+ * porcentuales producen decimales en los totales por persona.
  */
-export const detectDecimals = (items: Item[] | undefined): number => {
-  if (!items || items.length === 0) return 0;
+export const detectDecimals = (
+  items: Item[] | undefined,
+  charges?: Charge[],
+  session?: Session
+): number => {
+  const HALF_CENT = 0.005;
+  const hasFraction = (n: number) => Math.abs(n - Math.round(n)) > HALF_CENT;
 
-  for (const item of items) {
-    // Check if price has decimal part
-    if (item.price % 1 !== 0) return 2;
-    // Also check price_as_shown if available
-    if (item.price_as_shown && item.price_as_shown % 1 !== 0) return 2;
+  if (items) {
+    for (const item of items) {
+      if (hasFraction(item.price)) return 2;
+      if (item.price_as_shown != null && hasFraction(item.price_as_shown)) return 2;
+    }
   }
+
+  if (charges) {
+    for (const c of charges) {
+      if (hasFraction(c.value)) return 2;
+      if (c.calculatedAmount != null && hasFraction(c.calculatedAmount)) return 2;
+    }
+  }
+
+  if (session && session.participants) {
+    for (const p of session.participants) {
+      const { total, charges: pCharges } = calculateParticipantTotal(p.id, session);
+      if (hasFraction(total)) return 2;
+      for (const pc of pCharges) {
+        if (hasFraction(pc.amount)) return 2;
+      }
+    }
+  }
+
   return 0;
 };
 
