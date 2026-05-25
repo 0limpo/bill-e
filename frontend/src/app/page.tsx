@@ -396,11 +396,6 @@ export default function LandingPage() {
         <p className="text-base text-muted-foreground">
           {t("app.subtitle")}
         </p>
-        <p className="mt-1 text-sm text-muted-foreground/70">
-          <span className="font-medium text-foreground/80">{t("landing_pricing_title")}</span>
-          {" · "}
-          {t("landing_pricing_subtitle")}
-        </p>
       </div>
 
       {/* CTA */}
