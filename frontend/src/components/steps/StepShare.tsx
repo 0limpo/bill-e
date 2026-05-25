@@ -610,7 +610,13 @@ export function StepShare({
           <Button
             size="lg"
             className="flex-1 h-12 font-semibold"
-            onClick={() => setShareSheetOpen(true)}
+            onClick={() => {
+              if (hasNativeShare) {
+                shareNative();
+              } else {
+                setShareSheetOpen(true);
+              }
+            }}
           >
             <Share2 className="w-4 h-4 mr-2" />
             {t("share.button")}
