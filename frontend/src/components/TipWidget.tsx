@@ -23,6 +23,9 @@ interface Props {
   hostEmail: string;
   lang: Language;
   alreadyTipped?: boolean;
+  /** When true, the thank-you message uses split-friendly wording (also
+   *  thanking editors who chipped in), instead of host-only wording. */
+  tipIsSplit?: boolean;
   ownerToken?: string;
   /** Fires whenever the host's tip selection changes, so the parent can preview
    *  the per-participant Bill-e line. `manualLocalPerEditor` is the host's
@@ -62,6 +65,7 @@ export function TipWidget({
   hostEmail,
   lang,
   alreadyTipped = false,
+  tipIsSplit = false,
   ownerToken,
   onPreviewChange,
 }: Props) {
@@ -215,7 +219,9 @@ export function TipWidget({
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-primary text-sm">
               ✓
             </span>
-            <span className="text-sm font-medium">{t("tip_thanks_title")}</span>
+            <span className="text-sm font-medium">
+              {t(tipIsSplit ? "tip_thanks_title_split" : "tip_thanks_title")}
+            </span>
           </div>
           <button
             type="button"

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { Loader2, LogIn } from "lucide-react";
-import { createCollaborativeSession, getBillHistory, getDeviceId } from "@/lib/api";
+import { createCollaborativeSession, getBillHistory, getDeviceId, getMyRecentTip } from "@/lib/api";
 import { getStoredUser, clearAuth, setStoredUser, startOAuthLogin, handleAuthCallback, verifyToken, refreshStoredUser, ensureDeviceLinked, type AuthUser } from "@/lib/auth";
 import { trackAppOpen, trackPhotoTaken, trackOcrComplete } from "@/lib/tracking";
 import { getTranslator, detectLanguage, type Language } from "@/lib/i18n";
@@ -111,6 +111,9 @@ export default function LandingPage() {
   const [billCount, setBillCount] = useState(0);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  // ISO date of the logged-in user's most recent tip. Drives the 90-day
+  // thank-you banner. null = either not logged in, or never tipped.
+  const [recentTipAt, setRecentTipAt] = useState<string | null>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const t = getTranslator(lang);
@@ -143,6 +146,12 @@ export default function LandingPage() {
         setBillCount(res.count);
         localStorage.setItem('bill-e-bill-count', String(res.count));
       })
+      .catch(() => {});
+
+    // Fetch the user's most recent tip date (no-op if not logged in). Drives
+    // the 90-day thank-you banner below the main CTAs.
+    getMyRecentTip()
+      .then((r) => setRecentTipAt(r.created_at))
       .catch(() => {});
   }, []);
 
@@ -464,6 +473,15 @@ export default function LandingPage() {
             <p className="text-sm font-medium text-foreground">{t("bills.myBills")}</p>
             <p className="text-xs text-muted-foreground">{t("bills.count").replace("{n}", String(billCount))}</p>
           </button>
+        )}
+
+        {/* Thank-you banner — shown for 90 days after the user's most recent
+            tip. Only renders when logged in and a tip exists within the window. */}
+        {user && recentTipAt && (Date.now() - new Date(recentTipAt).getTime()) < 90 * 24 * 60 * 60 * 1000 && (
+          <div className="mt-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+            <p className="text-sm font-medium text-foreground">{t("home.tipThanksTitle")}</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">{t("home.tipThanksBody")}</p>
+          </div>
         )}
       </div>
 

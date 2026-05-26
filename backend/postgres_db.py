@@ -2407,6 +2407,22 @@ def get_tip_for_session(db, session_id: str) -> Optional[Dict[str, Any]]:
     }
 
 
+def get_most_recent_tip_by_email(db, host_email: str) -> Optional[Dict[str, Any]]:
+    """Return the most recent tip by this host (by email), or None."""
+    tip = (
+        db.query(Tip)
+        .filter_by(host_email=host_email)
+        .order_by(Tip.created_at.desc())
+        .first()
+    )
+    if tip is None:
+        return None
+    return {
+        "created_at": tip.created_at.isoformat(),
+        "amount_total_usd": float(tip.amount_total_usd) if tip.amount_total_usd is not None else None,
+    }
+
+
 def update_tip_fields(
     db,
     session_id: str,
