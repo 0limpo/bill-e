@@ -4344,6 +4344,38 @@ async def get_current_user(authorization: str = None):
     }
 
 
+@app.get("/api/user/me/recent-tip")
+async def get_my_recent_tip(authorization: str = None):
+    """Return the most recent tip date for the logged-in user, or null.
+    Used by the homepage to show a 90-day thank-you banner."""
+    if not auth_available:
+        raise HTTPException(status_code=503, detail="Authentication not available")
+    if not postgres_available:
+        return {"created_at": None}
+
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Authorization header required")
+
+    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+    payload = oauth_auth.verify_session_token(token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    email = payload.get("email")
+    if not email:
+        return {"created_at": None}
+
+    try:
+        with postgres_db.get_db() as db:
+            if db is None:
+                return {"created_at": None}
+            tip = postgres_db.get_most_recent_tip_by_email(db, email)
+            return tip or {"created_at": None}
+    except Exception as e:
+        print(f"GET recent-tip failed: {e}")
+        return {"created_at": None}
+
+
 @app.post("/api/auth/claim-device")
 async def claim_device(request: Request):
     """

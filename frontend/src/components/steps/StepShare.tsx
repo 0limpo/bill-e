@@ -33,6 +33,10 @@ interface StepShareProps {
   isOwner?: boolean;
   sessionId?: string;
   ownerParticipantId?: string;
+  /** Participant id of whoever is currently viewing the session (null for
+   *  random visitors with the link who haven't joined as editor). Used to
+   *  decide who sees the persistent tip thank-you on split tips. */
+  currentParticipantId?: string;
   // Optional override — see StepAssign for why this is needed.
   decimals?: number;
   // Toggle-paid only persists when the session is a finalized snapshot
@@ -61,6 +65,7 @@ export function StepShare({
   isOwner = false,
   sessionId,
   ownerParticipantId,
+  currentParticipantId,
   decimals: decimalsProp,
   isSnapshot = false,
   freeRemaining = null,
@@ -586,7 +591,15 @@ export function StepShare({
           participantCount={participants.length}
           hostEmail={hostEmail}
           lang={lang}
-          alreadyTipped={alreadyTipped}
+          alreadyTipped={
+            // Optimistic signal right after Polar redirect (URL param), OR
+            // persistent DB-driven signal: a tip exists for this session
+            // AND the viewer is entitled to see the thanks.
+            alreadyTipped ||
+            (tip !== null &&
+              (isOwner || (tip.is_split && currentParticipantId != null)))
+          }
+          tipIsSplit={tip?.is_split ?? false}
           ownerToken={ownerToken ?? undefined}
           onPreviewChange={setTipPreview}
         />

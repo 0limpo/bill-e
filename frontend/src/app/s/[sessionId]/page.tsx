@@ -1593,6 +1593,7 @@ export default function SessionPage() {
             isOwner={isOwner}
             sessionId={sessionId}
             ownerParticipantId={session?.participants?.find((p) => p.role === "owner")?.id}
+            currentParticipantId={currentParticipant?.id}
             decimals={decimals}
             isSnapshot={(session?.is_snapshot ?? false) || session?.status === "finalized"}
             freeRemaining={freeRemaining}

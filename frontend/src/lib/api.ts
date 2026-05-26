@@ -1008,3 +1008,20 @@ export async function updateTipTotalPaid(
     body: JSON.stringify(req),
   });
 }
+
+/** Date (ISO) of the logged-in user's most recent tip, or null. Used by the
+ *  homepage to show a 90-day thank-you banner. */
+export async function getMyRecentTip(): Promise<{ created_at: string | null }> {
+  const token = getAuthToken();
+  if (!token) return { created_at: null };
+  try {
+    const res = await fetch(`${API_URL}/api/user/me/recent-tip`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return { created_at: null };
+    return await res.json();
+  } catch {
+    return { created_at: null };
+  }
+}
